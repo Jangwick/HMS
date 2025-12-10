@@ -1,9 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
-from app import db
-from models.fin_users import FIN5User
+from utils.supabase_client import User
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
-from utils.password_validator import validate_password, PasswordValidationError
+from utils.password_validator import PasswordValidationError
 from datetime import datetime
 
 fin5_bp = Blueprint('fin5', __name__, template_folder='templates')
@@ -23,7 +22,7 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        user = FIN5User.query.filter_by(username=username).first()
+        user = User.get_by_username(username, BLUEPRINT_NAME)
         
         if user:
             now_utc = datetime.utcnow()
@@ -34,8 +33,7 @@ def login():
                     flash('Your password has expired. Please set a new password to continue.', 'warning')
                     return redirect(url_for('fin5.change_password'))
                 register_successful_login()
-                user.last_login = now_utc
-                db.session.commit()
+                user.register_successful_login()
                 login_user(user)
                 days_left = (user.password_expires_at - now_utc).days if user.password_expires_at else 999
                 if days_left <= 7:
@@ -64,7 +62,7 @@ def change_password():
     is_expired = expired_user_id is not None and expired_subsystem == BLUEPRINT_NAME
     
     if is_expired:
-        user = FIN5User.query.get(expired_user_id)
+        user = User.get_by_id(expired_user_id)
         if not user:
             session.pop('expired_user_id', None)
             session.pop('expired_subsystem', None)
@@ -92,7 +90,6 @@ def change_password():
         
         try:
             user.set_password(new_password)
-            db.session.commit()
             session.pop('expired_user_id', None)
             session.pop('expired_subsystem', None)
             flash('Password updated successfully! Please login with your new password.', 'success')
