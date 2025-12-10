@@ -1,12 +1,10 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from config import Config
 import os
 
 # Initialize extensions
-db = SQLAlchemy()
 csrf = CSRFProtect()
 login_manager = LoginManager()
 
@@ -21,7 +19,6 @@ def create_app(config_class=Config):
         pass
 
     # Initialize extensions
-    db.init_app(app)
     csrf.init_app(app)
     login_manager.init_app(app)
 
@@ -65,24 +62,12 @@ def create_app(config_class=Config):
     from routes.financials.fin5 import fin5_bp
     app.register_blueprint(fin5_bp, url_prefix='/financials/fin5')
 
-    # Dynamic User Loader
-    from models.registry import model_registry
-    
+    # User Loader for Flask-Login using Supabase
     @login_manager.user_loader
     def load_user(user_id):
         try:
-            # Expecting format "subsystem-id"
-            if '-' in user_id:
-                subsystem, uid = user_id.split('-', 1)
-                model = model_registry.get(subsystem)
-                if model:
-                    return model.query.get(int(uid))
-            else:
-                # Fallback for legacy or HR1 if it was created without composite ID logic initially
-                # But since we updated BaseUser, it should be fine.
-                # Just in case, try HR1
-                from models.hr_user import HR1User
-                return HR1User.query.get(int(user_id))
+            from utils.supabase_client import User
+            return User.get_by_composite_id(user_id)
         except Exception:
             return None
 
