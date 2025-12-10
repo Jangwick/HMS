@@ -8,3 +8,4 @@ Werkzeug==3.0.1
 python-dotenv==1.0.0
 email-validator==2.1.0
 pytz==2023.3.post1
+supabase
