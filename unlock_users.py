@@ -1,5 +1,4 @@
-from app import create_app, db
-from models.registry import model_registry
+from app import create_app
 from utils.ip_lockout import clear_all_lockouts, clear_ip_lockout, get_all_locked_ips
 
 app = create_app()
