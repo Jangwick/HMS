@@ -1,0 +1,143 @@
+{% extends "base/base.html" %}
+
+{% block title %}HMS - Main Portal{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 font-sans selection:bg-blue-100 selection:text-blue-900">
+    <!-- Hero Section -->
+    <div class="relative bg-white overflow-hidden">
+        <div class="absolute inset-0">
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 opacity-70"></div>
+            <div
+                class="absolute top-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20">
+            </div>
+        </div>
+
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 text-center">
+            <div
+                class="inline-flex items-center px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-sm font-bold mb-8 animate-fade-in-up">
+                <span class="flex h-2 w-2 rounded-full bg-blue-600 mr-2 animate-pulse"></span>
+                Enterprise Resource Planning v2.0
+            </div>
+
+            <h1
+                class="text-5xl md:text-7xl font-extrabold text-gray-900 tracking-tight mb-6 animate-fade-in-up delay-100">
+                Hospital Management <span
+                    class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">System</span>
+            </h1>
+
+            <p class="mt-4 max-w-2xl mx-auto text-xl text-gray-500 animate-fade-in-up delay-200">
+                A centralized, secure, and intelligent platform for managing all hospital operations, from human
+                resources to financial intelligence.
+            </p>
+        </div>
+    </div>
+
+    <!-- Departments Grid -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 pb-24 relative z-10">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <!-- Human Resources -->
+            <div
+                class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden">
+                <div class="h-3 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+                <div class="p-8">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-6 group-hover:bg-blue-600 transition-colors duration-300 shadow-sm">
+                        <i
+                            class="bi bi-people text-3xl text-blue-600 group-hover:text-white transition-colors duration-300"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Human Resources</h2>
+                    <p class="text-gray-500 mb-8 text-sm leading-relaxed">Talent acquisition, development, workforce
+                        operations, and compensation analytics.</p>
+
+                    <div class="flex items-center justify-between pt-6 border-t border-gray-50">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">4 Subsystems</span>
+                        <a href="{{ url_for('portal.hr_hub') }}"
+                            class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300">
+                            <i class="bi bi-arrow-right text-lg"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Core Transaction -->
+            <div
+                class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden">
+                <div class="h-3 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
+                <div class="p-8">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mb-6 group-hover:bg-emerald-600 transition-colors duration-300 shadow-sm">
+                        <i
+                            class="bi bi-heart-pulse text-3xl text-emerald-600 group-hover:text-white transition-colors duration-300"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Core Transaction</h2>
+                    <p class="text-gray-500 mb-8 text-sm leading-relaxed">Patient access, clinical operations, and
+                        administrative management.</p>
+
+                    <div class="flex items-center justify-between pt-6 border-t border-gray-50">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">3 Subsystems</span>
+                        <a href="{{ url_for('portal.ct_hub') }}"
+                            class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all duration-300">
+                            <i class="bi bi-arrow-right text-lg"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logistics -->
+            <div
+                class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden">
+                <div class="h-3 bg-gradient-to-r from-amber-400 to-amber-600"></div>
+                <div class="p-8">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mb-6 group-hover:bg-amber-600 transition-colors duration-300 shadow-sm">
+                        <i
+                            class="bi bi-box-seam text-3xl text-amber-600 group-hover:text-white transition-colors duration-300"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Logistics</h2>
+                    <p class="text-gray-500 mb-8 text-sm leading-relaxed">Smart supply chain management, fleet
+                        operations, and asset tracking.</p>
+
+                    <div class="flex items-center justify-between pt-6 border-t border-gray-50">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">2 Subsystems</span>
+                        <a href="{{ url_for('portal.logistics_hub') }}"
+                            class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 hover:bg-amber-600 hover:text-white transition-all duration-300">
+                            <i class="bi bi-arrow-right text-lg"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financials -->
+            <div
+                class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden">
+                <div class="h-3 bg-gradient-to-r from-purple-400 to-purple-600"></div>
+                <div class="p-8">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mb-6 group-hover:bg-purple-600 transition-colors duration-300 shadow-sm">
+                        <i
+                            class="bi bi-cash-coin text-3xl text-purple-600 group-hover:text-white transition-colors duration-300"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Financials</h2>
+                    <p class="text-gray-500 mb-8 text-sm leading-relaxed">Budgeting, collections, disbursements, general
+                        ledger, and financial intelligence.</p>
+
+                    <div class="flex items-center justify-between pt-6 border-t border-gray-50">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">5 Subsystems</span>
+                        <a href="{{ url_for('portal.financials_hub') }}"
+                            class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 hover:bg-purple-600 hover:text-white transition-all duration-300">
+                            <i class="bi bi-arrow-right text-lg"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="py-12 text-center">
+        <p class="text-gray-400 text-sm font-medium">
+            &copy; 2025 Hospital Management System ERP. All rights reserved.
+        </p>
+    </footer>
+</div>
+{% endblock %}

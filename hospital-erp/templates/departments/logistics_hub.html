@@ -1,0 +1,86 @@
+{% extends "base/base.html" %}
+
+{% block title %}Logistics - HMS{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 font-sans">
+    <header class="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center">
+                <div
+                    class="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-700 rounded-xl flex items-center justify-center mr-4 shadow-lg text-white">
+                    <i class="bi bi-box-seam-fill text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Logistics</h1>
+                    <p class="text-xs font-bold text-amber-600 uppercase tracking-wider">Department Hub</p>
+                </div>
+            </div>
+            <a href="{{ url_for('portal.index') }}"
+                class="group flex items-center px-4 py-2 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all duration-200 font-medium">
+                <i class="bi bi-grid-3x3-gap-fill mr-2 text-gray-400 group-hover:text-gray-600 transition-colors"></i>
+                Back to Portal
+            </a>
+        </div>
+    </header>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            <!-- LOG1 -->
+            <div
+                class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 group">
+                <div class="h-2 bg-gradient-to-r from-[#F59E0B] to-amber-400"></div>
+                <div class="p-8">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <span
+                                class="inline-block px-3 py-1 bg-amber-50 text-[#F59E0B] text-xs font-extrabold rounded-lg mb-3 tracking-wide">LOG1</span>
+                            <h2
+                                class="text-2xl font-bold text-gray-900 tracking-tight group-hover:text-[#F59E0B] transition-colors">
+                                Smart Supply Chain</h2>
+                        </div>
+                        <div
+                            class="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                            <i class="bi bi-box-seam text-3xl text-[#F59E0B]"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-500 mb-8 h-12 leading-relaxed">Warehousing, procurement, asset lifecycle, and
+                        document tracking.</p>
+                    <a href="{{ url_for('log1.login') }}"
+                        class="block w-full text-center py-4 bg-gray-50 text-gray-900 rounded-xl font-bold hover:bg-[#F59E0B] hover:text-white transition-all duration-300 border border-gray-100 hover:border-transparent hover:shadow-lg hover:shadow-amber-500/30">
+                        Access System <i class="bi bi-arrow-right ml-2"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- LOG2 -->
+            <div
+                class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 group">
+                <div class="h-2 bg-gradient-to-r from-[#F97316] to-orange-400"></div>
+                <div class="p-8">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <span
+                                class="inline-block px-3 py-1 bg-orange-50 text-[#F97316] text-xs font-extrabold rounded-lg mb-3 tracking-wide">LOG2</span>
+                            <h2
+                                class="text-2xl font-bold text-gray-900 tracking-tight group-hover:text-[#F97316] transition-colors">
+                                Fleet Operations</h2>
+                        </div>
+                        <div
+                            class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                            <i class="bi bi-truck text-3xl text-[#F97316]"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-500 mb-8 h-12 leading-relaxed">Vehicle management, dispatch, driver monitoring,
+                        and cost analysis.</p>
+                    <a href="{{ url_for('log2.login') }}"
+                        class="block w-full text-center py-4 bg-gray-50 text-gray-900 rounded-xl font-bold hover:bg-[#F97316] hover:text-white transition-all duration-300 border border-gray-100 hover:border-transparent hover:shadow-lg hover:shadow-orange-500/30">
+                        Access System <i class="bi bi-arrow-right ml-2"></i>
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+{% endblock %}
