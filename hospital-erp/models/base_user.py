@@ -4,6 +4,10 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 
+# Password expiry configuration
+PASSWORD_EXPIRY_DAYS = 90  # Maximum 90 days
+PASSWORD_WARNING_DAYS = 7  # Warn 7 days before expiry
+
 class BaseUser(UserMixin, db.Model):
     __abstract__ = True
 
@@ -22,10 +26,31 @@ class BaseUser(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
 
-    def set_password(self, password):
+    def set_password(self, password, skip_validation=False):
+        """
+        Set user password with validation.
+        
+        Args:
+            password: The new password to set
+            skip_validation: Skip validation (for initial setup/admin reset only)
+        """
+        if not skip_validation:
+            from utils.password_validator import validate_password
+            from models.registry import model_registry
+            
+            # Validate password with all checks
+            validate_password(
+                password=password,
+                password_history=self.password_history,
+                check_uniqueness=True,
+                user_models=model_registry,
+                current_user_id=self.id,
+                current_bind_key=getattr(self, '__bind_key__', None)
+            )
+        
         self.password_hash = generate_password_hash(password)
         self.password_created_at = datetime.utcnow()
-        self.password_expires_at = datetime.utcnow() + timedelta(days=90)
+        self.password_expires_at = datetime.utcnow() + timedelta(days=PASSWORD_EXPIRY_DAYS)
         
         # Update history
         history = self.password_history or []
@@ -36,6 +61,24 @@ class BaseUser(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+    def is_password_expired(self):
+        """Check if the password has expired."""
+        if self.password_expires_at:
+            return datetime.utcnow() > self.password_expires_at
+        return False
+    
+    def days_until_password_expiry(self):
+        """Get the number of days until password expires."""
+        if self.password_expires_at:
+            delta = self.password_expires_at - datetime.utcnow()
+            return max(0, delta.days)
+        return 0
+    
+    def should_warn_password_expiry(self):
+        """Check if we should warn about password expiry (within 7 days)."""
+        days_left = self.days_until_password_expiry()
+        return 0 < days_left <= PASSWORD_WARNING_DAYS
 
     def is_locked(self):
         if self.account_locked_until and self.account_locked_until > datetime.utcnow():
