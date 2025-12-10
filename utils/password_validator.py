@@ -73,40 +73,39 @@ def check_password_in_history(password, password_history):
     return True, None
 
 
-def check_password_across_accounts(password, user_models, current_user_id=None, current_bind_key=None):
+def check_password_across_accounts(password, current_user_id=None):
     """
     Check if password is used across any other user accounts in the system.
     This prevents users from using the same password on multiple subsystems.
+    Uses Supabase to query all users.
     
     Args:
         password: The password to check
-        user_models: Dictionary of model classes (from registry)
         current_user_id: The ID of the current user (to exclude from check)
-        current_bind_key: The bind key of the current user's model
     
     Returns: (is_unique, error_message or None)
     """
-    for bind_key, model in user_models.items():
-        try:
-            users = model.query.all()
-            for user in users:
-                # Skip the current user's current account
-                if current_bind_key and current_user_id:
-                    if bind_key == current_bind_key and user.id == current_user_id:
-                        continue
-                
-                # Check if password matches this user's password
-                if user.password_hash and check_password_hash(user.password_hash, password):
-                    return False, 'This password is already in use on another account. Please choose a different password.'
-        except Exception:
-            # Skip models that might have issues
-            continue
+    try:
+        from utils.supabase_client import User
+        users = User.get_all()
+        
+        for user in users:
+            # Skip the current user
+            if current_user_id and user.id == current_user_id:
+                continue
+            
+            # Check if password matches this user's password
+            if user.password_hash and check_password_hash(user.password_hash, password):
+                return False, 'This password is already in use on another account. Please choose a different password.'
+    except Exception:
+        # If we can't check, allow the password (fail open for this check)
+        pass
     
     return True, None
 
 
 def validate_password(password, password_history=None, check_uniqueness=False, 
-                     user_models=None, current_user_id=None, current_bind_key=None):
+                     current_user_id=None):
     """
     Comprehensive password validation.
     
@@ -114,9 +113,7 @@ def validate_password(password, password_history=None, check_uniqueness=False,
         password: The password to validate
         password_history: List of previous password hashes for this user
         check_uniqueness: Whether to check across all accounts
-        user_models: Dictionary of model classes (required if check_uniqueness=True)
         current_user_id: Current user's ID (to exclude from uniqueness check)
-        current_bind_key: Current user's model bind key
     
     Returns: (is_valid, list of error messages)
     
@@ -142,10 +139,8 @@ def validate_password(password, password_history=None, check_uniqueness=False,
             all_errors.append(error)
     
     # Step 4: Check across all accounts (if enabled)
-    if check_uniqueness and user_models:
-        is_valid, error = check_password_across_accounts(
-            password, user_models, current_user_id, current_bind_key
-        )
+    if check_uniqueness:
+        is_valid, error = check_password_across_accounts(password, current_user_id)
         if not is_valid:
             all_errors.append(error)
     
