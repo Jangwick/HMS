@@ -2,17 +2,19 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db, login_manager
 from models.hr_user import HR1User
+from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from datetime import datetime
-import pytz
 
 hr1_bp = Blueprint('hr1', __name__, template_folder='templates')
 
-# Custom Login Manager for HR1? 
-# For simplicity in this phase, we'll use the global one but we might need to separate sessions later
-# or use a custom user loader that checks the blueprint.
-
 @hr1_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    # Check IP-based lockout first
+    locked, remaining_seconds, unlock_time_str = is_ip_locked()
+    if locked:
+        flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
+        return render_template('subsystems/hr/hr1/login.html', remaining_seconds=remaining_seconds)
+    
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -21,28 +23,15 @@ def login():
         
         if user:
             now_utc = datetime.utcnow()
-            if user.is_locked():
-                locked_until_utc = user.account_locked_until
-                if locked_until_utc > now_utc:
-                    remaining_seconds = (locked_until_utc - now_utc).total_seconds()
-                    # Convert to Manila time for display
-                    manila_tz = pytz.timezone('Asia/Manila')
-                    locked_until_manila = locked_until_utc.replace(tzinfo=pytz.utc).astimezone(manila_tz)
-                    unlock_time_manila = locked_until_manila.strftime("%I:%M%p").lower()
-                    
-                    flash(f'Account locked. Try again at {unlock_time_manila}', 'danger')
-                    return render_template('subsystems/hr/hr1/login.html', remaining_seconds=remaining_seconds)
-                else:
-                    user.failed_login_attempts = 0
-                    user.account_locked_until = None
-                    db.session.commit()
 
             if user.check_password(password):
                 if user.password_expires_at and user.password_expires_at < now_utc:
                     flash('Your password has expired. Please contact IT to reset it.', 'warning')
                     return render_template('subsystems/hr/hr1/login.html')
 
-                user.register_successful_login()
+                # Clear IP lockout attempts on successful login
+                register_successful_login()
+                user.last_login = now_utc
                 db.session.commit()
                 login_user(user)
                 
@@ -52,28 +41,23 @@ def login():
                     
                 return redirect(url_for('hr1.dashboard'))
             else:
-                user.register_failed_login()
-                db.session.commit()
+                # Register failed attempt by IP
+                is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
                 
-                locked_until_utc = user.account_locked_until
-                if locked_until_utc and locked_until_utc > now_utc:
-                    remaining_seconds = (locked_until_utc - now_utc).total_seconds()
-                    manila_tz = pytz.timezone('Asia/Manila')
-                    locked_until_manila = locked_until_utc.replace(tzinfo=pytz.utc).astimezone(manila_tz)
-                    unlock_time_manila = locked_until_manila.strftime("%I:%M%p").lower()
-                    
-                    flash(f'Account locked. Try again at {unlock_time_manila}', 'danger')
+                if is_now_locked:
+                    flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
                     return render_template('subsystems/hr/hr1/login.html', remaining_seconds=remaining_seconds)
                 else:
-                    remaining_attempts = 5 - (user.failed_login_attempts % 5 if user.failed_login_attempts >= 5 else user.failed_login_attempts)
-                    if remaining_attempts > 0 and user.failed_login_attempts < 5:
-                         flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
-                    elif user.failed_login_attempts >= 5:
-                         flash(f'Invalid credentials. Account will lock again on next failure.', 'danger')
-                    else:
-                         flash('Invalid credentials.', 'danger')
+                    flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
         else:
-            flash('Invalid username or password', 'danger')
+            # Register failed attempt even for non-existent users (prevents user enumeration)
+            is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
+            
+            if is_now_locked:
+                flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
+                return render_template('subsystems/hr/hr1/login.html', remaining_seconds=remaining_seconds)
+            else:
+                flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
             
     return render_template('subsystems/hr/hr1/login.html')
 
