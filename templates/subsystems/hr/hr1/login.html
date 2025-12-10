@@ -81,8 +81,11 @@
                                     <i class="bi bi-lock text-gray-400"></i>
                                 </div>
                                 <input id="password" name="password" type="password" required
-                                    class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
+                                    class="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
                                     placeholder="Enter your password">
+                                <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                    <i id="toggleIcon" class="bi bi-eye"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -114,4 +117,21 @@
             &copy; 2025 Hospital Management System. Secure Environment.
         </div>
     </div>
+
+<script>
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.getElementById('toggleIcon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('bi-eye');
+            toggleIcon.classList.add('bi-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('bi-eye-slash');
+            toggleIcon.classList.add('bi-eye');
+        }
+    }
+</script>
     {% endblock %}
