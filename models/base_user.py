@@ -45,7 +45,7 @@ class BaseUser(UserMixin, db.Model):
                 check_uniqueness=True,
                 user_models=model_registry,
                 current_user_id=self.id,
-                current_bind_key=getattr(self, '__bind_key__', None)
+                current_table=getattr(self, '__tablename__', None)
             )
         
         self.password_hash = generate_password_hash(password)
