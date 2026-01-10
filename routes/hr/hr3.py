@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_wtf.csrf import generate_csrf
 from flask_login import login_user, logout_user, login_required, current_user
-from utils.supabase_client import User
+from utils.supabase_client import User, SUBSYSTEM_CONFIG
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
 from datetime import datetime
@@ -188,6 +188,138 @@ def user_list():
     return render_template('subsystems/hr/hr3/admin/user_list.html', 
                            users=users, subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR)
 
+@hr3_bp.route('/admin/users/add', methods=['GET', 'POST'])
+@login_required
+def add_user():
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        subsystem = request.form.get('subsystem')
+        role = request.form.get('role')
+        status = request.form.get('status')
+        
+        config = SUBSYSTEM_CONFIG.get(subsystem)
+        if not config:
+            flash('Invalid subsystem selected.', 'danger')
+            return render_template('subsystems/hr/hr3/admin/user_form.html', 
+                                   subsystem_name=SUBSYSTEM_NAME, 
+                                   subsystem_config=SUBSYSTEM_CONFIG,
+                                   user=None)
+        
+        try:
+            new_user = User.create(
+                username=username,
+                email=email,
+                password=password,
+                subsystem=subsystem,
+                department=config['department'],
+                role=role,
+                status=status
+            )
+            
+            if new_user:
+                flash(f'User {username} created successfully.', 'success')
+                return redirect(url_for('hr3.user_list'))
+            else:
+                flash('Failed to create user.', 'danger')
+        except PasswordValidationError as e:
+            for error in e.errors:
+                flash(error, 'danger')
+        except Exception as e:
+            flash(f'An error occurred: {str(e)}', 'danger')
+            
+    return render_template('subsystems/hr/hr3/admin/user_form.html', 
+                           subsystem_name=SUBSYSTEM_NAME, 
+                           subsystem_config=SUBSYSTEM_CONFIG,
+                           user=None)
+
+@hr3_bp.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_user(user_id):
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    user = User.get_by_id(user_id)
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('hr3.user_list'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        subsystem = request.form.get('subsystem')
+        role = request.form.get('role')
+        status = request.form.get('status')
+        password = request.form.get('password')
+        
+        config = SUBSYSTEM_CONFIG.get(subsystem)
+        if not config:
+            flash('Invalid subsystem selected.', 'danger')
+            return render_template('subsystems/hr/hr3/admin/user_form.html', 
+                                   subsystem_name=SUBSYSTEM_NAME, 
+                                   subsystem_config=SUBSYSTEM_CONFIG,
+                                   user=user)
+        
+        update_data = {
+            'username': username,
+            'email': email,
+            'subsystem': subsystem,
+            'department': config['department'],
+            'role': role,
+            'status': status,
+            'is_active': status == 'Active'
+        }
+        
+        try:
+            if password:
+                user.set_password(password)
+                flash('Password updated.', 'info')
+            
+            if user.update(**update_data):
+                flash(f'User {username} updated successfully.', 'success')
+                return redirect(url_for('hr3.user_list'))
+            else:
+                flash('Failed to update user.', 'danger')
+        except PasswordValidationError as e:
+            for error in e.errors:
+                flash(error, 'danger')
+        except Exception as e:
+            flash(f'An error occurred: {str(e)}', 'danger')
+            
+    return render_template('subsystems/hr/hr3/admin/user_form.html', 
+                           subsystem_name=SUBSYSTEM_NAME, 
+                           subsystem_config=SUBSYSTEM_CONFIG,
+                           user=user)
+
+@hr3_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    user = User.get_by_id(user_id)
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('hr3.user_list'))
+    
+    if user.id == current_user.id:
+        flash('You cannot delete your own account.', 'danger')
+        return redirect(url_for('hr3.user_list'))
+        
+    if user.delete():
+        flash(f'User {user.username} deleted successfully.', 'success')
+    else:
+        flash('Failed to delete user.', 'danger')
+        
+    return redirect(url_for('hr3.user_list'))
+
 @hr3_bp.route('/admin/approvals')
 @login_required
 def pending_approvals():
@@ -243,6 +375,46 @@ def toggle_user_status(user_id):
         user.update(status='Active', is_active=True)
         flash(f'User {user.username} has been activated.', 'success')
     
+    return redirect(url_for('hr3.user_list'))
+
+@hr3_bp.route('/admin/users/<int:user_id>/reset-password')
+@login_required
+def reset_user_password(user_id):
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    user = User.get_by_id(user_id)
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('hr3.user_list'))
+    
+    # Reset to default password
+    default_pw = "HMSPassword@123"
+    user.set_password(default_pw, skip_validation=True)
+    
+    flash(f'Password for {user.username} has been reset to: {default_pw}', 'success')
+    return redirect(url_for('hr3.user_list'))
+
+@hr3_bp.route('/admin/users/<int:user_id>/change-password', methods=['POST'])
+@login_required
+def admin_change_password(user_id):
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    user = User.get_by_id(user_id)
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('hr3.user_list'))
+    
+    new_password = request.form.get('new_password')
+    if not new_password or len(new_password) < 8:
+        flash('Password must be at least 8 characters long.', 'warning')
+        return redirect(url_for('hr3.user_list'))
+    
+    user.set_password(new_password, skip_validation=True)
+    flash(f'Password for {user.username} has been updated.', 'success')
     return redirect(url_for('hr3.user_list'))
 
 @hr3_bp.route('/logout')

@@ -303,6 +303,15 @@ class User(UserMixin):
             account_locked_until=None,
             last_login=datetime.utcnow()
         )
+    
+    def delete(self) -> bool:
+        """Delete the user from the database."""
+        try:
+            client = get_supabase_client()
+            response = client.table('users').delete().eq('id', self.id).execute()
+            return bool(response.data)
+        except Exception:
+            return False
 
 
 # Subsystem configuration mapping
