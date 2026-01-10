@@ -10,7 +10,8 @@ csrf = CSRFProtect()
 login_manager = LoginManager()
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    app = Flask(__name__, instance_path='/tmp/instance')
+
     app.config.from_object(config_class)
 
     try:
