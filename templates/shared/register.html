@@ -3,155 +3,184 @@
 {% block title %}Register - {{ subsystem_name }}{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-[#0f172a] text-slate-200 p-6 flex items-center justify-center">
-    <div class="max-w-md w-full">
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        {% for category, message in messages %}
+<div class="min-h-screen flex items-center justify-center bg-gray-50 relative overflow-hidden">
+    <!-- Background Decoration -->
+    <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
         <div
-            class="mb-4 p-4 rounded-xl {% if category == 'danger' %}bg-rose-500/10 border border-rose-500/20 text-rose-500{% else %}bg-emerald-500/10 border border-emerald-500/20 text-emerald-500{% endif %} animate-fade-in">
-            {{ message }}
+            class="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-gradient-to-r from-[#0EA5E9] to-transparent opacity-5 blur-3xl">
         </div>
-        {% endfor %}
-        {% endif %}
-        {% endwith %}
+        <div
+            class="absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] rounded-full bg-gradient-to-l from-[#0EA5E9] to-transparent opacity-5 blur-3xl">
+        </div>
+    </div>
 
-        <div class="bg-slate-800/50 border border-slate-700 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
-            <div class="text-center mb-8">
-                <div
-                    class="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mx-auto mb-4">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z">
-                        </path>
-                    </svg>
-                </div>
-                <h1 class="text-2xl font-bold text-white mb-1">Create Account</h1>
-                <p class="text-slate-400 text-sm">Register for {{ subsystem_name }}</p>
+    <div
+        class="max-w-md w-full bg-white/90 backdrop-blur-sm p-8 sm:p-10 rounded-3xl shadow-2xl border border-gray-100 relative z-10 mx-4">
+        <!-- Header Icon -->
+        <div class="absolute -top-10 left-1/2 transform -translate-x-1/2">
+            <div
+                class="w-20 h-20 bg-gradient-to-br from-[#0EA5E9] to-gray-800 rounded-2xl flex items-center justify-center shadow-lg border-4 border-white text-white">
+                <i class="bi bi-person-plus text-4xl"></i>
             </div>
+        </div>
 
-            <form method="POST" class="space-y-5">
+        <div class="mt-12 text-center space-y-2">
+            <h2 class="text-3xl font-bold text-gray-900 tracking-tight">
+                Create Account
+            </h2>
+            <p class="text-sm font-bold text-[#0EA5E9] uppercase tracking-wider">{{ subsystem_name }}</p>
+            <p class="text-gray-500 text-sm">Register for secure access</p>
+        </div>
+
+        <div class="mt-8">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div
+                class="rounded-xl bg-{{ 'red' if category == 'danger' else 'green' }}-50 p-4 mb-4 border border-{{ 'red' if category == 'danger' else 'green' }}-100 flex items-start animate-fade-in-down">
+                <div class="flex-shrink-0">
+                    <i
+                        class="bi bi-{{ 'x-circle-fill' if category == 'danger' else 'check-circle-fill' }} text-{{ 'red' if category == 'danger' else 'green' }}-500 text-lg"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-{{ 'red' if category == 'danger' else 'green' }}-800">
+                        {{ message }}
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <form class="space-y-5" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <div class="space-y-2">
-                    <label for="username"
-                        class="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Username</label>
-                    <input type="text" id="username" name="username" required
-                        class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 outline-none"
-                        placeholder="jdoe">
-                </div>
 
-                <div class="space-y-2">
-                    <label for="email" class="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Email
-                        Address</label>
-                    <input type="email" id="email" name="email" required
-                        class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 outline-none"
-                        placeholder="john@example.com">
-                </div>
-
-                <div class="space-y-2">
-                    <label for="password"
-                        class="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Password</label>
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1 ml-1">Username</label>
                     <div class="relative">
-                        <input type="password" id="password" name="password" required
-                            class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 pr-12 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 outline-none"
-                            placeholder="••••••••••••">
-                        <button type="button" id="toggle-password"
-                            class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-200 transition-colors">
-                            <svg class="w-5 h-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
-                                </path>
-                            </svg>
-                            <svg class="w-5 h-5 eye-closed hidden" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21">
-                                </path>
-                            </svg>
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="bi bi-person text-gray-400"></i>
+                        </div>
+                        <input id="username" name="username" type="text" required
+                            class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
+                            placeholder="Enter your username">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1 ml-1">Email Address</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="bi bi-envelope text-gray-400"></i>
+                        </div>
+                        <input id="email" name="email" type="email" required
+                            class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
+                            placeholder="Enter your email">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1 ml-1">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="bi bi-lock text-gray-400"></i>
+                        </div>
+                        <input id="password" name="password" type="password" required
+                            class="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
+                            placeholder="Create a password">
+                        <button type="button" onclick="togglePassword()"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                            <i id="toggleIcon" class="bi bi-eye"></i>
                         </button>
                     </div>
 
                     <!-- Password Strength Meter -->
-                    <div class="mt-3 space-y-2">
-                        <div class="flex justify-between items-center px-1">
-                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Strength</span>
+                    <div class="mt-3 px-1">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Strength</span>
                             <span id="strength-text"
-                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Empty</span>
+                                class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Empty</span>
                         </div>
-                        <div class="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-700/30">
-                            <div id="strength-bar" class="h-full w-0 transition-all duration-500 ease-out bg-slate-500">
+                        <div class="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                            <div id="strength-bar" class="h-full w-0 transition-all duration-500 ease-out bg-gray-300">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Password Requirements Hint -->
-                    <div class="mt-3 p-3 bg-slate-900/50 rounded-lg border border-slate-700/30">
+                    <!-- Password Requirements -->
+                    <div class="mt-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
                         <div class="grid grid-cols-2 gap-y-1.5 gap-x-4">
                             <div id="req-length"
-                                class="flex items-center gap-2 text-[10px] text-slate-500 transition-colors duration-200">
-                                <div class="w-1 h-1 rounded-full bg-current"></div>
+                                class="flex items-center gap-2 text-[10px] text-gray-400 transition-colors duration-200">
+                                <i class="bi bi-circle text-[8px]"></i>
                                 8-14 Characters
                             </div>
                             <div id="req-upper"
-                                class="flex items-center gap-2 text-[10px] text-slate-500 transition-colors duration-200">
-                                <div class="w-1 h-1 rounded-full bg-current"></div>
+                                class="flex items-center gap-2 text-[10px] text-gray-400 transition-colors duration-200">
+                                <i class="bi bi-circle text-[8px]"></i>
                                 Uppercase Letter
                             </div>
                             <div id="req-number"
-                                class="flex items-center gap-2 text-[10px] text-slate-500 transition-colors duration-200">
-                                <div class="w-1 h-1 rounded-full bg-current"></div>
+                                class="flex items-center gap-2 text-[10px] text-gray-400 transition-colors duration-200">
+                                <i class="bi bi-circle text-[8px]"></i>
                                 Number (0-9)
                             </div>
                             <div id="req-special"
-                                class="flex items-center gap-2 text-[10px] text-slate-500 transition-colors duration-200">
-                                <div class="w-1 h-1 rounded-full bg-current"></div>
+                                class="flex items-center gap-2 text-[10px] text-gray-400 transition-colors duration-200">
+                                <i class="bi bi-circle text-[8px]"></i>
                                 Special Char
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <button type="submit"
-                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-500/20 transition-all transform hover:-translate-y-0.5 active:scale-[0.98] mt-4">
-                    Register Account
-                </button>
+                <div>
+                    <button type="submit"
+                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-gradient-to-r from-[#0EA5E9] to-gray-800 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0EA5E9] transition-all duration-200 shadow-lg shadow-[#0EA5E9]/30 transform hover:-translate-y-0.5">
+                        <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                            <i class="bi bi-person-plus group-hover:text-white/80 transition-colors"></i>
+                        </span>
+                        Register Account
+                    </button>
+                </div>
+
+                <div class="flex flex-col space-y-4 text-center pt-2">
+                    <p class="text-sm text-gray-500">
+                        Already have an account?
+                        <a href="{{ url_for(blueprint_name + '.login') }}"
+                            class="text-[#0EA5E9] font-bold hover:underline">Sign in</a>
+                    </p>
+                    <a href="{{ url_for('portal.hr_hub') }}"
+                        class="inline-flex items-center justify-center text-sm text-gray-500 hover:text-gray-900 transition-colors group">
+                        <i class="bi bi-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i> Back to
+                        Hub
+                    </a>
+                </div>
             </form>
-
-            <div class="mt-8 pt-6 border-t border-slate-700/50 text-center">
-                <p class="text-sm text-slate-400">
-                    Already have an account?
-                    <a href="{{ url_for(blueprint_name + '.login') }}"
-                        class="text-indigo-400 font-bold hover:text-indigo-300 transition-colors">Login</a>
-                </p>
-            </div>
         </div>
+    </div>
 
-        <p class="text-center mt-6 text-xs text-slate-500 italic">
-            Note: All new registrations require approval from HR3 Admin before access is granted.
-        </p>
+    <!-- Footer -->
+    <div class="absolute bottom-6 text-center w-full text-xs text-gray-400">
+        Note: All new registrations require approval from Admin before access is granted.
     </div>
 </div>
 
 <script>
-    // Toggle Password Visibility
-    document.getElementById('toggle-password').addEventListener('click', function () {
+    function togglePassword() {
         const passwordInput = document.getElementById('password');
-        const eyeOpen = this.querySelector('.eye-open');
-        const eyeClosed = this.querySelector('.eye-closed');
+        const toggleIcon = document.getElementById('toggleIcon');
 
         if (passwordInput.type === 'password') {
             passwordInput.type = 'text';
-            eyeOpen.classList.add('hidden');
-            eyeClosed.classList.remove('hidden');
+            toggleIcon.classList.remove('bi-eye');
+            toggleIcon.classList.add('bi-eye-slash');
         } else {
             passwordInput.type = 'password';
-            eyeOpen.classList.remove('hidden');
-            eyeClosed.classList.add('hidden');
+            toggleIcon.classList.remove('bi-eye-slash');
+            toggleIcon.classList.add('bi-eye');
         }
-    });
+    }
 
     // Password Strength Validation
     document.getElementById('password').addEventListener('input', function (e) {
@@ -169,12 +198,17 @@
         // Update Requirement Indicators
         Object.keys(checks).forEach(key => {
             const el = document.getElementById('req-' + key);
+            const icon = el.querySelector('i');
             if (checks[key]) {
-                el.classList.remove('text-slate-500');
-                el.classList.add('text-emerald-400');
+                el.classList.remove('text-gray-400');
+                el.classList.add('text-green-500');
+                icon.classList.remove('bi-circle');
+                icon.classList.add('bi-check-circle-fill');
             } else {
-                el.classList.remove('text-emerald-400');
-                el.classList.add('text-slate-500');
+                el.classList.remove('text-green-500');
+                el.classList.add('text-gray-400');
+                icon.classList.remove('bi-check-circle-fill');
+                icon.classList.add('bi-circle');
             }
         });
 
@@ -189,19 +223,19 @@
 
         // Update Bar and Text
         const states = [
-            { color: 'bg-slate-500', text: 'Empty', width: '0%' },
-            { color: 'bg-rose-500', text: 'Weak', width: '25%' },
-            { color: 'bg-amber-500', text: 'Fair', width: '50%' },
-            { color: 'bg-blue-500', text: 'Good', width: '75%' },
-            { color: 'bg-emerald-500', text: 'Strong', width: '100%' }
+            { color: 'bg-gray-300', text: 'Empty', width: '0%', textColor: 'text-gray-400' },
+            { color: 'bg-red-500', text: 'Weak', width: '25%', textColor: 'text-red-500' },
+            { color: 'bg-amber-500', text: 'Fair', width: '50%', textColor: 'text-amber-500' },
+            { color: 'bg-blue-500', text: 'Good', width: '75%', textColor: 'text-blue-500' },
+            { color: 'bg-green-500', text: 'Strong', width: '100%', textColor: 'text-green-500' }
         ];
 
         const state = password.length === 0 ? states[0] : states[score] || states[1];
 
-        strengthBar.className = `h-full transition-all duration-500 ease-out ${state.color}`;
+        strengthBar.className = 'h-full transition-all duration-500 ease-out ' + state.color;
         strengthBar.style.width = state.width;
         strengthText.innerText = state.text;
-        strengthText.className = `text-[10px] font-bold uppercase tracking-wider ${state.color.replace('bg-', 'text-')}`;
+        strengthText.className = 'text-[10px] font-bold uppercase tracking-wider ' + state.textColor;
     });
 </script>
 {% endblock %}
