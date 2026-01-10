@@ -248,7 +248,7 @@
                                         
                                         <!-- Global Actions (All states) -->
                                         <hr class="border-gray-100">
-                                        <button onclick="changePassword('{{ user.id }}', '{{ user.username }}')"
+                                        <button onclick="openChangePasswordModal('{{ user.id }}', '{{ user.username }}')"
                                             class="w-full flex items-center gap-2 px-4 py-3 text-sm text-indigo-600 hover:bg-indigo-50 transition-colors">
                                             <i class="bi bi-key"></i>
                                             Set Password
@@ -263,10 +263,6 @@
                                         <form id="delete-form-{{ user.id }}" action="{{ url_for('hr3.delete_user', user_id=user.id) }}" method="POST" class="hidden">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         </form>
-                                        <form id="password-form-{{ user.id }}" action="{{ url_for('hr3.admin_change_password', user_id=user.id) }}" method="POST" class="hidden">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <input type="password" name="new_password" id="new-pw-{{ user.id }}">
-                                        </form>
                                     </div>
                                 </div>
                             </td>
@@ -277,6 +273,60 @@
             </div>
         </div>
         </main>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div id="passwordModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <!-- Background backdrop -->
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="closeChangePasswordModal()"></div>
+
+        <!-- Modal panel -->
+        <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+            <div class="bg-white px-8 pt-8 pb-6">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                        <i class="bi bi-shield-lock text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900" id="modal-title">Change Password</h3>
+                        <p class="text-sm text-gray-500" id="modal-subtitle">Update password for <span id="target-username" class="font-bold text-indigo-600"></span></p>
+                    </div>
+                </div>
+
+                <form id="changePasswordForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="new_password" class="block text-sm font-bold text-gray-700 mb-2">New Secure Password</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                                    <i class="bi bi-key"></i>
+                                </span>
+                                <input type="password" name="new_password" id="modal_new_password" required
+                                    class="block w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                    placeholder="Enter new password">
+                                <button type="button" onclick="toggleModalPassword()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-indigo-600">
+                                    <i class="bi bi-eye" id="modal-eye-icon"></i>
+                                </button>
+                            </div>
+                            <p class="mt-2 text-xs text-gray-500">Minimum 8 characters with letters and numbers recommended.</p>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="bg-gray-50 px-8 py-6 flex flex-row-reverse gap-3">
+                <button type="button" onclick="submitPasswordForm()"
+                    class="w-full inline-flex justify-center rounded-2xl border border-transparent shadow-lg py-3 px-6 bg-indigo-600 text-base font-bold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all sm:w-auto">
+                    Save Changes
+                </button>
+                <button type="button" onclick="closeChangePasswordModal()"
+                    class="w-full inline-flex justify-center rounded-2xl border border-gray-200 shadow-sm py-3 px-6 bg-white text-base font-bold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all sm:w-auto">
+                    Cancel
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -302,15 +352,42 @@
         }
     }
 
-    function changePassword(userId, username) {
-        const newPassword = prompt(`Enter new password for user "${username}":`);
-        if (newPassword) {
-            if (newPassword.length < 8) {
-                alert('Password must be at least 8 characters long.');
-                return;
-            }
-            document.getElementById(`new-pw-${userId}`).value = newPassword;
-            document.getElementById(`password-form-${userId}`).submit();
+    const passwordModal = document.getElementById('passwordModal');
+    const changePasswordForm = document.getElementById('changePasswordForm');
+    const targetUsernameSpan = document.getElementById('target-username');
+    const modalNewPasswordInput = document.getElementById('modal_new_password');
+
+    function openChangePasswordModal(userId, username) {
+        targetUsernameSpan.textContent = username;
+        changePasswordForm.action = `/hr/hr3/admin/users/${userId}/change-password`;
+        passwordModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // Prevent scrolling
+    }
+
+    function closeChangePasswordModal() {
+        passwordModal.classList.add('hidden');
+        document.body.style.overflow = '';
+        modalNewPasswordInput.value = '';
+    }
+
+    function submitPasswordForm() {
+        if (modalNewPasswordInput.value.length < 8) {
+            alert('Password must be at least 8 characters long.');
+            return;
+        }
+        changePasswordForm.submit();
+    }
+
+    function toggleModalPassword() {
+        const icon = document.getElementById('modal-eye-icon');
+        if (modalNewPasswordInput.type === 'password') {
+            modalNewPasswordInput.type = 'text';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        } else {
+            modalNewPasswordInput.type = 'password';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
         }
     }
 
@@ -320,6 +397,13 @@
             document.querySelectorAll('.dropdown-menu').forEach(menu => {
                 menu.classList.add('hidden');
             });
+        }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === "Escape") {
+            closeChangePasswordModal();
         }
     });
 
