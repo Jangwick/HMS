@@ -95,6 +95,7 @@
             class="bg-white/80 backdrop-blur-md shadow-sm h-20 flex items-center justify-between px-8 sticky top-0 z-10 border-b border-gray-100">
             <div class="flex items-center">
                 <h2 class="text-2xl font-bold text-gray-800 tracking-tight">Pending Approvals</h2>
+                <span class="ml-3 text-sm text-gray-500">All Departments</span>
             </div>
             <div class="flex items-center space-x-4">
                 <a href="{{ url_for('hr3.user_list') }}"
@@ -137,7 +138,7 @@
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-gray-500 text-sm font-medium">Pending</p>
+                            <p class="text-gray-500 text-sm font-medium">Pending Requests</p>
                             <p class="text-3xl font-bold text-amber-500">{{ users|length }}</p>
                         </div>
                         <div class="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
@@ -172,8 +173,8 @@
             {% if users %}
             <!-- Pending Users List -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100">
-                    <h3 class="font-bold text-gray-900">Registration Requests</h3>
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h3 class="font-bold text-gray-900">Registration Requests from All Departments</h3>
                 </div>
                 <div class="divide-y divide-gray-100">
                     {% for user in users %}
@@ -186,13 +187,36 @@
                             <div>
                                 <h4 class="font-bold text-gray-900">{{ user.username }}</h4>
                                 <p class="text-sm text-gray-500">{{ user.email }}</p>
-                                <div class="flex gap-2 mt-1">
+                                <div class="flex flex-wrap gap-2 mt-2">
+                                    <!-- Color-coded subsystem badge -->
+                                    {% if 'hr' in user.subsystem|lower %}
                                     <span
-                                        class="px-2 py-0.5 rounded bg-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                        class="px-2.5 py-1 rounded-lg bg-blue-100 text-[10px] font-bold text-blue-700 uppercase tracking-wider border border-blue-200">
+                                        <i class="bi bi-people-fill mr-1"></i>{{ user.subsystem|upper }}
+                                    </span>
+                                    {% elif 'ct' in user.subsystem|lower or 'core' in user.subsystem|lower %}
+                                    <span
+                                        class="px-2.5 py-1 rounded-lg bg-emerald-100 text-[10px] font-bold text-emerald-700 uppercase tracking-wider border border-emerald-200">
+                                        <i class="bi bi-arrows-fullscreen mr-1"></i>{{ user.subsystem|upper }}
+                                    </span>
+                                    {% elif 'fin' in user.subsystem|lower %}
+                                    <span
+                                        class="px-2.5 py-1 rounded-lg bg-amber-100 text-[10px] font-bold text-amber-700 uppercase tracking-wider border border-amber-200">
+                                        <i class="bi bi-currency-dollar mr-1"></i>{{ user.subsystem|upper }}
+                                    </span>
+                                    {% elif 'log' in user.subsystem|lower %}
+                                    <span
+                                        class="px-2.5 py-1 rounded-lg bg-purple-100 text-[10px] font-bold text-purple-700 uppercase tracking-wider border border-purple-200">
+                                        <i class="bi bi-truck mr-1"></i>{{ user.subsystem|upper }}
+                                    </span>
+                                    {% else %}
+                                    <span
+                                        class="px-2.5 py-1 rounded-lg bg-gray-100 text-[10px] font-bold text-gray-700 uppercase tracking-wider border border-gray-200">
                                         {{ user.subsystem|upper }}
                                     </span>
+                                    {% endif %}
                                     <span
-                                        class="px-2 py-0.5 rounded bg-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                        class="px-2 py-1 rounded-lg bg-gray-50 text-[10px] font-medium text-gray-500 uppercase tracking-wider border border-gray-200">
                                         {{ user.department }}
                                     </span>
                                 </div>
@@ -208,14 +232,14 @@
 
                             <div class="flex gap-2">
                                 <a href="{{ url_for('hr3.process_approval', user_id=user.id, action='deny') }}"
-                                    onclick="return confirm('Are you sure you want to DENY this registration?')"
-                                    class="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white rounded-xl transition-all font-medium text-sm border border-red-100 hover:border-red-500">
+                                    onclick="return confirm('Are you sure you want to DENY this registration for {{ user.username }}?')"
+                                    class="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white rounded-xl transition-all font-medium text-sm border border-red-100 hover:border-red-500">
                                     <i class="bi bi-x-lg"></i>
                                     <span class="hidden sm:inline">Deny</span>
                                 </a>
                                 <a href="{{ url_for('hr3.process_approval', user_id=user.id, action='approve') }}"
-                                    onclick="return confirm('Are you sure you want to APPROVE this registration?')"
-                                    class="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-xl transition-all font-medium text-sm border border-emerald-100 hover:border-emerald-500">
+                                    onclick="return confirm('Are you sure you want to APPROVE this registration for {{ user.username }}?')"
+                                    class="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-xl transition-all font-medium text-sm border border-emerald-100 hover:border-emerald-500">
                                     <i class="bi bi-check-lg"></i>
                                     <span class="hidden sm:inline">Approve</span>
                                 </a>
@@ -232,8 +256,8 @@
                     <i class="bi bi-check-circle text-4xl text-emerald-500"></i>
                 </div>
                 <h3 class="text-xl font-bold text-gray-900 mb-2">All Caught Up!</h3>
-                <p class="text-gray-500 max-w-md mx-auto">There are no pending registration requests at this time. All
-                    submissions have been processed.</p>
+                <p class="text-gray-500 max-w-md mx-auto">There are no pending registration requests from any department
+                    at this time. All submissions have been processed.</p>
             </div>
             {% endif %}
         </main>

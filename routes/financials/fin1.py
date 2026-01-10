@@ -68,6 +68,39 @@ def login():
             
     return render_template('subsystems/financials/fin1/login.html')
 
+@fin1_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        try:
+            # Create user with 'Pending' status
+            new_user = User.create(
+                username=username,
+                email=email,
+                password=password,
+                subsystem=BLUEPRINT_NAME,
+                department='Financials',
+                status='Pending'
+            )
+            
+            if new_user:
+                flash('Registration successful! Your account is awaiting approval from HR3 Admin.', 'success')
+                return redirect(url_for('fin1.login'))
+            else:
+                flash('Registration failed. Please try again.', 'danger')
+        except PasswordValidationError as e:
+            for error in e.errors:
+                flash(error, 'danger')
+        except Exception as e:
+            flash(f'An error occurred: {str(e)}', 'danger')
+            
+    return render_template('shared/register.html', 
+                           subsystem_name=SUBSYSTEM_NAME, 
+                           blueprint_name=BLUEPRINT_NAME)
+
 @fin1_bp.route('/change-password', methods=['GET', 'POST'])
 def change_password():
     expired_user_id = session.get('expired_user_id')
