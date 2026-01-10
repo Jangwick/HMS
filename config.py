@@ -20,6 +20,6 @@ class Config:
     
     # Session Configuration
     SESSION_TYPE = 'filesystem'
-    SESSION_FILE_DIR = os.path.join(BASE_DIR, 'flask_session')
+    SESSION_FILE_DIR = '/tmp/flask_session'
     SESSION_PERMANENT = False
     PERMANENT_SESSION_LIFETIME = 1800  # 30 minutes

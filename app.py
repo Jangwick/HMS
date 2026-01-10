@@ -15,7 +15,8 @@ def create_app(config_class=Config):
 
     try:
         os.makedirs(app.instance_path, exist_ok=True)
-        os.makedirs(os.path.join(app.config['BASE_DIR'], 'flask_session'), exist_ok=True)
+        if app.config.get('SESSION_TYPE') == 'filesystem':
+            os.makedirs(app.config.get('SESSION_FILE_DIR'), exist_ok=True)
     except OSError:
         pass
 
