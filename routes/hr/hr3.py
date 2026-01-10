@@ -221,6 +221,28 @@ def process_approval(user_id, action):
     
     return redirect(url_for('hr3.pending_approvals'))
 
+@hr3_bp.route('/admin/users/<int:user_id>/toggle')
+@login_required
+def toggle_user_status(user_id):
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    user = User.get_by_id(user_id)
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('hr3.user_list'))
+    
+    # Toggle the status
+    if user.status == 'Active':
+        user.update(status='Rejected', is_active=False)
+        flash(f'User {user.username} has been deactivated.', 'warning')
+    else:
+        user.update(status='Active', is_active=True)
+        flash(f'User {user.username} has been activated.', 'success')
+    
+    return redirect(url_for('hr3.user_list'))
+
 @hr3_bp.route('/logout')
 @login_required
 def logout():

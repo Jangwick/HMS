@@ -20,7 +20,7 @@
         <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-2">
             <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Main Menu</p>
 
-            <a href="#"
+            <a href="{{ url_for('hr3.dashboard') }}"
                 class="flex items-center px-4 py-3 bg-[#0EA5E9]/10 text-[#0EA5E9] rounded-xl transition-all duration-200 font-bold group shadow-sm">
                 <i class="bi bi-speedometer2 text-xl mr-3 group-hover:scale-110 transition-transform"></i>
                 Dashboard
@@ -39,6 +39,24 @@
                 Reports
             </a>
 
+            {% if current_user.role in ['Admin', 'Administrator'] and current_user.subsystem == 'hr3' %}
+            <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mt-6 mb-2">Administration</p>
+
+            <a href="{{ url_for('hr3.pending_approvals') }}"
+                class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-xl transition-all duration-200 font-medium group">
+                <i
+                    class="bi bi-person-check text-xl mr-3 text-gray-400 group-hover:text-[#0EA5E9] transition-colors"></i>
+                Pending Approvals
+            </a>
+
+            <a href="{{ url_for('hr3.user_list') }}"
+                class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-xl transition-all duration-200 font-medium group">
+                <i
+                    class="bi bi-people-fill text-xl mr-3 text-gray-400 group-hover:text-[#0EA5E9] transition-colors"></i>
+                User Directory
+            </a>
+            {% endif %}
+
             <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mt-6 mb-2">System</p>
 
             <a href="#"
@@ -56,7 +74,7 @@
                 </div>
                 <div class="ml-3 overflow-hidden">
                     <p class="text-sm font-bold text-gray-900 truncate">{{ current_user.username }}</p>
-                    <p class="text-xs text-gray-500 truncate">Administrator</p>
+                    <p class="text-xs text-gray-500 truncate">{{ current_user.role }}</p>
                 </div>
             </div>
             <a href="{{ url_for('hr3.logout') }}"
@@ -87,6 +105,23 @@
 
         <!-- Content Scroll Area -->
         <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-8">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="mb-6 space-y-3">
+                {% for category, message in messages %}
+                <div class="p-4 rounded-xl flex items-center gap-3
+                    {% if category == 'success' %}bg-emerald-50 border border-emerald-200 text-emerald-700
+                    {% elif category == 'danger' %}bg-red-50 border border-red-200 text-red-700
+                    {% elif category == 'warning' %}bg-amber-50 border border-amber-200 text-amber-700
+                    {% else %}bg-blue-50 border border-blue-200 text-blue-700{% endif %}">
+                    <span class="font-medium">{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
             <!-- Welcome Card -->
             <div
                 class="bg-gradient-to-r from-[#0EA5E9] to-gray-800 rounded-3xl shadow-xl p-8 text-white mb-8 relative overflow-hidden">
@@ -107,10 +142,10 @@
                             class="px-6 py-2.5 bg-white text-[#0EA5E9] font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
                             View Reports
                         </button>
-                        <button
+                        <a href="{{ url_for('hr3.user_list') }}"
                             class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
                             Manage Users
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>
