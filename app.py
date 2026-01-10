@@ -16,8 +16,9 @@ def create_app(config_class=Config):
 
     try:
         os.makedirs(app.instance_path, exist_ok=True)
-        if app.config.get('SESSION_TYPE') == 'filesystem':
-            os.makedirs(app.config.get('SESSION_FILE_DIR'), exist_ok=True)
+        session_dir = app.config.get('SESSION_FILE_DIR')
+        if session_dir and app.config.get('SESSION_TYPE') == 'filesystem':
+            os.makedirs(session_dir, exist_ok=True)
     except OSError:
         pass
 
