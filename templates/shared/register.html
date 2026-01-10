@@ -56,12 +56,43 @@
                         class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 outline-none"
                         placeholder="••••••••••••">
 
+                    <!-- Password Strength Meter -->
+                    <div class="mt-3 space-y-2">
+                        <div class="flex justify-between items-center px-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Strength</span>
+                            <span id="strength-text"
+                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Empty</span>
+                        </div>
+                        <div class="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-700/30">
+                            <div id="strength-bar" class="h-full w-0 transition-all duration-500 ease-out bg-slate-500">
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Password Requirements Hint -->
                     <div class="mt-3 p-3 bg-slate-900/50 rounded-lg border border-slate-700/30">
-                        <p class="text-[10px] text-slate-400 leading-relaxed">
-                            <span class="font-bold text-indigo-400">Security:</span> 8-14 chars, 1+ uppercase, 1+
-                            number, 1+ special char.
-                        </p>
+                        <div class="grid grid-cols-2 gap-y-1.5 gap-x-4">
+                            <div id="req-length"
+                                class="flex items-center gap-2 text-[10px] text-slate-500 transition-colors duration-200">
+                                <div class="w-1 h-1 rounded-full bg-current"></div>
+                                8-14 Characters
+                            </div>
+                            <div id="req-upper"
+                                class="flex items-center gap-2 text-[10px] text-slate-500 transition-colors duration-200">
+                                <div class="w-1 h-1 rounded-full bg-current"></div>
+                                Uppercase Letter
+                            </div>
+                            <div id="req-number"
+                                class="flex items-center gap-2 text-[10px] text-slate-500 transition-colors duration-200">
+                                <div class="w-1 h-1 rounded-full bg-current"></div>
+                                Number (0-9)
+                            </div>
+                            <div id="req-special"
+                                class="flex items-center gap-2 text-[10px] text-slate-500 transition-colors duration-200">
+                                <div class="w-1 h-1 rounded-full bg-current"></div>
+                                Special Char
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -85,4 +116,56 @@
         </p>
     </div>
 </div>
+
+<script>
+    document.getElementById('password').addEventListener('input', function (e) {
+        const password = e.target.value;
+        const strengthBar = document.getElementById('strength-bar');
+        const strengthText = document.getElementById('strength-text');
+
+        const checks = {
+            length: password.length >= 8 && password.length <= 14,
+            upper: /[A-Z]/.test(password),
+            number: /[0-9]/.test(password),
+            special: /[$!@#$%^&*()_+\-=\[\]{}|;:'",.\/<>?~`]/.test(password)
+        };
+
+        // Update Requirement Indicators
+        Object.keys(checks).forEach(key => {
+            const el = document.getElementById('req-' + key);
+            if (checks[key]) {
+                el.classList.remove('text-slate-500');
+                el.classList.add('text-emerald-400');
+            } else {
+                el.classList.remove('text-emerald-400');
+                el.classList.add('text-slate-500');
+            }
+        });
+
+        // Calculate Strength
+        let score = 0;
+        if (password.length > 0) {
+            if (checks.length) score += 1;
+            if (checks.upper) score += 1;
+            if (checks.number) score += 1;
+            if (checks.special) score += 1;
+        }
+
+        // Update Bar and Text
+        const states = [
+            { color: 'bg-slate-500', text: 'Empty', width: '0%' },
+            { color: 'bg-rose-500', text: 'Weak', width: '25%' },
+            { color: 'bg-amber-500', text: 'Fair', width: '50%' },
+            { color: 'bg-blue-500', text: 'Good', width: '75%' },
+            { color: 'bg-emerald-500', text: 'Strong', width: '100%' }
+        ];
+
+        const state = password.length === 0 ? states[0] : states[score] || states[1];
+
+        strengthBar.className = `h-full transition-all duration-500 ease-out ${state.color}`;
+        strengthBar.style.width = state.width;
+        strengthText.innerText = state.text;
+        strengthText.className = `text-[10px] font-bold uppercase tracking-wider ${state.color.replace('bg-', 'text-')}`;
+    });
+</script>
 {% endblock %}
