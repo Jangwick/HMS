@@ -149,8 +149,8 @@
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-gray-500 text-sm font-medium">Approved Today</p>
-                            <p class="text-3xl font-bold text-emerald-500">0</p>
+                            <p class="text-gray-500 text-sm font-medium">Approved Users</p>
+                            <p class="text-3xl font-bold text-emerald-500">{{ approved_count }}</p>
                         </div>
                         <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
                             <i class="bi bi-check-lg text-xl text-emerald-500"></i>
@@ -160,8 +160,8 @@
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-gray-500 text-sm font-medium">Denied Today</p>
-                            <p class="text-3xl font-bold text-red-500">0</p>
+                            <p class="text-gray-500 text-sm font-medium">Rejected Users</p>
+                            <p class="text-3xl font-bold text-red-500">{{ rejected_count }}</p>
                         </div>
                         <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
                             <i class="bi bi-x-lg text-xl text-red-500"></i>

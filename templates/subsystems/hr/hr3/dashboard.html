@@ -47,6 +47,9 @@
                 <i
                     class="bi bi-person-check text-xl mr-3 text-gray-400 group-hover:text-[#0EA5E9] transition-colors"></i>
                 Pending Approvals
+                {% if pending_count > 0 %}
+                <span class="ml-auto bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ pending_count }}</span>
+                {% endif %}
             </a>
 
             <a href="{{ url_for('hr3.user_list') }}"
@@ -150,7 +153,7 @@
                 </div>
             </div>
 
-            <!-- Stats Grid Placeholder -->
+            <!-- Stats Grid -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div
                     class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -160,22 +163,24 @@
                             <i class="bi bi-people-fill"></i>
                         </div>
                     </div>
-                    <p class="text-3xl font-bold text-gray-900">1,248</p>
+                    <p class="text-3xl font-bold text-gray-900">{{ active_count }}</p>
                     <p class="text-green-500 text-sm font-medium mt-2 flex items-center">
-                        <i class="bi bi-arrow-up-short text-lg"></i> 12% increase
+                        <i class="bi bi-person-check text-lg mr-1"></i> Active Status
                     </p>
                 </div>
 
                 <div
                     class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-4">
-                        <h4 class="text-gray-500 text-sm font-bold uppercase">Pending Tasks</h4>
+                        <h4 class="text-gray-500 text-sm font-bold uppercase">Pending Approvals</h4>
                         <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
-                            <i class="bi bi-list-task"></i>
+                            <i class="bi bi-clock-history"></i>
                         </div>
                     </div>
-                    <p class="text-3xl font-bold text-gray-900">34</p>
-                    <p class="text-gray-400 text-sm font-medium mt-2">Requires attention</p>
+                    <p class="text-3xl font-bold text-gray-900">{{ pending_count }}</p>
+                    <p class="text-amber-500 text-sm font-medium mt-2 flex items-center">
+                        <i class="bi bi-exclamation-circle text-lg mr-1"></i> Requires Action
+                    </p>
                 </div>
 
                 <div

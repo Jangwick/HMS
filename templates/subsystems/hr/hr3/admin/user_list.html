@@ -260,8 +260,11 @@
                                         </button>
 
                                         <!-- Hidden Forms for Actions -->
-                                        <form id="delete-form-{{ user.id }}" action="{{ url_for('hr3.delete_user', user_id=user.id) }}" method="POST" class="hidden"></form>
+                                        <form id="delete-form-{{ user.id }}" action="{{ url_for('hr3.delete_user', user_id=user.id) }}" method="POST" class="hidden">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        </form>
                                         <form id="password-form-{{ user.id }}" action="{{ url_for('hr3.admin_change_password', user_id=user.id) }}" method="POST" class="hidden">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="password" name="new_password" id="new-pw-{{ user.id }}">
                                         </form>
                                     </div>

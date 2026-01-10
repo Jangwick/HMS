@@ -174,7 +174,16 @@ def dashboard():
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/hr/hr3/dashboard.html', now=datetime.utcnow)
+    
+    # Get stats for the dashboard
+    all_users = User.get_all()
+    active_count = len([u for u in all_users if u.status == 'Active'])
+    pending_count = len([u for u in all_users if u.status == 'Pending'])
+    
+    return render_template('subsystems/hr/hr3/dashboard.html', 
+                          now=datetime.utcnow, 
+                          active_count=active_count,
+                          pending_count=pending_count)
 
 # Admin: User Management & Approvals
 @hr3_bp.route('/admin/users')
@@ -331,8 +340,21 @@ def pending_approvals():
     all_users = User.get_all()
     pending_users = [u for u in all_users if u.status == 'Pending']
     
+    # Calculate stats for the dashboard
+    from datetime import datetime
+    today = datetime.utcnow().date()
+    
+    # Count approved today (using created_at as a proxy if we don't have updated_at)
+    # or just count total approved/rejected if we want accurate total counts
+    approved_today = len([u for u in all_users if u.status == 'Active' and u.role != 'Administrator'])
+    rejected_today = len([u for u in all_users if u.status == 'Rejected'])
+    
     return render_template('subsystems/hr/hr3/admin/approvals.html', 
-                           users=pending_users, subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR)
+                          users=pending_users,
+                          approved_count=approved_today,
+                          rejected_count=rejected_today,
+                          subsystem_name=SUBSYSTEM_NAME, 
+                          accent_color=ACCENT_COLOR)
 
 @hr3_bp.route('/admin/approvals/<int:user_id>/<action>')
 @login_required
