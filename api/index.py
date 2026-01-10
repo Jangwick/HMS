@@ -3,18 +3,26 @@ import sys
 
 from pathlib import Path
 
-# Add the project root to the python path so we can import app.py
-root_dir = Path(__file__).parent.parent
-sys.path.append(str(root_dir))
+# Get the absolute path of the project root
+# __file__ is .../api/index.py
+# parent is .../api
+# parent.parent is .../ (root)
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(BASE_DIR))
 
 try:
     from app import create_app
     app = create_app()
+    
+    @app.route('/test-vercel')
+    def test_vercel():
+        return "Vercel is working! Flask app is running."
+        
 except Exception as e:
     from flask import Flask
+    import traceback
     app = Flask(__name__)
     @app.route('/')
     @app.route('/<path:path>')
-    def error(path=None):
-        import traceback
-        return f"Error during app initialization: {str(e)}<br><pre>{traceback.format_exc()}</pre>", 500
+    def catch_all(path=None):
+        return f"<h1>Startup Error</h1><pre>{traceback.format_exc()}</pre>", 500
