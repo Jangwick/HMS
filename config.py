@@ -20,6 +20,9 @@ class Config:
     
     # Session Configuration
     SESSION_TYPE = 'filesystem'
-    SESSION_FILE_DIR = '/tmp/flask_session'
+    if os.environ.get('VERCEL'):
+        SESSION_FILE_DIR = '/tmp/flask_session'
+    else:
+        SESSION_FILE_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'flask_session')
     SESSION_PERMANENT = False
     PERMANENT_SESSION_LIFETIME = 1800  # 30 minutes

@@ -10,7 +10,13 @@ csrf = CSRFProtect()
 login_manager = LoginManager()
 
 def create_app(config_class=Config):
-    app = Flask(__name__, instance_path='/tmp/instance')
+    # Determine instance path: /tmp for Vercel, local 'instance' for development
+    if os.environ.get('VERCEL'):
+        instance_path = '/tmp/instance'
+    else:
+        instance_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance')
+        
+    app = Flask(__name__, instance_path=instance_path)
 
     app.config.from_object(config_class)
 
