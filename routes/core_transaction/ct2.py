@@ -99,7 +99,9 @@ def register():
             
     return render_template('shared/register.html', 
                            subsystem_name=SUBSYSTEM_NAME, 
-                           blueprint_name=BLUEPRINT_NAME)
+                           blueprint_name=BLUEPRINT_NAME,
+                           hub_route='portal.ct_hub',
+                           accent_color=ACCENT_COLOR)
 
 @ct2_bp.route('/change-password', methods=['GET', 'POST'])
 def change_password():

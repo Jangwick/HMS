@@ -7,10 +7,10 @@
     <!-- Background Decoration -->
     <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
         <div
-            class="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-gradient-to-r from-[#0EA5E9] to-transparent opacity-5 blur-3xl">
+            class="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-gradient-to-r from-{{ accent_color|default('[#0EA5E9]') }} to-transparent opacity-5 blur-3xl">
         </div>
         <div
-            class="absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] rounded-full bg-gradient-to-l from-[#0EA5E9] to-transparent opacity-5 blur-3xl">
+            class="absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] rounded-full bg-gradient-to-l from-{{ accent_color|default('[#0EA5E9]') }} to-transparent opacity-5 blur-3xl">
         </div>
     </div>
 
@@ -19,7 +19,7 @@
         <!-- Header Icon -->
         <div class="absolute -top-10 left-1/2 transform -translate-x-1/2">
             <div
-                class="w-20 h-20 bg-gradient-to-br from-[#0EA5E9] to-gray-800 rounded-2xl flex items-center justify-center shadow-lg border-4 border-white text-white">
+                class="w-20 h-20 bg-gradient-to-br from-{{ accent_color|default('[#0EA5E9]') }} to-gray-800 rounded-2xl flex items-center justify-center shadow-lg border-4 border-white text-white">
                 <i class="bi bi-person-plus text-4xl"></i>
             </div>
         </div>
@@ -28,7 +28,8 @@
             <h2 class="text-3xl font-bold text-gray-900 tracking-tight">
                 Create Account
             </h2>
-            <p class="text-sm font-bold text-[#0EA5E9] uppercase tracking-wider">{{ subsystem_name }}</p>
+            <p class="text-sm font-bold text-{{ accent_color|default('[#0EA5E9]') }} uppercase tracking-wider">{{
+                subsystem_name }}</p>
             <p class="text-gray-500 text-sm">Register for secure access</p>
         </div>
 
@@ -62,7 +63,7 @@
                             <i class="bi bi-person text-gray-400"></i>
                         </div>
                         <input id="username" name="username" type="text" required
-                            class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
+                            class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-{{ accent_color|default('[#0EA5E9]') }} focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
                             placeholder="Enter your username">
                     </div>
                 </div>
@@ -74,7 +75,7 @@
                             <i class="bi bi-envelope text-gray-400"></i>
                         </div>
                         <input id="email" name="email" type="email" required
-                            class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
+                            class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-{{ accent_color|default('[#0EA5E9]') }} focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
                             placeholder="Enter your email">
                     </div>
                 </div>
@@ -86,7 +87,7 @@
                             <i class="bi bi-lock text-gray-400"></i>
                         </div>
                         <input id="password" name="password" type="password" required
-                            class="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
+                            class="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-{{ accent_color|default('[#0EA5E9]') }} focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
                             placeholder="Create a password">
                         <button type="button" onclick="togglePassword()"
                             class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
@@ -136,7 +137,7 @@
 
                 <div>
                     <button type="submit"
-                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-gradient-to-r from-[#0EA5E9] to-gray-800 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0EA5E9] transition-all duration-200 shadow-lg shadow-[#0EA5E9]/30 transform hover:-translate-y-0.5">
+                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-gradient-to-r from-{{ accent_color|default('[#0EA5E9]') }} to-gray-800 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-{{ accent_color|default('[#0EA5E9]') }} transition-all duration-200 shadow-lg shadow-{{ accent_color|default('[#0EA5E9]') }}/30 transform hover:-translate-y-0.5">
                         <span class="absolute left-0 inset-y-0 flex items-center pl-3">
                             <i class="bi bi-person-plus group-hover:text-white/80 transition-colors"></i>
                         </span>
@@ -148,9 +149,9 @@
                     <p class="text-sm text-gray-500">
                         Already have an account?
                         <a href="{{ url_for(blueprint_name + '.login') }}"
-                            class="text-[#0EA5E9] font-bold hover:underline">Sign in</a>
+                            class="text-{{ accent_color|default('[#0EA5E9]') }} font-bold hover:underline">Sign in</a>
                     </p>
-                    <a href="{{ url_for('portal.hr_hub') }}"
+                    <a href="{{ url_for(hub_route) if hub_route else url_for('portal.index') }}"
                         class="inline-flex items-center justify-center text-sm text-gray-500 hover:text-gray-900 transition-colors group">
                         <i class="bi bi-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i> Back to
                         Hub
