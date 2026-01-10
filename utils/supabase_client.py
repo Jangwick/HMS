@@ -71,6 +71,7 @@ class User(UserMixin):
             self.last_login = self._parse_datetime(data.get('last_login'))
             self.created_at = self._parse_datetime(data.get('created_at'))
             self._is_active = data.get('is_active', True)
+            self.status = data.get('status', 'Pending') # Pending, Active, Rejected
     
     @property
     def is_active(self):
@@ -180,7 +181,8 @@ class User(UserMixin):
     
     @staticmethod
     def create(username: str, email: str, password: str, subsystem: str, 
-               department: str, role: str = 'Staff', skip_validation: bool = False) -> 'User':
+               department: str, role: str = 'Staff', status: str = 'Pending', 
+               skip_validation: bool = False) -> 'User':
         """
         Create a new user in the database.
         
@@ -211,7 +213,8 @@ class User(UserMixin):
             'password_expires_at': (now + timedelta(days=PASSWORD_EXPIRY_DAYS)).isoformat(),
             'password_history': [password_hash],
             'failed_login_attempts': 0,
-            'is_active': True,
+            'is_active': status == 'Active',
+            'status': status,
             'created_at': now.isoformat()
         }
         

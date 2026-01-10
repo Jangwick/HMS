@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS users (
     last_login TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW(),
     is_active BOOLEAN DEFAULT TRUE,
+    status VARCHAR(20) DEFAULT 'Pending', -- Pending, Active, Rejected
     
     -- Unique constraint: username must be unique within each subsystem
     CONSTRAINT unique_username_per_subsystem UNIQUE (username, subsystem),
@@ -54,6 +55,9 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- Index for active users
 CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active) WHERE is_active = TRUE;
+
+-- Index for user status
+CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 
 -- =====================================================
 -- ROW LEVEL SECURITY (Recommended for production)

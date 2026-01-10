@@ -5,7 +5,7 @@ from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_suc
 from utils.password_validator import PasswordValidationError
 from datetime import datetime
 
-hr1_bp = Blueprint('hr1', __name__, template_folder='templates')
+hr1_bp = Blueprint('hr1', __name__)
 
 # Subsystem configuration
 SUBSYSTEM_NAME = 'HR1 - Personnel Management'
@@ -30,6 +30,14 @@ def login():
             now_utc = datetime.utcnow()
 
             if user.check_password(password):
+                # Check if account is approved
+                if user.status != 'Active':
+                    if user.status == 'Pending':
+                        flash('Your account is awaiting approval from HR3 Admin.', 'info')
+                    else:
+                        flash('Your account has been rejected or deactivated.', 'danger')
+                    return render_template('subsystems/hr/hr1/login.html')
+
                 # Check for password expiration - redirect to change password
                 if user.password_expires_at and user.password_expires_at < now_utc:
                     # Store user info in session for password change
@@ -68,6 +76,39 @@ def login():
                 flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
             
     return render_template('subsystems/hr/hr1/login.html')
+
+@hr1_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        try:
+            # Create user with 'Pending' status
+            new_user = User.create(
+                username=username,
+                email=email,
+                password=password,
+                subsystem=BLUEPRINT_NAME,
+                department='HR',
+                status='Pending'
+            )
+            
+            if new_user:
+                flash('Registration successful! Your account is awaiting approval from HR3 Admin.', 'success')
+                return redirect(url_for('hr1.login'))
+            else:
+                flash('Registration failed. Please try again.', 'danger')
+        except PasswordValidationError as e:
+            for error in e.errors:
+                flash(error, 'danger')
+        except Exception as e:
+            flash(f'An error occurred: {str(e)}', 'danger')
+            
+    return render_template('shared/register.html', 
+                           subsystem_name=SUBSYSTEM_NAME, 
+                           blueprint_name=BLUEPRINT_NAME)
 
 @hr1_bp.route('/change-password', methods=['GET', 'POST'])
 def change_password():

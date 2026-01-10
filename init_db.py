@@ -33,6 +33,7 @@ def init_db():
                         subsystem=subsystem,
                         department=department,
                         role='Administrator',
+                        status='Active',
                         skip_validation=True
                     )
                     if user:

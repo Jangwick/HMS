@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
+from flask_session import Session
 from config import Config
 import os
 
@@ -12,14 +13,15 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Ensure instance folder exists
     try:
-        os.makedirs(os.path.join(app.instance_path))
+        os.makedirs(app.instance_path, exist_ok=True)
+        os.makedirs(os.path.join(app.config['BASE_DIR'], 'flask_session'), exist_ok=True)
     except OSError:
         pass
 
     # Initialize extensions
     csrf.init_app(app)
+    Session(app)
     login_manager.init_app(app)
 
     # Register Blueprints

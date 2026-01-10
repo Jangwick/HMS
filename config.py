@@ -13,10 +13,13 @@ class Config:
     SUPABASE_URL = os.environ.get('SUPABASE_URL')
     SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 
-    # Session Configuration
-    SESSION_TYPE = 'filesystem'
-    SESSION_PERMANENT = False
-    PERMANENT_SESSION_LIFETIME = 1800  # 30 minutes
-
     # Security
     BCRYPT_LOG_ROUNDS = 12
+    WTF_CSRF_ENABLED = True
+    WTF_CSRF_CHECK_DEFAULT = True
+    
+    # Session Configuration
+    SESSION_TYPE = 'filesystem'
+    SESSION_FILE_DIR = os.path.join(BASE_DIR, 'flask_session')
+    SESSION_PERMANENT = False
+    PERMANENT_SESSION_LIFETIME = 1800  # 30 minutes

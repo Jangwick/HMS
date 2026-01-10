@@ -1,0 +1,91 @@
+{% extends "base/base.html" %}
+
+{% block title %}Pending Approvals - {{ subsystem_name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0f172a] text-slate-200 p-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-white mb-2">Registration Approvals</h1>
+                <p class="text-slate-400">Review and process new user registration requests</p>
+            </div>
+            <div class="flex gap-4">
+                <a href="{{ url_for('hr3.user_list') }}"
+                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors text-sm font-medium border border-slate-700">
+                    View All Users
+                </a>
+            </div>
+        </div>
+
+        {% if users %}
+        <div class="grid grid-cols-1 gap-4">
+            {% for user in users %}
+            <div
+                class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 flex items-center justify-between hover:border-indigo-500/30 transition-all">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-bold text-xl">
+                        {{ user.username[0]|upper }}
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-white">{{ user.username }}</h3>
+                        <p class="text-sm text-slate-400">{{ user.email }}</p>
+                        <div class="flex gap-2 mt-1">
+                            <span
+                                class="px-2 py-0.5 rounded bg-slate-900 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                {{ user.subsystem|upper }}
+                            </span>
+                            <span
+                                class="px-2 py-0.5 rounded bg-slate-900 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                {{ user.role }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-6">
+                    <div class="text-right hidden md:block">
+                        <p class="text-xs text-slate-500 uppercase tracking-widest font-bold">Registered On</p>
+                        <p class="text-sm text-slate-300">{{ user.created_at.strftime('%Y-%m-%d') if user.created_at
+                            else 'N/A' }}</p>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <a href="{{ url_for('hr3.process_approval', user_id=user.id, action='deny') }}"
+                            class="p-3 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all"
+                            title="Deny Registration">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </a>
+                        <a href="{{ url_for('hr3.process_approval', user_id=user.id, action='approve') }}"
+                            class="p-3 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-xl transition-all"
+                            title="Approve Registration">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-slate-800/30 border border-dashed border-slate-700 rounded-3xl p-20 text-center">
+            <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-10 h-10 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">No Pending Approvals</h3>
+            <p class="text-slate-500">All registration requests have been processed.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

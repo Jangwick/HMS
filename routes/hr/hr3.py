@@ -1,11 +1,12 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask_wtf.csrf import generate_csrf
 from flask_login import login_user, logout_user, login_required, current_user
 from utils.supabase_client import User
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
 from datetime import datetime
 
-hr3_bp = Blueprint('hr3', __name__, template_folder='templates')
+hr3_bp = Blueprint('hr3', __name__)
 
 # Subsystem configuration
 SUBSYSTEM_NAME = 'HR3 - Benefits Administration'
@@ -30,6 +31,14 @@ def login():
             now_utc = datetime.utcnow()
             
             if user.check_password(password):
+                # Check if account is approved
+                if user.status != 'Active':
+                    if user.status == 'Pending':
+                        flash('Your account is awaiting approval from HR3 Admin.', 'info')
+                    else:
+                        flash('Your account has been rejected or deactivated.', 'danger')
+                    return render_template('subsystems/hr/hr3/login.html')
+
                 # Check for password expiration - redirect to change password
                 if user.password_expires_at and user.password_expires_at < now_utc:
                     session['expired_user_id'] = user.id
@@ -67,6 +76,39 @@ def login():
                 flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
             
     return render_template('subsystems/hr/hr3/login.html')
+
+@hr3_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        try:
+            # Create user with 'Pending' status
+            new_user = User.create(
+                username=username,
+                email=email,
+                password=password,
+                subsystem=BLUEPRINT_NAME,
+                department='HR',
+                status='Pending'
+            )
+            
+            if new_user:
+                flash('Registration successful! Your account is awaiting approval from HR3 Admin.', 'success')
+                return redirect(url_for('hr3.login'))
+            else:
+                flash('Registration failed. Please try again.', 'danger')
+        except PasswordValidationError as e:
+            for error in e.errors:
+                flash(error, 'danger')
+        except Exception as e:
+            flash(f'An error occurred: {str(e)}', 'danger')
+            
+    return render_template('shared/register.html', 
+                           subsystem_name=SUBSYSTEM_NAME, 
+                           blueprint_name=BLUEPRINT_NAME)
 
 @hr3_bp.route('/change-password', methods=['GET', 'POST'])
 def change_password():
@@ -131,6 +173,53 @@ def dashboard():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
     return render_template('subsystems/hr/hr3/dashboard.html', now=datetime.utcnow)
+
+# Admin: User Management & Approvals
+@hr3_bp.route('/admin/users')
+@login_required
+def user_list():
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    users = User.get_all()
+    return render_template('subsystems/hr/hr3/admin/user_list.html', 
+                           users=users, subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR)
+
+@hr3_bp.route('/admin/approvals')
+@login_required
+def pending_approvals():
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    # Filter for pending users
+    all_users = User.get_all()
+    pending_users = [u for u in all_users if u.status == 'Pending']
+    
+    return render_template('subsystems/hr/hr3/admin/approvals.html', 
+                           users=pending_users, subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR)
+
+@hr3_bp.route('/admin/approvals/<int:user_id>/<action>')
+@login_required
+def process_approval(user_id, action):
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    user = User.get_by_id(user_id)
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('hr3.pending_approvals'))
+    
+    if action == 'approve':
+        user.update(status='Active', is_active=True)
+        flash(f'User {user.username} has been approved.', 'success')
+    elif action == 'deny':
+        user.update(status='Rejected', is_active=False)
+        flash(f'User {user.username} has been rejected.', 'warning')
+    
+    return redirect(url_for('hr3.pending_approvals'))
 
 @hr3_bp.route('/logout')
 @login_required
