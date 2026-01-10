@@ -270,10 +270,7 @@ def edit_user(user_id):
         config = SUBSYSTEM_CONFIG.get(subsystem)
         if not config:
             flash('Invalid subsystem selected.', 'danger')
-            return render_template('subsystems/hr/hr3/admin/user_form.html', 
-                                   subsystem_name=SUBSYSTEM_NAME, 
-                                   subsystem_config=SUBSYSTEM_CONFIG,
-                                   user=user)
+            return redirect(url_for('hr3.user_list'))
         
         update_data = {
             'username': username,
@@ -292,19 +289,17 @@ def edit_user(user_id):
             
             if user.update(**update_data):
                 flash(f'User {username} updated successfully.', 'success')
-                return redirect(url_for('hr3.user_list'))
             else:
                 flash('Failed to update user.', 'danger')
+            
+            return redirect(url_for('hr3.user_list'))
         except PasswordValidationError as e:
             for error in e.errors:
                 flash(error, 'danger')
+            return redirect(url_for('hr3.user_list'))
         except Exception as e:
             flash(f'An error occurred: {str(e)}', 'danger')
-            
-    return render_template('subsystems/hr/hr3/admin/user_form.html', 
-                           subsystem_name=SUBSYSTEM_NAME, 
-                           subsystem_config=SUBSYSTEM_CONFIG,
-                           user=user)
+            return redirect(url_for('hr3.user_list'))
 
 @hr3_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
 @login_required
