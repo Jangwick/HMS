@@ -7,9 +7,6 @@ from pathlib import Path
 root_dir = Path(__file__).parent.parent
 sys.path.append(str(root_dir))
 
-# Set working directory to root so Flask can find templates and static folders
-os.chdir(str(root_dir))
-
 try:
     from app import create_app
     app = create_app()
