@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
-from utils.supabase_client import User
+from utils.supabase_client import User, format_db_error
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
 from datetime import datetime
@@ -95,7 +95,7 @@ def register():
             for error in e.errors:
                 flash(error, 'danger')
         except Exception as e:
-            flash(f'An error occurred: {str(e)}', 'danger')
+            flash(format_db_error(e), 'danger')
             
     return render_template('shared/register.html', 
                            subsystem_name=SUBSYSTEM_NAME, 

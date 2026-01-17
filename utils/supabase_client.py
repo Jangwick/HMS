@@ -48,6 +48,20 @@ def is_supabase_configured() -> bool:
     return bool(SUPABASE_URL and SUPABASE_KEY)
 
 
+def format_db_error(e: Exception) -> str:
+    """Format database exceptions into user-friendly messages."""
+    error_msg = str(e)
+    # Check for unique constraint violation (PostgreSQL error code 23505)
+    if '23505' in error_msg or 'duplicate key' in error_msg.lower():
+        if 'unique_email_per_subsystem' in error_msg or 'email' in error_msg.lower():
+            return 'This email address is already registered in this subsystem.'
+        if 'username' in error_msg.lower():
+            return 'This username is already taken in this subsystem.'
+        return 'A record with this information already exists in this subsystem.'
+    
+    return f'An error occurred: {error_msg}'
+
+
 class User(UserMixin):
     """
     User model that works with Supabase.
@@ -227,28 +241,25 @@ class User(UserMixin):
     
     def update(self, **kwargs) -> bool:
         """Update user fields in the database."""
-        try:
-            # Convert datetime objects to ISO format
-            update_data = {}
-            for key, value in kwargs.items():
-                if isinstance(value, datetime):
-                    update_data[key] = value.isoformat()
-                else:
-                    update_data[key] = value
-            
-            client = get_supabase_client()
-            response = client.table('users').update(update_data).eq('id', self.id).execute()
-            
-            # Update local attributes
-            for key, value in kwargs.items():
-                if key == 'is_active':
-                    self._is_active = value
-                else:
-                    setattr(self, key, value)
-            
-            return bool(response.data)
-        except Exception:
-            return False
+        # Convert datetime objects to ISO format
+        update_data = {}
+        for key, value in kwargs.items():
+            if isinstance(value, datetime):
+                update_data[key] = value.isoformat()
+            else:
+                update_data[key] = value
+        
+        client = get_supabase_client()
+        response = client.table('users').update(update_data).eq('id', self.id).execute()
+        
+        # Update local attributes
+        for key, value in kwargs.items():
+            if key == 'is_active':
+                self._is_active = value
+            else:
+                setattr(self, key, value)
+        
+        return bool(response.data)
     
     def set_password(self, password: str, skip_validation: bool = False) -> bool:
         """
@@ -306,12 +317,9 @@ class User(UserMixin):
     
     def delete(self) -> bool:
         """Delete the user from the database."""
-        try:
-            client = get_supabase_client()
-            response = client.table('users').delete().eq('id', self.id).execute()
-            return bool(response.data)
-        except Exception:
-            return False
+        client = get_supabase_client()
+        response = client.table('users').delete().eq('id', self.id).execute()
+        return bool(response.data)
 
 
 # Subsystem configuration mapping

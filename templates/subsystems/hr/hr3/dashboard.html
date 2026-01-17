@@ -48,7 +48,8 @@
                     class="bi bi-person-check text-xl mr-3 text-gray-400 group-hover:text-[#0EA5E9] transition-colors"></i>
                 Pending Approvals
                 {% if pending_count > 0 %}
-                <span class="ml-auto bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ pending_count }}</span>
+                <span class="ml-auto bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{
+                    pending_count }}</span>
                 {% endif %}
             </a>
 
@@ -149,6 +150,13 @@
                             class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
                             Manage Users
                         </a>
+                        {% if current_user.role in ['Admin', 'Administrator'] and current_user.subsystem == 'hr3' %}
+                        <a href="{{ url_for('hr3.add_user') }}"
+                            class="px-6 py-2.5 bg-emerald-500 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-600 transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+                            <i class="bi bi-person-plus-fill"></i>
+                            Add New User
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

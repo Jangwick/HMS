@@ -92,208 +92,231 @@
             <div class="flex items-center">
                 <h2 class="text-2xl font-bold text-gray-800 tracking-tight">User Directory</h2>
             </div>
+            <div class="flex items-center gap-4">
+                <button onclick="openAddUserModal()"
+                    class="flex items-center gap-2 px-5 py-2.5 bg-[#0EA5E9] hover:bg-[#0284C7] text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-[#0EA5E9]/20 transform hover:-translate-y-0.5">
+                    <i class="bi bi-person-plus-fill text-lg"></i>
+                    Add New User
+                </button>
+            </div>
         </header>
 
         <main class="flex-1 overflow-y-auto p-4 md:p-8">
             <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="mb-6 space-y-3">
-            {% for category, message in messages %}
-            <div class="p-4 rounded-xl flex items-center gap-3
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="mb-6 space-y-3">
+                {% for category, message in messages %}
+                <div class="p-4 rounded-xl flex items-center gap-3
                     {% if category == 'success' %}bg-emerald-50 border border-emerald-200 text-emerald-700
                     {% elif category == 'danger' %}bg-red-50 border border-red-200 text-red-700
                     {% elif category == 'warning' %}bg-amber-50 border border-amber-200 text-amber-700
                     {% else %}bg-blue-50 border border-blue-200 text-blue-700{% endif %}">
-                {% if category == 'success' %}
-                <i class="bi bi-check-circle-fill"></i>
-                {% elif category == 'danger' %}
-                <i class="bi bi-x-circle-fill"></i>
-                {% elif category == 'warning' %}
-                <i class="bi bi-exclamation-triangle-fill"></i>
-                {% else %}
-                <i class="bi bi-info-circle-fill"></i>
-                {% endif %}
-                <span class="font-medium">{{ message }}</span>
+                    {% if category == 'success' %}
+                    <i class="bi bi-check-circle-fill"></i>
+                    {% elif category == 'danger' %}
+                    <i class="bi bi-x-circle-fill"></i>
+                    {% elif category == 'warning' %}
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    {% else %}
+                    <i class="bi bi-info-circle-fill"></i>
+                    {% endif %}
+                    <span class="font-medium">{{ message }}</span>
+                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% endwith %}
+            {% endif %}
+            {% endwith %}
 
-        <!-- Filter Tabs -->
-        <div class="flex gap-2 mb-6 flex-wrap">
-            <button
-                class="filter-btn active px-4 py-2 rounded-xl text-sm font-medium transition-all bg-[#0EA5E9] text-white shadow-md"
-                data-filter="all">
-                All Users ({{ users|length }})
-            </button>
-            <button
-                class="filter-btn px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-                data-filter="Active">
-                Active ({{ users|selectattr('status', 'equalto', 'Active')|list|length }})
-            </button>
-            <button
-                class="filter-btn px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-                data-filter="Pending">
-                Pending ({{ users|selectattr('status', 'equalto', 'Pending')|list|length }})
-            </button>
-            <button
-                class="filter-btn px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-                data-filter="Rejected">
-                Rejected ({{ users|selectattr('status', 'equalto', 'Rejected')|list|length }})
-            </button>
-        </div>
-
-        <!-- Users Table -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-gray-50 border-b border-gray-100">
-                            <th class="px-6 py-4 text-sm font-bold text-gray-600">User</th>
-                            <th class="px-6 py-4 text-sm font-bold text-gray-600">Department</th>
-                            <th class="px-6 py-4 text-sm font-bold text-gray-600">Role</th>
-                            <th class="px-6 py-4 text-sm font-bold text-gray-600">Status</th>
-                            <th class="px-6 py-4 text-sm font-bold text-gray-600">Password</th>
-                            <th class="px-6 py-4 text-sm font-bold text-gray-600 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        {% for user in users %}
-                        <tr class="user-row hover:bg-gray-50 transition-colors" data-status="{{ user.status }}">
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div
-                                        class="w-10 h-10 rounded-full bg-gradient-to-br from-[#0EA5E9] to-gray-600 flex items-center justify-center text-white font-bold shadow-md">
-                                        {{ user.username[0]|upper }}
-                                    </div>
-                                    <div>
-                                        <div class="font-medium text-gray-900">{{ user.username }}</div>
-                                        <div class="text-xs text-gray-500">{{ user.email }}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="px-2 py-1 rounded-md bg-gray-100 text-xs font-medium text-gray-600">
-                                    {{ user.subsystem|upper }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="text-sm text-gray-700">{{ user.role }}</span>
-                            </td>
-                            <td class="px-6 py-4">
-                                {% if user.status == 'Active' %}
-                                <span
-                                    class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase tracking-wider border border-emerald-100">Active</span>
-                                {% elif user.status == 'Pending' %}
-                                <span
-                                    class="px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-[10px] font-bold uppercase tracking-wider border border-amber-100">Pending</span>
-                                {% else %}
-                                <span
-                                    class="px-3 py-1 rounded-full bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-wider border border-red-100">{{
-                                    user.status }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4">
-                                {% if user.is_password_expired() %}
-                                <span class="flex items-center gap-1 text-red-500 text-xs font-medium">
-                                    <i class="bi bi-exclamation-circle-fill"></i>
-                                    Expired
-                                </span>
-                                {% else %}
-                                <span class="text-gray-500 text-xs">{{ user.days_until_password_expiry() }}d
-                                    left</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4 text-right">
-                                <div class="relative inline-block text-left">
-                                    <button onclick="toggleDropdown(this)"
-                                        class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                                        <i class="bi bi-three-dots-vertical"></i>
-                                    </button>
-                                    <div
-                                        class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
-                                        {% if user.status == 'Pending' %}
-                                        <a href="{{ url_for('hr3.process_approval', user_id=user.id, action='approve') }}"
-                                            class="flex items-center gap-2 px-4 py-3 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors">
-                                            <i class="bi bi-check-lg"></i>
-                                            Approve User
-                                        </a>
-                                        <a href="{{ url_for('hr3.process_approval', user_id=user.id, action='deny') }}"
-                                            class="flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                                            <i class="bi bi-x-lg"></i>
-                                            Deny User
-                                        </a>
-                                        {% elif user.status == 'Active' %}
-                                        <a href="{{ url_for('hr3.reset_user_password', user_id=user.id) }}" 
-                                           class="flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-                                           onclick="return confirm('Are you sure you want to reset this user\'s password to default?')">
-                                            <i class="bi bi-shield-lock"></i>
-                                            Reset Password
-                                        </a>
-                                        <a href="{{ url_for('hr3.toggle_user_status', user_id=user.id) }}" 
-                                           class="flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                           onclick="return confirm('Are you sure you want to deactivate this user?')">
-                                            <i class="bi bi-person-x"></i>
-                                            Deactivate User
-                                        </a>
-                                        {% else %}
-                                        <a href="{{ url_for('hr3.toggle_user_status', user_id=user.id) }}" 
-                                           class="flex items-center gap-2 px-4 py-3 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors">
-                                            <i class="bi bi-person-check"></i>
-                                            Activate User
-                                        </a>
-                                        {% endif %}
-                                        
-                                        <!-- Global Actions (All states) -->
-                                        <hr class="border-gray-100">
-                                        <button onclick="viewUserDetails('{{ user.id }}', '{{ user.username }}', '{{ user.email }}', '{{ user.subsystem|upper }}', '{{ user.department }}', '{{ user.role }}', '{{ user.status }}', '{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else 'N/A' }}')"
-                                            class="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-                                            <i class="bi bi-person-badge"></i>
-                                            View Details
-                                        </button>
-                                        <button onclick="openEditUserModal('{{ user.id }}', '{{ user.username }}', '{{ user.email }}', '{{ user.subsystem }}', '{{ user.role }}', '{{ user.status }}')"
-                                            class="w-full flex items-center gap-2 px-4 py-3 text-sm text-amber-600 hover:bg-amber-50 transition-colors">
-                                            <i class="bi bi-pencil-square"></i>
-                                            Edit Details
-                                        </button>
-                                        <button onclick="openChangePasswordModal('{{ user.id }}', '{{ user.username }}')"
-                                            class="w-full flex items-center gap-2 px-4 py-3 text-sm text-indigo-600 hover:bg-indigo-50 transition-colors">
-                                            <i class="bi bi-key"></i>
-                                            Set Password
-                                        </button>
-                                        <button onclick="deleteUser('{{ user.id }}', '{{ user.username }}')"
-                                            class="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                                            <i class="bi bi-trash"></i>
-                                            Delete User
-                                        </button>
-
-                                        <!-- Hidden Forms for Actions -->
-                                        <form id="delete-form-{{ user.id }}" action="{{ url_for('hr3.delete_user', user_id=user.id) }}" method="POST" class="hidden">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        </form>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <!-- Filter Tabs -->
+            <div class="flex gap-2 mb-6 flex-wrap">
+                <button
+                    class="filter-btn active px-4 py-2 rounded-xl text-sm font-medium transition-all bg-[#0EA5E9] text-white shadow-md"
+                    data-filter="all">
+                    All Users ({{ users|length }})
+                </button>
+                <button
+                    class="filter-btn px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                    data-filter="Active">
+                    Active ({{ users|selectattr('status', 'equalto', 'Active')|list|length }})
+                </button>
+                <button
+                    class="filter-btn px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                    data-filter="Pending">
+                    Pending ({{ users|selectattr('status', 'equalto', 'Pending')|list|length }})
+                </button>
+                <button
+                    class="filter-btn px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                    data-filter="Rejected">
+                    Rejected ({{ users|selectattr('status', 'equalto', 'Rejected')|list|length }})
+                </button>
             </div>
-        </div>
+
+            <!-- Users Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-100">
+                                <th class="px-6 py-4 text-sm font-bold text-gray-600">User</th>
+                                <th class="px-6 py-4 text-sm font-bold text-gray-600">Department</th>
+                                <th class="px-6 py-4 text-sm font-bold text-gray-600">Role</th>
+                                <th class="px-6 py-4 text-sm font-bold text-gray-600">Status</th>
+                                <th class="px-6 py-4 text-sm font-bold text-gray-600">Password</th>
+                                <th class="px-6 py-4 text-sm font-bold text-gray-600 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for user in users %}
+                            <tr class="user-row hover:bg-gray-50 transition-colors" data-status="{{ user.status }}">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="w-10 h-10 rounded-full bg-gradient-to-br from-[#0EA5E9] to-gray-600 flex items-center justify-center text-white font-bold shadow-md">
+                                            {{ user.username[0]|upper }}
+                                        </div>
+                                        <div>
+                                            <div class="font-medium text-gray-900">{{ user.username }}</div>
+                                            <div class="text-xs text-gray-500">{{ user.email }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-1 rounded-md bg-gray-100 text-xs font-medium text-gray-600">
+                                        {{ user.subsystem|upper }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="text-sm text-gray-700">{{ user.role }}</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    {% if user.status == 'Active' %}
+                                    <span
+                                        class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase tracking-wider border border-emerald-100">Active</span>
+                                    {% elif user.status == 'Pending' %}
+                                    <span
+                                        class="px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-[10px] font-bold uppercase tracking-wider border border-amber-100">Pending</span>
+                                    {% else %}
+                                    <span
+                                        class="px-3 py-1 rounded-full bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-wider border border-red-100">{{
+                                        user.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4">
+                                    {% if user.is_password_expired() %}
+                                    <span class="flex items-center gap-1 text-red-500 text-xs font-medium">
+                                        <i class="bi bi-exclamation-circle-fill"></i>
+                                        Expired
+                                    </span>
+                                    {% else %}
+                                    <span class="text-gray-500 text-xs">{{ user.days_until_password_expiry() }}d
+                                        left</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="relative inline-block text-left">
+                                        <button onclick="toggleDropdown(this)"
+                                            class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <div
+                                            class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                                            {% if user.status == 'Pending' %}
+                                            <a href="{{ url_for('hr3.process_approval', user_id=user.id, action='approve') }}"
+                                                class="flex items-center gap-2 px-4 py-3 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors">
+                                                <i class="bi bi-check-lg"></i>
+                                                Approve User
+                                            </a>
+                                            <a href="{{ url_for('hr3.process_approval', user_id=user.id, action='deny') }}"
+                                                class="flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                                <i class="bi bi-x-lg"></i>
+                                                Deny User
+                                            </a>
+                                            {% elif user.status == 'Active' %}
+                                            <a href="{{ url_for('hr3.reset_user_password', user_id=user.id) }}"
+                                                class="flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                                                onclick="return confirm('Are you sure you want to reset this user\'s password to default?')">
+                                                <i class="bi bi-shield-lock"></i>
+                                                Reset Password
+                                            </a>
+                                            <a href="{{ url_for('hr3.toggle_user_status', user_id=user.id) }}"
+                                                class="flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                                onclick="return confirm('Are you sure you want to deactivate this user?')">
+                                                <i class="bi bi-person-x"></i>
+                                                Deactivate User
+                                            </a>
+                                            {% else %}
+                                            <a href="{{ url_for('hr3.toggle_user_status', user_id=user.id) }}"
+                                                class="flex items-center gap-2 px-4 py-3 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors">
+                                                <i class="bi bi-person-check"></i>
+                                                Activate User
+                                            </a>
+                                            {% endif %}
+
+                                            <!-- Global Actions (All states) -->
+                                            <hr class="border-gray-100">
+                                            <button data-id="{{ user.id }}" data-username="{{ user.username }}"
+                                                data-email="{{ user.email }}"
+                                                data-subsystem="{{ user.subsystem|upper }}"
+                                                data-department="{{ user.department }}" data-role="{{ user.role }}"
+                                                data-status="{{ user.status }}"
+                                                data-joined="{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else 'N/A' }}"
+                                                onclick="handleViewDetails(this)"
+                                                class="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                                                <i class="bi bi-person-badge"></i>
+                                                View Details
+                                            </button>
+                                            <button data-id="{{ user.id }}" data-username="{{ user.username }}"
+                                                data-email="{{ user.email }}" data-subsystem="{{ user.subsystem }}"
+                                                data-role="{{ user.role }}" data-status="{{ user.status }}"
+                                                onclick="handleEditUser(this)"
+                                                class="w-full flex items-center gap-2 px-4 py-3 text-sm text-amber-600 hover:bg-amber-50 transition-colors">
+                                                <i class="bi bi-pencil-square"></i>
+                                                Edit Details
+                                            </button>
+                                            <button data-id="{{ user.id }}" data-username="{{ user.username }}"
+                                                onclick="handleChangePassword(this)"
+                                                class="w-full flex items-center gap-2 px-4 py-3 text-sm text-indigo-600 hover:bg-indigo-50 transition-colors">
+                                                <i class="bi bi-key"></i>
+                                                Set Password
+                                            </button>
+                                            <button data-id="{{ user.id }}" data-username="{{ user.username }}"
+                                                onclick="handleDeleteUser(this)"
+                                                class="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                                <i class="bi bi-trash"></i>
+                                                Delete User
+                                            </button>
+
+                                            <!-- Hidden Forms for Actions -->
+                                            <form id="delete-form-{{ user.id }}"
+                                                action="{{ url_for('hr3.delete_user', user_id=user.id) }}" method="POST"
+                                                class="hidden">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            </form>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </main>
     </div>
 </div>
 
 <!-- Change Password Modal -->
-<div id="passwordModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+<div id="passwordModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog"
+    aria-modal="true">
     <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <!-- Background backdrop -->
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="closeChangePasswordModal()"></div>
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true"
+            onclick="closeChangePasswordModal()"></div>
 
         <!-- Modal panel -->
-        <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+        <div
+            class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
             <div class="bg-white px-8 pt-8 pb-6">
                 <div class="flex items-center gap-4 mb-6">
                     <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
@@ -301,27 +324,50 @@
                     </div>
                     <div>
                         <h3 class="text-xl font-bold text-gray-900" id="modal-title">Change Password</h3>
-                        <p class="text-sm text-gray-500" id="modal-subtitle">Update password for <span id="target-username" class="font-bold text-indigo-600"></span></p>
+                        <p class="text-sm text-gray-500" id="modal-subtitle">Update password for <span
+                                id="target-username" class="font-bold text-indigo-600"></span></p>
                     </div>
                 </div>
 
                 <form id="changePasswordForm" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <!-- Password Error Container -->
+                    <div id="passwordError" class="hidden mb-4">
+                        <div
+                            class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-3">
+                            <i class="bi bi-x-circle-fill"></i>
+                            <span id="passwordErrorMessage"></span>
+                        </div>
+                    </div>
+
+                    <!-- Password Success Container -->
+                    <div id="passwordSuccess" class="hidden mb-4">
+                        <div
+                            class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm flex items-center gap-3">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span id="passwordSuccessMessage"></span>
+                        </div>
+                    </div>
                     <div class="space-y-4">
                         <div>
-                            <label for="new_password" class="block text-sm font-bold text-gray-700 mb-2">New Secure Password</label>
+                            <label for="new_password" class="block text-sm font-bold text-gray-700 mb-2">New Secure
+                                Password</label>
                             <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                                <span
+                                    class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
                                     <i class="bi bi-key"></i>
                                 </span>
                                 <input type="password" name="new_password" id="modal_new_password" required
                                     class="block w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                     placeholder="Enter new password">
-                                <button type="button" onclick="toggleModalPassword()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-indigo-600">
+                                <button type="button" onclick="toggleModalPassword()"
+                                    class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-indigo-600">
                                     <i class="bi bi-eye" id="modal-eye-icon"></i>
                                 </button>
                             </div>
-                            <p class="mt-2 text-xs text-gray-500">Minimum 8 characters with letters and numbers recommended.</p>
+                            <p class="mt-2 text-xs text-gray-500">Minimum 8 characters with letters and numbers
+                                recommended.</p>
                         </div>
                     </div>
                 </form>
@@ -341,17 +387,22 @@
 </div>
 
 <!-- View User Details Modal -->
-<div id="viewUserModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="view-modal-title" role="dialog" aria-modal="true">
+<div id="viewUserModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="view-modal-title"
+    role="dialog" aria-modal="true">
     <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="closeViewUserModal()"></div>
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true"
+            onclick="closeViewUserModal()"></div>
 
-        <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div
+            class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
             <div class="bg-indigo-600 px-8 py-10 text-white relative">
-                <button onclick="closeViewUserModal()" class="absolute top-6 right-6 text-white/80 hover:text-white transition-colors">
+                <button onclick="closeViewUserModal()"
+                    class="absolute top-6 right-6 text-white/80 hover:text-white transition-colors">
                     <i class="bi bi-x-lg text-xl"></i>
                 </button>
                 <div class="flex items-center gap-6">
-                    <div id="view-avatar" class="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl font-bold shadow-inner">
+                    <div id="view-avatar"
+                        class="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl font-bold shadow-inner">
                         A
                     </div>
                     <div>
@@ -389,7 +440,8 @@
                     </div>
                     <div>
                         <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
-                        <p id="view-status-badge" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                        <p id="view-status-badge"
+                            class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
                             Active
                         </p>
                     </div>
@@ -413,63 +465,214 @@
     </div>
 </div>
 
-<!-- Edit User Modal -->
-<div id="editUserModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="edit-modal-title" role="dialog" aria-modal="true">
+<!-- Add User Modal -->
+<div id="addUserModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="add-modal-title"
+    role="dialog" aria-modal="true">
     <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="closeEditUserModal()"></div>
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true"
+            onclick="closeAddUserModal()"></div>
 
-        <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-            <div class="bg-amber-500 px-8 py-8 text-white relative">
-                <button onclick="closeEditUserModal()" class="absolute top-6 right-6 text-white/80 hover:text-white transition-colors">
+        <div
+            class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-[#0EA5E9] px-8 py-8 text-white relative">
+                <button onclick="closeAddUserModal()"
+                    class="absolute top-6 right-6 text-white/80 hover:text-white transition-colors">
                     <i class="bi bi-x-lg text-xl"></i>
                 </button>
                 <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl font-bold shadow-inner">
+                    <div
+                        class="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl font-bold shadow-inner">
+                        <i class="bi bi-person-plus"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold" id="add-modal-title">Add New User</h3>
+                        <p class="text-blue-50 text-sm">Create a new system account manually</p>
+                    </div>
+                </div>
+            </div>
+
+            <form id="addUserForm" action="{{ url_for('hr3.add_user') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Add User Error Container -->
+                <div id="addUserError" class="hidden px-8 pt-4">
+                    <div
+                        class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-3">
+                        <i class="bi bi-x-circle-fill"></i>
+                        <span id="addUserErrorMessage"></span>
+                    </div>
+                </div>
+
+                <!-- Add User Success Container -->
+                <div id="addUserSuccess" class="hidden px-8 pt-4">
+                    <div
+                        class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm flex items-center gap-3">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span id="addUserSuccessMessage"></span>
+                    </div>
+                </div>
+                <div class="bg-white px-8 py-8 space-y-5">
+                    <div class="grid grid-cols-2 gap-5">
+                        <div class="col-span-2">
+                            <label
+                                class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Username</label>
+                            <input type="text" name="username" required minlength="3"
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent transition-all invalid:border-red-500 invalid:text-red-600 focus:invalid:ring-red-500"
+                                placeholder="Enter username" title="Username must be at least 3 characters long">
+
+
+
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Email
+                                Address</label>
+                            <input type="email" name="email" required
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent transition-all invalid:border-red-500 invalid:text-red-600 focus:invalid:ring-red-500"
+                                placeholder="Enter email address" title="Please enter a valid email address">
+
+
+
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Initial
+                                Password</label>
+                            <input type="password" name="password" required
+                                pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[$!@#$%^&amp;*()_+\-=\[\]{}|;:'&quot;,.\/&lt;&gt;?~`]).{8,14}"
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent transition-all invalid:border-red-500 invalid:text-red-600 focus:invalid:ring-red-500"
+                                placeholder="Enter initial password"
+                                title="Password must be 8-14 characters and include at least one uppercase letter, one number, and one special character.">
+
+
+
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Subsystem</label>
+                            <select name="subsystem" required
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent transition-all">
+                                {% for code, config in subsystem_config.items() %}
+                                <option value="{{ code }}">{{ code|upper }} - {{ config.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Role</label>
+                            <select name="role" required
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent transition-all">
+                                <option value="Staff">Staff</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Administrator">Administrator</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Account
+                                Status</label>
+                            <select name="status" required
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0EA5E9] focus:border-transparent transition-all">
+                                <option value="Active">Active</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 px-8 py-6 flex flex-row-reverse gap-3">
+                    <button type="submit"
+                        class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-lg py-3 px-8 bg-[#0EA5E9] text-base font-bold text-white hover:bg-[#0284C7] focus:outline-none transition-all sm:w-auto">
+                        Create User
+                    </button>
+                    <button type="button" onclick="closeAddUserModal()"
+                        class="w-full inline-flex justify-center rounded-xl border border-gray-200 shadow-sm py-3 px-8 bg-white text-base font-bold text-gray-700 hover:bg-gray-50 focus:outline-none transition-all sm:w-auto">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div id="editUserModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="edit-modal-title"
+    role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true"
+            onclick="closeEditUserModal()"></div>
+
+        <div
+            class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-amber-500 px-8 py-8 text-white relative">
+                <button onclick="closeEditUserModal()"
+                    class="absolute top-6 right-6 text-white/80 hover:text-white transition-colors">
+                    <i class="bi bi-x-lg text-xl"></i>
+                </button>
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl font-bold shadow-inner">
                         <i class="bi bi-pencil-square"></i>
                     </div>
                     <div>
                         <h3 class="text-2xl font-bold" id="edit-modal-title">Edit User Details</h3>
-                        <p class="text-amber-50 text-sm">Update profile information for <span id="edit-target-username" class="font-bold"></span></p>
+                        <p class="text-amber-50 text-sm">Update profile information for <span id="edit-target-username"
+                                class="font-bold"></span></p>
                     </div>
                 </div>
             </div>
 
             <form id="editUserForm" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Edit User Error Container -->
+                <div id="editUserError" class="hidden px-8 pt-4">
+                    <div
+                        class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-3">
+                        <i class="bi bi-x-circle-fill"></i>
+                        <span id="editUserErrorMessage"></span>
+                    </div>
+                </div>
+
+                <!-- Edit User Success Container -->
+                <div id="editUserSuccess" class="hidden px-8 pt-4">
+                    <div
+                        class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm flex items-center gap-3">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span id="editUserSuccessMessage"></span>
+                    </div>
+                </div>
                 <div class="bg-white px-8 py-8 space-y-5">
                     <div class="grid grid-cols-2 gap-5">
                         <div class="col-span-2">
-                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Username</label>
-                            <input type="text" name="username" id="edit_username" required
-                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all">
+                            <label
+                                class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Username</label>
+                            <input type="text" name="username" id="edit_username" required minlength="3"
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all invalid:border-red-500 invalid:text-red-600 focus:invalid:ring-red-500"
+                                title="Username must be at least 3 characters long">
+
+
                         </div>
                         <div class="col-span-2">
-                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Email Address</label>
+                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Email
+                                Address</label>
                             <input type="email" name="email" id="edit_email" required
-                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all">
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all invalid:border-red-500 invalid:text-red-600 focus:invalid:ring-red-500"
+                                title="Please enter a valid email address">
+
+
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Subsystem</label>
+                            <label
+                                class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Subsystem</label>
                             <select name="subsystem" id="edit_subsystem" required
                                 class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all">
-                                <option value="hr1">HR1</option>
-                                <option value="hr2">HR2</option>
-                                <option value="hr3">HR3</option>
-                                <option value="hr4">HR4</option>
-                                <option value="ct1">CT1</option>
-                                <option value="ct2">CT2</option>
-                                <option value="ct3">CT3</option>
-                                <option value="log1">LOG1</option>
-                                <option value="log2">LOG2</option>
-                                <option value="fin1">FIN1</option>
-                                <option value="fin2">FIN2</option>
-                                <option value="fin3">FIN3</option>
-                                <option value="fin4">FIN4</option>
-                                <option value="fin5">FIN5</option>
+                                {% for code, config in subsystem_config.items() %}
+                                <option value="{{ code }}">{{ code|upper }} - {{ config.name }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Role</label>
+                            <label
+                                class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Role</label>
                             <select name="role" id="edit_role" required
                                 class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all">
                                 <option value="Staff">Staff</option>
@@ -478,7 +681,8 @@
                             </select>
                         </div>
                         <div class="col-span-2">
-                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Account Status</label>
+                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Account
+                                Status</label>
                             <select name="status" id="edit_status" required
                                 class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all">
                                 <option value="Pending">Pending</option>
@@ -507,6 +711,27 @@
 
 {% block scripts %}
 <script>
+    // Action handlers using data attributes
+    function handleViewDetails(btn) {
+        const d = btn.dataset;
+        viewUserDetails(d.id, d.username, d.email, d.subsystem, d.department, d.role, d.status, d.joined);
+    }
+
+    function handleEditUser(btn) {
+        const d = btn.dataset;
+        openEditUserModal(d.id, d.username, d.email, d.subsystem, d.role, d.status);
+    }
+
+    function handleChangePassword(btn) {
+        const d = btn.dataset;
+        openChangePasswordModal(d.id, d.username);
+    }
+
+    function handleDeleteUser(btn) {
+        const d = btn.dataset;
+        deleteUser(d.id, d.username);
+    }
+
     // Toggle dropdown menu
     function toggleDropdown(button) {
         document.querySelectorAll('.dropdown-menu').forEach(menu => {
@@ -526,6 +751,7 @@
         }
     }
 
+    const addUserModal = document.getElementById('addUserModal');
     const passwordModal = document.getElementById('passwordModal');
     const viewUserModal = document.getElementById('viewUserModal');
     const editUserModal = document.getElementById('editUserModal');
@@ -534,14 +760,96 @@
     const targetUsernameSpan = document.getElementById('target-username');
     const modalNewPasswordInput = document.getElementById('modal_new_password');
 
+    function openAddUserModal() {
+        document.getElementById('addUserError').classList.add('hidden');
+        document.getElementById('addUserSuccess').classList.add('hidden');
+        document.getElementById('addUserForm').reset();
+        addUserModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeAddUserModal() {
+        addUserModal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    // Generic AJAX Form Handler
+    async function handleFormSubmit(form, errorContainerId, errorMessageId, successContainerId, successMessageId) {
+        const errorContainer = document.getElementById(errorContainerId);
+        const errorMessage = document.getElementById(errorMessageId);
+
+        const successContainer = successContainerId ? document.getElementById(successContainerId) : null;
+        const successMessage = successMessageId ? document.getElementById(successMessageId) : null;
+
+        errorContainer.classList.add('hidden');
+        if (successContainer) successContainer.classList.add('hidden');
+
+        const formData = new FormData(form);
+        try {
+            const response = await fetch(form.action || window.location.href, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Success - reload to show flash message and updated data
+                // Success - show notice then reload
+                if (successContainer && successMessage) {
+                    successMessage.textContent = result.message || 'Action completed successfully.';
+                    successContainer.classList.remove('hidden');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                // Error - show in modal
+                errorMessage.textContent = result.message || 'An error occurred. Please try again.';
+                errorContainer.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            errorMessage.textContent = 'A network error occurred. Please try again.';
+            errorContainer.classList.remove('hidden');
+        }
+    }
+    // Attach AJAX handlers
+    document.addEventListener('DOMContentLoaded', function () {
+        const addUserForm = document.getElementById('addUserForm');
+        if (addUserForm) {
+            addUserForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                handleFormSubmit(this, 'addUserError', 'addUserErrorMessage', 'addUserSuccess', 'addUserSuccessMessage');
+            });
+        }
+
+        const editUserForm = document.getElementById('editUserForm');
+        if (editUserForm) {
+            editUserForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                handleFormSubmit(this, 'editUserError', 'editUserErrorMessage', 'editUserSuccess', 'editUserSuccessMessage');
+            });
+        }
+    });
+
+
+
     function openEditUserModal(id, username, email, subsystem, role, status) {
+        document.getElementById('editUserError').classList.add('hidden');
+        document.getElementById('editUserSuccess').classList.add('hidden');
         document.getElementById('edit-target-username').textContent = username;
         document.getElementById('edit_username').value = username;
         document.getElementById('edit_email').value = email;
         document.getElementById('edit_subsystem').value = subsystem.toLowerCase();
         document.getElementById('edit_role').value = role;
         document.getElementById('edit_status').value = status;
-        
+
         editUserForm.action = `/hr/hr3/admin/users/${id}/edit`;
         editUserModal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
@@ -563,7 +871,7 @@
 
         const statusBadge = document.getElementById('view-status-badge');
         statusBadge.textContent = status;
-        
+
         // Status styling
         statusBadge.className = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider';
         if (status === 'Active') {
@@ -584,6 +892,8 @@
     }
 
     function openChangePasswordModal(userId, username) {
+        document.getElementById('passwordError').classList.add('hidden');
+        document.getElementById('passwordSuccess').classList.add('hidden');
         targetUsernameSpan.textContent = username;
         changePasswordForm.action = `/hr/hr3/admin/users/${userId}/change-password`;
         passwordModal.classList.remove('hidden');
@@ -597,12 +907,22 @@
     }
 
     function submitPasswordForm() {
+        const errorContainer = document.getElementById('passwordError');
+        const errorMessage = document.getElementById('passwordErrorMessage');
+
         if (modalNewPasswordInput.value.length < 8) {
-            alert('Password must be at least 8 characters long.');
+            errorMessage.textContent = 'Password must be at least 8 characters long.';
+            errorContainer.classList.remove('hidden');
             return;
         }
-        changePasswordForm.submit();
+        handleFormSubmit(changePasswordForm, 'passwordError', 'passwordErrorMessage', 'passwordSuccess', 'passwordSuccessMessage');
     }
+
+
+
+
+
+
 
     function toggleModalPassword() {
         const icon = document.getElementById('modal-eye-icon');
@@ -627,8 +947,9 @@
     });
 
     // Close modal on Escape key
-    document.addEventListener('keydown', function(event) {
+    document.addEventListener('keydown', function (event) {
         if (event.key === "Escape") {
+            closeAddUserModal();
             closeChangePasswordModal();
             closeViewUserModal();
             closeEditUserModal();

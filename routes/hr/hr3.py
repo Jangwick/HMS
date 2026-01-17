@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, jsonify
 from flask_wtf.csrf import generate_csrf
 from flask_login import login_user, logout_user, login_required, current_user
-from utils.supabase_client import User, SUBSYSTEM_CONFIG
+from utils.supabase_client import User, SUBSYSTEM_CONFIG, format_db_error
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
 from datetime import datetime
@@ -195,7 +195,10 @@ def user_list():
     
     users = User.get_all()
     return render_template('subsystems/hr/hr3/admin/user_list.html', 
-                           users=users, subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR)
+                           users=users, 
+                           subsystem_name=SUBSYSTEM_NAME, 
+                           accent_color=ACCENT_COLOR,
+                           subsystem_config=SUBSYSTEM_CONFIG)
 
 @hr3_bp.route('/admin/users/add', methods=['GET', 'POST'])
 @login_required
@@ -232,15 +235,25 @@ def add_user():
             )
             
             if new_user:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'status': 'success', 'message': f'User {username} created successfully.'})
                 flash(f'User {username} created successfully.', 'success')
                 return redirect(url_for('hr3.user_list'))
             else:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'status': 'error', 'message': 'Failed to create user.'}), 400
                 flash('Failed to create user.', 'danger')
         except PasswordValidationError as e:
+            error_msg = ', '.join(e.errors)
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'status': 'error', 'message': error_msg}), 400
             for error in e.errors:
                 flash(error, 'danger')
         except Exception as e:
-            flash(f'An error occurred: {str(e)}', 'danger')
+            error_msg = format_db_error(e)
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'status': 'error', 'message': error_msg}), 400
+            flash(error_msg, 'danger')
             
     return render_template('subsystems/hr/hr3/admin/user_form.html', 
                            subsystem_name=SUBSYSTEM_NAME, 
@@ -288,18 +301,33 @@ def edit_user(user_id):
                 flash('Password updated.', 'info')
             
             if user.update(**update_data):
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'status': 'success', 'message': f'User {username} updated successfully.'})
                 flash(f'User {username} updated successfully.', 'success')
             else:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'status': 'error', 'message': 'Failed to update user.'}), 400
                 flash('Failed to update user.', 'danger')
             
             return redirect(url_for('hr3.user_list'))
         except PasswordValidationError as e:
+            error_msg = ', '.join(e.errors)
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'status': 'error', 'message': error_msg}), 400
             for error in e.errors:
                 flash(error, 'danger')
             return redirect(url_for('hr3.user_list'))
         except Exception as e:
-            flash(f'An error occurred: {str(e)}', 'danger')
+            error_msg = format_db_error(e)
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'status': 'error', 'message': error_msg}), 400
+            flash(error_msg, 'danger')
             return redirect(url_for('hr3.user_list'))
+            
+    return render_template('subsystems/hr/hr3/admin/user_form.html', 
+                           subsystem_name=SUBSYSTEM_NAME, 
+                           subsystem_config=SUBSYSTEM_CONFIG,
+                           user=user)
 
 @hr3_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
 @login_required
@@ -363,12 +391,15 @@ def process_approval(user_id, action):
         flash('User not found.', 'danger')
         return redirect(url_for('hr3.pending_approvals'))
     
-    if action == 'approve':
-        user.update(status='Active', is_active=True)
-        flash(f'User {user.username} has been approved.', 'success')
-    elif action == 'deny':
-        user.update(status='Rejected', is_active=False)
-        flash(f'User {user.username} has been rejected.', 'warning')
+    try:
+        if action == 'approve':
+            user.update(status='Active', is_active=True)
+            flash(f'User {user.username} has been approved.', 'success')
+        elif action == 'deny':
+            user.update(status='Rejected', is_active=False)
+            flash(f'User {user.username} has been rejected.', 'warning')
+    except Exception as e:
+        flash(format_db_error(e), 'danger')
     
     return redirect(url_for('hr3.pending_approvals'))
 
@@ -384,13 +415,16 @@ def toggle_user_status(user_id):
         flash('User not found.', 'danger')
         return redirect(url_for('hr3.user_list'))
     
-    # Toggle the status
-    if user.status == 'Active':
-        user.update(status='Rejected', is_active=False)
-        flash(f'User {user.username} has been deactivated.', 'warning')
-    else:
-        user.update(status='Active', is_active=True)
-        flash(f'User {user.username} has been activated.', 'success')
+    try:
+        # Toggle the status
+        if user.status == 'Active':
+            user.update(status='Rejected', is_active=False)
+            flash(f'User {user.username} has been deactivated.', 'warning')
+        else:
+            user.update(status='Active', is_active=True)
+            flash(f'User {user.username} has been activated.', 'success')
+    except Exception as e:
+        flash(format_db_error(e), 'danger')
     
     return redirect(url_for('hr3.user_list'))
 
@@ -406,11 +440,13 @@ def reset_user_password(user_id):
         flash('User not found.', 'danger')
         return redirect(url_for('hr3.user_list'))
     
-    # Reset to default password
-    default_pw = "HMSPassword@123"
-    user.set_password(default_pw, skip_validation=True)
-    
-    flash(f'Password for {user.username} has been reset to: {default_pw}', 'success')
+    try:
+        # Reset to default password
+        default_pw = "HMSPassword@123"
+        user.set_password(default_pw, skip_validation=True)
+        flash(f'Password for {user.username} has been reset to: {default_pw}', 'success')
+    except Exception as e:
+        flash(format_db_error(e), 'danger')
     return redirect(url_for('hr3.user_list'))
 
 @hr3_bp.route('/admin/users/<int:user_id>/change-password', methods=['POST'])
@@ -427,11 +463,21 @@ def admin_change_password(user_id):
     
     new_password = request.form.get('new_password')
     if not new_password or len(new_password) < 8:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': 'error', 'message': 'Password must be at least 8 characters long.'}), 400
         flash('Password must be at least 8 characters long.', 'warning')
         return redirect(url_for('hr3.user_list'))
     
-    user.set_password(new_password, skip_validation=True)
-    flash(f'Password for {user.username} has been updated.', 'success')
+    try:
+        user.set_password(new_password, skip_validation=True)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': 'success', 'message': f'Password for {user.username} has been updated.'})
+        flash(f'Password for {user.username} has been updated.', 'success')
+    except Exception as e:
+        error_msg = format_db_error(e)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': 'error', 'message': error_msg}), 400
+        flash(error_msg, 'danger')
     return redirect(url_for('hr3.user_list'))
 
 @hr3_bp.route('/logout')
