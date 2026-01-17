@@ -37,16 +37,26 @@ def login():
                     flash('Your password has expired. Please set a new password to continue.', 'warning')
                     return redirect(url_for('log2.change_password'))
 
+                # Check if account is approved
+                if user.status != 'Active':
+                    if user.status == 'Pending':
+                        flash('Your account is awaiting approval from HR3 Admin.', 'info')
+                    else:
+                        flash('Your account has been rejected or deactivated.', 'danger')
+                    return render_template('subsystems/logistics/log2/login.html')
+
                 # Clear IP lockout attempts on successful login
                 register_successful_login()
                 user.register_successful_login()
-                login_user(user)
                 
-                days_left = (user.password_expires_at - now_utc).days if user.password_expires_at else 999
-                if days_left <= 7:
-                    flash(f'Warning: Your password will expire in {days_left} days. Please update it soon.', 'warning')
-                    
-                return redirect(url_for('log2.dashboard'))
+                if login_user(user):
+                    days_left = (user.password_expires_at - now_utc).days if user.password_expires_at else 999
+                    if days_left <= 7:
+                        flash(f'Warning: Your password will expire in {days_left} days. Please update it soon.', 'warning')
+                    return redirect(url_for('log2.dashboard'))
+                else:
+                    flash('Login failed. Your account may be deactivated.', 'danger')
+                    return render_template('subsystems/logistics/log2/login.html')
             else:
                 # Register failed attempt by IP
                 is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
@@ -57,14 +67,22 @@ def login():
                 else:
                     flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
         else:
+            # Check if user exists in ANY subsystem to provide better feedback
+            try:
+                other_user = User.get_by_username(username)
+                if other_user:
+                    sub = other_user.subsystem.upper()
+                    flash(f'Account found in {sub} department. Please log in through the correct portal.', 'warning')
+                else:
+                    flash('Invalid credentials.', 'danger')
+            except:
+                flash('Invalid credentials.', 'danger')
+                
             # Register failed attempt even for non-existent users
             is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
             
             if is_now_locked:
-                flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
                 return render_template('subsystems/logistics/log2/login.html', remaining_seconds=remaining_seconds)
-            else:
-                flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
             
     return render_template('subsystems/logistics/log2/login.html')
 
@@ -82,7 +100,7 @@ def register():
                 email=email,
                 password=password,
                 subsystem=BLUEPRINT_NAME,
-                department='Logistics',
+                department='LOGISTICS',
                 status='Pending'
             )
             

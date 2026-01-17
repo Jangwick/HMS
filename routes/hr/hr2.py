@@ -48,13 +48,15 @@ def login():
                 # Clear IP lockout attempts on successful login
                 register_successful_login()
                 user.register_successful_login()
-                login_user(user)
                 
-                days_left = (user.password_expires_at - now_utc).days if user.password_expires_at else 999
-                if days_left <= 7:
-                    flash(f'Warning: Your password will expire in {days_left} days. Please update it soon.', 'warning')
-                    
-                return redirect(url_for('hr2.dashboard'))
+                if login_user(user):
+                    days_left = (user.password_expires_at - now_utc).days if user.password_expires_at else 999
+                    if days_left <= 7:
+                        flash(f'Warning: Your password will expire in {days_left} days. Please update it soon.', 'warning')
+                    return redirect(url_for('hr2.dashboard'))
+                else:
+                    flash('Login failed. Your account may be deactivated.', 'danger')
+                    return render_template('subsystems/hr/hr2/login.html')
             else:
                 # Register failed attempt by IP
                 is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
@@ -65,14 +67,22 @@ def login():
                 else:
                     flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
         else:
+            # Check if user exists in ANY subsystem to provide better feedback
+            try:
+                other_user = User.get_by_username(username)
+                if other_user:
+                    sub = other_user.subsystem.upper()
+                    flash(f'Account found in {sub} department. Please log in through the correct portal.', 'warning')
+                else:
+                    flash('Invalid credentials.', 'danger')
+            except:
+                flash('Invalid credentials.', 'danger')
+                
             # Register failed attempt even for non-existent users
             is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
             
             if is_now_locked:
-                flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
                 return render_template('subsystems/hr/hr2/login.html', remaining_seconds=remaining_seconds)
-            else:
-                flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
             
     return render_template('subsystems/hr/hr2/login.html')
 

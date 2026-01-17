@@ -151,13 +151,19 @@ class User(UserMixin):
         return None
     
     @staticmethod
-    def get_by_username(username: str, subsystem: str) -> 'User':
-        """Fetch user by username and subsystem."""
+    def get_by_username(username: str, subsystem: str = None) -> 'User':
+        """Fetch user by username and optional subsystem (case-insensitive)."""
         try:
             client = get_supabase_client()
-            response = client.table('users').select('*').eq('username', username).eq('subsystem', subsystem).single().execute()
+            query = client.table('users').select('*').ilike('username', username)
+            if subsystem:
+                query = query.eq('subsystem', subsystem)
+            
+            response = query.execute()
             if response.data:
-                return User(response.data)
+                # If subsystem is provided, we should only get one due to unique constraint
+                # If not, we return the first one found
+                return User(response.data[0])
         except Exception:
             pass
         return None
