@@ -1,0 +1,78 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Schedule Interview - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Schedule Interview{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-8 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">New Interview Slot</h3>
+                <p class="text-sm text-gray-500">Assign a candidate to an interviewer and set a date</p>
+            </div>
+            <a href="{{ url_for('hr1.list_applicants') }}" class="text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="bi bi-arrow-left mr-1"></i> Back to Applicants
+            </a>
+        </div>
+        
+        <form action="{{ url_for('hr1.schedule_interview') }}" method="POST" class="p-8 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Applicant Selection -->
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Candidate</label>
+                    <select name="applicant_id" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#6366F1] focus:border-transparent outline-none transition-all">
+                        <option value="" disabled {% if not selected_applicant_id %}selected{% endif %}>Select a candidate</option>
+                        {% for applicant in applicants %}
+                        <option value="{{ applicant.id }}" {% if selected_applicant_id == applicant.id|string %}selected{% endif %}>
+                            {{ applicant.first_name }} {{ applicant.last_name }} ({{ applicant.status }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Interviewer Selection -->
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Interviewer</label>
+                    <select name="interviewer_id" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#6366F1] focus:border-transparent outline-none transition-all">
+                        <option value="" disabled selected>Select an interviewer</option>
+                        {% for interviewer in interviewers %}
+                        <option value="{{ interviewer.id }}" {% if current_user.id == interviewer.id %}selected{% endif %}>
+                            {{ interviewer.username }} ({{ interviewer.role or 'HR Staff' }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Date & Time -->
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Interview Date & Time</label>
+                    <input type="datetime-local" name="interview_date" required 
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#6366F1] focus:border-transparent outline-none transition-all">
+                </div>
+
+                <!-- Location -->
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Location / Link</label>
+                    <input type="text" name="location" placeholder="e.g. Conference Room A, or Video Link" required
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#6366F1] focus:border-transparent outline-none transition-all">
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Initial Notes / Instructions</label>
+                <textarea name="notes" rows="4" placeholder="Briefing for the interviewer..."
+                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#6366F1] focus:border-transparent outline-none transition-all resize-none"></textarea>
+            </div>
+
+            <div class="pt-4 flex justify-end">
+                <button type="submit" 
+                    class="px-8 py-3 bg-[#6366F1] text-white font-bold rounded-xl shadow-lg hover:bg-[#4F46E5] transition-all transform hover:-translate-y-1">
+                    Confirm Schedule
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -11,7 +11,7 @@
             <h3 class="text-2xl font-bold text-gray-900">Open Vacancies</h3>
             <p class="text-gray-500">Track open positions and hiring triggers</p>
         </div>
-        <button
+        <button onclick="openModal('addVacancyModal')"
             class="px-6 py-3 bg-[#6366F1] text-white font-bold rounded-xl shadow-lg hover:bg-[#4F46E5] transition-all transform hover:-translate-y-1">
             <i class="bi bi-plus-lg mr-2"></i> Post New Role
         </button>
@@ -70,7 +70,7 @@
                                 <h4 class="text-lg font-bold text-gray-900">No active vacancies</h4>
                                 <p class="text-gray-500 max-w-xs mx-auto mt-2">There are currently no open positions
                                     listed in the system.</p>
-                                <button
+                                <button onclick="openModal('addVacancyModal')"
                                     class="mt-6 px-6 py-2 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors">
                                     Post First Vacancy
                                 </button>
@@ -82,5 +82,97 @@
             </table>
         </div>
     </div>
+
+    <!-- Add Vacancy Modal -->
+    <div id="addVacancyModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen p-4 text-center">
+            <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeModal('addVacancyModal')"></div>
+
+            <div class="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all text-left">
+                <div class="bg-gradient-to-r from-[#6366F1] to-indigo-800 px-8 py-10 text-white">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-3xl font-bold mb-2">Post New Role</h3>
+                            <p class="text-indigo-100 italic">Define the requirements for the new position.</p>
+                        </div>
+                        <button onclick="closeModal('addVacancyModal')" class="text-white/80 hover:text-white transition-colors">
+                            <i class="bi bi-x-lg text-2xl"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <form action="{{ url_for('hr1.add_vacancy') }}" method="POST" class="p-8 space-y-6">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="space-y-2">
+                        <label class="text-[13px] font-bold text-slate-500 ml-1 uppercase tracking-wider">Position Title</label>
+                        <input type="text" name="position_name" required
+                            class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-[#6366F1] focus:bg-white transition-all outline-none"
+                            placeholder="e.g. Senior Nurse">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-[13px] font-bold text-slate-500 ml-1 uppercase tracking-wider">Department</label>
+                            <select name="department" required
+                                class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-[#6366F1] focus:bg-white transition-all outline-none appearance-none cursor-pointer">
+                                <option value="" disabled selected>Select Department...</option>
+                                <option value="Medical">Medical</option>
+                                <option value="Nursing">Nursing</option>
+                                <option value="Administrative">Administrative</option>
+                                <option value="Logistics">Logistics</option>
+                                <option value="Financials">Financials</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[13px] font-bold text-slate-500 ml-1 uppercase tracking-wider">Reason for Vacancy</label>
+                            <select name="reason" required
+                                class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-[#6366F1] focus:bg-white transition-all outline-none appearance-none cursor-pointer">
+                                <option value="New Position">New Position</option>
+                                <option value="Resignation">Resignation</option>
+                                <option value="Expansion">Expansion</option>
+                                <option value="Replacement">Replacement</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="pt-6 flex items-center justify-end space-x-4">
+                        <button type="button" onclick="closeModal('addVacancyModal')"
+                            class="px-6 py-4 text-slate-500 font-bold hover:text-slate-700 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-10 py-4 bg-[#6366F1] text-white font-bold rounded-2xl shadow-xl hover:bg-[#4F46E5] transition-all transform hover:-translate-y-1">
+                            Publish Vacancy
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('action') && urlParams.get('action') === 'add') {
+        openModal('addVacancyModal');
+    }
+}
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+</script>
 {% endblock %}

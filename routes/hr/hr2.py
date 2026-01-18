@@ -315,3 +315,36 @@ def logout():
     logout_user()
     return redirect(url_for('hr2.login'))
 
+@hr2_bp.route('/onboarding')
+@login_required
+def onboarding_pipeline():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Fetch records from onboarding joined with applicants
+    response = client.table('onboarding').select('*, applicants(*)').execute()
+    onboarding_list = response.data if response.data else []
+    
+    return render_template('subsystems/hr/hr2/onboarding.html',
+                           onboarding_list=onboarding_list,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr2_bp.route('/onboarding/complete', methods=['POST'])
+@login_required
+def complete_onboarding():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    onboarding_id = request.form.get('onboarding_id')
+    
+    try:
+        # Update onboarding status
+        client.table('onboarding').update({'status': 'Completed'}).eq('id', onboarding_id).execute()
+        flash('Onboarding completed successfully!', 'success')
+    except Exception as e:
+        flash(f'Error finishing onboarding: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.onboarding_pipeline'))
+

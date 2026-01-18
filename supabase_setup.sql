@@ -63,6 +63,27 @@ CREATE TABLE IF NOT EXISTS vacancies (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS interviews (
+    id SERIAL PRIMARY KEY,
+    applicant_id INTEGER REFERENCES applicants(id) ON DELETE CASCADE,
+    interviewer_id INTEGER REFERENCES users(id),
+    interview_date TIMESTAMP NOT NULL,
+    location VARCHAR(200),
+    notes TEXT,
+    status VARCHAR(50) DEFAULT 'Scheduled', -- Scheduled, Completed, Cancelled
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- HR Table for Handoff/Onboarding
+CREATE TABLE IF NOT EXISTS onboarding (
+    id SERIAL PRIMARY KEY,
+    applicant_id INTEGER REFERENCES applicants(id) ON DELETE CASCADE,
+    position_id INTEGER REFERENCES vacancies(id),
+    start_date DATE,
+    status VARCHAR(50) DEFAULT 'Pending', -- Pending, In Progress, Completed
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- HR2: Talent Development
 CREATE TABLE IF NOT EXISTS competencies (
     id SERIAL PRIMARY KEY,

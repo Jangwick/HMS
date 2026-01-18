@@ -89,3 +89,58 @@ class InventoryItem:
         # For now, we'll fetch all and filter or use a safe default
         response = client.table('inventory').select('*').execute()
         return [InventoryItem(d) for d in response.data if d['quantity'] <= d['reorder_level']] if response.data else []
+
+class Applicant:
+    def __init__(self, data: dict = None):
+        if data:
+            self.id = data.get('id')
+            self.first_name = data.get('first_name')
+            self.last_name = data.get('last_name')
+            self.email = data.get('email')
+            self.phone = data.get('phone')
+            self.source = data.get('source')
+            self.status = data.get('status')
+            self.documents = data.get('documents') or []
+            self.created_at = data.get('created_at')
+
+    @staticmethod
+    def get_all():
+        client = get_supabase_client()
+        response = client.table('applicants').select('*').order('created_at', ascending=False).execute()
+        return [Applicant(d) for d in response.data] if response.data else []
+
+    @staticmethod
+    def update_status(applicant_id, status):
+        client = get_supabase_client()
+        response = client.table('applicants').update({'status': status}).eq('id', applicant_id).execute()
+        return response.data
+
+class Interview:
+    def __init__(self, data: dict = None):
+        if data:
+            self.id = data.get('id')
+            self.applicant_id = data.get('applicant_id')
+            self.interviewer_id = data.get('interviewer_id')
+            self.interview_date = data.get('interview_date')
+            self.location = data.get('location')
+            self.notes = data.get('notes')
+            self.status = data.get('status')
+            self.created_at = data.get('created_at')
+            # Joined data
+            self.applicant = Applicant(data.get('applicants')) if data.get('applicants') else None
+
+    @staticmethod
+    def create(data: dict):
+        client = get_supabase_client()
+        response = client.table('interviews').insert(data).execute()
+        if response.data:
+            # Update applicant status to 'Interview'
+            client.table('applicants').update({'status': 'Interview'}).eq('id', data['applicant_id']).execute()
+            return Interview(response.data[0])
+        return None
+
+    @staticmethod
+    def get_upcoming():
+        client = get_supabase_client()
+        response = client.table('interviews').select('*, applicants(*)').gte('interview_date', datetime.now().isoformat()).order('interview_date').execute()
+        return [Interview(d) for d in response.data] if response.data else []

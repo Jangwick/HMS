@@ -207,6 +207,10 @@ def dashboard():
     vacancies_count = client.table('vacancies').select('id', count='exact').eq('status', 'Open').execute().count
     applicants_count = client.table('applicants').select('id', count='exact').execute().count
     
+    # Fetch interviews today
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    interviews_today = client.table('interviews').select('id', count='exact').gte('interview_date', today).execute().count or 0
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
@@ -214,6 +218,7 @@ def dashboard():
                            now=datetime.utcnow,
                            vacancies_count=vacancies_count,
                            applicants_count=applicants_count,
+                           interviews_today=interviews_today,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -265,6 +270,94 @@ def add_applicant():
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+@hr1_bp.route('/vacancies/add', methods=['GET', 'POST'])
+@login_required
+def add_vacancy():
+    if request.method == 'POST':
+        from utils.supabase_client import get_supabase_client
+        client = get_supabase_client()
+        data = {
+            'position_name': request.form.get('position_name'),
+            'department': request.form.get('department'),
+            'reason': request.form.get('reason'),
+            'status': 'Open'
+        }
+        client.table('vacancies').insert(data).execute()
+        flash('Vacancy posted successfully!', 'success')
+        return redirect(url_for('hr1.list_vacancies'))
+    return redirect(url_for('hr1.list_vacancies'))
+
+@hr1_bp.route('/interviews/schedule', methods=['GET', 'POST'])
+@login_required
+def schedule_interview():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    if request.method == 'POST':
+        applicant_id = request.form.get('applicant_id')
+        interview_date = request.form.get('interview_date')
+        location = request.form.get('location')
+        notes = request.form.get('notes')
+        interviewer_id = current_user.id
+        
+        data = {
+            'applicant_id': applicant_id,
+            'interviewer_id': interviewer_id,
+            'interview_date': interview_date,
+            'location': location,
+            'notes': notes,
+            'status': 'Scheduled'
+        }
+        
+        try:
+            client.table('interviews').insert(data).execute()
+            # Update applicant status
+            client.table('applicants').update({'status': 'Interview'}).eq('id', applicant_id).execute()
+            flash('Interview scheduled successfully!', 'success')
+            return redirect(url_for('hr1.list_applicants'))
+        except Exception as e:
+            flash(f'Error scheduling interview: {str(e)}', 'danger')
+            
+    # GET: fetch applicants and potential interviewers
+    applicants = client.table('applicants').select('*').neq('status', 'Handoff').execute().data
+    # For now, interviewers are any HR users
+    interviewers = client.table('users').select('id, username').eq('department', 'HR').execute().data
+    
+    selected_applicant_id = request.args.get('applicant_id')
+    
+    return render_template('subsystems/hr/hr1/schedule_interview.html',
+                           applicants=applicants,
+                           interviewers=interviewers,
+                           selected_applicant_id=selected_applicant_id,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr1_bp.route('/handoff/hr2', methods=['POST'])
+@login_required
+def handoff_hr2():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    applicant_id = request.form.get('applicant_id')
+    
+    try:
+        # Update applicant status
+        client.table('applicants').update({'status': 'Handoff'}).eq('id', applicant_id).execute()
+        
+        # Create onboarding record
+        onboarding_data = {
+            'applicant_id': applicant_id,
+            'status': 'Pending'
+        }
+        client.table('onboarding').insert(onboarding_data).execute()
+        
+        flash('Applicant successfully handed off to HR2 (Talent Development/Onboarding)!', 'success')
+    except Exception as e:
+        flash(f'Error during handoff: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr1.list_applicants'))
 
 @hr1_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
