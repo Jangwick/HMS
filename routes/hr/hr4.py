@@ -1,6 +1,6 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+﻿from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
-from utils.supabase_client import User, format_db_error
+from utils.supabase_client import User, format_db_error, get_supabase_client
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
 from datetime import datetime
@@ -67,7 +67,6 @@ def login():
                 else:
                     flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
         else:
-            # Check if user exists in ANY subsystem to provide better feedback
             try:
                 other_user = User.get_by_username(username)
                 if other_user:
@@ -78,13 +77,18 @@ def login():
             except:
                 flash('Invalid credentials.', 'danger')
                 
-            # Register failed attempt even for non-existent users
             is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
-            
             if is_now_locked:
                 return render_template('subsystems/hr/hr4/login.html', remaining_seconds=remaining_seconds)
             
     return render_template('subsystems/hr/hr4/login.html')
+
+@hr4_bp.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('Successfully logged out.', 'success')
+    return redirect(url_for('hr4.login'))
 
 @hr4_bp.route('/register', methods=['GET', 'POST'])
 def register():
@@ -94,7 +98,6 @@ def register():
         password = request.form.get('password')
         
         try:
-            # Create user with 'Pending' status
             new_user = User.create(
                 username=username,
                 email=email,
@@ -180,36 +183,30 @@ def change_password():
 @hr4_bp.route('/dashboard')
 @login_required
 def dashboard():
-    from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    
-    # Get compensation & analytics stats
     try:
-        # Calculate average salary
         response = client.table('compensation_records').select('base_salary').execute()
-        salaries = [r['base_salary'] for r in response.data] if response.data else []
+        salaries = [float(r['base_salary']) for r in response.data] if response.data else []
         avg_salary = sum(salaries) / len(salaries) if salaries else 0
+        total_payroll = sum(salaries)
         
-        # Calculate total compensation (monthly)
-        total_compensation = sum(salaries)
+        grades_resp = client.table('salary_grades').select('id', count='exact').execute()
+        total_grades = grades_resp.count if grades_resp.count is not None else 0
         
-        # Count reports (placeholder for now as we don't have a specific table for HR reports)
-        analytics_reports = 12 
-        
+        recent_updates = client.table('compensation_records').select('*, users(username)').order('effective_date', desc=True).limit(5).execute().data or []
     except Exception as e:
-        print(f"Error fetching stats: {e}")
+        print(f"Error fetching HR4 stats: {e}")
         avg_salary = 0
-        total_compensation = 0
-        analytics_reports = 0
+        total_payroll = 0
+        total_grades = 0
+        recent_updates = []
     
-    if current_user.should_warn_password_expiry():
-        days_left = current_user.days_until_password_expiry()
-        flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
     return render_template('subsystems/hr/hr4/dashboard.html', 
                            now=datetime.utcnow,
                            avg_salary=avg_salary,
-                           total_compensation=total_compensation,
-                           analytics_reports=analytics_reports,
+                           total_payroll=total_payroll,
+                           total_grades=total_grades,
+                           recent_updates=recent_updates,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -217,38 +214,18 @@ def dashboard():
 @hr4_bp.route('/compensation')
 @login_required
 def compensation():
-    from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    
     try:
-        # Fetch compensation records with user details
-        # Note: Supabase-py might not support complex joins easily in one go without foreign keys set up perfectly
-        # So we might need to do it in two steps or use a view
-        
-        # Step 1: Get compensation records
-        comp_response = client.table('compensation_records').select('*').execute()
-        compensation_data = comp_response.data if comp_response.data else []
-        
-        # Step 2: Enrich with user data (simplified)
-        for record in compensation_data:
-            user = User.get_by_id(record['user_id'])
-            if user:
-                record['employee_name'] = user.username
-                record['department'] = user.department
-            else:
-                record['employee_name'] = 'Unknown'
-                record['department'] = 'N/A'
-                
-        # Step 3: Get all users for the "Add" modal
+        response = client.table('compensation_records').select('*, users(username, email, department)').order('effective_date', desc=True).execute()
+        comp_records = response.data if response.data else []
         all_users = User.get_all()
-                
     except Exception as e:
         print(f"Error fetching compensation: {e}")
-        compensation_data = []
+        comp_records = []
         all_users = []
 
     return render_template('subsystems/hr/hr4/compensation.html',
-                           compensation_data=compensation_data,
+                           comp_records=comp_records,
                            all_users=all_users,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
@@ -257,22 +234,14 @@ def compensation():
 @hr4_bp.route('/compensation/add', methods=['POST'])
 @login_required
 def add_compensation():
-    from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    
-    user_id = request.form.get('user_id')
-    base_salary = float(request.form.get('base_salary') or 0)
-    allowances = float(request.form.get('allowances') or 0)
-    bonuses = float(request.form.get('bonuses') or 0)
-    deductions = float(request.form.get('deductions') or 0)
-    
     try:
         data = {
-            'user_id': int(user_id),
-            'base_salary': base_salary,
-            'allowances': allowances,
-            'bonuses': bonuses,
-            'deductions': deductions,
+            'user_id': int(request.form.get('user_id')),
+            'base_salary': float(request.form.get('base_salary') or 0),
+            'allowances': float(request.form.get('allowances') or 0),
+            'bonuses': float(request.form.get('bonuses') or 0),
+            'deductions': float(request.form.get('deductions') or 0),
             'effective_date': datetime.utcnow().strftime('%Y-%m-%d'),
             'status': 'Active'
         }
@@ -280,13 +249,11 @@ def add_compensation():
         flash('Compensation record added successfully.', 'success')
     except Exception as e:
         flash(f'Error adding record: {str(e)}', 'danger')
-    
     return redirect(url_for('hr4.compensation'))
 
 @hr4_bp.route('/compensation/delete/<int:record_id>', methods=['POST'])
 @login_required
 def delete_compensation(record_id):
-    from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
         client.table('compensation_records').delete().eq('id', record_id).execute()
@@ -298,9 +265,7 @@ def delete_compensation(record_id):
 @hr4_bp.route('/salary-grades')
 @login_required
 def salary_grades():
-    from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    
     try:
         response = client.table('salary_grades').select('*').order('grade_name').execute()
         grades = response.data if response.data else []
@@ -317,30 +282,22 @@ def salary_grades():
 @hr4_bp.route('/salary-grades/add', methods=['POST'])
 @login_required
 def add_salary_grade():
-    from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    
-    grade_name = request.form.get('grade_name')
-    min_salary = float(request.form.get('min_salary') or 0)
-    max_salary = float(request.form.get('max_salary') or 0)
-    
     try:
         data = {
-            'grade_name': grade_name,
-            'min_salary': min_salary,
-            'max_salary': max_salary
+            'grade_name': request.form.get('grade_name'),
+            'min_salary': float(request.form.get('min_salary') or 0),
+            'max_salary': float(request.form.get('max_salary') or 0)
         }
         client.table('salary_grades').insert(data).execute()
         flash('Salary grade created.', 'success')
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
-    
     return redirect(url_for('hr4.salary_grades'))
 
 @hr4_bp.route('/salary-grades/delete/<int:grade_id>', methods=['POST'])
 @login_required
 def delete_salary_grade(grade_id):
-    from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
         client.table('salary_grades').delete().eq('id', grade_id).execute()
@@ -348,6 +305,63 @@ def delete_salary_grade(grade_id):
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('hr4.salary_grades'))
+
+@hr4_bp.route('/analytics')
+@login_required
+def analytics():
+    client = get_supabase_client()
+    try:
+        # Get all compensation records joined with users for department info
+        res = client.table('compensation_records').select('*, users(department)').execute()
+        records = res.data or []
+        
+        total_salary = sum(float(r.get('base_salary') or 0) for r in records)
+        total_allowances = sum(float(r.get('allowances') or 0) for r in records)
+        total_bonuses = sum(float(r.get('bonuses') or 0) for r in records)
+        
+        # Calculate department distribution
+        dept_data = {}
+        for r in records:
+            dept = r.get('users', {}).get('department', 'Unassigned') or 'Unassigned'
+            amount = float(r.get('base_salary') or 0) + float(r.get('allowances') or 0)
+            dept_data[dept] = dept_data.get(dept, 0) + amount
+            
+        # Calculate salary ranges
+        ranges = {"0-30k": 0, "30k-60k": 0, "60k-100k": 0, "100k+": 0}
+        for r in records:
+            val = float(r.get('base_salary') or 0)
+            if val < 30000: ranges["0-30k"] += 1
+            elif val < 60000: ranges["30k-60k"] += 1
+            elif val < 100000: ranges["60k-100k"] += 1
+            else: ranges["100k+"] += 1
+
+        metrics = {
+            'total_annual_budget': total_salary + total_allowances + total_bonuses,
+            'avg_salary': total_salary / len(records) if records else 0,
+            'total_allowances': total_allowances,
+            'total_bonuses': total_bonuses,
+            'dept_distribution': {
+                'labels': list(dept_data.keys()),
+                'data': list(dept_data.values())
+            },
+            'salary_ranges': {
+                'labels': list(ranges.keys()),
+                'data': list(ranges.values())
+            }
+        }
+    except Exception as e:
+        print(f"Error calculating analytics: {e}")
+        metrics = {
+            'total_annual_budget': 0, 'avg_salary': 0, 'total_allowances': 0, 'total_bonuses': 0,
+            'dept_distribution': {'labels': [], 'data': []},
+            'salary_ranges': {'labels': [], 'data': []}
+        }
+
+    return render_template('subsystems/hr/hr4/analytics.html',
+                           metrics=metrics,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @hr4_bp.route('/reports')
 @login_required
@@ -360,9 +374,7 @@ def reports():
 @hr4_bp.route('/reports/view/<report_type>')
 @login_required
 def view_report(report_type):
-    from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    
     data = []
     headers = []
     row_keys = []
@@ -372,154 +384,26 @@ def view_report(report_type):
         title = "Annual Compensation Summary"
         try:
             res = client.table('compensation_records').select('*, users(username, department)').execute()
-            raw_data = res.data
+            raw_data = res.data or []
             for r in raw_data:
                 data.append({
                     'employee': r.get('users', {}).get('username', 'N/A'),
                     'department': r.get('users', {}).get('department', 'N/A'),
-                    'base_salary': r.get('base_salary'),
-                    'allowances': r.get('allowances'),
-                    'bonuses': r.get('bonuses'),
+                    'base_salary': r.get('base_salary', 0),
+                    'allowances': r.get('allowances', 0),
+                    'bonuses': r.get('bonuses', 0),
                     'effective_date': r.get('effective_date'),
                     'status': r.get('status')
                 })
             headers = ['Employee', 'Department', 'Base Salary', 'Allowances', 'Bonuses', 'Effective Date', 'Status']
             row_keys = ['employee', 'department', 'base_salary', 'allowances', 'bonuses', 'effective_date', 'status']
-        except Exception as e:
-            print(f"Error: {e}")
-
-    elif report_type == 'payroll':
-        title = "Payroll Register Report"
-        try:
-            res = client.table('payroll_records').select('*, users(username)').execute()
-            raw_data = res.data
-            for r in raw_data:
-                data.append({
-                    'employee': r.get('users', {}).get('username', 'N/A'),
-                    'period_start': r.get('pay_period_start'),
-                    'period_end': r.get('pay_period_end'),
-                    'net_pay': r.get('net_pay'),
-                    'status': r.get('status'),
-                    'processed_date': r.get('processed_date')
-                })
-            headers = ['Employee', 'Period Start', 'Period End', 'Net Pay', 'Status', 'Processed Date']
-            row_keys = ['employee', 'period_start', 'period_end', 'net_pay', 'status', 'processed_date']
-        except Exception as e:
-            print(f"Error: {e}")
+        except Exception as e: print(f"Error: {e}")
 
     elif report_type == 'budget':
         title = "Departmental Budget Allocation"
         try:
             res = client.table('compensation_records').select('*, users(department)').execute()
-            raw_data = res.data
-            
-            dept_totals = {}
-            for r in raw_data:
-                dept = r.get('users', {}).get('department', 'Unknown')
-                if dept not in dept_totals:
-                    dept_totals[dept] = {'count': 0, 'total': 0.0, 'allowances': 0.0}
-                
-                dept_totals[dept]['count'] += 1
-                dept_totals[dept]['total'] += float(r.get('base_salary') or 0)
-                dept_totals[dept]['allowances'] += float(r.get('allowances') or 0)
-
-            for dept, stats in dept_totals.items():
-                data.append({
-                    'department': dept,
-                    'staff_count': stats['count'],
-                    'base_payroll': stats['total'],
-                    'total_allowances': stats['allowances'],
-                    'total_budget': stats['total'] + stats['allowances'],
-                    'status': 'Active'
-                })
-            
-            headers = ['Department', 'Staff count', 'Base Payroll', 'Allowances', 'Total Budget', 'Status']
-            row_keys = ['department', 'staff_count', 'base_payroll', 'total_allowances', 'total_budget', 'status']
-        except Exception as e:
-            print(f"Error: {e}")
-
-    if not title:
-        flash('Report type not found.', 'warning')
-        return redirect(url_for('hr4.reports'))
-
-    return render_template('subsystems/hr/hr4/report_view.html',
-                           title=title,
-                           data=data,
-                           headers=headers,
-                           row_keys=row_keys,
-                           report_type=report_type,
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME,
-                           datetime=datetime)
-
-@hr4_bp.route('/reports/export/<report_type>')
-@login_required
-def export_report(report_type):
-    from utils.supabase_client import get_supabase_client
-    import io
-    import csv
-    from flask import Response
-
-    client = get_supabase_client()
-    
-    if report_type == 'compensation':
-        # ...existing code...
-        try:
-            res = client.table('compensation_records').select('*, users(username, department)').execute()
-            data = res.data
-        except:
-            data = []
-            
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['Employee', 'Department', 'Base Salary', 'Allowances', 'Bonuses', 'Effective Date', 'Status'])
-        
-        for r in data:
-            username = r.get('users', {}).get('username', 'N/A')
-            dept = r.get('users', {}).get('department', 'N/A')
-            writer.writerow([
-                username, dept, r.get('base_salary'), 
-                r.get('allowances'), r.get('bonuses'), 
-                r.get('effective_date'), r.get('status')
-            ])
-        
-        return Response(
-            output.getvalue(),
-            mimetype="text/csv",
-            headers={"Content-disposition": "attachment; filename=compensation_summary_2026.csv"}
-        )
-
-    elif report_type == 'payroll':
-        # ...existing code...
-        try:
-            res = client.table('payroll_records').select('*, users(username)').execute()
-            data = res.data
-        except:
-            data = []
-            
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['Employee', 'Period Start', 'Period End', 'Net Pay', 'Status', 'Processed Date'])
-        
-        for r in data:
-            username = r.get('users', {}).get('username', 'N/A')
-            writer.writerow([
-                username, r.get('pay_period_start'), 
-                r.get('pay_period_end'), r.get('net_pay'), 
-                r.get('status'), r.get('processed_date')
-            ])
-            
-        return Response(
-            output.getvalue(),
-            mimetype="text/csv",
-            headers={"Content-disposition": "attachment; filename=payroll_register.csv"}
-        )
-
-    elif report_type == 'budget':
-        try:
-            res = client.table('compensation_records').select('*, users(department)').execute()
-            raw_data = res.data
+            raw_data = res.data or []
             dept_totals = {}
             for r in raw_data:
                 dept = r.get('users', {}).get('department', 'Unknown')
@@ -528,112 +412,92 @@ def export_report(report_type):
                 dept_totals[dept]['count'] += 1
                 dept_totals[dept]['total'] += float(r.get('base_salary') or 0) + float(r.get('allowances') or 0)
 
-            output = io.StringIO()
-            writer = csv.writer(output)
-            writer.writerow(['Department', 'Staff count', 'Total Budget Allocation'])
             for dept, stats in dept_totals.items():
-                writer.writerow([dept, stats['count'], stats['total']])
-            
-            return Response(
-                output.getvalue(),
-                mimetype="text/csv",
-                headers={"Content-disposition": "attachment; filename=budget_allocation.csv"}
-            )
-        except:
-            pass
+                data.append({
+                    'department': dept,
+                    'staff_count': stats['count'],
+                    'total_budget': stats['total'],
+                    'status': 'Active'
+                })
+            headers = ['Department', 'Staff count', 'Total Budget', 'Status']
+            row_keys = ['department', 'staff_count', 'total_budget', 'status']
+        except Exception as e: print(f"Error: {e}")
 
-    flash('Report generation for this type is not yet fully configured.', 'info')
-    return redirect(url_for('hr4.reports'))
+    if not title:
+        flash('Report type not found.', 'warning')
+        return redirect(url_for('hr4.reports'))
+
+    return render_template('subsystems/hr/hr4/report_view.html',
+                           title=title, data=data, headers=headers, row_keys=row_keys,
+                           report_type=report_type, subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+@hr4_bp.route('/reports/export/<report_type>')
+@login_required
+def export_report(report_type):
+    import io
+    import csv
+    from flask import Response
+    
+    client = get_supabase_client()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    filename = f"hr_report_{report_type}_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    
+    try:
+        if report_type == 'compensation':
+            res = client.table('compensation_records').select('*, users(username, department)').execute()
+            raw_data = res.data or []
+            writer.writerow(['Employee', 'Department', 'Base Salary', 'Allowances', 'Bonuses', 'Effective Date', 'Status'])
+            for r in raw_data:
+                writer.writerow([
+                    r.get('users', {}).get('username'),
+                    r.get('users', {}).get('department'),
+                    r.get('base_salary'),
+                    r.get('allowances'),
+                    r.get('bonuses'),
+                    r.get('effective_date'),
+                    r.get('status')
+                ])
+        elif report_type == 'budget':
+            res = client.table('compensation_records').select('*, users(department)').execute()
+            raw_data = res.data or []
+            dept_totals = {}
+            for r in raw_data:
+                dept = r.get('users', {}).get('department', 'Unknown')
+                if dept not in dept_totals: dept_totals[dept] = 0.0
+                dept_totals[dept] += float(r.get('base_salary') or 0) + float(r.get('allowances') or 0)
+            
+            writer.writerow(['Department', 'Total Budget Allocation'])
+            for dept, total in dept_totals.items():
+                writer.writerow([dept, total])
+                
+        output.seek(0)
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        flash(f"Export failed: {str(e)}", "danger")
+        return redirect(url_for('hr4.reports'))
 
 @hr4_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        if email:
-            try:
-                current_user.update(email=email)
-                flash('Settings updated successfully.', 'success')
-            except Exception as e:
-                flash(f'Update failed: {str(e)}', 'danger')
-        return redirect(url_for(f'{BLUEPRINT_NAME}.settings'))
-        
-    return render_template('shared/settings.html',
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
-
-@hr4_bp.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('hr4.login'))
-
-@hr4_bp.route('/analytics')
-@login_required
-def analytics():
-    from utils.supabase_client import get_supabase_client
-    client = get_supabase_client()
-    
-    try:
-        # Fetch all compensation records with user info
-        comp_res = client.table('compensation_records').select('*, users(department)').execute()
-        comp_data = comp_res.data or []
-        
-        # Calculate base metrics
-        total_annual = sum((float(r['base_salary'] or 0) + float(r.get('allowances', 0) or 0)) * 12 for r in comp_data)
-        avg_monthly = sum(float(r['base_salary'] or 0) for r in comp_data) / len(comp_data) if comp_data else 0
-        total_allowances = sum(float(r.get('allowances', 0) or 0) for r in comp_data)
-        total_bonuses = sum(float(r.get('bonuses', 0) or 0) for r in comp_data)
-        
-        # Department Distribution
-        dept_map = {}
-        for r in comp_data:
-            dept = r.get('users', {}).get('department', 'Other')
-            budget = float(r['base_salary'] or 0) + float(r.get('allowances', 0) or 0)
-            dept_map[dept] = dept_map.get(dept, 0) + budget
-            
-        dept_dist = {
-            'labels': list(dept_map.keys()),
-            'data': list(dept_map.values())
-        }
-        
-        # Salary Ranges
-        ranges = {"0-50k": 0, "50k-100k": 0, "100k-150k": 0, "150k+": 0}
-        for r in comp_data:
-            sal = float(r['base_salary'] or 0) * 12
-            if sal < 50000: ranges["0-50k"] += 1
-            elif sal < 100000: ranges["50k-100k"] += 1
-            elif sal < 150000: ranges["100k-150k"] += 1
-            else: ranges["150k+"] += 1
-            
-        salary_ranges = {
-            'labels': list(ranges.keys()),
-            'data': list(ranges.values())
-        }
-
-        metrics = {
-            'total_annual_budget': total_annual,
-            'avg_salary': avg_monthly,
-            'total_allowances': total_allowances,
-            'total_bonuses': total_bonuses,
-            'dept_distribution': dept_dist,
-            'salary_ranges': salary_ranges
-        }
-            
-    except Exception as e:
-        print(f"Analytics error: {e}")
-        metrics = {
-            'total_annual_budget': 0, 'avg_salary': 0, 'total_allowances': 0, 'total_bonuses': 0,
-            'dept_distribution': {'labels': [], 'data': []},
-            'salary_ranges': {'labels': [], 'data': []}
-        }
-
-    return render_template('subsystems/hr/hr4/analytics.html',
-                           metrics=metrics,
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME,
-                           active_page='analytics')
-
+	if request.method == 'POST':
+		email = request.form.get('email')
+		if email:
+			try:
+				current_user.update(email=email)
+				flash('Settings updated successfully.', 'success')
+			except Exception as e:
+				flash(f'Update failed: {str(e)}', 'danger')
+		return redirect(url_for('hr4.settings'))
+		
+	return render_template('shared/settings.html',
+						   subsystem_name=SUBSYSTEM_NAME,
+						   accent_color=ACCENT_COLOR,
+						   blueprint_name=BLUEPRINT_NAME)
 
