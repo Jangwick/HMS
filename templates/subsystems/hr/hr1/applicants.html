@@ -1,0 +1,106 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Applicants - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Recruitment Pipeline{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Applicant Pipeline</h3>
+            <p class="text-gray-500">Manage and track candidate progress</p>
+        </div>
+        <a href="{{ url_for('hr1.add_applicant') }}"
+            class="px-6 py-3 bg-[#6366F1] text-white font-bold rounded-xl shadow-lg hover:bg-[#4F46E5] transition-all transform hover:-translate-y-1 inline-flex items-center">
+            <i class="bi bi-person-plus-fill mr-2"></i> Add New Applicant
+        </a>
+    </div>
+
+    <!-- Applicants Table -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50/50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-8 py-5">Candidate</th>
+                        <th class="px-6 py-5">Contact</th>
+                        <th class="px-6 py-5">Source</th>
+                        <th class="px-6 py-5">Status</th>
+                        <th class="px-6 py-5">Applied Date</th>
+                        <th class="px-8 py-5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for applicant in applicants %}
+                    <tr class="hover:bg-gray-50/50 transition-colors group">
+                        <td class="px-8 py-5">
+                            <div class="flex items-center">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-[#6366F1] font-bold mr-3">
+                                    {{ applicant.first_name[0] }}{{ applicant.last_name[0] }}
+                                </div>
+                                <div>
+                                    <div class="font-bold text-gray-900 group-hover:text-[#6366F1] transition-colors">{{
+                                        applicant.first_name }} {{ applicant.last_name }}</div>
+                                    <div class="text-xs text-gray-400">ID: #APP-{{ applicant.id }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="text-sm text-gray-600 font-medium">{{ applicant.email }}</div>
+                            <div class="text-xs text-gray-400">{{ applicant.phone }}</div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span
+                                class="px-3 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 uppercase">
+                                {{ applicant.source }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold 
+                                {% if applicant.status == 'Screening' %}bg-blue-50 text-blue-600
+                                {% elif applicant.status == 'Interview' %}bg-amber-50 text-amber-600
+                                {% elif applicant.status == 'Offer' %}bg-green-50 text-green-600
+                                {% else %}bg-gray-50 text-gray-600{% endif %}">
+                                {{ applicant.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5 text-gray-400 text-sm">{{ applicant.created_at[:10] }}</td>
+                        <td class="px-8 py-5 text-right">
+                            <div class="flex justify-end space-x-2">
+                                <button
+                                    class="px-4 py-2 bg-gray-50 text-gray-700 font-bold text-sm rounded-lg hover:bg-gray-100 transition-all">
+                                    Interview
+                                </button>
+                                <button
+                                    class="px-4 py-2 bg-[#6366F1] text-white font-bold text-sm rounded-lg hover:bg-[#4F46E5] transition-all shadow-sm">
+                                    Offer
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-8 py-20 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                    <i class="bi bi-people text-4xl text-gray-300"></i>
+                                </div>
+                                <h4 class="text-lg font-bold text-gray-900">No applicants yet</h4>
+                                <p class="text-gray-500 max-w-xs mx-auto mt-2">Your recruitment pipeline is currently
+                                    empty.</p>
+                                <a href="{{ url_for('hr1.add_applicant') }}"
+                                    class="mt-6 px-6 py-2 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors">
+                                    Add First Applicant
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

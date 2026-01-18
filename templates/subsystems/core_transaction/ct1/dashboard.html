@@ -1,172 +1,126 @@
-{% extends "base/base.html" %}
+{% extends "base/subsystem_base.html" %}
 
-{% block title %}Dashboard - CT1{% endblock %}
+{% block title %}Dashboard - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Patient Access{% endblock %}
 
 {% block content %}
-<div class="flex h-screen bg-gray-50 overflow-hidden font-sans">
-    <!-- Sidebar -->
-    <aside class="w-72 bg-white shadow-2xl hidden md:flex flex-col z-20 border-r border-gray-100">
-        <div class="h-20 flex items-center px-8 border-b border-gray-100">
-            <div
-                class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#10B981] to-gray-800 flex items-center justify-center shadow-lg mr-4 text-white">
-                <i class="bi bi-person-badge text-lg"></i>
-            </div>
-            <div>
-                <h1 class="text-xl font-extrabold text-gray-900 tracking-tight">CT1</h1>
-                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">System</p>
-            </div>
+<div class="space-y-8">
+    <!-- Welcome Card -->
+    <div
+        class="bg-gradient-to-r from-[#10B981] to-gray-800 rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
+        <div
+            class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl">
+        </div>
+        <div
+            class="absolute bottom-0 left-0 w-48 h-48 bg-black opacity-10 rounded-full transform -translate-x-1/2 translate-y-1/2 blur-2xl">
         </div>
 
-        <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-2">
-            <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Main Menu</p>
+        <div class="relative z-10">
+            <h3 class="text-3xl font-bold mb-2">Welcome back, {{ current_user.username }}!</h3>
+            <p class="text-white/80 text-lg max-w-2xl">Manage patient registrations and appointments efficiently.</p>
 
-            <a href="#"
-                class="flex items-center px-4 py-3 bg-[#10B981]/10 text-[#10B981] rounded-xl transition-all duration-200 font-bold group shadow-sm">
-                <i class="bi bi-speedometer2 text-xl mr-3 group-hover:scale-110 transition-transform"></i>
-                Dashboard
-            </a>
-
-            <a href="#"
-                class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-xl transition-all duration-200 font-medium group">
-                <i class="bi bi-people text-xl mr-3 text-gray-400 group-hover:text-[#10B981] transition-colors"></i>
-                Personnel
-            </a>
-
-            <a href="#"
-                class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-xl transition-all duration-200 font-medium group">
-                <i
-                    class="bi bi-file-earmark-text text-xl mr-3 text-gray-400 group-hover:text-[#10B981] transition-colors"></i>
-                Reports
-            </a>
-
-            <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mt-6 mb-2">System</p>
-
-            <a href="#"
-                class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-xl transition-all duration-200 font-medium group">
-                <i class="bi bi-gear text-xl mr-3 text-gray-400 group-hover:text-[#10B981] transition-colors"></i>
-                Settings
-            </a>
-        </nav>
-
-        <div class="p-4 border-t border-gray-100 bg-gray-50/50">
-            <div class="flex items-center mb-4 p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
-                <div
-                    class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-white font-bold shadow-md">
-                    {{ current_user.username[0] | upper }}
-                </div>
-                <div class="ml-3 overflow-hidden">
-                    <p class="text-sm font-bold text-gray-900 truncate">{{ current_user.username }}</p>
-                    <p class="text-xs text-gray-500 truncate">{{ current_user.role }}</p>
-                </div>
+            <div class="mt-8 flex space-x-4">
+                <a href="{{ url_for('ct1.register_patient') }}"
+                    class="px-6 py-2.5 bg-white text-[#10B981] font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
+                    New Registration
+                </a>
+                <a href="{{ url_for('ct1.search_patients') }}"
+                    class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
+                    Search Patient
+                </a>
             </div>
-            <a href="{{ url_for('ct1.logout') }}"
-                class="flex items-center justify-center w-full px-4 py-2.5 text-sm font-bold text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-all duration-200 hover:shadow-md">
-                <i class="bi bi-box-arrow-right mr-2"></i> Sign Out
-            </a>
         </div>
-    </aside>
+    </div>
 
-    <!-- Main Content -->
-    <div class="flex-1 flex flex-col overflow-hidden relative">
-        <!-- Top Header -->
-        <header
-            class="bg-white/80 backdrop-blur-md shadow-sm h-20 flex items-center justify-between px-8 sticky top-0 z-10 border-b border-gray-100">
-            <div class="flex items-center">
-                <h2 class="text-2xl font-bold text-gray-800 tracking-tight">Patient Access</h2>
-            </div>
-            <div class="flex items-center space-x-4">
-                <button class="p-2 text-gray-400 hover:text-[#10B981] transition-colors relative">
-                    <i class="bi bi-bell text-xl"></i>
-                    <span
-                        class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                </button>
-                <div class="h-8 w-px bg-gray-200 mx-2"></div>
-                <span class="text-sm font-medium text-gray-500">{{ now().strftime('%B %d, %Y') }}</span>
-            </div>
-        </header>
-
-        <!-- Content Scroll Area -->
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-8">
-            <!-- Welcome Card -->
-            <div
-                class="bg-gradient-to-r from-[#10B981] to-gray-800 rounded-3xl shadow-xl p-8 text-white mb-8 relative overflow-hidden">
-                <div
-                    class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl">
-                </div>
-                <div
-                    class="absolute bottom-0 left-0 w-48 h-48 bg-black opacity-10 rounded-full transform -translate-x-1/2 translate-y-1/2 blur-2xl">
-                </div>
-
-                <div class="relative z-10">
-                    <h3 class="text-3xl font-bold mb-2">Welcome back, {{ current_user.username }}!</h3>
-                    <p class="text-white/80 text-lg max-w-2xl">Your secure dashboard is ready. You have full access to
-                        all Patient Access modules and features.</p>
-
-                    <div class="mt-8 flex space-x-4">
-                        <button
-                            class="px-6 py-2.5 bg-white text-[#10B981] font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
-                            View Reports
-                        </button>
-                        <button
-                            class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
-                            Manage Users
-                        </button>
-                    </div>
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Today's Appointments</h4>
+                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                    <i class="bi bi-calendar-check"></i>
                 </div>
             </div>
+            <p class="text-3xl font-bold text-gray-900">{{ appointments|length }}</p>
+            <p class="text-gray-400 text-sm font-medium mt-2">Scheduled for today</p>
+        </div>
 
-            <!-- Stats Grid Placeholder -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div
-                    class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                    <div class="flex items-center justify-between mb-4">
-                        <h4 class="text-gray-500 text-sm font-bold uppercase">Total Active Users</h4>
-                        <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                            <i class="bi bi-people-fill"></i>
-                        </div>
-                    </div>
-                    <p class="text-3xl font-bold text-gray-900">1,248</p>
-                    <p class="text-green-500 text-sm font-medium mt-2 flex items-center">
-                        <i class="bi bi-arrow-up-short text-lg"></i> 12% increase
-                    </p>
-                </div>
-
-                <div
-                    class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                    <div class="flex items-center justify-between mb-4">
-                        <h4 class="text-gray-500 text-sm font-bold uppercase">Pending Tasks</h4>
-                        <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
-                            <i class="bi bi-list-task"></i>
-                        </div>
-                    </div>
-                    <p class="text-3xl font-bold text-gray-900">34</p>
-                    <p class="text-gray-400 text-sm font-medium mt-2">Requires attention</p>
-                </div>
-
-                <div
-                    class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                    <div class="flex items-center justify-between mb-4">
-                        <h4 class="text-gray-500 text-sm font-bold uppercase">System Status</h4>
-                        <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                            <i class="bi bi-activity"></i>
-                        </div>
-                    </div>
-                    <p class="text-3xl font-bold text-gray-900">99.9%</p>
-                    <p class="text-green-500 text-sm font-medium mt-2">Operational</p>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">New Patients</h4>
+                <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+                    <i class="bi bi-person-plus"></i>
                 </div>
             </div>
+            <p class="text-3xl font-bold text-gray-900">12</p>
+            <p class="text-green-500 text-sm font-medium mt-2 flex items-center">
+                <i class="bi bi-arrow-up-short text-lg"></i> 5% this week
+            </p>
+        </div>
 
-            <!-- Empty State / Content Area -->
-            <div
-                class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 min-h-[400px] flex flex-col items-center justify-center text-center">
-                <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                    <i class="bi bi-person-badge text-4xl text-gray-300"></i>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">System Status</h4>
+                <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                    <i class="bi bi-activity"></i>
                 </div>
-                <h4 class="text-xl font-bold text-gray-900 mb-2">Ready for Implementation</h4>
-                <p class="text-gray-500 max-w-md">This module is fully authenticated. You can now start building the
-                    specific features for Patient Access.</p>
             </div>
-        </main>
+            <p class="text-3xl font-bold text-gray-900">Online</p>
+            <p class="text-green-500 text-sm font-medium mt-2">All modules operational</p>
+        </div>
+    </div>
+
+    <!-- Upcoming Appointments Table -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+            <h4 class="text-lg font-bold text-gray-900">Upcoming Appointments</h4>
+            <a href="{{ url_for('ct1.book_appointment') }}"
+                class="text-[#10B981] font-bold text-sm hover:underline">Book New</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4">Patient</th>
+                        <th class="px-6 py-4">Date & Time</th>
+                        <th class="px-6 py-4">Type</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for appt in appointments %}
+                    <tr class="hover:bg-gray-50 transition-colors group">
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-gray-900 group-hover:text-[#10B981] transition-colors">{{
+                                appt.patients.first_name }} {{ appt.patients.last_name }}</div>
+                            <div class="text-xs text-gray-400">{{ appt.patients.patient_id_alt }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ appt.appointment_date }}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-bold">{{
+                                appt.type }}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 bg-green-100 text-green-600 rounded-full text-xs font-bold">{{
+                                appt.status }}</span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button class="text-gray-400 hover:text-[#10B981] transition-colors"><i
+                                    class="bi bi-three-dots-vertical"></i></button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                            <i class="bi bi-calendar-x text-4xl mb-3 block"></i>
+                            No upcoming appointments found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}

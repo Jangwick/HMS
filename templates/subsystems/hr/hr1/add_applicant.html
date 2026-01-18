@@ -1,0 +1,73 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Add Applicant - {{ subsystem_name }}{% endblock %}
+{% block header_title %}New Application{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+        <div class="bg-gradient-to-r from-[#6366F1] to-indigo-800 px-8 py-10 text-white">
+            <h3 class="text-3xl font-bold mb-2">Register Applicant</h3>
+            <p class="text-indigo-100">Enter candidate details to start the recruitment process.</p>
+        </div>
+
+        <form method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">First Name</label>
+                    <input type="text" name="first_name" required
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#6366F1] focus:bg-white transition-all outline-none"
+                        placeholder="John">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Last Name</label>
+                    <input type="text" name="last_name" required
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#6366F1] focus:bg-white transition-all outline-none"
+                        placeholder="Doe">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Email Address</label>
+                    <input type="email" name="email" required
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#6366F1] focus:bg-white transition-all outline-none"
+                        placeholder="john.doe@example.com">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Phone Number</label>
+                    <input type="tel" name="phone" required
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#6366F1] focus:bg-white transition-all outline-none"
+                        placeholder="+1 (555) 000-0000">
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Application Source</label>
+                <select name="source" required
+                    class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#6366F1] focus:bg-white transition-all outline-none appearance-none">
+                    <option value="" disabled selected>Select source...</option>
+                    <option value="Walk-in">Walk-in</option>
+                    <option value="Referral">Referral</option>
+                    <option value="Agency">Agency</option>
+                    <option value="LinkedIn">LinkedIn</option>
+                    <option value="Company Website">Company Website</option>
+                </select>
+            </div>
+
+            <div class="pt-6 flex items-center justify-between">
+                <a href="{{ url_for('hr1.list_applicants') }}"
+                    class="text-gray-500 font-bold hover:text-gray-700 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit"
+                    class="px-8 py-4 bg-[#6366F1] text-white font-bold rounded-2xl shadow-lg hover:bg-[#4F46E5] transition-all transform hover:-translate-y-1">
+                    Complete Registration
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Book Appointment - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Appointment Scheduling{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+        <div class="bg-gradient-to-r from-[#10B981] to-teal-800 px-8 py-10 text-white">
+            <h3 class="text-3xl font-bold mb-2">Schedule Appointment</h3>
+            <p class="text-teal-100">Book a new consultation or follow-up for a patient.</p>
+        </div>
+
+        <form method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Select Patient</label>
+                <div class="relative">
+                    <i class="bi bi-person absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <select name="patient_id" required
+                        class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none appearance-none">
+                        <option value="" disabled selected>Choose a patient...</option>
+                        {% for patient in patients %}
+                        <option value="{{ patient.id }}" {% if request.args.get('patient_id')|int==patient.id
+                            %}selected{% endif %}>
+                            {{ patient.first_name }} {{ patient.last_name }} ({{ patient.patient_id_alt }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Appointment Date & Time</label>
+                    <input type="datetime-local" name="appointment_date" required
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Appointment Type</label>
+                    <select name="type" required
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none appearance-none">
+                        <option value="Consultation">Consultation</option>
+                        <option value="Follow-up">Follow-up</option>
+                        <option value="Emergency">Emergency</option>
+                        <option value="Routine Checkup">Routine Checkup</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Notes / Reason for Visit</label>
+                <textarea name="notes" rows="3"
+                    class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none"
+                    placeholder="Briefly describe the reason for the appointment..."></textarea>
+            </div>
+
+            <div class="pt-6 flex items-center justify-between">
+                <a href="{{ url_for('ct1.dashboard') }}"
+                    class="text-gray-500 font-bold hover:text-gray-700 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit"
+                    class="px-10 py-4 bg-[#10B981] text-white font-bold rounded-2xl shadow-lg hover:bg-[#059669] transition-all transform hover:-translate-y-1">
+                    Confirm Appointment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

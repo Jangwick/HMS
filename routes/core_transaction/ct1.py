@@ -180,10 +180,86 @@ def change_password():
 @ct1_bp.route('/dashboard')
 @login_required
 def dashboard():
+    from utils.hms_models import Appointment
+    upcoming_appointments = Appointment.get_upcoming()
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/core_transaction/ct1/dashboard.html', now=datetime.utcnow)
+    return render_template('subsystems/core_transaction/ct1/dashboard.html', 
+                           now=datetime.utcnow,
+                           appointments=upcoming_appointments,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct1_bp.route('/patients/register', methods=['GET', 'POST'])
+@login_required
+def register_patient():
+    if request.method == 'POST':
+        from utils.hms_models import Patient
+        patient_data = {
+            'first_name': request.form.get('first_name'),
+            'last_name': request.form.get('last_name'),
+            'dob': request.form.get('dob'),
+            'gender': request.form.get('gender'),
+            'contact_number': request.form.get('contact_number'),
+            'address': request.form.get('address'),
+            'insurance_info': {
+                'provider': request.form.get('insurance_provider'),
+                'policy_number': request.form.get('policy_number')
+            }
+        }
+        patient = Patient.create(patient_data)
+        if patient:
+            flash(f'Patient {patient.first_name} {patient.last_name} registered successfully! ID: {patient.patient_id_alt}', 'success')
+            return redirect(url_for('ct1.dashboard'))
+        else:
+            flash('Failed to register patient.', 'danger')
+            
+    return render_template('subsystems/core_transaction/ct1/patient_registration.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct1_bp.route('/patients/search')
+@login_required
+def search_patients():
+    query = request.args.get('q', '')
+    from utils.hms_models import Patient
+    patients = Patient.search(query) if query else []
+    return render_template('subsystems/core_transaction/ct1/patient_search.html', 
+                           patients=patients, 
+                           query=query,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct1_bp.route('/appointments/book', methods=['GET', 'POST'])
+@login_required
+def book_appointment():
+    from utils.hms_models import Patient, Appointment
+    if request.method == 'POST':
+        appointment_data = {
+            'patient_id': request.form.get('patient_id'),
+            'doctor_id': current_user.id, # Default to current user for now or add doctor selection
+            'appointment_date': request.form.get('appointment_date'),
+            'type': request.form.get('type'),
+            'status': 'Scheduled'
+        }
+        appointment = Appointment.create(appointment_data)
+        if appointment:
+            flash('Appointment booked successfully!', 'success')
+            return redirect(url_for('ct1.dashboard'))
+        else:
+            flash('Failed to book appointment.', 'danger')
+            
+    patients = Patient.get_all()
+    return render_template('subsystems/core_transaction/ct1/book_appointment.html', 
+                           patients=patients,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @ct1_bp.route('/logout')
 @login_required

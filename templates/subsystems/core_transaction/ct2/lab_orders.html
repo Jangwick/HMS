@@ -1,0 +1,102 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Lab Orders - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Laboratory Information System{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Laboratory Orders</h3>
+            <p class="text-gray-500">Track and manage clinical test requests</p>
+        </div>
+        <div class="flex space-x-3">
+            <button
+                class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                <i class="bi bi-filter mr-2"></i> Filter
+            </button>
+            <button
+                class="px-6 py-2 bg-[#3B82F6] text-white font-bold rounded-xl shadow-lg hover:bg-[#2563EB] transition-all transform hover:-translate-y-1">
+                <i class="bi bi-plus-lg mr-2"></i> New Order
+            </button>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-8 py-5">Order ID</th>
+                        <th class="px-6 py-5">Patient</th>
+                        <th class="px-6 py-5">Test Name</th>
+                        <th class="px-6 py-5">Status</th>
+                        <th class="px-6 py-5">Critical</th>
+                        <th class="px-8 py-5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for order in orders %}
+                    <tr class="hover:bg-gray-50/50 transition-colors group">
+                        <td class="px-8 py-5">
+                            <span class="font-bold text-gray-900">#LAB-{{ order.id }}</span>
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="font-bold text-gray-900 group-hover:text-[#3B82F6] transition-colors">{{
+                                order.patients.first_name }} {{ order.patients.last_name }}</div>
+                            <div class="text-xs text-gray-400">ID: {{ order.patients.patient_id_alt }}</div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="text-sm font-medium text-gray-700">{{ order.test_name }}</div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold 
+                                {% if order.status == 'Resulted' %}bg-green-50 text-green-600
+                                {% elif order.status == 'Collected' %}bg-blue-50 text-blue-600
+                                {% else %}bg-amber-50 text-amber-600{% endif %}">
+                                {{ order.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5">
+                            {% if order.critical_alert %}
+                            <span class="flex items-center text-red-600 font-bold text-xs animate-pulse">
+                                <i class="bi bi-exclamation-circle-fill mr-1"></i> CRITICAL
+                            </span>
+                            {% else %}
+                            <span class="text-gray-400 text-xs">Normal</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-8 py-5 text-right">
+                            <div class="flex justify-end space-x-2">
+                                <button
+                                    class="px-4 py-2 bg-gray-50 text-[#3B82F6] font-bold text-sm rounded-lg hover:bg-[#3B82F6] hover:text-white transition-all">
+                                    Update Status
+                                </button>
+                                <button
+                                    class="p-2 text-gray-400 hover:text-[#3B82F6] hover:bg-white rounded-lg transition-all">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-8 py-20 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                    <i class="bi bi-flask text-4xl text-gray-300"></i>
+                                </div>
+                                <h4 class="text-lg font-bold text-gray-900">No lab orders found</h4>
+                                <p class="text-gray-500 mt-2">Laboratory test requests will appear here.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

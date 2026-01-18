@@ -8,8 +8,8 @@ from datetime import datetime
 ct2_bp = Blueprint('ct2', __name__, template_folder='templates')
 
 # Subsystem configuration
-SUBSYSTEM_NAME = 'CT2 - Billing'
-ACCENT_COLOR = '[#10B981]'
+SUBSYSTEM_NAME = 'CT2 - Clinical Operations'
+ACCENT_COLOR = '[#3B82F6]'
 BLUEPRINT_NAME = 'ct2'
 
 @ct2_bp.route('/login', methods=['GET', 'POST'])
@@ -183,7 +183,52 @@ def dashboard():
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/core_transaction/ct2/dashboard.html', now=datetime.utcnow)
+    return render_template('subsystems/core_transaction/ct2/dashboard.html', 
+                           now=datetime.utcnow,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct2_bp.route('/lab/orders')
+@login_required
+def lab_orders():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    response = client.table('lab_orders').select('*, patients(*)').execute()
+    orders = response.data if response.data else []
+    return render_template('subsystems/core_transaction/ct2/lab_orders.html', 
+                           orders=orders,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct2_bp.route('/pharmacy/inventory')
+@login_required
+def pharmacy_inventory():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    response = client.table('inventory').select('*').eq('category', 'Medical').execute()
+    items = response.data if response.data else []
+    return render_template('subsystems/core_transaction/ct2/pharmacy_inventory.html', 
+                           items=items,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct2_bp.route('/pharmacy/dispense', methods=['GET', 'POST'])
+@login_required
+def dispense_meds():
+    if request.method == 'POST':
+        flash('Medication dispensed successfully!', 'success')
+        return redirect(url_for('ct2.pharmacy_inventory'))
+    
+    from utils.hms_models import Patient
+    patients = Patient.get_all()
+    return render_template('subsystems/core_transaction/ct2/dispense_meds.html', 
+                           patients=patients,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @ct2_bp.route('/logout')
 @login_required

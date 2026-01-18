@@ -201,11 +201,70 @@ def change_password():
 @hr1_bp.route('/dashboard')
 @login_required
 def dashboard():
-    # Check if password is about to expire and show warning
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    # Fetch some stats for the dashboard
+    vacancies_count = client.table('vacancies').select('id', count='exact').eq('status', 'Open').execute().count
+    applicants_count = client.table('applicants').select('id', count='exact').execute().count
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/hr/hr1/dashboard.html', now=datetime.utcnow)
+    return render_template('subsystems/hr/hr1/dashboard.html', 
+                           now=datetime.utcnow,
+                           vacancies_count=vacancies_count,
+                           applicants_count=applicants_count,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr1_bp.route('/vacancies')
+@login_required
+def list_vacancies():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    response = client.table('vacancies').select('*').execute()
+    vacancies = response.data if response.data else []
+    return render_template('subsystems/hr/hr1/vacancies.html', 
+                           vacancies=vacancies,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr1_bp.route('/applicants')
+@login_required
+def list_applicants():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    response = client.table('applicants').select('*').execute()
+    applicants = response.data if response.data else []
+    return render_template('subsystems/hr/hr1/applicants.html', 
+                           applicants=applicants,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr1_bp.route('/applicants/add', methods=['GET', 'POST'])
+@login_required
+def add_applicant():
+    if request.method == 'POST':
+        from utils.supabase_client import get_supabase_client
+        client = get_supabase_client()
+        data = {
+            'first_name': request.form.get('first_name'),
+            'last_name': request.form.get('last_name'),
+            'email': request.form.get('email'),
+            'phone': request.form.get('phone'),
+            'source': request.form.get('source'),
+            'status': 'Screening'
+        }
+        client.table('applicants').insert(data).execute()
+        flash('Applicant added successfully!', 'success')
+        return redirect(url_for('hr1.list_applicants'))
+    return render_template('subsystems/hr/hr1/add_applicant.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @hr1_bp.route('/logout')
 @login_required

@@ -82,4 +82,9 @@ def create_app(config_class=Config):
         except Exception:
             return None
 
+    @app.context_processor
+    def inject_now():
+        from datetime import datetime
+        return {'now': datetime.now}
+
     return app

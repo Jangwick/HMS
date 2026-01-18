@@ -180,10 +180,58 @@ def change_password():
 @log1_bp.route('/dashboard')
 @login_required
 def dashboard():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    # Fetch stats
+    total_items = client.table('inventory').select('id', count='exact').execute().count
+    low_stock = client.table('inventory').select('id', count='exact').lte('quantity', 10).execute().count
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/logistics/log1/dashboard.html', now=datetime.utcnow)
+    return render_template('subsystems/logistics/log1/dashboard.html', 
+                           now=datetime.utcnow,
+                           total_items=total_items,
+                           low_stock_count=low_stock,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log1_bp.route('/inventory')
+@login_required
+def list_inventory():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    response = client.table('inventory').select('*').execute()
+    items = response.data if response.data else []
+    return render_template('subsystems/logistics/log1/inventory.html', 
+                           items=items,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log1_bp.route('/inventory/add', methods=['GET', 'POST'])
+@login_required
+def add_inventory_item():
+    if request.method == 'POST':
+        from utils.supabase_client import get_supabase_client
+        client = get_supabase_client()
+        data = {
+            'item_name': request.form.get('item_name'),
+            'category': request.form.get('category'),
+            'quantity': int(request.form.get('quantity')),
+            'unit': request.form.get('unit'),
+            'reorder_level': int(request.form.get('reorder_level')),
+            'batch_number': request.form.get('batch_number'),
+            'expiry_date': request.form.get('expiry_date')
+        }
+        client.table('inventory').insert(data).execute()
+        flash('Item added to inventory!', 'success')
+        return redirect(url_for('log1.list_inventory'))
+    return render_template('subsystems/logistics/log1/add_item.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @log1_bp.route('/logout')
 @login_required

@@ -1,0 +1,95 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Billing - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Patient Billing & Invoicing{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Billing Records</h3>
+            <p class="text-gray-500">Manage hospital revenue and patient accounts</p>
+        </div>
+        <div class="flex space-x-3">
+            <button
+                class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                <i class="bi bi-printer mr-2"></i> Print All
+            </button>
+            <a href="{{ url_for('fin1.create_bill') }}"
+                class="px-6 py-2 bg-[#EF4444] text-white font-bold rounded-xl shadow-lg hover:bg-[#DC2626] transition-all transform hover:-translate-y-1">
+                <i class="bi bi-plus-lg mr-2"></i> Create Invoice
+            </a>
+        </div>
+    </div>
+
+    <!-- Billing Table -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-8 py-5">Invoice #</th>
+                        <th class="px-6 py-5">Patient</th>
+                        <th class="px-6 py-5">Amount</th>
+                        <th class="px-6 py-5">Status</th>
+                        <th class="px-6 py-5">Date</th>
+                        <th class="px-8 py-5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for record in records %}
+                    <tr class="hover:bg-gray-50/50 transition-colors group">
+                        <td class="px-8 py-5">
+                            <span class="font-bold text-gray-900">#INV-{{ record.id }}</span>
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="font-bold text-gray-900 group-hover:text-[#EF4444] transition-colors">{{
+                                record.patients.first_name }} {{ record.patients.last_name }}</div>
+                            <div class="text-xs text-gray-400">ID: {{ record.patients.patient_id_alt }}</div>
+                        </td>
+                        <td class="px-6 py-5 text-gray-900 font-bold">${{ "%.2f"|format(record.total_amount) }}</td>
+                        <td class="px-6 py-5">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold 
+                                {% if record.status == 'Paid' %}bg-green-50 text-green-600
+                                {% else %}bg-amber-50 text-amber-600{% endif %}">
+                                {{ record.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5 text-gray-500 text-sm">{{ record.created_at[:10] }}</td>
+                        <td class="px-8 py-5 text-right">
+                            <div class="flex justify-end space-x-2">
+                                <button
+                                    class="px-4 py-2 bg-gray-50 text-[#EF4444] font-bold text-sm rounded-lg hover:bg-[#EF4444] hover:text-white transition-all">
+                                    Process Payment
+                                </button>
+                                <button
+                                    class="p-2 text-gray-400 hover:text-[#EF4444] hover:bg-white rounded-lg transition-all">
+                                    <i class="bi bi-file-pdf"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-8 py-20 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                    <i class="bi bi-file-invoice-dollar text-4xl text-gray-300"></i>
+                                </div>
+                                <h4 class="text-lg font-bold text-gray-900">No billing records</h4>
+                                <p class="text-gray-500 mt-2">Patient invoices will appear here.</p>
+                                <a href="{{ url_for('fin1.create_bill') }}"
+                                    class="mt-6 px-6 py-2 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors">
+                                    Create First Invoice
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

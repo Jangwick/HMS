@@ -1,0 +1,86 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Job Vacancies - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Recruitment Management{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Open Vacancies</h3>
+            <p class="text-gray-500">Track open positions and hiring triggers</p>
+        </div>
+        <button
+            class="px-6 py-3 bg-[#6366F1] text-white font-bold rounded-xl shadow-lg hover:bg-[#4F46E5] transition-all transform hover:-translate-y-1">
+            <i class="bi bi-plus-lg mr-2"></i> Post New Role
+        </button>
+    </div>
+
+    <!-- Vacancies Table -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50/50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-8 py-5">Position</th>
+                        <th class="px-6 py-5">Department</th>
+                        <th class="px-6 py-5">Reason</th>
+                        <th class="px-6 py-5">Status</th>
+                        <th class="px-6 py-5">Date Posted</th>
+                        <th class="px-8 py-5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for vacancy in vacancies %}
+                    <tr class="hover:bg-gray-50/50 transition-colors group">
+                        <td class="px-8 py-5">
+                            <div class="font-bold text-gray-900 group-hover:text-[#6366F1] transition-colors">{{
+                                vacancy.position_name }}</div>
+                        </td>
+                        <td class="px-6 py-5 text-gray-600 font-medium">{{ vacancy.department }}</td>
+                        <td class="px-6 py-5 text-gray-500 text-sm">{{ vacancy.reason }}</td>
+                        <td class="px-6 py-5">
+                            <span
+                                class="px-3 py-1 rounded-full text-xs font-bold {% if vacancy.status == 'Open' %}bg-green-50 text-green-600{% else %}bg-gray-100 text-gray-600{% endif %}">
+                                {{ vacancy.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5 text-gray-400 text-sm">{{ vacancy.created_at[:10] }}</td>
+                        <td class="px-8 py-5 text-right">
+                            <div class="flex justify-end space-x-2">
+                                <button
+                                    class="p-2 text-gray-400 hover:text-[#6366F1] hover:bg-white rounded-lg transition-all">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button
+                                    class="px-4 py-2 bg-gray-50 text-[#6366F1] font-bold text-sm rounded-lg hover:bg-[#6366F1] hover:text-white transition-all">
+                                    View Applicants
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-8 py-20 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                    <i class="bi bi-briefcase text-4xl text-gray-300"></i>
+                                </div>
+                                <h4 class="text-lg font-bold text-gray-900">No active vacancies</h4>
+                                <p class="text-gray-500 max-w-xs mx-auto mt-2">There are currently no open positions
+                                    listed in the system.</p>
+                                <button
+                                    class="mt-6 px-6 py-2 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors">
+                                    Post First Vacancy
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
