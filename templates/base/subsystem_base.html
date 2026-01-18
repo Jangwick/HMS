@@ -144,28 +144,32 @@
 
                     <!-- HR3: Employee Management -->
                     {% elif blueprint_name == 'hr3' %}
-                    <a href="{{ url_for('hr3.list_employees') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.list_employees' }}">
+                    <a href="{{ url_for('hr3.user_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.user_list' }}">
                         <i class="bi bi-people mr-3"></i>
                         <span>Employees</span>
                     </a>
-                    <a href="{{ url_for('hr3.onboarding') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.onboarding' }}">
-                        <i class="bi bi-person-plus mr-3"></i>
-                        <span>Onboarding</span>
+                    <a href="{{ url_for('hr3.pending_approvals') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.pending_approvals' }}">
+                        <i class="bi bi-person-check mr-3"></i>
+                        <span>Approvals</span>
                     </a>
-                    <a href="{{ url_for('hr3.employee_analytics') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.employee_analytics' }}">
+                    <a href="#" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
                         <i class="bi bi-graph-up-arrow mr-3"></i>
                         <span>Analytics</span>
                     </a>
 
                     <!-- HR4: Compensation -->
                     {% elif blueprint_name == 'hr4' %}
-                    <a href="{{ url_for('hr4.compensation_dashboard') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.compensation_dashboard' }}">
+                    <a href="{{ url_for('hr4.compensation') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.compensation' }}">
                         <i class="bi bi-wallet2 mr-3"></i>
                         <span>Compensation</span>
                     </a>
                     <a href="{{ url_for('hr4.salary_grades') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.salary_grades' }}">
                         <i class="bi bi-layers mr-3"></i>
                         <span>Salary Grades</span>
+                    </a>
+                    <a href="{{ url_for('hr4.analytics') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.analytics' }}">
+                        <i class="bi bi-pie-chart mr-3"></i>
+                        <span>Analytics</span>
                     </a>
                     {% endif %}
 
