@@ -9,7 +9,7 @@ ct3_bp = Blueprint('ct3', __name__, template_folder='templates')
 
 # Subsystem configuration
 SUBSYSTEM_NAME = 'CT3 - Medical Records'
-ACCENT_COLOR = '[#10B981]'
+ACCENT_COLOR = '[#059669]'
 BLUEPRINT_NAME = 'ct3'
 
 @ct3_bp.route('/login', methods=['GET', 'POST'])

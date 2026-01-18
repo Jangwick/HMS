@@ -211,7 +211,8 @@ def user_list():
                            users=users, 
                            subsystem_name=SUBSYSTEM_NAME, 
                            accent_color=ACCENT_COLOR,
-                           subsystem_config=SUBSYSTEM_CONFIG)
+                           subsystem_config=SUBSYSTEM_CONFIG,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @hr3_bp.route('/admin/users/add', methods=['GET', 'POST'])
 @login_required
@@ -234,7 +235,8 @@ def add_user():
             return render_template('subsystems/hr/hr3/admin/user_form.html', 
                                    subsystem_name=SUBSYSTEM_NAME, 
                                    subsystem_config=SUBSYSTEM_CONFIG,
-                                   user=None)
+                                   user=None,
+                                   blueprint_name=BLUEPRINT_NAME)
         
         try:
             new_user = User.create(
@@ -271,7 +273,8 @@ def add_user():
     return render_template('subsystems/hr/hr3/admin/user_form.html', 
                            subsystem_name=SUBSYSTEM_NAME, 
                            subsystem_config=SUBSYSTEM_CONFIG,
-                           user=None)
+                           user=None,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @hr3_bp.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -340,7 +343,8 @@ def edit_user(user_id):
     return render_template('subsystems/hr/hr3/admin/user_form.html', 
                            subsystem_name=SUBSYSTEM_NAME, 
                            subsystem_config=SUBSYSTEM_CONFIG,
-                           user=user)
+                           user=user,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @hr3_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
 @login_required
@@ -390,7 +394,8 @@ def pending_approvals():
                           approved_count=approved_today,
                           rejected_count=rejected_today,
                           subsystem_name=SUBSYSTEM_NAME, 
-                          accent_color=ACCENT_COLOR)
+                          accent_color=ACCENT_COLOR,
+                          blueprint_name=BLUEPRINT_NAME)
 
 @hr3_bp.route('/admin/approvals/<int:user_id>/<action>')
 @login_required

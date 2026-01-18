@@ -9,7 +9,7 @@ fin3_bp = Blueprint('fin3', __name__, template_folder='templates')
 
 # Subsystem configuration
 SUBSYSTEM_NAME = 'FIN3 - Accounts Receivable'
-ACCENT_COLOR = '[#EF4444]'
+ACCENT_COLOR = '[#9333EA]'
 BLUEPRINT_NAME = 'fin3'
 
 @fin3_bp.route('/login', methods=['GET', 'POST'])

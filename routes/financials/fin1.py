@@ -8,8 +8,8 @@ from datetime import datetime
 fin1_bp = Blueprint('fin1', __name__, template_folder='templates')
 
 # Subsystem configuration
-SUBSYSTEM_NAME = 'FIN1 - General Ledger'
-ACCENT_COLOR = '[#EF4444]'
+SUBSYSTEM_NAME = 'FIN1 - Billing Management'
+ACCENT_COLOR = '[#8B5CF6]'
 BLUEPRINT_NAME = 'fin1'
 
 @fin1_bp.route('/login', methods=['GET', 'POST'])

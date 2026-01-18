@@ -8,8 +8,8 @@ from datetime import datetime
 ct2_bp = Blueprint('ct2', __name__, template_folder='templates')
 
 # Subsystem configuration
-SUBSYSTEM_NAME = 'CT2 - Clinical Operations'
-ACCENT_COLOR = '[#3B82F6]'
+SUBSYSTEM_NAME = 'CT2 - Pharmacy & Labs'
+ACCENT_COLOR = '[#14B8A6]'
 BLUEPRINT_NAME = 'ct2'
 
 @ct2_bp.route('/login', methods=['GET', 'POST'])
