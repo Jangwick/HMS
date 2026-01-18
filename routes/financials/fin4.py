@@ -142,13 +142,45 @@ def change_password():
 @fin4_bp.route('/dashboard')
 @login_required
 def dashboard():
+    cash_balance = 250000.00  # Placeholder
+    daily_inflow = 15000.00  # Placeholder
+    daily_outflow = 8500.00  # Placeholder
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/financials/fin4/dashboard.html', now=datetime.utcnow)
+    return render_template('subsystems/financials/fin4/dashboard.html', 
+                           now=datetime.utcnow,
+                           cash_balance=cash_balance,
+                           daily_inflow=daily_inflow,
+                           daily_outflow=daily_outflow,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@fin4_bp.route('/transactions')
+@login_required
+def transactions():
+    transactions = []  # Would fetch from database
+    return render_template('subsystems/financials/fin4/transactions.html',
+                           transactions=transactions,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@fin4_bp.route('/bank-accounts')
+@login_required
+def bank_accounts():
+    accounts = []  # Would fetch from database
+    return render_template('subsystems/financials/fin4/bank_accounts.html',
+                           accounts=accounts,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @fin4_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('fin4.login'))
+

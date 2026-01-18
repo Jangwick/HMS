@@ -1,0 +1,72 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Add Invoice - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Record Invoice{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+        <div class="bg-gradient-to-r from-[#EF4444] to-red-700 px-8 py-10 text-white">
+            <h3 class="text-3xl font-bold mb-2">Record Vendor Invoice</h3>
+            <p class="text-red-100">Enter invoice details for payment processing.</p>
+        </div>
+
+        <form method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Vendor</label>
+                    <input type="text" name="vendor" required
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] focus:bg-white transition-all outline-none"
+                        placeholder="Vendor name">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Invoice Number</label>
+                    <input type="text" name="invoice_number" required
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] focus:bg-white transition-all outline-none"
+                        placeholder="INV-0001">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Invoice Date</label>
+                    <input type="date" name="invoice_date" required
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] focus:bg-white transition-all outline-none">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Due Date</label>
+                    <input type="date" name="due_date" required
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] focus:bg-white transition-all outline-none">
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Amount</label>
+                <input type="number" name="amount" step="0.01" required
+                    class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] focus:bg-white transition-all outline-none"
+                    placeholder="0.00">
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Description</label>
+                <textarea name="description" rows="3"
+                    class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] focus:bg-white transition-all outline-none resize-none"
+                    placeholder="Invoice description..."></textarea>
+            </div>
+
+            <div class="pt-6 flex items-center justify-between">
+                <a href="{{ url_for('fin2.dashboard') }}"
+                    class="text-gray-500 font-bold hover:text-gray-700 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit"
+                    class="px-10 py-4 bg-[#EF4444] text-white font-bold rounded-2xl shadow-lg hover:bg-red-600 transition-all transform hover:-translate-y-1">
+                    Record Invoice
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

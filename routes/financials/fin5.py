@@ -142,13 +142,49 @@ def change_password():
 @fin5_bp.route('/dashboard')
 @login_required
 def dashboard():
+    reports_generated = 45  # Placeholder
+    pending_reports = 3  # Placeholder
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/financials/fin5/dashboard.html', now=datetime.utcnow)
+    return render_template('subsystems/financials/fin5/dashboard.html', 
+                           now=datetime.utcnow,
+                           reports_generated=reports_generated,
+                           pending_reports=pending_reports,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@fin5_bp.route('/reports')
+@login_required
+def reports_list():
+    reports = []  # Would fetch from database
+    return render_template('subsystems/financials/fin5/reports.html',
+                           reports=reports,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@fin5_bp.route('/reports/income-statement')
+@login_required
+def income_statement():
+    return render_template('subsystems/financials/fin5/income_statement.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@fin5_bp.route('/reports/balance-sheet')
+@login_required
+def balance_sheet():
+    return render_template('subsystems/financials/fin5/balance_sheet.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @fin5_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('fin5.login'))
+

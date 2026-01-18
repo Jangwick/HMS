@@ -1,0 +1,79 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}View Record - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Patient Medical Record{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Patient Header -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+        <div class="flex items-start justify-between">
+            <div class="flex items-center">
+                <div
+                    class="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#10B981] to-gray-800 flex items-center justify-center text-white text-3xl font-bold mr-6">
+                    {{ patient.first_name[0] | upper if patient.first_name else 'P' }}
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">{{ patient.first_name }} {{ patient.last_name }}</h2>
+                    <p class="text-gray-500">Patient ID: {{ patient.patient_id_alt }}</p>
+                    <div class="flex space-x-4 mt-2">
+                        <span class="text-sm text-gray-600"><i class="bi bi-calendar mr-1"></i> DOB: {{ patient.dob
+                            }}</span>
+                        <span class="text-sm text-gray-600"><i class="bi bi-gender-ambiguous mr-1"></i> {{
+                            patient.gender }}</span>
+                    </div>
+                </div>
+            </div>
+            <a href="{{ url_for('ct3.patient_records') }}"
+                class="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
+                <i class="bi bi-arrow-left mr-2"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Contact Information -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+        <h3 class="text-lg font-bold text-gray-900 mb-4">Contact Information</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <p class="text-sm text-gray-500">Phone</p>
+                <p class="font-medium text-gray-900">{{ patient.contact_number or 'Not provided' }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Address</p>
+                <p class="font-medium text-gray-900">{{ patient.address or 'Not provided' }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medical History -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+        <h3 class="text-lg font-bold text-gray-900 mb-4">Medical History</h3>
+        <div class="bg-gray-50 rounded-2xl p-6 text-center">
+            <i class="bi bi-file-earmark-medical text-4xl text-gray-300 mb-2"></i>
+            <p class="text-gray-500">No medical history records available.</p>
+            <button
+                class="mt-4 px-6 py-2 bg-[#10B981] text-white font-bold rounded-xl hover:bg-emerald-600 transition-colors">
+                <i class="bi bi-plus mr-2"></i> Add Medical Record
+            </button>
+        </div>
+    </div>
+
+    <!-- Insurance Information -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+        <h3 class="text-lg font-bold text-gray-900 mb-4">Insurance Information</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <p class="text-sm text-gray-500">Provider</p>
+                <p class="font-medium text-gray-900">{{ patient.insurance_info.provider if patient.insurance_info else
+                    'Not provided' }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Policy Number</p>
+                <p class="font-medium text-gray-900">{{ patient.insurance_info.policy_number if patient.insurance_info
+                    else 'Not provided' }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

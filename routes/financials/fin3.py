@@ -142,13 +142,45 @@ def change_password():
 @fin3_bp.route('/dashboard')
 @login_required
 def dashboard():
+    total_receivables = 89500.00  # Placeholder
+    overdue_count = 7  # Placeholder
+    collected_this_month = 45000.00  # Placeholder
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/financials/fin3/dashboard.html', now=datetime.utcnow)
+    return render_template('subsystems/financials/fin3/dashboard.html', 
+                           now=datetime.utcnow,
+                           total_receivables=total_receivables,
+                           overdue_count=overdue_count,
+                           collected_this_month=collected_this_month,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@fin3_bp.route('/receivables')
+@login_required
+def receivables_list():
+    receivables = []  # Would fetch from database
+    return render_template('subsystems/financials/fin3/receivables.html',
+                           receivables=receivables,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@fin3_bp.route('/collections')
+@login_required
+def collections():
+    collections = []  # Would fetch from database
+    return render_template('subsystems/financials/fin3/collections.html',
+                           collections=collections,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @fin3_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('fin3.login'))
+

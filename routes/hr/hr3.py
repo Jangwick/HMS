@@ -193,7 +193,10 @@ def dashboard():
     return render_template('subsystems/hr/hr3/dashboard.html', 
                           now=datetime.utcnow, 
                           active_count=active_count,
-                          pending_count=pending_count)
+                          pending_count=pending_count,
+                          subsystem_name=SUBSYSTEM_NAME,
+                          accent_color=ACCENT_COLOR,
+                          blueprint_name=BLUEPRINT_NAME)
 
 # Admin: User Management & Approvals
 @hr3_bp.route('/admin/users')

@@ -180,13 +180,59 @@ def change_password():
 @ct3_bp.route('/dashboard')
 @login_required
 def dashboard():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        patients_count = client.table('patients').select('id', count='exact').execute().count or 0
+        records_today = 8  # Placeholder
+    except:
+        patients_count = 0
+        records_today = 0
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/core_transaction/ct3/dashboard.html', now=datetime.utcnow)
+    return render_template('subsystems/core_transaction/ct3/dashboard.html', 
+                           now=datetime.utcnow,
+                           patients_count=patients_count,
+                           records_today=records_today,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct3_bp.route('/records')
+@login_required
+def patient_records():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    response = client.table('patients').select('*').execute()
+    patients = response.data if response.data else []
+    
+    return render_template('subsystems/core_transaction/ct3/patient_records.html',
+                           patients=patients,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct3_bp.route('/records/<int:patient_id>')
+@login_required
+def view_record(patient_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    patient = client.table('patients').select('*').eq('id', patient_id).single().execute()
+    
+    return render_template('subsystems/core_transaction/ct3/view_record.html',
+                           patient=patient.data if patient.data else {},
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @ct3_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('ct3.login'))
+

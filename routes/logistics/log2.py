@@ -180,13 +180,57 @@ def change_password():
 @log2_bp.route('/dashboard')
 @login_required
 def dashboard():
+    pending_orders = 12  # Placeholder
+    approved_orders = 45  # Placeholder
+    total_vendors = 28  # Placeholder
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/logistics/log2/dashboard.html', now=datetime.utcnow)
+    return render_template('subsystems/logistics/log2/dashboard.html', 
+                           now=datetime.utcnow,
+                           pending_orders=pending_orders,
+                           approved_orders=approved_orders,
+                           total_vendors=total_vendors,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log2_bp.route('/orders')
+@login_required
+def purchase_orders():
+    orders = []  # Would fetch from database
+    return render_template('subsystems/logistics/log2/purchase_orders.html',
+                           orders=orders,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log2_bp.route('/orders/create', methods=['GET', 'POST'])
+@login_required
+def create_order():
+    if request.method == 'POST':
+        flash('Purchase order created successfully!', 'success')
+        return redirect(url_for('log2.purchase_orders'))
+    
+    return render_template('subsystems/logistics/log2/create_order.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log2_bp.route('/vendors')
+@login_required
+def vendors():
+    vendors = []  # Would fetch from database
+    return render_template('subsystems/logistics/log2/vendors.html',
+                           vendors=vendors,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @log2_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('log2.login'))
+

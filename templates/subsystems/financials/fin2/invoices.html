@@ -1,0 +1,35 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Vendor Invoices - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Vendor Invoices{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Vendor Invoices</h3>
+            <p class="text-gray-500">Track and manage vendor invoices for payment</p>
+        </div>
+        <div class="flex space-x-3">
+            <a href="{{ url_for('fin2.add_invoice') }}"
+                class="px-6 py-2 bg-[#EF4444] text-white font-bold rounded-xl shadow-lg hover:bg-red-600 transition-all">
+                <i class="bi bi-plus-lg mr-2"></i> Add Invoice
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-12 text-center">
+            <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="bi bi-file-text text-4xl text-gray-300"></i>
+            </div>
+            <h4 class="text-lg font-bold text-gray-900">No invoices found</h4>
+            <p class="text-gray-500 mt-2">Record your first vendor invoice to get started.</p>
+            <a href="{{ url_for('fin2.add_invoice') }}"
+                class="mt-6 inline-block px-6 py-2 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors">
+                Add Invoice
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

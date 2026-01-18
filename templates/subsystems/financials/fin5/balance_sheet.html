@@ -1,0 +1,92 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Balance Sheet - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Balance Sheet{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Balance Sheet</h3>
+            <p class="text-gray-500">Assets, liabilities, and equity summary</p>
+        </div>
+        <div class="flex space-x-3">
+            <select
+                class="px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#EF4444] outline-none">
+                <option>As of January 18, 2026</option>
+                <option>As of December 31, 2025</option>
+            </select>
+            <button
+                class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                <i class="bi bi-download mr-2"></i> Export PDF
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Assets -->
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            <h4 class="text-lg font-bold text-gray-900 mb-6 pb-4 border-b border-gray-100">Assets</h4>
+
+            <p class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Current Assets</p>
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Cash & Equivalents</span>
+                    <span class="font-bold text-gray-900">$0.00</span>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Accounts Receivable</span>
+                    <span class="font-bold text-gray-900">$0.00</span>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Inventory</span>
+                    <span class="font-bold text-gray-900">$0.00</span>
+                </div>
+            </div>
+
+            <p class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Fixed Assets</p>
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Property & Equipment</span>
+                    <span class="font-bold text-gray-900">$0.00</span>
+                </div>
+            </div>
+
+            <div class="flex justify-between py-3 border-t border-gray-100 font-bold text-lg">
+                <span class="text-gray-900">Total Assets</span>
+                <span class="text-blue-600">$0.00</span>
+            </div>
+        </div>
+
+        <!-- Liabilities & Equity -->
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            <h4 class="text-lg font-bold text-gray-900 mb-6 pb-4 border-b border-gray-100">Liabilities & Equity</h4>
+
+            <p class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Liabilities</p>
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Accounts Payable</span>
+                    <span class="font-bold text-gray-900">$0.00</span>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Accrued Expenses</span>
+                    <span class="font-bold text-gray-900">$0.00</span>
+                </div>
+            </div>
+
+            <p class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Equity</p>
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Retained Earnings</span>
+                    <span class="font-bold text-gray-900">$0.00</span>
+                </div>
+            </div>
+
+            <div class="flex justify-between py-3 border-t border-gray-100 font-bold text-lg">
+                <span class="text-gray-900">Total Liabilities & Equity</span>
+                <span class="text-blue-600">$0.00</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

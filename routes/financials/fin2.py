@@ -167,13 +167,57 @@ def change_password():
 @fin2_bp.route('/dashboard')
 @login_required
 def dashboard():
+    total_payables = 125000.00  # Placeholder
+    pending_invoices = 18  # Placeholder
+    due_this_week = 5  # Placeholder
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/financials/fin2/dashboard.html', now=datetime.utcnow)
+    return render_template('subsystems/financials/fin2/dashboard.html', 
+                           now=datetime.utcnow,
+                           total_payables=total_payables,
+                           pending_invoices=pending_invoices,
+                           due_this_week=due_this_week,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@fin2_bp.route('/invoices')
+@login_required
+def vendor_invoices():
+    invoices = []  # Would fetch from database
+    return render_template('subsystems/financials/fin2/invoices.html',
+                           invoices=invoices,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@fin2_bp.route('/invoices/add', methods=['GET', 'POST'])
+@login_required
+def add_invoice():
+    if request.method == 'POST':
+        flash('Invoice recorded successfully!', 'success')
+        return redirect(url_for('fin2.vendor_invoices'))
+    
+    return render_template('subsystems/financials/fin2/add_invoice.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@fin2_bp.route('/payments')
+@login_required
+def payments():
+    payments = []  # Would fetch from database
+    return render_template('subsystems/financials/fin2/payments.html',
+                           payments=payments,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @fin2_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('fin2.login'))
+

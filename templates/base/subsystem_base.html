@@ -113,6 +113,31 @@
                     <i class="bi bi-people text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
                     Applicants
                 </a>
+                {% elif blueprint_name == 'hr2' %}
+                <a href="{{ url_for('hr2.payroll_list') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr2.payroll_list' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i
+                        class="bi bi-cash-stack text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Payroll
+                </a>
+                <a href="{{ url_for('hr2.process_payroll') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr2.process_payroll' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i
+                        class="bi bi-calculator text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Process Payroll
+                </a>
+                {% elif blueprint_name == 'hr3' %}
+                <a href="{{ url_for('hr3.user_list') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr3.user_list' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-people text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    User Directory
+                </a>
+                <a href="{{ url_for('hr3.pending_approvals') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr3.pending_approvals' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i
+                        class="bi bi-check2-square text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Pending Approvals
+                </a>
                 {% elif blueprint_name == 'ct1' %}
                 <a href="{{ url_for('ct1.register_patient') }}"
                     class="flex items-center px-4 py-3 {% if request.endpoint == 'ct1.register_patient' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
@@ -142,18 +167,82 @@
                     <i class="bi bi-pills text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
                     Pharmacy
                 </a>
+                {% elif blueprint_name == 'ct3' %}
+                <a href="{{ url_for('ct3.patient_records') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'ct3.patient_records' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i
+                        class="bi bi-folder2-open text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Patient Records
+                </a>
                 {% elif blueprint_name == 'log1' %}
                 <a href="{{ url_for('log1.list_inventory') }}"
                     class="flex items-center px-4 py-3 {% if request.endpoint == 'log1.list_inventory' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
                     <i class="bi bi-boxes text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
                     Inventory
                 </a>
+                {% elif blueprint_name == 'log2' %}
+                <a href="{{ url_for('log2.purchase_orders') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'log2.purchase_orders' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-cart text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Purchase Orders
+                </a>
+                <a href="{{ url_for('log2.vendors') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'log2.vendors' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-building text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Vendors
+                </a>
                 {% elif blueprint_name == 'fin1' %}
                 <a href="{{ url_for('fin1.list_billing') }}"
                     class="flex items-center px-4 py-3 {% if request.endpoint == 'fin1.list_billing' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i
-                        class="bi bi-file-invoice-dollar text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    <i class="bi bi-receipt text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
                     Billing
+                </a>
+                {% elif blueprint_name == 'fin2' %}
+                <a href="{{ url_for('fin2.vendor_invoices') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin2.vendor_invoices' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-file-text text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Vendor Invoices
+                </a>
+                <a href="{{ url_for('fin2.payments') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin2.payments' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i
+                        class="bi bi-cash-stack text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Payments
+                </a>
+                {% elif blueprint_name == 'fin3' %}
+                <a href="{{ url_for('fin3.receivables_list') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin3.receivables_list' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-list-ul text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Receivables
+                </a>
+                <a href="{{ url_for('fin3.collections') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin3.collections' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-cash-coin text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Collections
+                </a>
+                {% elif blueprint_name == 'fin4' %}
+                <a href="{{ url_for('fin4.transactions') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin4.transactions' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i
+                        class="bi bi-arrow-left-right text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Transactions
+                </a>
+                <a href="{{ url_for('fin4.bank_accounts') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin4.bank_accounts' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-bank text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Bank Accounts
+                </a>
+                {% elif blueprint_name == 'fin5' %}
+                <a href="{{ url_for('fin5.reports_list') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin5.reports_list' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i
+                        class="bi bi-file-earmark-text text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Reports
+                </a>
+                <a href="{{ url_for('fin5.income_statement') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin5.income_statement' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-graph-up text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Income Statement
                 </a>
                 {% endif %}
                 {% endblock %}

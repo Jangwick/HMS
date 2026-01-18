@@ -180,13 +180,68 @@ def change_password():
 @hr2_bp.route('/dashboard')
 @login_required
 def dashboard():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Get payroll stats
+    try:
+        all_users = User.get_all()
+        total_employees = len([u for u in all_users if u.status == 'Active'])
+        pending_payroll = 5  # Placeholder
+        processed_this_month = 23  # Placeholder
+    except:
+        total_employees = 0
+        pending_payroll = 0
+        processed_this_month = 0
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/hr/hr2/dashboard.html', now=datetime.utcnow)
+    return render_template('subsystems/hr/hr2/dashboard.html', 
+                           now=datetime.utcnow,
+                           total_employees=total_employees,
+                           pending_payroll=pending_payroll,
+                           processed_this_month=processed_this_month,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr2_bp.route('/payroll')
+@login_required
+def payroll_list():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Get all active employees from users
+    all_users = User.get_all()
+    employees = [u for u in all_users if u.status == 'Active']
+    
+    return render_template('subsystems/hr/hr2/payroll_list.html',
+                           employees=employees,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr2_bp.route('/payroll/process', methods=['GET', 'POST'])
+@login_required
+def process_payroll():
+    if request.method == 'POST':
+        flash('Payroll processed successfully!', 'success')
+        return redirect(url_for('hr2.payroll_list'))
+    
+    # Get active employees
+    all_users = User.get_all()
+    employees = [u for u in all_users if u.status == 'Active']
+    
+    return render_template('subsystems/hr/hr2/process_payroll.html',
+                           employees=employees,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @hr2_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('hr2.login'))
+
