@@ -9,7 +9,7 @@ fin4_bp = Blueprint('fin4', __name__, template_folder='templates')
 
 # Subsystem configuration
 SUBSYSTEM_NAME = 'FIN4 - Cash Management'
-ACCENT_COLOR = '[#7C3AED]'
+ACCENT_COLOR = '#7C3AED'
 BLUEPRINT_NAME = 'fin4'
 
 @fin4_bp.route('/login', methods=['GET', 'POST'])

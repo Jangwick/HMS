@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical History Report - {{ patient.first_name }} {{ patient.last_name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { background: white; }
+            .print-card { border: none !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto space-y-8 bg-white p-12 shadow-xl rounded-3xl print-card">
+        <!-- Report Header -->
+        <div class="flex justify-between items-start border-b-2 border-emerald-500 pb-8">
+            <div>
+                <h1 class="text-3xl font-black text-gray-900 uppercase tracking-tighter">Medical Report</h1>
+                <p class="text-gray-500 font-medium">HMS - Core Transaction (Medical Records)</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-gray-400">Date Generated</p>
+                <p class="font-bold text-gray-900">{{ now.strftime('%B %d, %Y') if now else 'January 18, 2026' }}</p>
+            </div>
+        </div>
+
+        <!-- Patient Info -->
+        <div class="grid grid-cols-2 gap-12 py-4">
+            <div>
+                <h2 class="text-xs font-bold text-gray-400 uppercase mb-4 tracking-widest">Patient Details</h2>
+                    <div class="flex flex-wrap gap-4">
+                        <p class="text-xl font-bold text-gray-900">{{ patient.first_name }} {{ patient.last_name }}</p>
+                        <span class="px-3 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-full border border-red-100 items-center flex">
+                            Allergies: {{ patient.allergies or 'None Known' }}
+                        </span>
+                    </div>
+                    <p class="text-gray-600">ID: {{ patient.patient_id_alt }}</p>
+                    <p class="text-gray-600">DOB: {{ patient.dob }}</p>
+                    <p class="text-gray-600">Gender: {{ patient.gender }}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <h2 class="text-xs font-bold text-gray-400 uppercase mb-4 tracking-widest">Contact Information</h2>
+                <div class="space-y-2 text-gray-600 font-medium">
+                    <p>{{ patient.contact_number }}</p>
+                    <p>{{ patient.address }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Records -->
+        <div class="space-y-8">
+            <h2 class="text-xs font-bold text-gray-400 uppercase border-b border-gray-100 pb-4 tracking-widest">Electronic Health History</h2>
+            
+            {% for record in history %}
+            <div class="pb-8 border-b border-gray-50 last:border-0">
+                <div class="flex justify-between mb-4">
+                    <span class="text-lg font-bold text-emerald-600">Entry: {{ record.visit_date[:10] }}</span>
+                    <span class="text-gray-400">Attending: Dr. {{ record.doctor_name }}</span>
+                </div>
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="flex space-x-8 bg-gray-50/50 p-2 rounded-lg">
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Temperature</p>
+                            <p class="text-sm font-bold">{{ record.vitals.temp or '--' }}°C</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Blood Pressure</p>
+                            <p class="text-sm font-bold">{{ record.vitals.bp or '--' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Weight</p>
+                            <p class="text-sm font-bold">{{ record.vitals.weight or '--' }}kg</p>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase">Diagnosis</p>
+                        <p class="text-gray-900 font-bold text-lg">{{ record.diagnosis }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase">Treatment Plan</p>
+                        <p class="text-gray-800">{{ record.treatment or 'N/A' }}</p>
+                    </div>
+                    {% if record.notes %}
+                    <div class="bg-gray-50 p-4 rounded-xl">
+                        <p class="text-xs font-bold text-gray-400 uppercase mb-2">Internal Notes</p>
+                        <p class="text-gray-600 text-sm italic">{{ record.notes }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Footer -->
+        <div class="pt-8 border-t border-gray-100 text-center">
+            <p class="text-xs text-gray-400 italic">This is a computer-generated medical record from the HMS Patient Access System.</p>
+        </div>
+
+        <div class="no-print mt-12 flex justify-center space-x-4">
+            <button onclick="window.print()" class="px-8 py-3 bg-[#10B981] text-white font-bold rounded-xl shadow-lg hover:bg-[#059669] transition-all">
+                <i class="bi bi-printer mr-2"></i> Print Now
+            </button>
+            <button onclick="window.close()" class="px-8 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all">
+                Close Window
+            </button>
+        </div>
+    </div>
+</body>
+</html>

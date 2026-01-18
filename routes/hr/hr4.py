@@ -9,7 +9,7 @@ hr4_bp = Blueprint('hr4', __name__)
 
 # Subsystem configuration
 SUBSYSTEM_NAME = 'HR4 - Compensation & Analytics'
-ACCENT_COLOR = '[#6366F1]'
+ACCENT_COLOR = '#6366F1'
 BLUEPRINT_NAME = 'hr4'
 
 @hr4_bp.route('/login', methods=['GET', 'POST'])

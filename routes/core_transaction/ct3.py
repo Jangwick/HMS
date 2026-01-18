@@ -8,8 +8,8 @@ from datetime import datetime
 ct3_bp = Blueprint('ct3', __name__, template_folder='templates')
 
 # Subsystem configuration
-SUBSYSTEM_NAME = 'CT3 - Medical Records'
-ACCENT_COLOR = '[#059669]'
+SUBSYSTEM_NAME = 'CT3 - Admin & Finance'
+ACCENT_COLOR = '#059669'
 BLUEPRINT_NAME = 'ct3'
 
 @ct3_bp.route('/login', methods=['GET', 'POST'])
@@ -157,7 +157,7 @@ def change_password():
             flash('New passwords do not match.', 'danger')
             return render_template('shared/change_password.html',
                 subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR,
-                blueprint_name=BLUEPRINT_NAME, is_expired=is_expired)
+                blueprint_name=BLUEBlueprint_NAME, is_expired=is_expired)
         
         try:
             user.set_password(new_password)
@@ -185,16 +185,24 @@ def dashboard():
     
     try:
         patients_count = client.table('patients').select('id', count='exact').execute().count or 0
+        billing_total = client.table('billing_records').select('total_amount').execute()
+        revenue = sum(float(b['total_amount']) for b in billing_total.data) if billing_total.data else 0.0
         
         # Get records created today
         today = datetime.utcnow().strftime('%Y-%m-%d')
         response = client.table('medical_records').select('id', count='exact').gte('visit_date', today).execute()
         records_today = response.count if response.count is not None else 0
         
+        # Get recent activity
+        activity_resp = client.table('medical_records').select('*, patients(first_name, last_name)').order('visit_date', desc=True).limit(5).execute()
+        recent_activity = activity_resp.data if activity_resp.data else []
+        
     except Exception as e:
         print(f"Error fetching stats: {e}")
         patients_count = 0
+        revenue = 0.0
         records_today = 0
+        recent_activity = []
     
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
@@ -202,7 +210,114 @@ def dashboard():
     return render_template('subsystems/core_transaction/ct3/dashboard.html', 
                            now=datetime.utcnow,
                            patients_count=patients_count,
+                           revenue=revenue,
                            records_today=records_today,
+                           recent_activity=recent_activity,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct3_bp.route('/print/<int:patient_id>')
+@login_required
+def print_record(patient_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
+        patient = patient_resp.data
+        
+        history_resp = client.table('medical_records').select('*').eq('patient_id', patient_id).order('visit_date', desc=True).execute()
+        history = history_resp.data
+        
+        for record in history:
+            if record.get('doctor_id'):
+                doc = client.table('users').select('username').eq('id', record['doctor_id']).single().execute()
+                record['doctor_name'] = doc.data['username'] if doc.data else 'Unknown'
+            else:
+                record['doctor_name'] = 'Unknown'
+                
+        return render_template('subsystems/core_transaction/ct3/print_record.html', 
+                               patient=patient, history=history, now=datetime.utcnow())
+    except Exception as e:
+        flash(f'Error generating print view: {str(e)}', 'danger')
+        return redirect(url_for('ct3.patient_records'))
+
+@ct3_bp.route('/billing')
+@login_required
+def billing():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        response = client.table('billing_records').select('*, patients(first_name, last_name)').order('created_at', desc=True).execute()
+        bills = response.data if response.data else []
+        # Fetch patients for the modal
+        patients_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt').execute()
+        patients_list = patients_resp.data if patients_resp.data else []
+    except Exception as e:
+        flash(f'Error fetching billing data: {str(e)}', 'danger')
+        bills = []
+        patients_list = []
+        
+    return render_template('subsystems/core_transaction/ct3/billing.html', 
+                           bills=bills,
+                           patients_list=patients_list,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct3_bp.route('/billing/create', methods=['POST'])
+@login_required
+def create_bill():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        patient_id = request.form.get('patient_id')
+        amount = request.form.get('amount')
+        
+        data = {
+            'patient_id': patient_id,
+            'total_amount': amount,
+            'status': 'Unpaid'
+        }
+        client.table('billing_records').insert(data).execute()
+        flash('Bill generated successfully.', 'success')
+    except Exception as e:
+        flash(f'Error creating bill: {str(e)}', 'danger')
+        
+    return redirect(url_for('ct3.billing'))
+
+@ct3_bp.route('/billing/pay/<int:bill_id>', methods=['POST'])
+@login_required
+def pay_bill(bill_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('billing_records').update({'status': 'Paid'}).eq('id', bill_id).execute()
+        flash('Payment recorded successfully.', 'success')
+    except Exception as e:
+        flash(f'Error recording payment: {str(e)}', 'danger')
+        
+    return redirect(url_for('ct3.billing'))
+
+@ct3_bp.route('/admin/logs')
+@login_required
+def security_logs():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetching recent user actions or authentication attempts
+        response = client.table('users').select('username, last_login, subsystem').order('last_login', desc=True).limit(20).execute()
+        logs = response.data if response.data else []
+    except Exception as e:
+        logs = []
+        
+    return render_template('subsystems/core_transaction/ct3/security_logs.html',
+                           logs=logs,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -213,8 +328,15 @@ def patient_records():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
+    search_query = request.args.get('search', '')
+    
     try:
-        response = client.table('patients').select('*').order('last_name').execute()
+        query = client.table('patients').select('*')
+        if search_query:
+            # Simple search by name or ID
+            query = query.or_(f"first_name.ilike.%{search_query}%,last_name.ilike.%{search_query}%,patient_id_alt.ilike.%{search_query}%")
+        
+        response = query.order('last_name').execute()
         patients = response.data if response.data else []
     except Exception as e:
         print(f"Error fetching patients: {e}")
@@ -222,6 +344,7 @@ def patient_records():
     
     return render_template('subsystems/core_transaction/ct3/patient_records.html',
                            patients=patients,
+                           search_query=search_query,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -261,6 +384,79 @@ def view_record(patient_id):
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+@ct3_bp.route('/records/<int:patient_id>/add', methods=['POST'])
+@login_required
+def add_medical_record(patient_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        vitals = {
+            'temp': request.form.get('temp'),
+            'bp': request.form.get('bp'),
+            'weight': request.form.get('weight')
+        }
+        data = {
+            'patient_id': patient_id,
+            'doctor_id': current_user.id,
+            'diagnosis': request.form.get('diagnosis'),
+            'treatment': request.form.get('treatment'),
+            'notes': request.form.get('notes'),
+            'vitals': vitals,
+            'visit_date': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+        }
+        client.table('medical_records').insert(data).execute()
+        
+        # Also update allergies if provided
+        allergies = request.form.get('allergies')
+        if allergies:
+            client.table('patients').update({'allergies': allergies}).eq('id', patient_id).execute()
+            
+        flash('Medical record added successfully.', 'success')
+    except Exception as e:
+        flash(f'Error adding record: {str(e)}', 'danger')
+    
+    return redirect(url_for('ct3.view_record', patient_id=patient_id))
+
+@ct3_bp.route('/records/<int:patient_id>/edit/<int:record_id>', methods=['POST'])
+@login_required
+def edit_medical_record(patient_id, record_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        vitals = {
+            'temp': request.form.get('temp'),
+            'bp': request.form.get('bp'),
+            'weight': request.form.get('weight')
+        }
+        data = {
+            'diagnosis': request.form.get('diagnosis'),
+            'treatment': request.form.get('treatment'),
+            'notes': request.form.get('notes'),
+            'vitals': vitals
+        }
+        client.table('medical_records').update(data).eq('id', record_id).execute()
+        flash('Record updated successfully.', 'success')
+    except Exception as e:
+        flash(f'Error updating record: {str(e)}', 'danger')
+    
+    return redirect(url_for('ct3.view_record', patient_id=patient_id))
+
+@ct3_bp.route('/records/<int:patient_id>/delete/<int:record_id>', methods=['POST'])
+@login_required
+def delete_medical_record(patient_id, record_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('medical_records').delete().eq('id', record_id).execute()
+        flash('Record removed from history.', 'info')
+    except Exception as e:
+        flash(f'Error deleting record: {str(e)}', 'danger')
+    
+    return redirect(url_for('ct3.view_record', patient_id=patient_id))
 
 @ct3_bp.route('/settings', methods=['GET', 'POST'])
 @login_required

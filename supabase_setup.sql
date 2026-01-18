@@ -234,6 +234,23 @@ CREATE TABLE IF NOT EXISTS prescriptions (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- CT3: Medical Records
+CREATE TABLE IF NOT EXISTS medical_records (
+    id SERIAL PRIMARY KEY,
+    patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+    doctor_id INTEGER REFERENCES users(id),
+    visit_date TIMESTAMP DEFAULT NOW(),
+    diagnosis TEXT NOT NULL,
+    treatment TEXT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- RLS for Medical Records
+ALTER TABLE IF EXISTS medical_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on medical_records" ON medical_records;
+CREATE POLICY "Allow all on medical_records" ON medical_records FOR ALL USING (true) WITH CHECK (true);
+
 -- CT3: Bed Management
 CREATE TABLE IF NOT EXISTS beds (
     id SERIAL PRIMARY KEY,
@@ -354,3 +371,19 @@ CREATE POLICY "Allow all on attendance_logs" ON attendance_logs FOR ALL USING (t
 
 ALTER TABLE IF EXISTS leave_requests ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all on leave_requests" ON leave_requests FOR ALL USING (true) WITH CHECK (true);
+
+-- Ensure patients has allergies column
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='patients' AND column_name='allergies') THEN
+        ALTER TABLE patients ADD COLUMN allergies TEXT DEFAULT 'None known';
+    END IF;
+END $$;
+
+-- Update medical_records with vitals
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='medical_records' AND column_name='vitals') THEN
+        ALTER TABLE medical_records ADD COLUMN vitals JSONB DEFAULT '{}'::jsonb;
+    END IF;
+END $$;

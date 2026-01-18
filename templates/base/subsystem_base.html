@@ -217,11 +217,25 @@
                         <span>Dispense</span>
                     </a>
 
-                    <!-- CT3: Patient Records -->
+                    <!-- CT3: Admin & Finance -->
                     {% elif blueprint_name == 'ct3' %}
-                    <a href="{{ url_for('ct3.patient_records') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct3.patient_records' }}">
+                    <a href="{{ url_for('ct3.patient_records') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint.startswith('ct3.patient_records') or request.endpoint == 'ct3.view_record' }}">
                         <i class="bi bi-file-medical mr-3"></i>
-                        <span>Medical Records</span>
+                        <span>Health Records (EMRS)</span>
+                    </a>
+                    <a href="{{ url_for('ct3.billing') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.billing' }}">
+                        <i class="bi bi-wallet2 mr-3"></i>
+                        <span>Transactional Billing</span>
+                    </a>
+                    <a href="{{ url_for('ct3.security_logs') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.security_logs' }}">
+                        <i class="bi bi-shield-check mr-3"></i>
+                        <span>Security Admin</span>
+                    </a>
+
+                    <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Quick Actions</div>
+                    <a href="{{ url_for('ct3.patient_records', focus='search') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
+                        <i class="bi bi-search mr-3"></i>
+                        <span>Search Patient</span>
                     </a>
                     {% endif %}
 

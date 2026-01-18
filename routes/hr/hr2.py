@@ -9,7 +9,7 @@ hr2_bp = Blueprint('hr2', __name__)
 
 # Subsystem configuration
 SUBSYSTEM_NAME = 'HR2 - Payroll Management'
-ACCENT_COLOR = '[#6366F1]'
+ACCENT_COLOR = '#6366F1'
 BLUEPRINT_NAME = 'hr2'
 
 @hr2_bp.route('/login', methods=['GET', 'POST'])

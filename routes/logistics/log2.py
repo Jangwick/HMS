@@ -9,7 +9,7 @@ log2_bp = Blueprint('log2', __name__, template_folder='templates')
 
 # Subsystem configuration
 SUBSYSTEM_NAME = 'LOG2 - Procurement'
-ACCENT_COLOR = '[#F97316]'
+ACCENT_COLOR = '#F97316'
 BLUEPRINT_NAME = 'log2'
 
 @log2_bp.route('/login', methods=['GET', 'POST'])

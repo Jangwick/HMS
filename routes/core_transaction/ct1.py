@@ -9,7 +9,7 @@ ct1_bp = Blueprint('ct1', __name__, template_folder='templates')
 
 # Subsystem configuration
 SUBSYSTEM_NAME = 'CT1 - Patient Access'
-ACCENT_COLOR = '[#10B981]'
+ACCENT_COLOR = '#10B981'
 BLUEPRINT_NAME = 'ct1'
 
 @ct1_bp.route('/login', methods=['GET', 'POST'])
