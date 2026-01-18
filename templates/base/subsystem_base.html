@@ -112,10 +112,6 @@
                         <i class="bi bi-people mr-3"></i>
                         <span>Applicants</span>
                     </a>
-                    <a href="{{ url_for('hr1.add_applicant') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.add_applicant' }}">
-                        <i class="bi bi-person-plus mr-3"></i>
-                        <span>Add Applicant</span>
-                    </a>
 
                     <!-- HR2: Payroll -->
                     {% elif blueprint_name == 'hr2' %}
