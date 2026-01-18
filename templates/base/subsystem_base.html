@@ -91,194 +91,230 @@
                 </div>
             </div>
 
-            <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-2">
-                <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Main Menu</p>
-
-                <a href="{{ url_for(blueprint_name + '.dashboard') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == blueprint_name + '.dashboard' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-speedometer2 text-xl mr-3 group-hover:scale-110 transition-transform"></i>
-                    Dashboard
+            <!-- Sidebar Menu -->
+            <nav class="mt-6 flex-1 overflow-y-auto">
+                <a href="{{ url_for(blueprint_name + '.dashboard') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint.endswith('.dashboard') }}">
+                    <i class="bi bi-grid mr-3"></i>
+                    <span>Dashboard</span>
                 </a>
 
-                {% block sidebar_menu %}
-                <!-- Subsystem specific links will be injected here -->
-                {% if blueprint_name == 'hr1' %}
-                <a href="{{ url_for('hr1.list_vacancies') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr1.list_vacancies' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-briefcase text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Job Vacancies
-                </a>
-                <a href="{{ url_for('hr1.list_applicants') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr1.list_applicants' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-people text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Applicants
-                </a>
-                {% elif blueprint_name == 'hr2' %}
-                <a href="{{ url_for('hr2.payroll_list') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr2.payroll_list' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i
-                        class="bi bi-cash-stack text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Payroll
-                </a>
-                <a href="{{ url_for('hr2.process_payroll') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr2.process_payroll' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i
-                        class="bi bi-calculator text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Process Payroll
-                </a>
-                {% elif blueprint_name == 'hr3' %}
-                <a href="{{ url_for('hr3.user_list') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr3.user_list' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-people-fill text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    User Management
-                </a>
-                <a href="{{ url_for('hr3.pending_approvals') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr3.pending_approvals' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-person-check text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Approvals
-                </a>
-                {% elif blueprint_name == 'hr4' %}
-                <a href="{{ url_for('hr4.compensation') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr4.compensation' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-wallet2 text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Compensation
-                </a>
-                <a href="{{ url_for('hr4.salary_grades') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr4.salary_grades' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-bar-chart-steps text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Salary Grades
-                </a>
-                <a href="{{ url_for('hr4.analytics') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr4.analytics' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-pie-chart text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    HR Analytics
-                </a>
-                {% elif blueprint_name == 'ct1' %}
-                <a href="{{ url_for('ct1.search_patients') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'ct1.search_patients' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-search text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Search Directory
-                </a>
-                <a href="{{ url_for('ct1.book_appointment') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'ct1.book_appointment' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i
-                        class="bi bi-calendar-plus text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Book Appointment
-                </a>
-                {% elif blueprint_name == 'ct2' %}
-                <a href="{{ url_for('ct2.lab_orders') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'ct2.lab_orders' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-flask text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Lab Orders
-                </a>
-                <a href="{{ url_for('ct2.pharmacy_inventory') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'ct2.pharmacy_inventory' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-pills text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Pharmacy
-                </a>
-                {% elif blueprint_name == 'ct3' %}
-                <a href="{{ url_for('ct3.patient_records') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'ct3.patient_records' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i
-                        class="bi bi-folder2-open text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Patient Records
-                </a>
-                {% elif blueprint_name == 'log1' %}
-                <a href="{{ url_for('log1.list_inventory') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'log1.list_inventory' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-boxes text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Inventory
-                </a>
-                {% elif blueprint_name == 'log2' %}
-                <a href="{{ url_for('log2.purchase_orders') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'log2.purchase_orders' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-cart text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Purchase Orders
-                </a>
-                <a href="{{ url_for('log2.vendors') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'log2.vendors' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-building text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Vendors
-                </a>
-                {% elif blueprint_name == 'fin1' %}
-                <a href="{{ url_for('fin1.list_billing') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin1.list_billing' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-receipt text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Billing
-                </a>
-                {% elif blueprint_name == 'fin2' %}
-                <a href="{{ url_for('fin2.vendor_invoices') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin2.vendor_invoices' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-file-text text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Vendor Invoices
-                </a>
-                <a href="{{ url_for('fin2.payments') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin2.payments' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i
-                        class="bi bi-cash-stack text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Payments
-                </a>
-                {% elif blueprint_name == 'fin3' %}
-                <a href="{{ url_for('fin3.receivables_list') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin3.receivables_list' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-list-ul text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Receivables
-                </a>
-                <a href="{{ url_for('fin3.collections') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin3.collections' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-cash-coin text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Collections
-                </a>
-                {% elif blueprint_name == 'fin4' %}
-                <a href="{{ url_for('fin4.transactions') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin4.transactions' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i
-                        class="bi bi-arrow-left-right text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Transactions
-                </a>
-                <a href="{{ url_for('fin4.bank_accounts') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin4.bank_accounts' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-bank text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Bank Accounts
-                </a>
-                {% elif blueprint_name == 'fin5' %}
-                <a href="{{ url_for('fin5.reports_list') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin5.reports_list' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i
-                        class="bi bi-file-earmark-text text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Reports
-                </a>
-                <a href="{{ url_for('fin5.income_statement') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'fin5.income_statement' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-graph-up text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Income Statement
-                </a>
+                <div class="my-4 mx-6 border-t border-gray-100"></div>
+
+                <!-- HR Subsystems -->
+                {% if blueprint_name.startswith('hr') %}
+                    <!-- HR1: Recruitment -->
+                    {% if blueprint_name == 'hr1' %}
+                    <a href="{{ url_for('hr1.list_vacancies') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.list_vacancies' }}">
+                        <i class="bi bi-briefcase mr-3"></i>
+                        <span>Vacancies</span>
+                    </a>
+                    <a href="{{ url_for('hr1.list_applicants') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.list_applicants' }}">
+                        <i class="bi bi-people mr-3"></i>
+                        <span>Applicants</span>
+                    </a>
+                    <a href="{{ url_for('hr1.add_applicant') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.add_applicant' }}">
+                        <i class="bi bi-person-plus mr-3"></i>
+                        <span>Add Applicant</span>
+                    </a>
+
+                    <!-- HR2: Payroll -->
+                    {% elif blueprint_name == 'hr2' %}
+                    <a href="{{ url_for('hr2.payroll_dashboard') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.payroll_dashboard' }}">
+                        <i class="bi bi-cash-stack mr-3"></i>
+                        <span>Payroll Admin</span>
+                    </a>
+                    <a href="{{ url_for('hr2.process_payroll') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.process_payroll' }}">
+                        <i class="bi bi-gear-wide-connected mr-3"></i>
+                        <span>Process Payroll</span>
+                    </a>
+
+                    <!-- HR3: Employee Management -->
+                    {% elif blueprint_name == 'hr3' %}
+                    <a href="{{ url_for('hr3.list_employees') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.list_employees' }}">
+                        <i class="bi bi-people mr-3"></i>
+                        <span>Employees</span>
+                    </a>
+                    <a href="{{ url_for('hr3.onboarding') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.onboarding' }}">
+                        <i class="bi bi-person-plus mr-3"></i>
+                        <span>Onboarding</span>
+                    </a>
+                    <a href="{{ url_for('hr3.employee_analytics') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.employee_analytics' }}">
+                        <i class="bi bi-graph-up-arrow mr-3"></i>
+                        <span>Analytics</span>
+                    </a>
+
+                    <!-- HR4: Compensation -->
+                    {% elif blueprint_name == 'hr4' %}
+                    <a href="{{ url_for('hr4.compensation_dashboard') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.compensation_dashboard' }}">
+                        <i class="bi bi-wallet2 mr-3"></i>
+                        <span>Compensation</span>
+                    </a>
+                    <a href="{{ url_for('hr4.salary_grades') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.salary_grades' }}">
+                        <i class="bi bi-layers mr-3"></i>
+                        <span>Salary Grades</span>
+                    </a>
+                    {% endif %}
+
+                <!-- Core Transaction Subsystems -->
+                {% elif blueprint_name.startswith('ct') %}
+                    <!-- CT1: Patient Registration -->
+                    {% if blueprint_name == 'ct1' %}
+                    <a href="{{ url_for('ct1.register_patient') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.register_patient' }}">
+                        <i class="bi bi-person-plus mr-3"></i>
+                        <span>Register Patient</span>
+                    </a>
+                    <a href="{{ url_for('ct1.search_patients') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.search_patients' }}">
+                        <i class="bi bi-search mr-3"></i>
+                        <span>Search Patients</span>
+                    </a>
+                    <a href="{{ url_for('ct1.book_appointment') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.book_appointment' }}">
+                        <i class="bi bi-calendar-event mr-3"></i>
+                        <span>Appointments</span>
+                    </a>
+
+                    <!-- CT2: Lab & Pharmacy -->
+                    {% elif blueprint_name == 'ct2' %}
+                    <a href="{{ url_for('ct2.lab_orders') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.lab_orders' }}">
+                        <i class="bi bi-microscope mr-3"></i>
+                        <span>Lab Orders</span>
+                    </a>
+                    <a href="{{ url_for('ct2.pharmacy_inventory') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.pharmacy_inventory' }}">
+                        <i class="bi bi-capsule mr-3"></i>
+                        <span>Pharmacy</span>
+                    </a>
+                    <a href="{{ url_for('ct2.dispense_meds') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.dispense_meds' }}">
+                        <i class="bi bi-prescription2 mr-3"></i>
+                        <span>Dispense</span>
+                    </a>
+
+                    <!-- CT3: Patient Records -->
+                    {% elif blueprint_name == 'ct3' %}
+                    <a href="{{ url_for('ct3.patient_records') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct3.patient_records' }}">
+                        <i class="bi bi-file-medical mr-3"></i>
+                        <span>Medical Records</span>
+                    </a>
+                    {% endif %}
+
+                <!-- Logistics Subsystems -->
+                {% elif blueprint_name.startswith('log') %}
+                    <!-- LOG1: Inventory -->
+                    {% if blueprint_name == 'log1' %}
+                    <a href="{{ url_for('log1.list_inventory') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log1.list_inventory' }}">
+                        <i class="bi bi-box-seam mr-3"></i>
+                        <span>Inventory</span>
+                    </a>
+                    <a href="{{ url_for('log1.add_inventory_item') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log1.add_inventory_item' }}">
+                        <i class="bi bi-plus-circle mr-3"></i>
+                        <span>Add Item</span>
+                    </a>
+
+                    <!-- LOG2: Procurement -->
+                    {% elif blueprint_name == 'log2' %}
+                    <a href="{{ url_for('log2.purchase_orders') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log2.purchase_orders' }}">
+                        <i class="bi bi-cart-check mr-3"></i>
+                        <span>Purchase Orders</span>
+                    </a>
+                    <a href="{{ url_for('log2.create_order') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log2.create_order' }}">
+                        <i class="bi bi-cart-plus mr-3"></i>
+                        <span>Create Order</span>
+                    </a>
+                    <a href="{{ url_for('log2.vendors') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log2.vendors' }}">
+                        <i class="bi bi-truck mr-3"></i>
+                        <span>Vendors</span>
+                    </a>
+                    {% endif %}
+
+                <!-- Financial Subsystems -->
+                {% elif blueprint_name.startswith('fin') %}
+                    <!-- FIN1: Billing -->
+                    {% if blueprint_name == 'fin1' %}
+                    <a href="{{ url_for('fin1.list_billing') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin1.list_billing' }}">
+                        <i class="bi bi-receipt mr-3"></i>
+                        <span>Billing</span>
+                    </a>
+                    <a href="{{ url_for('fin1.create_bill') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin1.create_bill' }}">
+                        <i class="bi bi-plus-square mr-3"></i>
+                        <span>New Bill</span>
+                    </a>
+
+                    <!-- FIN2: Payables -->
+                    {% elif blueprint_name == 'fin2' %}
+                    <a href="{{ url_for('fin2.vendor_invoices') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin2.vendor_invoices' }}">
+                        <i class="bi bi-journal-text mr-3"></i>
+                        <span>Vendor Invoices</span>
+                    </a>
+                    <a href="{{ url_for('fin2.add_invoice') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin2.add_invoice' }}">
+                        <i class="bi bi-plus-circle mr-3"></i>
+                        <span>Record Invoice</span>
+                    </a>
+                    <a href="{{ url_for('fin2.payments') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin2.payments' }}">
+                        <i class="bi bi-credit-card mr-3"></i>
+                        <span>Payments</span>
+                    </a>
+
+                    <!-- FIN3: Receivables -->
+                    {% elif blueprint_name == 'fin3' %}
+                    <a href="{{ url_for('fin3.receivables_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin3.receivables_list' }}">
+                        <i class="bi bi-arrow-down-left-circle mr-3"></i>
+                        <span>Receivables</span>
+                    </a>
+                    <a href="{{ url_for('fin3.collections') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin3.collections' }}">
+                        <i class="bi bi-piggy-bank mr-3"></i>
+                        <span>Collections</span>
+                    </a>
+
+                    <!-- FIN4: Cash Management -->
+                    {% elif blueprint_name == 'fin4' %}
+                    <a href="{{ url_for('fin4.transactions') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin4.transactions' }}">
+                        <i class="bi bi-bank mr-3"></i>
+                        <span>Transactions</span>
+                    </a>
+                    <a href="{{ url_for('fin4.bank_accounts') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin4.bank_accounts' }}">
+                        <i class="bi bi-credit-card-2-back mr-3"></i>
+                        <span>Accounts</span>
+                    </a>
+
+                    <!-- FIN5: General Ledger -->
+                    {% elif blueprint_name == 'fin5' %}
+                    <a href="{{ url_for('fin5.reports_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint.startswith('fin5.reports') or request.endpoint == 'fin5.reports_list' }}">
+                        <i class="bi bi-file-earmark-bar-graph mr-3"></i>
+                        <span>Reports</span>
+                    </a>
+                    <a href="{{ url_for('fin5.income_statement') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin5.income_statement' }}">
+                        <i class="bi bi-file-earmark-text mr-3"></i>
+                        <span>Income Statement</span>
+                    </a>
+                    <a href="{{ url_for('fin5.balance_sheet') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin5.balance_sheet' }}">
+                        <i class="bi bi-file-earmark-medical mr-3"></i>
+                        <span>Balance Sheet</span>
+                    </a>
+                    {% endif %}
                 {% endif %}
-                {% endblock %}
 
-                <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mt-6 mb-2">System</p>
-
-                <a href="{{ url_for(blueprint_name + '.settings') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == blueprint_name + '.settings' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-gear text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Settings
-                </a>
+                <!-- Shared System Links -->
+                <div class="mt-8 pt-4 border-t border-gray-200 pb-4">
+                    <a href="{{ url_for(blueprint_name + '.settings') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint.endswith('.settings') }}">
+                        <i class="bi bi-gear mr-3"></i>
+                        <span>System Settings</span>
+                    </a>
+                </div>
             </nav>
 
-            <div class="p-4 border-t border-gray-100 bg-gray-50/50">
-                <div class="flex items-center mb-4 p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
-                    <div
-                        class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-white font-bold shadow-md">
+            <!-- Profile & Sign Out Section -->
+            <div class="p-4 border-t border-gray-100 bg-white">
+                <div class="flex items-center p-3 mb-3 bg-white border border-gray-100 shadow-sm rounded-2xl">
+                    <div class="flex items-center justify-center w-12 h-12 text-lg font-bold text-white bg-slate-800 rounded-xl shadow-lg">
                         {{ current_user.username[0] | upper }}
                     </div>
-                    <div class="ml-3 overflow-hidden">
-                        <p class="text-sm font-bold text-gray-900 truncate">{{ current_user.username }}</p>
-                        <p class="text-xs text-gray-500 truncate">{{ current_user.role }}</p>
+                    <div class="ml-3 overflow-hidden text-left">
+                        <p class="text-sm font-bold text-slate-800 truncate leading-tight">{{ current_user.username }}</p>
+                        <p class="text-xs font-medium text-slate-400 truncate mt-0.5">{{ current_user.role }}</p>
                     </div>
                 </div>
                 <a href="{{ url_for(blueprint_name + '.logout') }}"
-                    class="flex items-center justify-center w-full px-4 py-2.5 text-sm font-bold text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-all duration-200 hover:shadow-md">
-                    <i class="bi bi-box-arrow-right mr-2"></i> Sign Out
+                    class="flex items-center justify-center w-full py-3.5 text-sm font-bold text-red-600 bg-red-50/80 rounded-2xl hover:bg-red-100 transition-all duration-200">
+                    <i class="bi bi-box-arrow-right mr-2 text-lg"></i>
+                    Sign Out
                 </a>
             </div>
         </aside>
