@@ -11,71 +11,96 @@
             <p class="text-gray-500">View and manage employee compensation packages</p>
         </div>
         <div class="flex space-x-3">
-            <button
+            <button onclick="toggleModal('addCompensationModal')"
                 class="px-6 py-2 bg-[#6366F1] text-white font-bold rounded-xl shadow-lg hover:bg-[#4F46E5] transition-all">
                 <i class="bi bi-plus-lg mr-2"></i> Add Compensation
             </button>
         </div>
     </div>
 
-    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        {% if compensation_data %}
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-gray-50/50 border-b border-gray-100">
-                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Employee</th>
-                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Department</th>
-                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Base Salary</th>
-                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Allowances</th>
-                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Bonuses</th>
-                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
-                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-50">
-                    {% for record in compensation_data %}
-                    <tr class="hover:bg-gray-50/50 transition-colors">
-                        <td class="px-8 py-5">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold mr-3">
-                                    {{ record.employee_name[0] | upper }}
-                                </div>
-                                <div>
-                                    <p class="text-sm font-bold text-gray-900">{{ record.employee_name }}</p>
-                                    <p class="text-xs text-gray-500">ID: #{{ record.user_id }}</p>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-8 py-5 text-sm text-gray-600">{{ record.department }}</td>
-                        <td class="px-8 py-5 text-sm font-bold text-gray-900">${{ "%.2f"|format(record.base_salary) }}</td>
-                        <td class="px-8 py-5 text-sm text-gray-600">${{ "%.2f"|format(record.allowances) }}</td>
-                        <td class="px-8 py-5 text-sm text-gray-600">${{ "%.2f"|format(record.bonuses) }}</td>
-                        <td class="px-8 py-5">
-                            <span class="px-3 py-1 text-xs font-bold rounded-full {% if record.status == 'Active' %}bg-green-50 text-green-600{% else %}bg-gray-50 text-gray-500{% endif %}">
-                                {{ record.status }}
-                            </span>
-                        </td>
-                        <td class="px-8 py-5 text-right">
-                            <div class="flex items-center space-x-2">
-                                <button class="p-2 text-gray-400 hover:text-accent transition-colors"><i class="bi bi-pencil"></i></button>
-                                <button class="p-2 text-gray-400 hover:text-red-500 transition-colors"><i class="bi bi-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="p-12 text-center">
-            <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="bi bi-wallet2 text-4xl text-gray-300"></i>
+    <!-- ... existing table code ... -->
+
+    <!-- Add Compensation Modal -->
+    <div id="addCompensationModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <h3 class="text-xl font-bold text-gray-900">Define Compensation</h3>
+                <button onclick="toggleModal('addCompensationModal')" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="bi bi-x-lg text-xl"></i>
+                </button>
             </div>
-            <h4 class="text-lg font-bold text-gray-900">No compensation records</h4>
-            <p class="text-gray-500 mt-2">Employee compensation data will appear here.</p>
+            <form action="{{ url_for('hr4.add_compensation') }}" method="POST" class="p-8 space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Select Employee</label>
+                    <select name="user_id" required class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Choose an employee...</option>
+                        {% for user in all_users %}
+                        <option value="{{ user.id }}">{{ user.username }} ({{ user.subsystem | upper }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Base Salary</label>
+                        <input type="number" step="0.01" name="base_salary" required class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Allowances</label>
+                        <input type="number" step="0.01" name="allowances" class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500" placeholder="0.00">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Bonuses</label>
+                        <input type="number" step="0.01" name="bonuses" class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Deductions</label>
+                        <input type="number" step="0.01" name="deductions" class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500" placeholder="0.00">
+                    </div>
+                </div>
+
+                <div class="pt-4 flex space-x-3">
+                    <button type="button" onclick="toggleModal('addCompensationModal')" class="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">Cancel</button>
+                    <button type="submit" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">Save Package</button>
+                </div>
+            </form>
         </div>
-        {% endif %}
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center">
+            <div class="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="bi bi-exclamation-triangle text-4xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Delete Record?</h3>
+            <p class="text-gray-500 mb-8">This action cannot be undone. All financial history for this entry will be removed.</p>
+            <form id="deleteForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="flex space-x-3">
+                    <button type="button" onclick="toggleModal('deleteModal')" class="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">Cancel</button>
+                    <button type="submit" class="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 shadow-lg shadow-red-100 transition-all">Delete</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
+
+<script>
+    function toggleModal(id) {
+        const modal = document.getElementById(id);
+        modal.classList.toggle('hidden');
+    }
+
+    function confirmDelete(id) {
+        const form = document.getElementById('deleteForm');
+        form.action = `/hr/hr4/compensation/delete/${id}`;
+        toggleModal('deleteModal');
+    }
+</script>
 {% endblock %}

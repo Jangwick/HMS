@@ -239,23 +239,61 @@ def compensation():
                 record['employee_name'] = 'Unknown'
                 record['department'] = 'N/A'
                 
+        # Step 3: Get all users for the "Add" modal
+        all_users = User.get_all()
+                
     except Exception as e:
         print(f"Error fetching compensation: {e}")
         compensation_data = []
+        all_users = []
 
     return render_template('subsystems/hr/hr4/compensation.html',
                            compensation_data=compensation_data,
+                           all_users=all_users,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
-@hr4_bp.route('/analytics')
+@hr4_bp.route('/compensation/add', methods=['POST'])
 @login_required
-def analytics():
-    return render_template('subsystems/hr/hr4/analytics.html',
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
+def add_compensation():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    user_id = request.form.get('user_id')
+    base_salary = float(request.form.get('base_salary') or 0)
+    allowances = float(request.form.get('allowances') or 0)
+    bonuses = float(request.form.get('bonuses') or 0)
+    deductions = float(request.form.get('deductions') or 0)
+    
+    try:
+        data = {
+            'user_id': int(user_id),
+            'base_salary': base_salary,
+            'allowances': allowances,
+            'bonuses': bonuses,
+            'deductions': deductions,
+            'effective_date': datetime.utcnow().strftime('%Y-%m-%d'),
+            'status': 'Active'
+        }
+        client.table('compensation_records').insert(data).execute()
+        flash('Compensation record added successfully.', 'success')
+    except Exception as e:
+        flash(f'Error adding record: {str(e)}', 'danger')
+    
+    return redirect(url_for('hr4.compensation'))
+
+@hr4_bp.route('/compensation/delete/<int:record_id>', methods=['POST'])
+@login_required
+def delete_compensation(record_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('compensation_records').delete().eq('id', record_id).execute()
+        flash('Record deleted.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr4.compensation'))
 
 @hr4_bp.route('/salary-grades')
 @login_required
@@ -275,6 +313,41 @@ def salary_grades():
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+@hr4_bp.route('/salary-grades/add', methods=['POST'])
+@login_required
+def add_salary_grade():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    grade_name = request.form.get('grade_name')
+    min_salary = float(request.form.get('min_salary') or 0)
+    max_salary = float(request.form.get('max_salary') or 0)
+    
+    try:
+        data = {
+            'grade_name': grade_name,
+            'min_salary': min_salary,
+            'max_salary': max_salary
+        }
+        client.table('salary_grades').insert(data).execute()
+        flash('Salary grade created.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    
+    return redirect(url_for('hr4.salary_grades'))
+
+@hr4_bp.route('/salary-grades/delete/<int:grade_id>', methods=['POST'])
+@login_required
+def delete_salary_grade(grade_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('salary_grades').delete().eq('id', grade_id).execute()
+        flash('Salary grade deleted.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr4.salary_grades'))
 
 @hr4_bp.route('/reports')
 @login_required
@@ -495,5 +568,72 @@ def settings():
 def logout():
     logout_user()
     return redirect(url_for('hr4.login'))
+
+@hr4_bp.route('/analytics')
+@login_required
+def analytics():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetch all compensation records with user info
+        comp_res = client.table('compensation_records').select('*, users(department)').execute()
+        comp_data = comp_res.data or []
+        
+        # Calculate base metrics
+        total_annual = sum((float(r['base_salary'] or 0) + float(r.get('allowances', 0) or 0)) * 12 for r in comp_data)
+        avg_monthly = sum(float(r['base_salary'] or 0) for r in comp_data) / len(comp_data) if comp_data else 0
+        total_allowances = sum(float(r.get('allowances', 0) or 0) for r in comp_data)
+        total_bonuses = sum(float(r.get('bonuses', 0) or 0) for r in comp_data)
+        
+        # Department Distribution
+        dept_map = {}
+        for r in comp_data:
+            dept = r.get('users', {}).get('department', 'Other')
+            budget = float(r['base_salary'] or 0) + float(r.get('allowances', 0) or 0)
+            dept_map[dept] = dept_map.get(dept, 0) + budget
+            
+        dept_dist = {
+            'labels': list(dept_map.keys()),
+            'data': list(dept_map.values())
+        }
+        
+        # Salary Ranges
+        ranges = {"0-50k": 0, "50k-100k": 0, "100k-150k": 0, "150k+": 0}
+        for r in comp_data:
+            sal = float(r['base_salary'] or 0) * 12
+            if sal < 50000: ranges["0-50k"] += 1
+            elif sal < 100000: ranges["50k-100k"] += 1
+            elif sal < 150000: ranges["100k-150k"] += 1
+            else: ranges["150k+"] += 1
+            
+        salary_ranges = {
+            'labels': list(ranges.keys()),
+            'data': list(ranges.values())
+        }
+
+        metrics = {
+            'total_annual_budget': total_annual,
+            'avg_salary': avg_monthly,
+            'total_allowances': total_allowances,
+            'total_bonuses': total_bonuses,
+            'dept_distribution': dept_dist,
+            'salary_ranges': salary_ranges
+        }
+            
+    except Exception as e:
+        print(f"Analytics error: {e}")
+        metrics = {
+            'total_annual_budget': 0, 'avg_salary': 0, 'total_allowances': 0, 'total_bonuses': 0,
+            'dept_distribution': {'labels': [], 'data': []},
+            'salary_ranges': {'labels': [], 'data': []}
+        }
+
+    return render_template('subsystems/hr/hr4/analytics.html',
+                           metrics=metrics,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME,
+                           active_page='analytics')
 
 

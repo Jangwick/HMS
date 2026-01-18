@@ -7,19 +7,13 @@
 <div class="space-y-8">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h3 class="text-2xl font-bold text-gray-900">Analytics Dashboard</h3>
-            <p class="text-gray-500">Insights and metrics for HR performance</p>
+            <h3 class="text-2xl font-bold text-gray-900">Compensation Analytics</h3>
+            <p class="text-gray-500">Insights into payroll distribution and budget allocation</p>
         </div>
         <div class="flex space-x-3">
-            <select
-                class="px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6366F1] outline-none">
-                <option>Last 30 Days</option>
-                <option>Last 90 Days</option>
-                <option>This Year</option>
-            </select>
-            <button
+            <button onclick="window.print()"
                 class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
-                <i class="bi bi-download mr-2"></i> Export
+                <i class="bi bi-printer mr-2"></i> Print Report
             </button>
         </div>
     </div>
@@ -27,47 +21,94 @@
     <!-- Analytics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h4 class="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3">Headcount</h4>
-            <p class="text-3xl font-bold text-gray-900">156</p>
-            <p class="text-green-500 text-sm font-medium mt-2">+3.2% vs last month</p>
+            <h4 class="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3">Total Annual Budget</h4>
+            <p class="text-3xl font-bold text-gray-900">${{ "{:,.2f}".format(metrics.total_annual_budget) }}</p>
+            <p class="text-gray-400 text-sm font-medium mt-2">All departments combined</p>
         </div>
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h4 class="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3">Turnover Rate</h4>
-            <p class="text-3xl font-bold text-gray-900">4.2%</p>
-            <p class="text-green-500 text-sm font-medium mt-2">-0.8% vs last quarter</p>
+            <h4 class="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3">Avg. Monthly Salary</h4>
+            <p class="text-3xl font-bold text-gray-900">${{ "{:,.2f}".format(metrics.avg_salary) }}</p>
+            <p class="text-indigo-500 text-sm font-medium mt-2">Per employee</p>
         </div>
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h4 class="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3">Avg. Tenure</h4>
-            <p class="text-3xl font-bold text-gray-900">3.5 yrs</p>
-            <p class="text-gray-400 text-sm font-medium mt-2">Company average</p>
+            <h4 class="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3">Total Allowances</h4>
+            <p class="text-3xl font-bold text-gray-900">${{ "{:,.2f}".format(metrics.total_allowances) }}</p>
+            <p class="text-gray-400 text-sm font-medium mt-2">Active benefits</p>
         </div>
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h4 class="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3">Open Positions</h4>
-            <p class="text-3xl font-bold text-gray-900">8</p>
-            <p class="text-amber-500 text-sm font-medium mt-2">Actively recruiting</p>
+            <h4 class="text-gray-500 text-xs font-bold uppercase tracking-wider mb-3">Total Bonuses</h4>
+            <p class="text-3xl font-bold text-gray-900">${{ "{:,.2f}".format(metrics.total_bonuses) }}</p>
+            <p class="text-amber-500 text-sm font-medium mt-2">Year to date</p>
         </div>
     </div>
 
     <!-- Charts Section -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h4 class="text-lg font-bold text-gray-900 mb-4">Headcount by Department</h4>
-            <div class="h-64 flex items-center justify-center text-gray-400">
-                <div class="text-center">
-                    <i class="bi bi-pie-chart text-4xl mb-2"></i>
-                    <p class="text-sm">Chart visualization placeholder</p>
-                </div>
+            <h4 class="text-lg font-bold text-gray-900 mb-4">Budget Distribution by Department</h4>
+            <div class="h-64">
+                <canvas id="deptBudgetChart"></canvas>
             </div>
         </div>
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h4 class="text-lg font-bold text-gray-900 mb-4">Salary Distribution</h4>
-            <div class="h-64 flex items-center justify-center text-gray-400">
-                <div class="text-center">
-                    <i class="bi bi-bar-chart text-4xl mb-2"></i>
-                    <p class="text-sm">Chart visualization placeholder</p>
-                </div>
+            <h4 class="text-lg font-bold text-gray-900 mb-4">Salary Range Frequency</h4>
+            <div class="h-64">
+                <canvas id="salaryRangeChart"></canvas>
             </div>
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Department Budget Chart
+    const deptCtx = document.getElementById('deptBudgetChart').getContext('2d');
+    new Chart(deptCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ metrics.dept_distribution.labels | tojson }},
+            datasets: [{
+                data: {{ metrics.dept_distribution.data | tojson }},
+                backgroundColor: [
+                    '#6366F1', '#8B5CF6', '#EC4899', '#F43F5E', '#F59E0B', '#10B981'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            },
+            cutout: '70%'
+        }
+    });
+
+    // Salary Range Chart
+    const salaryCtx = document.getElementById('salaryRangeChart').getContext('2d');
+    new Chart(salaryCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ metrics.salary_ranges.labels | tojson }},
+            datasets: [{
+                label: 'Employee Count',
+                data: {{ metrics.salary_ranges.data | tojson }},
+                backgroundColor: '#6366F1',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { display: false } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+</script>
 {% endblock %}

@@ -166,6 +166,23 @@ CREATE TABLE IF NOT EXISTS payroll_records (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Ensure columns exist in compensation_records (Fix for PGRST204)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compensation_records' AND column_name='bonuses') THEN
+        ALTER TABLE compensation_records ADD COLUMN bonuses DECIMAL(12, 2) DEFAULT 0.00;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compensation_records' AND column_name='allowances') THEN
+        ALTER TABLE compensation_records ADD COLUMN allowances DECIMAL(12, 2) DEFAULT 0.00;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compensation_records' AND column_name='deductions') THEN
+        ALTER TABLE compensation_records ADD COLUMN deductions DECIMAL(12, 2) DEFAULT 0.00;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='compensation_records' AND column_name='status') THEN
+        ALTER TABLE compensation_records ADD COLUMN status VARCHAR(50) DEFAULT 'Active';
+    END IF;
+END $$;
+
 -- =====================================================
 -- CORE TRANSACTION TABLES
 -- =====================================================
@@ -298,4 +315,42 @@ CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_subsystem ON users(subsystem);
 CREATE INDEX IF NOT EXISTS idx_patients_name ON patients(last_name, first_name);
 CREATE INDEX IF NOT EXISTS idx_inventory_expiry ON inventory(expiry_date);
-CREATE INDEX IF NOT EXISTS idx_billing_patient ON billing_records(patient_id);
+
+-- =====================================================
+-- ROW LEVEL SECURITY POLICIES
+-- =====================================================
+-- Enable RLS and add basic allow-all policies for development
+-- In production, these should be more restrictive
+
+-- Salary Grades
+ALTER TABLE IF EXISTS salary_grades ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on salary_grades" ON salary_grades;
+CREATE POLICY "Allow all on salary_grades" ON salary_grades FOR ALL USING (true) WITH CHECK (true);
+
+-- Compensation Records
+ALTER TABLE IF EXISTS compensation_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on compensation_records" ON compensation_records;
+CREATE POLICY "Allow all on compensation_records" ON compensation_records FOR ALL USING (true) WITH CHECK (true);
+
+-- Payroll Records
+ALTER TABLE IF EXISTS payroll_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on payroll_records" ON payroll_records;
+CREATE POLICY "Allow all on payroll_records" ON payroll_records FOR ALL USING (true) WITH CHECK (true);
+
+-- Users
+ALTER TABLE IF EXISTS users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on users" ON users;
+CREATE POLICY "Allow all on users" ON users FOR ALL USING (true) WITH CHECK (true);
+
+-- Proactive RLS for other modules
+ALTER TABLE IF EXISTS applicants ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on applicants" ON applicants FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS vacancies ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on vacancies" ON vacancies FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS attendance_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on attendance_logs" ON attendance_logs FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS leave_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on leave_requests" ON leave_requests FOR ALL USING (true) WITH CHECK (true);
