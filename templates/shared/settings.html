@@ -1,0 +1,133 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Settings - {{ subsystem_name }}{% endblock %}
+{% block header_title %}System Settings{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Account Settings</h3>
+            <p class="text-gray-500 text-sm">Manage your account information and system preferences.</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Sidebar Navigation for Settings -->
+        <div class="lg:col-span-1">
+            <nav class="space-y-1">
+                <a href="#profile" class="flex items-center px-4 py-3 bg-white text-accent font-bold rounded-xl shadow-sm border border-gray-100 transition-all duration-200">
+                    <i class="bi bi-person-circle mr-3 text-lg"></i>
+                    Profile Information
+                </a>
+                <a href="{{ url_for(blueprint_name + '.change_password') }}" class="flex items-center px-4 py-3 text-gray-600 hover:bg-white hover:text-accent rounded-xl transition-all duration-200 font-medium group border border-transparent hover:border-gray-100 hover:shadow-sm">
+                    <i class="bi bi-shield-lock mr-3 text-lg text-gray-400 group-hover:text-accent"></i>
+                    Security & Password
+                </a>
+                <a href="#notifications" class="flex items-center px-4 py-3 text-gray-600 hover:bg-white hover:text-accent rounded-xl transition-all duration-200 font-medium group border border-transparent hover:border-gray-100 hover:shadow-sm">
+                    <i class="bi bi-bell mr-3 text-lg text-gray-400 group-hover:text-accent"></i>
+                    Notifications
+                </a>
+                <a href="#system" class="flex items-center px-4 py-3 text-gray-600 hover:bg-white hover:text-accent rounded-xl transition-all duration-200 font-medium group border border-transparent hover:border-gray-100 hover:shadow-sm">
+                    <i class="bi bi-display mr-3 text-lg text-gray-400 group-hover:text-accent"></i>
+                    Display & Appearance
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Settings Content -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Profile Section -->
+            <div id="profile" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-8 border-b border-gray-50">
+                    <h4 class="text-lg font-bold text-gray-900">Personal Information</h4>
+                    <p class="text-sm text-gray-400">Your account details across the HMS ecosystem.</p>
+                </div>
+                <div class="p-8 space-y-6">
+                        <form action="{{ url_for(blueprint_name + '.settings') }}" method="POST" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div>
+                                <label for="username" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Username</label>
+                                <input type="text" id="username" value="{{ current_user.username }}" disabled
+                                    class="block w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-gray-500 font-medium cursor-not-allowed">
+                                <p class="text-[10px] text-gray-400 mt-1 ml-1">Username cannot be changed.</p>
+                            </div>
+                            <div>
+                                <label for="email" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Email Address</label>
+                                <input type="email" id="email" name="email" value="{{ current_user.email }}" required
+                                    class="block w-full p-3 bg-white border border-gray-200 rounded-xl text-gray-900 font-bold focus:ring-2 focus:ring-accent focus:border-transparent transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Department</label>
+                                <p class="text-sm font-bold text-gray-900 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                    {{ current_user.department }}
+                                </p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Role</label>
+                                <p class="text-sm font-bold text-gray-900 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                    {{ current_user.role }}
+                                </p>
+                            </div>
+                            <div class="sm:col-span-2 pt-4">
+                                <button type="submit" class="px-8 py-3 bg-accent text-white font-bold rounded-xl shadow-lg hover:shadow-accent/30 transition-all duration-200">
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+
+                    <div class="pt-6 border-t border-gray-50">
+                        <div class="flex items-start p-4 bg-accent/5 rounded-2xl border border-accent/10">
+                            <i class="bi bi-info-circle text-accent text-lg mr-3 mt-0.5"></i>
+                            <div>
+                                <p class="text-sm font-bold text-accent">Account Persistence</p>
+                                <p class="text-xs text-accent/70 mt-1">
+                                    Your account is isolated to the {{ subsystem_name }} subsystem. To access other departments, please use their respective portals.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Appearance Section -->
+            <div id="system" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-8 border-b border-gray-50">
+                    <h4 class="text-lg font-bold text-gray-900">System Preferences</h4>
+                    <p class="text-sm text-gray-400">Customize how the management system looks and feels.</p>
+                </div>
+                <div class="p-8 space-y-6">
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-gray-600 shadow-sm mr-4">
+                                <i class="bi bi-moon-stars"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-900">Dark Mode</p>
+                                <p class="text-xs text-gray-400">Adjust the interface for low light.</p>
+                            </div>
+                        </div>
+                        <button class="w-12 h-6 rounded-full bg-gray-200 relative transition-colors duration-200 focus:outline-none">
+                            <span class="absolute right-1 top-1 w-4 h-4 rounded-full bg-white shadow-sm ring-1 ring-black/5"></span>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 opacity-60">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-gray-600 shadow-sm mr-4">
+                                <i class="bi bi-globe"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-900">Language</p>
+                                <p class="text-xs text-gray-400">English (United States)</p>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

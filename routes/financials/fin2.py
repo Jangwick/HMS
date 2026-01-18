@@ -3,7 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from utils.supabase_client import User
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
-from datetime import datetime
+from datetime import datetime, timedelta
 
 fin2_bp = Blueprint('fin2', __name__, template_folder='templates')
 
@@ -310,6 +310,24 @@ def payments():
         
     return render_template('subsystems/financials/fin2/payments.html',
                            payments=payments,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@fin2_bp.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        if email:
+            try:
+                current_user.update(email=email)
+                flash('Settings updated successfully.', 'success')
+            except Exception as e:
+                flash(f'Update failed: {str(e)}', 'danger')
+        return redirect(url_for(f'{BLUEPRINT_NAME}.settings'))
+        
+    return render_template('shared/settings.html',
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

@@ -261,6 +261,24 @@ def book_appointment():
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
+@ct1_bp.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        if email:
+            try:
+                current_user.update(email=email)
+                flash('Settings updated successfully.', 'success')
+            except Exception as e:
+                flash(f'Update failed: {str(e)}', 'danger')
+        return redirect(url_for(f'{BLUEPRINT_NAME}.settings'))
+        
+    return render_template('shared/settings.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
 @ct1_bp.route('/logout')
 @login_required
 def logout():
