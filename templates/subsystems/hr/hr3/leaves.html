@@ -1,0 +1,84 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Leave Management - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Leave Requests{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Leave Administration</h3>
+            <p class="text-gray-500">Review and approve employee time-off requests</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50/50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-8 py-5">Employee</th>
+                        <th class="px-6 py-5">Type</th>
+                        <th class="px-6 py-5">Duration</th>
+                        <th class="px-6 py-5">Status</th>
+                        <th class="px-8 py-5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for leave in leaves %}
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-8 py-5 font-bold text-gray-900">{{ leave.users.username }}</td>
+                        <td class="px-6 py-5">
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 uppercase">
+                                {{ leave.leave_type }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5 text-gray-500 text-sm">
+                            {{ leave.start_date }} to {{ leave.end_date }}
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold 
+                                {% if leave.status == 'Pending' %}bg-amber-50 text-amber-600
+                                {% elif leave.status == 'Approved' %}bg-green-50 text-green-600
+                                {% else %}bg-red-50 text-red-600{% endif %}">
+                                {{ leave.status }}
+                            </span>
+                        </td>
+                        <td class="px-8 py-5 text-right">
+                            {% if leave.status == 'Pending' %}
+                            <div class="flex justify-end space-x-2">
+                                <form action="{{ url_for('hr3.approve_leave') }}" method="POST" class="inline">
+                                    <input type="hidden" name="leave_id" value="{{ leave.id }}">
+                                    <input type="hidden" name="status" value="Approved">
+                                    <button type="submit" class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition-colors">
+                                        Approve
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('hr3.approve_leave') }}" method="POST" class="inline">
+                                    <input type="hidden" name="leave_id" value="{{ leave.id }}">
+                                    <input type="hidden" name="status" value="Rejected">
+                                    <button type="submit" class="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-colors">
+                                        Reject
+                                    </button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <span class="text-xs text-gray-400 font-medium">No actions available</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-8 py-20 text-center">
+                            <i class="bi bi-calendar-x text-4xl text-gray-300 mb-4 block"></i>
+                            <h4 class="text-lg font-bold text-gray-900">No leave requests found</h4>
+                            <p class="text-gray-500">Employee requests will appear here for review.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

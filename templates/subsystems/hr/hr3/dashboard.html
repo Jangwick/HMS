@@ -1,13 +1,13 @@
 {% extends "base/subsystem_base.html" %}
 
 {% block title %}Dashboard - {{ subsystem_name }}{% endblock %}
-{% block header_title %}Benefits Administration{% endblock %}
+{% block header_title %}Workforce Operations{% endblock %}
 
 {% block content %}
 <div class="space-y-8">
     <!-- Welcome Card -->
     <div
-        class="bg-gradient-to-r from-[#6366F1] to-gray-800 rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
+        class="bg-gradient-to-r from-[#4F46E5] to-[#1e1b4b] rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
         <div
             class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl">
         </div>
@@ -17,88 +17,120 @@
 
         <div class="relative z-10">
             <h3 class="text-3xl font-bold mb-2">Welcome back, {{ current_user.username }}!</h3>
-            <p class="text-white/80 text-lg max-w-2xl">Manage user accounts and system access across all subsystems.</p>
+            <p class="text-white/80 text-lg max-w-2xl">Manage workforce attendance, leave requests, and system-wide user coordination.</p>
 
             <div class="mt-8 flex space-x-4">
-                <a href="{{ url_for('hr3.user_list') }}"
-                    class="px-6 py-2.5 bg-white text-[#6366F1] font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
-                    Manage Users
-                </a>
                 <a href="{{ url_for('hr3.pending_approvals') }}"
-                    class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
+                    class="px-6 py-2.5 bg-white text-[#4F46E5] font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
                     Pending Approvals
+                </a>
+                <a href="{{ url_for('hr3.analytics') }}"
+                    class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
+                    System Analytics
                 </a>
             </div>
         </div>
     </div>
 
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Active Users</h4>
-                <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Active Employees</h4>
+                <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
                     <i class="bi bi-person-check"></i>
                 </div>
             </div>
             <p class="text-3xl font-bold text-gray-900">{{ active_count }}</p>
-            <p class="text-green-500 text-sm font-medium mt-2">System-wide</p>
+            <p class="text-indigo-500 text-sm font-medium mt-2">Active accounts</p>
         </div>
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Pending Approvals</h4>
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Awaiting Approval</h4>
                 <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
                     <i class="bi bi-hourglass-split"></i>
                 </div>
             </div>
             <p class="text-3xl font-bold text-gray-900">{{ pending_count }}</p>
-            <p class="text-amber-500 text-sm font-medium mt-2">Awaiting review</p>
+            <p class="text-amber-500 text-sm font-medium mt-2">Review required</p>
         </div>
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Total Subsystems</h4>
-                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                    <i class="bi bi-grid"></i>
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Today's Attendance</h4>
+                <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <i class="bi bi-clock-history"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">12</p>
-            <p class="text-blue-500 text-sm font-medium mt-2">Managed</p>
+            <p class="text-3xl font-bold text-gray-900">{{ today_attendance }}</p>
+            <p class="text-emerald-500 text-sm font-medium mt-2">Staff clocked in</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Open Leaves</h4>
+                <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
+                    <i class="bi bi-calendar-minus"></i>
+                </div>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">{{ pending_leaves }}</p>
+            <p class="text-rose-500 text-sm font-medium mt-2">Pending requests</p>
         </div>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h4 class="text-xl font-bold text-gray-900 mb-6">Administration Actions</h4>
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <a href="{{ url_for('hr3.add_user') }}"
-                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-person-plus text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Add User</span>
-            </a>
-            <a href="{{ url_for('hr3.user_list') }}"
-                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-people text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">User Directory</span>
-            </a>
-            <a href="{{ url_for('hr3.pending_approvals') }}"
-                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-check2-square text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Review Approvals</span>
-            </a>
-            <a href="{{ url_for('hr3.analytics') }}" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-graph-up-arrow text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Analytics</span>
-            </a>
-            <a href="#" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-shield-lock text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Security Settings</span>
-            </a>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Recent Leave Requests -->
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            <div class="flex items-center justify-between mb-8">
+                <h4 class="text-xl font-bold text-gray-900">Recent Leave Requests</h4>
+                <a href="#" class="text-[#4F46E5] text-sm font-bold hover:underline">View All</a>
+            </div>
+            <div class="space-y-4">
+                {% for leave in recent_leaves %}
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-[#4F46E5] font-bold shadow-sm mr-4 text-xs">
+                            LEAVE
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-900">{{ leave.users.username }}</p>
+                            <p class="text-xs text-gray-400">{{ leave.leave_type }} | {{ leave.start_date }}</p>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 uppercase">
+                        {{ leave.status }}
+                    </span>
+                </div>
+                {% else %}
+                <div class="text-center py-10">
+                    <p class="text-gray-400 font-medium">No recent leave requests.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Admin Actions -->
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            <h4 class="text-xl font-bold text-gray-900 mb-6">Workforce Actions</h4>
+            <div class="grid grid-cols-2 gap-4">
+                <a href="{{ url_for('hr3.add_user') }}" class="p-6 bg-indigo-50 rounded-2xl hover:bg-indigo-100 transition-colors group">
+                    <i class="bi bi-person-plus text-2xl text-indigo-600 mb-2 block"></i>
+                    <span class="font-bold text-indigo-900">Add New Staff</span>
+                </a>
+                <a href="{{ url_for('hr3.user_list') }}" class="p-6 bg-blue-50 rounded-2xl hover:bg-blue-100 transition-colors group">
+                    <i class="bi bi-people text-2xl text-blue-600 mb-2 block"></i>
+                    <span class="font-bold text-blue-900">User Directory</span>
+                </a>
+                <a href="{{ url_for('hr3.pending_approvals') }}" class="p-6 bg-emerald-50 rounded-2xl hover:bg-emerald-100 transition-colors group">
+                    <i class="bi bi-check2-square text-2xl text-emerald-600 mb-2 block"></i>
+                    <span class="font-bold text-emerald-900">Approvals</span>
+                </a>
+                <a href="{{ url_for('hr3.analytics') }}" class="p-6 bg-rose-50 rounded-2xl hover:bg-rose-100 transition-colors group">
+                    <i class="bi bi-graph-up-arrow text-2xl text-rose-600 mb-2 block"></i>
+                    <span class="font-bold text-rose-900">Operations Analytics</span>
+                </a>
+            </div>
         </div>
     </div>
 </div>

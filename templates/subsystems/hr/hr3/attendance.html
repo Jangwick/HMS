@@ -1,0 +1,59 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Attendance Logs - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Staff Attendance{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Attendance Monitoring</h3>
+            <p class="text-gray-500">Track clock-in and clock-out times across all departments</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50/50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-8 py-5">Employee</th>
+                        <th class="px-6 py-5">Clock In</th>
+                        <th class="px-6 py-5">Clock Out</th>
+                        <th class="px-6 py-5">Status</th>
+                        <th class="px-8 py-5">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for log in logs %}
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-8 py-5 font-bold text-gray-900">{{ log.users.username }}</td>
+                        <td class="px-6 py-5 text-gray-600 font-medium">{{ log.clock_in }}</td>
+                        <td class="px-6 py-5 text-gray-400 text-sm">{{ log.clock_out or '---' }}</td>
+                        <td class="px-6 py-5">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold 
+                                {% if log.status == 'On-time' %}bg-green-50 text-green-600
+                                {% elif log.status == 'Late' %}bg-amber-50 text-amber-600
+                                {% else %}bg-rose-50 text-rose-600{% endif %}">
+                                {{ log.status }}
+                            </span>
+                        </td>
+                        <td class="px-8 py-5 text-sm text-gray-500">
+                            {{ log.remarks or '-' }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-8 py-20 text-center">
+                            <i class="bi bi-clock-history text-4xl text-gray-300 mb-4 block"></i>
+                            <h4 class="text-lg font-bold text-gray-900">No attendance logs available</h4>
+                            <p class="text-gray-500">Logs will be created when staff clock in via their respective portals.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

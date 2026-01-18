@@ -138,11 +138,19 @@
                         <span>Competencies</span>
                     </a>
 
-                    <!-- HR3: Employee Management -->
+                    <!-- HR3: Workforce Operations -->
                     {% elif blueprint_name == 'hr3' %}
                     <a href="{{ url_for('hr3.user_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.user_list' }}">
                         <i class="bi bi-people mr-3"></i>
-                        <span>Employees</span>
+                        <span>System Directory</span>
+                    </a>
+                    <a href="{{ url_for('hr3.list_attendance') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.list_attendance' }}">
+                        <i class="bi bi-clock-history mr-3"></i>
+                        <span>Attendance</span>
+                    </a>
+                    <a href="{{ url_for('hr3.list_leaves') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.list_leaves' }}">
+                        <i class="bi bi-calendar-minus mr-3"></i>
+                        <span>Leave Requests</span>
                     </a>
                     <a href="{{ url_for('hr3.pending_approvals') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.pending_approvals' }}">
                         <i class="bi bi-person-check mr-3"></i>

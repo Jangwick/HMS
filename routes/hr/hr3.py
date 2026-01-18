@@ -9,8 +9,8 @@ from datetime import datetime
 hr3_bp = Blueprint('hr3', __name__)
 
 # Subsystem configuration
-SUBSYSTEM_NAME = 'HR3 - Benefits Administration'
-ACCENT_COLOR = '#6366F1'
+SUBSYSTEM_NAME = 'HR3 - Workforce Operations'
+ACCENT_COLOR = '#4F46E5'
 BLUEPRINT_NAME = 'hr3'
 
 @hr3_bp.route('/login', methods=['GET', 'POST'])
@@ -181,19 +181,48 @@ def change_password():
 @hr3_bp.route('/dashboard')
 @login_required
 def dashboard():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
     
-    # Get stats for the dashboard
-    all_users = User.get_all()
-    active_count = len([u for u in all_users if u.status == 'Active'])
-    pending_count = len([u for u in all_users if u.status == 'Pending'])
+    # Get Workforce stats
+    try:
+        # Get active vs pending users (from all subsystems since HR3 is Admin)
+        all_users = User.get_all()
+        active_count = len([u for u in all_users if u.status == 'Active'])
+        pending_count = len([u for u in all_users if u.status == 'Pending'])
+        
+        # Today's Attendance (simplified count)
+        today = datetime.now().strftime('%Y-%m-%d')
+        # Filter for entries starting with today's date in clock_in
+        attendance_resp = client.table('attendance_logs').select('id', count='exact').gte('clock_in', today).execute()
+        today_attendance = attendance_resp.count if attendance_resp.count is not None else 0
+        
+        # Pending Leave Requests
+        leave_resp = client.table('leave_requests').select('id', count='exact').eq('status', 'Pending').execute()
+        pending_leaves = leave_resp.count if leave_resp.count is not None else 0
+        
+        # Recent activity - Mix of new users and leave requests
+        recent_leaves = client.table('leave_requests').select('*, users:users!leave_requests_user_id_fkey(username)').order('created_at', desc=True).limit(3).execute().data or []
+        
+    except Exception as e:
+        print(f"Error fetching HR3 stats: {e}")
+        active_count = 0
+        pending_count = 0
+        today_attendance = 0
+        pending_leaves = 0
+        recent_leaves = []
     
     return render_template('subsystems/hr/hr3/dashboard.html', 
                           now=datetime.utcnow, 
                           active_count=active_count,
                           pending_count=pending_count,
+                          today_attendance=today_attendance,
+                          pending_leaves=pending_leaves,
+                          recent_leaves=recent_leaves,
                           subsystem_name=SUBSYSTEM_NAME,
                           accent_color=ACCENT_COLOR,
                           blueprint_name=BLUEPRINT_NAME)
@@ -590,3 +619,62 @@ def settings():
 def logout():
     logout_user()
     return redirect(url_for('hr3.login'))
+
+@hr3_bp.route('/attendance')
+@login_required
+def list_attendance():
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    response = client.table('attendance_logs').select('*, users(username)').order('clock_in', desc=True).execute()
+    logs = response.data if response.data else []
+    
+    return render_template('subsystems/hr/hr3/attendance.html',
+                           logs=logs,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr3_bp.route('/leaves')
+@login_required
+def list_leaves():
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    response = client.table('leave_requests').select('*, users:users!leave_requests_user_id_fkey(username)').order('created_at', desc=True).execute()
+    leaves = response.data if response.data else []
+    
+    return render_template('subsystems/hr/hr3/leaves.html',
+                           leaves=leaves,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr3_bp.route('/leaves/approve', methods=['POST'])
+@login_required
+def approve_leave():
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    leave_id = request.form.get('leave_id')
+    status = request.form.get('status') # 'Approved' or 'Rejected'
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('leave_requests').update({'status': status, 'approved_by': current_user.id}).eq('id', leave_id).execute()
+        flash(f'Leave request {status.lower()} successfully!', 'success')
+    except Exception as e:
+        flash(f'Error updating leave request: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr3.list_leaves'))
