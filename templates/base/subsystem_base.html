@@ -129,21 +129,6 @@
                 {% elif blueprint_name == 'hr3' %}
                 <a href="{{ url_for('hr3.user_list') }}"
                     class="flex items-center px-4 py-3 {% if request.endpoint == 'hr3.user_list' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i class="bi bi-people text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    User Directory
-                </a>
-                <a href="{{ url_for('hr3.pending_approvals') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr3.pending_approvals' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i
-                        class="bi bi-check2-square text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Pending Approvals
-                </a>
-                {% elif blueprint_name == 'ct1' %}
-                <a href="{{ url_for('ct1.register_patient') }}"
-                    class="flex items-center px-4 py-3 {% if request.endpoint == 'ct1.register_patient' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
-                    <i
-                        class="bi bi-person-plus text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
-                    Register Patient
                 </a>
                 <a href="{{ url_for('ct1.search_patients') }}"
                     class="flex items-center px-4 py-3 {% if request.endpoint == 'ct1.search_patients' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">

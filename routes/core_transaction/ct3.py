@@ -185,8 +185,14 @@ def dashboard():
     
     try:
         patients_count = client.table('patients').select('id', count='exact').execute().count or 0
-        records_today = 8  # Placeholder
-    except:
+        
+        # Get records created today
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        response = client.table('medical_records').select('id', count='exact').gte('visit_date', today).execute()
+        records_today = response.count if response.count is not None else 0
+        
+    except Exception as e:
+        print(f"Error fetching stats: {e}")
         patients_count = 0
         records_today = 0
     
@@ -207,8 +213,12 @@ def patient_records():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    response = client.table('patients').select('*').execute()
-    patients = response.data if response.data else []
+    try:
+        response = client.table('patients').select('*').order('last_name').execute()
+        patients = response.data if response.data else []
+    except Exception as e:
+        print(f"Error fetching patients: {e}")
+        patients = []
     
     return render_template('subsystems/core_transaction/ct3/patient_records.html',
                            patients=patients,
@@ -222,10 +232,32 @@ def view_record(patient_id):
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    patient = client.table('patients').select('*').eq('id', patient_id).single().execute()
+    try:
+        # Get patient details
+        patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
+        patient = patient_resp.data if patient_resp.data else {}
+        
+        # Get medical history
+        history_resp = client.table('medical_records').select('*').eq('patient_id', patient_id).order('visit_date', desc=True).execute()
+        history = history_resp.data if history_resp.data else []
+        
+        # Enrich history with doctor names (simplified)
+        for record in history:
+            if record.get('doctor_id'):
+                doc_resp = client.table('users').select('username').eq('id', record['doctor_id']).single().execute()
+                if doc_resp.data:
+                    record['doctor_name'] = doc_resp.data['username']
+            else:
+                record['doctor_name'] = 'Unknown'
+                
+    except Exception as e:
+        print(f"Error fetching record: {e}")
+        patient = {}
+        history = []
     
     return render_template('subsystems/core_transaction/ct3/view_record.html',
-                           patient=patient.data if patient.data else {},
+                           patient=patient,
+                           history=history,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

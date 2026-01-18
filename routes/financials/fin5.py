@@ -142,8 +142,20 @@ def change_password():
 @fin5_bp.route('/dashboard')
 @login_required
 def dashboard():
-    reports_generated = 45  # Placeholder
-    pending_reports = 3  # Placeholder
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Get reports count
+        response = client.table('generated_reports').select('id', count='exact').execute()
+        reports_generated = response.count if response.count is not None else 0
+        
+        pending_reports = 0 # Placeholder
+        
+    except Exception as e:
+        print(f"Error fetching stats: {e}")
+        reports_generated = 0
+        pending_reports = 0
     
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
@@ -159,7 +171,16 @@ def dashboard():
 @fin5_bp.route('/reports')
 @login_required
 def reports_list():
-    reports = []  # Would fetch from database
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        response = client.table('generated_reports').select('*').order('generated_at', desc=True).execute()
+        reports = response.data if response.data else []
+    except Exception as e:
+        print(f"Error fetching reports: {e}")
+        reports = []
+        
     return render_template('subsystems/financials/fin5/reports.html',
                            reports=reports,
                            subsystem_name=SUBSYSTEM_NAME,
@@ -169,7 +190,45 @@ def reports_list():
 @fin5_bp.route('/reports/income-statement')
 @login_required
 def income_statement():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Simplified Cash Basis Income Statement
+        # Revenue = Total Collections (Inflows)
+        # Expenses = Total Payments (Outflows)
+        
+        # Get Revenue (Collections)
+        col_resp = client.table('collections').select('amount').execute()
+        revenue = sum([r['amount'] for r in col_resp.data]) if col_resp.data else 0.0
+        
+        # Get Expenses (Vendor Payments + Payroll)
+        pay_resp = client.table('vendor_payments').select('amount').execute()
+        vendor_payments = sum([r['amount'] for r in pay_resp.data]) if pay_resp.data else 0.0
+        
+        # Payroll (Net Pay)
+        payroll_resp = client.table('payroll_records').select('net_pay').eq('status', 'Paid').execute()
+        payroll_expenses = sum([r['net_pay'] for r in payroll_resp.data]) if payroll_resp.data else 0.0
+        
+        total_expenses = vendor_payments + payroll_expenses
+        net_income = revenue - total_expenses
+        
+        data = {
+            'revenue': revenue,
+            'expenses': {
+                'vendor_payments': vendor_payments,
+                'payroll': payroll_expenses
+            },
+            'total_expenses': total_expenses,
+            'net_income': net_income
+        }
+        
+    except Exception as e:
+        print(f"Error generating income statement: {e}")
+        data = {'revenue': 0, 'expenses': {}, 'total_expenses': 0, 'net_income': 0}
+    
     return render_template('subsystems/financials/fin5/income_statement.html',
+                           data=data,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -177,7 +236,52 @@ def income_statement():
 @fin5_bp.route('/reports/balance-sheet')
 @login_required
 def balance_sheet():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Simplified Balance Sheet
+        # Assets = Cash + Receivables
+        # Liabilities = Payables
+        # Equity = Assets - Liabilities
+        
+        # Cash
+        cash_resp = client.table('bank_accounts').select('current_balance').execute()
+        cash = sum([r['current_balance'] for r in cash_resp.data]) if cash_resp.data else 0.0
+        
+        # Receivables
+        rec_resp = client.table('receivables').select('amount_due').eq('status', 'Open').execute()
+        receivables = sum([r['amount_due'] for r in rec_resp.data]) if rec_resp.data else 0.0
+        
+        total_assets = cash + receivables
+        
+        # Payables
+        pay_resp = client.table('vendor_invoices').select('amount').eq('status', 'Unpaid').execute()
+        payables = sum([r['amount'] for r in pay_resp.data]) if pay_resp.data else 0.0
+        
+        total_liabilities = payables
+        
+        equity = total_assets - total_liabilities
+        
+        data = {
+            'assets': {
+                'cash': cash,
+                'receivables': receivables
+            },
+            'total_assets': total_assets,
+            'liabilities': {
+                'payables': payables
+            },
+            'total_liabilities': total_liabilities,
+            'equity': equity
+        }
+        
+    except Exception as e:
+        print(f"Error generating balance sheet: {e}")
+        data = {'assets': {}, 'total_assets': 0, 'liabilities': {}, 'total_liabilities': 0, 'equity': 0}
+        
     return render_template('subsystems/financials/fin5/balance_sheet.html',
+                           data=data,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

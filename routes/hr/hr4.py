@@ -8,7 +8,7 @@ from datetime import datetime
 hr4_bp = Blueprint('hr4', __name__)
 
 # Subsystem configuration
-SUBSYSTEM_NAME = 'HR4 - Time & Attendance'
+SUBSYSTEM_NAME = 'HR4 - Compensation & Analytics'
 ACCENT_COLOR = '[#6366F1]'
 BLUEPRINT_NAME = 'hr4'
 
@@ -180,13 +180,106 @@ def change_password():
 @hr4_bp.route('/dashboard')
 @login_required
 def dashboard():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Get compensation & analytics stats
+    try:
+        # Calculate average salary
+        response = client.table('compensation_records').select('base_salary').execute()
+        salaries = [r['base_salary'] for r in response.data] if response.data else []
+        avg_salary = sum(salaries) / len(salaries) if salaries else 0
+        
+        # Calculate total compensation (monthly)
+        total_compensation = sum(salaries)
+        
+        # Count reports (placeholder for now as we don't have a specific table for HR reports)
+        analytics_reports = 12 
+        
+    except Exception as e:
+        print(f"Error fetching stats: {e}")
+        avg_salary = 0
+        total_compensation = 0
+        analytics_reports = 0
+    
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/hr/hr4/dashboard.html', now=datetime.utcnow)
+    return render_template('subsystems/hr/hr4/dashboard.html', 
+                           now=datetime.utcnow,
+                           avg_salary=avg_salary,
+                           total_compensation=total_compensation,
+                           analytics_reports=analytics_reports,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr4_bp.route('/compensation')
+@login_required
+def compensation():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetch compensation records with user details
+        # Note: Supabase-py might not support complex joins easily in one go without foreign keys set up perfectly
+        # So we might need to do it in two steps or use a view
+        
+        # Step 1: Get compensation records
+        comp_response = client.table('compensation_records').select('*').execute()
+        compensation_data = comp_response.data if comp_response.data else []
+        
+        # Step 2: Enrich with user data (simplified)
+        for record in compensation_data:
+            user = User.get_by_id(record['user_id'])
+            if user:
+                record['employee_name'] = user.username
+                record['department'] = user.department
+            else:
+                record['employee_name'] = 'Unknown'
+                record['department'] = 'N/A'
+                
+    except Exception as e:
+        print(f"Error fetching compensation: {e}")
+        compensation_data = []
+
+    return render_template('subsystems/hr/hr4/compensation.html',
+                           compensation_data=compensation_data,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr4_bp.route('/analytics')
+@login_required
+def analytics():
+    return render_template('subsystems/hr/hr4/analytics.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr4_bp.route('/salary-grades')
+@login_required
+def salary_grades():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        response = client.table('salary_grades').select('*').order('grade_name').execute()
+        grades = response.data if response.data else []
+    except Exception as e:
+        print(f"Error fetching grades: {e}")
+        grades = []
+        
+    return render_template('subsystems/hr/hr4/salary_grades.html',
+                           grades=grades,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @hr4_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('hr4.login'))
+
+

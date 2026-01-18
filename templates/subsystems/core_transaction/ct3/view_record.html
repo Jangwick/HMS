@@ -40,40 +40,19 @@
                 <p class="font-medium text-gray-900">{{ patient.contact_number or 'Not provided' }}</p>
             </div>
             <div>
-                <p class="text-sm text-gray-500">Address</p>
-                <p class="font-medium text-gray-900">{{ patient.address or 'Not provided' }}</p>
+                <div>
+                    <p class="text-sm text-gray-500">Provider</p>
+                    <p class="font-medium text-gray-900">{{ patient.insurance_info.provider if patient.insurance_info
+                        else
+                        'Not provided' }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Policy Number</p>
+                    <p class="font-medium text-gray-900">{{ patient.insurance_info.policy_number if
+                        patient.insurance_info
+                        else 'Not provided' }}</p>
+                </div>
             </div>
         </div>
     </div>
-
-    <!-- Medical History -->
-    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-        <h3 class="text-lg font-bold text-gray-900 mb-4">Medical History</h3>
-        <div class="bg-gray-50 rounded-2xl p-6 text-center">
-            <i class="bi bi-file-earmark-medical text-4xl text-gray-300 mb-2"></i>
-            <p class="text-gray-500">No medical history records available.</p>
-            <button
-                class="mt-4 px-6 py-2 bg-[#10B981] text-white font-bold rounded-xl hover:bg-emerald-600 transition-colors">
-                <i class="bi bi-plus mr-2"></i> Add Medical Record
-            </button>
-        </div>
-    </div>
-
-    <!-- Insurance Information -->
-    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-        <h3 class="text-lg font-bold text-gray-900 mb-4">Insurance Information</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <p class="text-sm text-gray-500">Provider</p>
-                <p class="font-medium text-gray-900">{{ patient.insurance_info.provider if patient.insurance_info else
-                    'Not provided' }}</p>
-            </div>
-            <div>
-                <p class="text-sm text-gray-500">Policy Number</p>
-                <p class="font-medium text-gray-900">{{ patient.insurance_info.policy_number if patient.insurance_info
-                    else 'Not provided' }}</p>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
+    {% endblock %}

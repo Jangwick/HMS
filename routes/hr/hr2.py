@@ -185,11 +185,22 @@ def dashboard():
     
     # Get payroll stats
     try:
-        all_users = User.get_all()
-        total_employees = len([u for u in all_users if u.status == 'Active'])
-        pending_payroll = 5  # Placeholder
-        processed_this_month = 23  # Placeholder
-    except:
+        # Get total active employees
+        response = client.table('users').select('id', count='exact').eq('status', 'Active').execute()
+        total_employees = response.count if response.count is not None else 0
+        
+        # Get pending payrolls
+        response = client.table('payroll_records').select('id', count='exact').eq('status', 'Pending').execute()
+        pending_payroll = response.count if response.count is not None else 0
+        
+        # Get processed this month
+        now = datetime.utcnow()
+        first_day = now.replace(day=1).strftime('%Y-%m-%d')
+        response = client.table('payroll_records').select('id', count='exact').gte('processed_date', first_day).execute()
+        processed_this_month = response.count if response.count is not None else 0
+        
+    except Exception as e:
+        print(f"Error fetching stats: {e}")
         total_employees = 0
         pending_payroll = 0
         processed_this_month = 0
@@ -212,9 +223,12 @@ def payroll_list():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    # Get all active employees from users
+    # Get all active employees
     all_users = User.get_all()
     employees = [u for u in all_users if u.status == 'Active']
+    
+    # Get latest payroll status for each employee (simplified)
+    # In a real app, we'd join tables or do a batch query
     
     return render_template('subsystems/hr/hr2/payroll_list.html',
                            employees=employees,
@@ -225,8 +239,46 @@ def payroll_list():
 @hr2_bp.route('/payroll/process', methods=['GET', 'POST'])
 @login_required
 def process_payroll():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
     if request.method == 'POST':
-        flash('Payroll processed successfully!', 'success')
+        selected_employees = request.form.getlist('employee_ids')
+        pay_period_start = request.form.get('start_date')
+        pay_period_end = request.form.get('end_date')
+        
+        if not selected_employees:
+            flash('Please select at least one employee.', 'warning')
+            return redirect(url_for('hr2.process_payroll'))
+            
+        try:
+            records = []
+            for emp_id in selected_employees:
+                # Placeholder calculations
+                base_salary = 5000.00 
+                deductions = 500.00
+                bonuses = 0.00
+                net_pay = base_salary - deductions + bonuses
+                
+                records.append({
+                    'user_id': int(emp_id),
+                    'pay_period_start': pay_period_start,
+                    'pay_period_end': pay_period_end,
+                    'base_salary': base_salary,
+                    'deductions': deductions,
+                    'bonuses': bonuses,
+                    'net_pay': net_pay,
+                    'status': 'Processed',
+                    'processed_date': datetime.utcnow().isoformat()
+                })
+            
+            if records:
+                client.table('payroll_records').insert(records).execute()
+                flash(f'Successfully processed payroll for {len(records)} employees.', 'success')
+            
+        except Exception as e:
+            flash(f'Error processing payroll: {format_db_error(e)}', 'danger')
+            
         return redirect(url_for('hr2.payroll_list'))
     
     # Get active employees

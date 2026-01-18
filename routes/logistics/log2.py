@@ -180,9 +180,27 @@ def change_password():
 @log2_bp.route('/dashboard')
 @login_required
 def dashboard():
-    pending_orders = 12  # Placeholder
-    approved_orders = 45  # Placeholder
-    total_vendors = 28  # Placeholder
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Get pending orders (Draft or Pending Approval)
+        response = client.table('purchase_orders').select('id', count='exact').in_('status', ['Draft', 'Pending Approval']).execute()
+        pending_orders = response.count if response.count is not None else 0
+        
+        # Get approved orders
+        response = client.table('purchase_orders').select('id', count='exact').eq('status', 'Approved').execute()
+        approved_orders = response.count if response.count is not None else 0
+        
+        # Get total vendors
+        response = client.table('vendors').select('id', count='exact').eq('status', 'Active').execute()
+        total_vendors = response.count if response.count is not None else 0
+        
+    except Exception as e:
+        print(f"Error fetching stats: {e}")
+        pending_orders = 0
+        approved_orders = 0
+        total_vendors = 0
     
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
@@ -199,7 +217,27 @@ def dashboard():
 @log2_bp.route('/orders')
 @login_required
 def purchase_orders():
-    orders = []  # Would fetch from database
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetch orders
+        response = client.table('purchase_orders').select('*').order('created_at', desc=True).execute()
+        orders = response.data if response.data else []
+        
+        # Enrich with vendor names (simplified)
+        for order in orders:
+            if order.get('vendor_id'):
+                v_resp = client.table('vendors').select('name').eq('id', order['vendor_id']).single().execute()
+                if v_resp.data:
+                    order['vendor_name'] = v_resp.data['name']
+            else:
+                order['vendor_name'] = 'Unknown'
+                
+    except Exception as e:
+        print(f"Error fetching orders: {e}")
+        orders = []
+        
     return render_template('subsystems/logistics/log2/purchase_orders.html',
                            orders=orders,
                            subsystem_name=SUBSYSTEM_NAME,
@@ -209,11 +247,43 @@ def purchase_orders():
 @log2_bp.route('/orders/create', methods=['GET', 'POST'])
 @login_required
 def create_order():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
     if request.method == 'POST':
-        flash('Purchase order created successfully!', 'success')
-        return redirect(url_for('log2.purchase_orders'))
+        vendor_id = request.form.get('vendor_id')
+        order_date = request.form.get('order_date')
+        expected_delivery = request.form.get('expected_delivery')
+        description = request.form.get('description')
+        amount = request.form.get('amount')
+        
+        try:
+            data = {
+                'vendor_id': int(vendor_id),
+                'order_date': order_date,
+                'expected_delivery_date': expected_delivery,
+                'total_amount': float(amount),
+                'status': 'Pending Approval',
+                'items': [{'description': description}], # Simplified item structure
+                'created_by': current_user.id
+            }
+            
+            client.table('purchase_orders').insert(data).execute()
+            flash('Purchase order created successfully!', 'success')
+            return redirect(url_for('log2.purchase_orders'))
+            
+        except Exception as e:
+            flash(f'Error creating order: {format_db_error(e)}', 'danger')
+    
+    # Fetch vendors for dropdown
+    try:
+        response = client.table('vendors').select('id, name').eq('status', 'Active').order('name').execute()
+        vendors = response.data if response.data else []
+    except:
+        vendors = []
     
     return render_template('subsystems/logistics/log2/create_order.html',
+                           vendors=vendors,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -221,7 +291,16 @@ def create_order():
 @log2_bp.route('/vendors')
 @login_required
 def vendors():
-    vendors = []  # Would fetch from database
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        response = client.table('vendors').select('*').order('name').execute()
+        vendors = response.data if response.data else []
+    except Exception as e:
+        print(f"Error fetching vendors: {e}")
+        vendors = []
+        
     return render_template('subsystems/logistics/log2/vendors.html',
                            vendors=vendors,
                            subsystem_name=SUBSYSTEM_NAME,

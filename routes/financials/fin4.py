@@ -142,9 +142,33 @@ def change_password():
 @fin4_bp.route('/dashboard')
 @login_required
 def dashboard():
-    cash_balance = 250000.00  # Placeholder
-    daily_inflow = 15000.00  # Placeholder
-    daily_outflow = 8500.00  # Placeholder
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Get total cash balance
+        response = client.table('bank_accounts').select('current_balance').execute()
+        balances = [r['current_balance'] for r in response.data] if response.data else []
+        cash_balance = sum(balances)
+        
+        # Get daily inflow/outflow
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        
+        # Inflow (Credit)
+        in_response = client.table('cash_transactions').select('amount').eq('type', 'Credit').gte('transaction_date', today).execute()
+        inflows = [r['amount'] for r in in_response.data] if in_response.data else []
+        daily_inflow = sum(inflows)
+        
+        # Outflow (Debit)
+        out_response = client.table('cash_transactions').select('amount').eq('type', 'Debit').gte('transaction_date', today).execute()
+        outflows = [r['amount'] for r in out_response.data] if out_response.data else []
+        daily_outflow = sum(outflows)
+        
+    except Exception as e:
+        print(f"Error fetching stats: {e}")
+        cash_balance = 0.0
+        daily_inflow = 0.0
+        daily_outflow = 0.0
     
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
@@ -161,7 +185,29 @@ def dashboard():
 @fin4_bp.route('/transactions')
 @login_required
 def transactions():
-    transactions = []  # Would fetch from database
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetch transactions
+        response = client.table('cash_transactions').select('*').order('transaction_date', desc=True).execute()
+        transactions = response.data if response.data else []
+        
+        # Enrich with bank account info
+        for txn in transactions:
+            if txn.get('bank_account_id'):
+                acc_resp = client.table('bank_accounts').select('bank_name, account_number').eq('id', txn['bank_account_id']).single().execute()
+                if acc_resp.data:
+                    txn['bank_name'] = acc_resp.data['bank_name']
+                    txn['account_number'] = acc_resp.data['account_number'][-4:] # Last 4 digits
+            else:
+                txn['bank_name'] = 'Unknown'
+                txn['account_number'] = '****'
+                
+    except Exception as e:
+        print(f"Error fetching transactions: {e}")
+        transactions = []
+        
     return render_template('subsystems/financials/fin4/transactions.html',
                            transactions=transactions,
                            subsystem_name=SUBSYSTEM_NAME,
@@ -171,7 +217,16 @@ def transactions():
 @fin4_bp.route('/bank-accounts')
 @login_required
 def bank_accounts():
-    accounts = []  # Would fetch from database
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        response = client.table('bank_accounts').select('*').order('bank_name').execute()
+        accounts = response.data if response.data else []
+    except Exception as e:
+        print(f"Error fetching accounts: {e}")
+        accounts = []
+        
     return render_template('subsystems/financials/fin4/bank_accounts.html',
                            accounts=accounts,
                            subsystem_name=SUBSYSTEM_NAME,

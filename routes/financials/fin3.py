@@ -142,9 +142,32 @@ def change_password():
 @fin3_bp.route('/dashboard')
 @login_required
 def dashboard():
-    total_receivables = 89500.00  # Placeholder
-    overdue_count = 7  # Placeholder
-    collected_this_month = 45000.00  # Placeholder
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Get total receivables (Sum of open receivables)
+        response = client.table('receivables').select('amount_due').eq('status', 'Open').execute()
+        amounts = [r['amount_due'] for r in response.data] if response.data else []
+        total_receivables = sum(amounts)
+        
+        # Get overdue count
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        response = client.table('receivables').select('id', count='exact').eq('status', 'Open').lt('due_date', today).execute()
+        overdue_count = response.count if response.count is not None else 0
+        
+        # Get collected this month
+        now = datetime.utcnow()
+        first_day = now.replace(day=1).strftime('%Y-%m-%d')
+        response = client.table('collections').select('amount').gte('collection_date', first_day).execute()
+        collected_amounts = [r['amount'] for r in response.data] if response.data else []
+        collected_this_month = sum(collected_amounts)
+        
+    except Exception as e:
+        print(f"Error fetching stats: {e}")
+        total_receivables = 0.0
+        overdue_count = 0
+        collected_this_month = 0.0
     
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
@@ -161,7 +184,32 @@ def dashboard():
 @fin3_bp.route('/receivables')
 @login_required
 def receivables_list():
-    receivables = []  # Would fetch from database
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetch receivables
+        response = client.table('receivables').select('*').order('due_date').execute()
+        receivables = response.data if response.data else []
+        
+        # Enrich with billing/patient info (simplified)
+        for rec in receivables:
+            if rec.get('billing_record_id'):
+                bill_resp = client.table('billing_records').select('patient_id').eq('id', rec['billing_record_id']).single().execute()
+                if bill_resp.data:
+                    # Get patient name
+                    pat_resp = client.table('patients').select('first_name, last_name').eq('id', bill_resp.data['patient_id']).single().execute()
+                    if pat_resp.data:
+                        rec['patient_name'] = f"{pat_resp.data['first_name']} {pat_resp.data['last_name']}"
+                    else:
+                        rec['patient_name'] = 'Unknown Patient'
+            else:
+                rec['patient_name'] = 'N/A'
+                
+    except Exception as e:
+        print(f"Error fetching receivables: {e}")
+        receivables = []
+        
     return render_template('subsystems/financials/fin3/receivables.html',
                            receivables=receivables,
                            subsystem_name=SUBSYSTEM_NAME,
@@ -171,7 +219,26 @@ def receivables_list():
 @fin3_bp.route('/collections')
 @login_required
 def collections():
-    collections = []  # Would fetch from database
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetch collections
+        response = client.table('collections').select('*').order('collection_date', desc=True).execute()
+        collections = response.data if response.data else []
+        
+        # Enrich with receivable info
+        for col in collections:
+            if col.get('receivable_id'):
+                # In a real app, we'd fetch more details
+                col['reference'] = f"REC-{col['receivable_id']}"
+            else:
+                col['reference'] = 'N/A'
+                
+    except Exception as e:
+        print(f"Error fetching collections: {e}")
+        collections = []
+        
     return render_template('subsystems/financials/fin3/collections.html',
                            collections=collections,
                            subsystem_name=SUBSYSTEM_NAME,

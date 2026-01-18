@@ -167,9 +167,30 @@ def change_password():
 @fin2_bp.route('/dashboard')
 @login_required
 def dashboard():
-    total_payables = 125000.00  # Placeholder
-    pending_invoices = 18  # Placeholder
-    due_this_week = 5  # Placeholder
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Get total payables (Sum of unpaid invoices)
+        response = client.table('vendor_invoices').select('amount').eq('status', 'Unpaid').execute()
+        amounts = [r['amount'] for r in response.data] if response.data else []
+        total_payables = sum(amounts)
+        
+        # Get pending invoices count
+        pending_invoices = len(amounts)
+        
+        # Get due this week
+        now = datetime.utcnow()
+        next_week = (now + timedelta(days=7)).strftime('%Y-%m-%d')
+        today = now.strftime('%Y-%m-%d')
+        response = client.table('vendor_invoices').select('id', count='exact').eq('status', 'Unpaid').lte('due_date', next_week).gte('due_date', today).execute()
+        due_this_week = response.count if response.count is not None else 0
+        
+    except Exception as e:
+        print(f"Error fetching stats: {e}")
+        total_payables = 0.0
+        pending_invoices = 0
+        due_this_week = 0
     
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
@@ -186,7 +207,27 @@ def dashboard():
 @fin2_bp.route('/invoices')
 @login_required
 def vendor_invoices():
-    invoices = []  # Would fetch from database
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetch invoices
+        response = client.table('vendor_invoices').select('*').order('due_date').execute()
+        invoices = response.data if response.data else []
+        
+        # Enrich with vendor names
+        for inv in invoices:
+            if inv.get('vendor_id'):
+                v_resp = client.table('vendors').select('name').eq('id', inv['vendor_id']).single().execute()
+                if v_resp.data:
+                    inv['vendor_name'] = v_resp.data['name']
+            else:
+                inv['vendor_name'] = 'Unknown'
+                
+    except Exception as e:
+        print(f"Error fetching invoices: {e}")
+        invoices = []
+        
     return render_template('subsystems/financials/fin2/invoices.html',
                            invoices=invoices,
                            subsystem_name=SUBSYSTEM_NAME,
@@ -196,11 +237,44 @@ def vendor_invoices():
 @fin2_bp.route('/invoices/add', methods=['GET', 'POST'])
 @login_required
 def add_invoice():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
     if request.method == 'POST':
-        flash('Invoice recorded successfully!', 'success')
-        return redirect(url_for('fin2.vendor_invoices'))
+        vendor_id = request.form.get('vendor_id')
+        invoice_number = request.form.get('invoice_number')
+        invoice_date = request.form.get('invoice_date')
+        due_date = request.form.get('due_date')
+        amount = request.form.get('amount')
+        description = request.form.get('description')
+        
+        try:
+            data = {
+                'vendor_id': int(vendor_id),
+                'invoice_number': invoice_number,
+                'invoice_date': invoice_date,
+                'due_date': due_date,
+                'amount': float(amount),
+                'status': 'Unpaid',
+                'description': description
+            }
+            
+            client.table('vendor_invoices').insert(data).execute()
+            flash('Invoice recorded successfully!', 'success')
+            return redirect(url_for('fin2.vendor_invoices'))
+            
+        except Exception as e:
+            flash(f'Error adding invoice: {format_db_error(e)}', 'danger')
+    
+    # Fetch vendors for dropdown
+    try:
+        response = client.table('vendors').select('id, name').eq('status', 'Active').order('name').execute()
+        vendors = response.data if response.data else []
+    except:
+        vendors = []
     
     return render_template('subsystems/financials/fin2/add_invoice.html',
+                           vendors=vendors,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -208,7 +282,32 @@ def add_invoice():
 @fin2_bp.route('/payments')
 @login_required
 def payments():
-    payments = []  # Would fetch from database
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetch payments
+        response = client.table('vendor_payments').select('*').order('payment_date', desc=True).execute()
+        payments = response.data if response.data else []
+        
+        # Enrich with invoice and vendor details
+        for pay in payments:
+            if pay.get('invoice_id'):
+                inv_resp = client.table('vendor_invoices').select('invoice_number, vendor_id').eq('id', pay['invoice_id']).single().execute()
+                if inv_resp.data:
+                    pay['invoice_number'] = inv_resp.data['invoice_number']
+                    # Get vendor name
+                    v_resp = client.table('vendors').select('name').eq('id', inv_resp.data['vendor_id']).single().execute()
+                    if v_resp.data:
+                        pay['vendor_name'] = v_resp.data['name']
+            else:
+                pay['invoice_number'] = 'N/A'
+                pay['vendor_name'] = 'Unknown'
+                
+    except Exception as e:
+        print(f"Error fetching payments: {e}")
+        payments = []
+        
     return render_template('subsystems/financials/fin2/payments.html',
                            payments=payments,
                            subsystem_name=SUBSYSTEM_NAME,
