@@ -498,6 +498,75 @@ def admin_change_password(user_id):
         flash(error_msg, 'danger')
     return redirect(url_for('hr3.user_list'))
 
+@hr3_bp.route('/analytics')
+@login_required
+def analytics():
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # 1. Attendance Analytics
+    try:
+        attendance_data = client.table('attendance_logs').select('*').execute().data or []
+    except:
+        attendance_data = []
+        
+    # 2. Leave Analytics
+    try:
+        leave_data = client.table('leave_requests').select('*').execute().data or []
+    except:
+        leave_data = []
+
+    # 3. User distribution
+    all_users = User.get_all()
+    
+    # Process attendance stats
+    attendance_stats = {
+        'On-time': 0,
+        'Late': 0,
+        'Absent': 0
+    }
+    for entry in attendance_data:
+        status = entry.get('status')
+        if status in attendance_stats:
+            attendance_stats[status] += 1
+            
+    # Process leave stats
+    leave_stats = {
+        'Pending': 0,
+        'Approved': 0,
+        'Rejected': 0
+    }
+    leave_types = {}
+    for entry in leave_data:
+        status = entry.get('status')
+        if status in leave_stats:
+            leave_stats[status] += 1
+        
+        ltype = entry.get('leave_type')
+        if ltype:
+            leave_types[ltype] = leave_types.get(ltype, 0) + 1
+
+    # Subsystem distribution
+    subsystem_dist = {}
+    for u in all_users:
+        sub = u.subsystem.upper()
+        subsystem_dist[sub] = subsystem_dist.get(sub, 0) + 1
+
+    return render_template('subsystems/hr/hr3/analytics.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME,
+                           attendance_stats=attendance_stats,
+                           leave_stats=leave_stats,
+                           leave_types=leave_types,
+                           subsystem_dist=subsystem_dist,
+                           total_users=len(all_users),
+                           datetime=datetime)
+
 @hr3_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():

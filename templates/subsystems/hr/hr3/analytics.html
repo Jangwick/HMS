@@ -1,0 +1,213 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Analytics - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Workforce Analytics{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900">Workforce Insights</h2>
+            <p class="text-gray-500 text-sm">Real-time statistics across all hospital subsystems.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="window.print()" class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors flex items-center shadow-sm">
+                <i class="bi bi-printer mr-2"></i> Print Report
+            </button>
+            <div class="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold flex items-center border border-indigo-100">
+                <i class="bi bi-calendar-check mr-2"></i> As of {{ datetime.utcnow().strftime('%B %d, %Y') }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Overview Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Total Workforce</h4>
+            <div class="flex items-end justify-between">
+                <span class="text-3xl font-bold text-gray-900">{{ total_users }}</span>
+                <span class="text-green-500 text-xs font-bold mb-1"><i class="bi bi-arrow-up-short"></i> 12%</span>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Attendance Rate</h4>
+            <div class="flex items-end justify-between">
+                <span class="text-3xl font-bold text-gray-900">94.2%</span>
+                <span class="text-indigo-500 text-xs font-bold mb-1">Target 95%</span>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Pending Leaves</h4>
+            <div class="flex items-end justify-between">
+                <span class="text-3xl font-bold text-gray-900">{{ leave_stats['Pending'] }}</span>
+                <a href="{{ url_for('hr3.pending_approvals') }}" class="text-xs text-indigo-600 font-bold hover:underline mb-1">Review All</a>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Avg. Response</h4>
+            <div class="flex items-end justify-between">
+                <span class="text-3xl font-bold text-gray-900">1.2d</span>
+                <span class="text-gray-400 text-xs font-bold mb-1">Approval time</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Subsystem Distribution -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="font-bold text-gray-900">Staff Distribution</h3>
+                <div class="text-xs text-gray-400">By Subsystem</div>
+            </div>
+            <div class="h-64 relative">
+                <canvas id="subsystemChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Attendance Status -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="font-bold text-gray-900">Attendance Status</h3>
+                <div class="text-xs text-gray-400">Last 30 Days</div>
+            </div>
+            <div class="h-64 relative">
+                <canvas id="attendanceChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Leave Types -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-1">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="font-bold text-gray-900">Leave Categories</h3>
+            </div>
+            <div class="h-64 relative">
+                <canvas id="leaveTypeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- System Activity -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="font-bold text-gray-900">System Engagement</h3>
+                <select class="text-sm bg-gray-50 border-none rounded-lg px-3 py-1 text-gray-600 focus:ring-0">
+                    <option>Yearly</option>
+                    <option>Monthly</option>
+                    <option selected>Weekly</option>
+                </select>
+            </div>
+            <div class="h-64 relative">
+                <canvas id="activityChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Colors based on branding
+    const colors = [
+        '#6366F1', '#F59E0B', '#10B981', '#EF4444', 
+        '#8B5CF6', '#EC4899', '#3B82F6', '#06B6D4'
+    ];
+
+    // Staff Distribution Chart
+    new Chart(document.getElementById('subsystemChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ subsystem_dist.keys() | list | tojson }},
+            datasets: [{
+                label: 'Staff Count',
+                data: {{ subsystem_dist.values() | list | tojson }},
+                backgroundColor: '#6366F1',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { display: false } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    // Attendance Doughnut Chart
+    new Chart(document.getElementById('attendanceChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['On-time', 'Late', 'Absent'],
+            datasets: [{
+                data: [
+                    {{ attendance_stats.get('On-time', 0) }},
+                    {{ attendance_stats.get('Late', 0) }},
+                    {{ attendance_stats.get('Absent', 0) }}
+                ],
+                backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 6 } }
+            },
+            cutout: '70%'
+        }
+    });
+
+    // Leave Types Polar Area
+    new Chart(document.getElementById('leaveTypeChart'), {
+        type: 'polarArea',
+        data: {
+            labels: {{ leave_types.keys() | list | tojson }},
+            datasets: [{
+                data: {{ leave_types.values() | list | tojson }},
+                backgroundColor: colors,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 6 } }
+            }
+        }
+    });
+
+    // Activity Line Chart (Mock Data for display)
+    new Chart(document.getElementById('activityChart'), {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Logins',
+                data: [65, 78, 90, 85, 95, 40, 30],
+                borderColor: '#6366F1',
+                tension: 0.4,
+                fill: true,
+                backgroundColor: 'rgba(99, 102, 241, 0.1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { borderDash: [2, 2] } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+</script>
+{% endblock %}

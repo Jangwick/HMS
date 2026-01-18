@@ -54,19 +54,35 @@
             </div>
             <p class="text-3xl font-bold text-gray-900">{{ low_stock_count }}</p>
             <p class="text-red-600 text-sm font-medium mt-2 flex items-center">
-                <i class="bi bi-arrow-down-short text-lg"></i> Requires attention
+                Requires attention
             </p>
         </div>
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Recent Deliveries</h4>
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Inventory Value</h4>
                 <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                    <i class="bi bi-truck"></i>
+                    <i class="bi bi-currency-dollar"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">5</p>
-            <p class="text-green-500 text-sm font-medium mt-2">Last 24 hours</p>
+            <p class="text-3xl font-bold text-gray-900">Est. High</p>
+            <p class="text-green-500 text-sm font-medium mt-2">Based on stock levels</p>
+        </div>
+    </div>
+
+    <!-- Analytics Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h4 class="text-lg font-bold text-gray-900 mb-4">Inventory by Category</h4>
+            <div class="h-64 relative">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h4 class="text-lg font-bold text-gray-900 mb-4">Monthly Consumption Trend</h4>
+            <div class="h-64 relative">
+                <canvas id="consumptionChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -98,4 +114,56 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Category Chart
+    const catCtx = document.getElementById('categoryChart').getContext('2d');
+    new Chart(catCtx, {
+        type: 'pie',
+        data: {
+            labels: {{ cat_labels | tojson }},
+            datasets: [{
+                data: {{ cat_values | tojson }},
+                backgroundColor: ['#F59E0B', '#10B981', '#6366F1', '#EF4444', '#8B5CF6']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    // Consumption Chart
+    const consCtx = document.getElementById('consumptionChart').getContext('2d');
+    new Chart(consCtx, {
+        type: 'line',
+        data: {
+            labels: {{ consumption_labels | tojson }},
+            datasets: [{
+                label: 'Consumption',
+                data: {{ consumption_values | tojson }},
+                borderColor: '#F59E0B',
+                tension: 0.3,
+                fill: true,
+                backgroundColor: 'rgba(245, 158, 11, 0.1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
 {% endblock %}
