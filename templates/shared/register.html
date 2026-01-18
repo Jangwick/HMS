@@ -3,50 +3,47 @@
 {% block title %}Register - {{ subsystem_name }}{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center bg-gray-50 relative overflow-hidden">
-    <!-- Background Decoration -->
+<div class="min-h-screen flex items-center justify-center bg-[#F8FAFC] relative overflow-hidden font-['Inter']">
+    <!-- Dynamic Trademark Background -->
     <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-        <div
-            class="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-gradient-to-r from-{{ accent_color|default('[#0EA5E9]') }} to-transparent opacity-5 blur-3xl">
-        </div>
-        <div
-            class="absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] rounded-full bg-gradient-to-l from-{{ accent_color|default('[#0EA5E9]') }} to-transparent opacity-5 blur-3xl">
-        </div>
+        <div class="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full opacity-10 blur-3xl"
+             style="background: radial-gradient(circle, {{ accent_color or '#3B82F6' }} 0%, transparent 70%);"></div>
+        <div class="absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] rounded-full opacity-10 blur-3xl"
+             style="background: radial-gradient(circle, {{ accent_color or '#3B82F6' }} 0%, transparent 70%);"></div>
     </div>
 
-    <div
-        class="max-w-md w-full bg-white/90 backdrop-blur-sm p-8 sm:p-10 rounded-3xl shadow-2xl border border-gray-100 relative z-10 mx-4">
-        <!-- Header Icon -->
+    <div class="max-w-[480px] w-full bg-white/90 backdrop-blur-sm px-10 py-12 rounded-[40px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.06)] border border-gray-100 relative z-10 mx-4">
+        <!-- Floating Header Icon -->
         <div class="absolute -top-10 left-1/2 transform -translate-x-1/2">
-            <div
-                class="w-20 h-20 bg-gradient-to-br from-{{ accent_color|default('[#0EA5E9]') }} to-gray-800 rounded-2xl flex items-center justify-center shadow-lg border-4 border-white text-white">
-                <i class="bi bi-person-plus text-4xl"></i>
+            <div class="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg border-4 border-white text-white"
+                 style="background: linear-gradient(to bottom right, {{ accent_color or '#3B82F6' }}, #1F2937);">
+                <i class="bi bi-person-plus-fill text-4xl"></i>
             </div>
         </div>
 
-        <div class="mt-12 text-center space-y-2">
+        <div class="text-center space-y-2 mb-8 mt-4">
+            {% set name_parts = subsystem_name.split(' - ') %}
             <h2 class="text-3xl font-bold text-gray-900 tracking-tight">
-                Create Account
+                {{ name_parts[0] }}
             </h2>
-            <p class="text-sm font-bold text-{{ accent_color|default('[#0EA5E9]') }} uppercase tracking-wider">{{
-                subsystem_name }}</p>
-            <p class="text-gray-500 text-sm">Register for secure access</p>
+            <p class="text-sm font-bold uppercase tracking-wider" style="color: {{ accent_color or '#3B82F6' }};">
+                {{ name_parts[1] if name_parts|length > 1 else 'Account Registration' }}
+            </p>
+            <p class="text-gray-500 text-sm">Secure Access Portal</p>
         </div>
 
-        <div class="mt-8">
+        <div class="mt-6">
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
             {% for category, message in messages %}
-            <div
-                class="rounded-xl bg-{{ 'red' if category == 'danger' else 'green' }}-50 p-4 mb-4 border border-{{ 'red' if category == 'danger' else 'green' }}-100 flex items-start animate-fade-in-down">
+            <div class="rounded-2xl p-4 mb-6 border flex items-start animate-fade-in"
+                 style="background-color: {{ accent_color or '#10B981' }}10; border-color: {{ accent_color or '#10B981' }}20;">
                 <div class="flex-shrink-0">
-                    <i
-                        class="bi bi-{{ 'x-circle-fill' if category == 'danger' else 'check-circle-fill' }} text-{{ 'red' if category == 'danger' else 'green' }}-500 text-lg"></i>
+                    <i class="bi bi-{{ 'x-circle-fill' if category == 'danger' else 'check-circle-fill' }} text-lg"
+                       style="color: {{ '#EF4444' if category == 'danger' else accent_color or '#10B981' }};"></i>
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm font-medium text-{{ 'red' if category == 'danger' else 'green' }}-800">
-                        {{ message }}
-                    </p>
+                    <p class="text-sm font-bold" style="color: {{ '#991B1B' if category == 'danger' else accent_color or '#065F46' }};">{{ message }}</p>
                 </div>
             </div>
             {% endfor %}
@@ -56,116 +53,128 @@
             <form class="space-y-5" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
-                <div>
-                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1 ml-1">Username</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="bi bi-person text-gray-400"></i>
+                <div class="space-y-1.5">
+                    <label for="username" class="block text-sm font-bold text-slate-700 ml-1">Username</label>
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-300 transition-colors">
+                            <i class="bi bi-person"></i>
                         </div>
                         <input id="username" name="username" type="text" required
-                            class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-{{ accent_color|default('[#0EA5E9]') }} focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
+                            class="block w-full pl-11 pr-4 py-3.5 bg-gray-50/50 border border-gray-100 rounded-2xl text-gray-900 placeholder-gray-300 focus:outline-none transition-all font-medium sm:text-sm"
                             placeholder="Enter your username">
                     </div>
                 </div>
 
-                <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1 ml-1">Email Address</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="bi bi-envelope text-gray-400"></i>
+                <div class="space-y-1.5">
+                    <label for="email" class="block text-sm font-bold text-slate-700 ml-1">Email Address</label>
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-300 transition-colors">
+                            <i class="bi bi-envelope"></i>
                         </div>
                         <input id="email" name="email" type="email" required
-                            class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-{{ accent_color|default('[#0EA5E9]') }} focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
+                            class="block w-full pl-11 pr-4 py-3.5 bg-gray-50/50 border border-gray-100 rounded-2xl text-gray-900 placeholder-gray-300 focus:outline-none transition-all font-medium sm:text-sm"
                             placeholder="Enter your email">
                     </div>
                 </div>
 
-                <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1 ml-1">Password</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="bi bi-lock text-gray-400"></i>
+                <div class="space-y-1.5">
+                    <label for="password" class="block text-sm font-bold text-slate-700 ml-1">Password</label>
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-300 transition-colors">
+                            <i class="bi bi-lock"></i>
                         </div>
                         <input id="password" name="password" type="password" required
-                            class="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-{{ accent_color|default('[#0EA5E9]') }} focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
+                            class="block w-full pl-11 pr-12 py-3.5 bg-gray-50/50 border border-gray-100 rounded-2xl text-gray-900 placeholder-gray-300 focus:outline-none transition-all font-medium sm:text-sm"
                             placeholder="Create a password">
                         <button type="button" onclick="togglePassword()"
-                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                            class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-300 hover:text-gray-500 transition-colors">
                             <i id="toggleIcon" class="bi bi-eye"></i>
                         </button>
                     </div>
 
                     <!-- Password Strength Meter -->
-                    <div class="mt-3 px-1">
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Strength</span>
-                            <span id="strength-text"
-                                class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Empty</span>
+                    <div class="mt-4 px-1">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Strength</span>
+                            <span id="strength-text" class="text-[9px] font-black uppercase tracking-widest" style="color: {{ accent_color or '#94A3B8' }};">Empty</span>
                         </div>
-                        <div class="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
-                            <div id="strength-bar" class="h-full w-0 transition-all duration-500 ease-out bg-gray-300">
-                            </div>
+                        <div class="h-[3px] w-full bg-gray-100 rounded-full overflow-hidden">
+                            <div id="strength-bar" class="h-full w-0 transition-all duration-500 ease-out" 
+                                 style="background-color: {{ accent_color or '#94A3B8' }};"></div>
                         </div>
                     </div>
 
-                    <!-- Password Requirements -->
-                    <div class="mt-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                        <div class="grid grid-cols-2 gap-y-1.5 gap-x-4">
-                            <div id="req-length"
-                                class="flex items-center gap-2 text-[10px] text-gray-400 transition-colors duration-200">
-                                <i class="bi bi-circle text-[8px]"></i>
-                                8-14 Characters
+                    <!-- Password Requirements Box -->
+                    <div class="mt-4 p-5 bg-gray-50/80 rounded-[24px] border border-gray-100/50">
+                        <div class="grid grid-cols-2 gap-y-3 gap-x-5">
+                            <div id="req-length" class="flex items-center gap-2 text-[10px] font-bold text-gray-400 transition-all">
+                                <i class="bi bi-circle text-[6px] stroke-2"></i> 8-14 Characters
                             </div>
-                            <div id="req-upper"
-                                class="flex items-center gap-2 text-[10px] text-gray-400 transition-colors duration-200">
-                                <i class="bi bi-circle text-[8px]"></i>
-                                Uppercase Letter
+                            <div id="req-upper" class="flex items-center gap-2 text-[10px] font-bold text-gray-400 transition-all">
+                                <i class="bi bi-circle text-[6px] stroke-2"></i> Uppercase Letter
                             </div>
-                            <div id="req-number"
-                                class="flex items-center gap-2 text-[10px] text-gray-400 transition-colors duration-200">
-                                <i class="bi bi-circle text-[8px]"></i>
-                                Number (0-9)
+                            <div id="req-number" class="flex items-center gap-2 text-[10px] font-bold text-gray-400 transition-all">
+                                <i class="bi bi-circle text-[6px] stroke-2"></i> Number (0-9)
                             </div>
-                            <div id="req-special"
-                                class="flex items-center gap-2 text-[10px] text-gray-400 transition-colors duration-200">
-                                <i class="bi bi-circle text-[8px]"></i>
-                                Special Char
+                            <div id="req-special" class="flex items-center gap-2 text-[10px] font-bold text-gray-400 transition-all">
+                                <i class="bi bi-circle text-[6px] stroke-2"></i> Special Char
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div>
+                <div class="pt-4">
                     <button type="submit"
-                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-gradient-to-r from-{{ accent_color|default('[#0EA5E9]') }} to-gray-800 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-{{ accent_color|default('[#0EA5E9]') }} transition-all duration-200 shadow-lg shadow-{{ accent_color|default('[#0EA5E9]') }}/30 transform hover:-translate-y-0.5">
+                        class="group relative w-full flex justify-center py-4 px-4 border border-transparent text-sm font-bold rounded-2xl text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 shadow-xl transform hover:-translate-y-0.5"
+                        style="background: linear-gradient(to right, {{ accent_color or '#3B82F6' }}, #1F2937); box-shadow: 0 12px 24px -5px {{ accent_color or '#3B82F6' }}40; --tw-ring-color: {{ accent_color or '#3B82F6' }};">
                         <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-                            <i class="bi bi-person-plus group-hover:text-white/80 transition-colors"></i>
+                            <i class="bi bi-person-plus-fill group-hover:text-white/80 transition-colors"></i>
                         </span>
                         Register Account
                     </button>
                 </div>
 
-                <div class="flex flex-col space-y-4 text-center pt-2">
-                    <p class="text-sm text-gray-500">
-                        Already have an account?
-                        <a href="{{ url_for(blueprint_name + '.login') }}"
-                            class="text-{{ accent_color|default('[#0EA5E9]') }} font-bold hover:underline">Sign in</a>
+                <div class="flex flex-col space-y-4 text-center pt-6">
+                    <p class="text-xs font-bold text-gray-400">
+                        Already have an account? 
+                        <a href="{{ url_for(blueprint_name + '.login') }}" class="hover:underline underline-offset-4 decoration-2" 
+                           style="color: {{ accent_color or '#3B82F6' }};">Sign in</a>
                     </p>
                     <a href="{{ url_for(hub_route) if hub_route else url_for('portal.index') }}"
-                        class="inline-flex items-center justify-center text-sm text-gray-500 hover:text-gray-900 transition-colors group">
-                        <i class="bi bi-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i> Back to
-                        Hub
+                        class="inline-flex items-center justify-center text-[11px] font-bold text-gray-400 hover:text-slate-900 transition-all group">
+                        <i class="bi bi-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i>
+                        Back to Hub
                     </a>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Footer -->
-    <div class="absolute bottom-6 text-center w-full text-xs text-gray-400">
-        Note: All new registrations require approval from Admin before access is granted.
+    <!-- Caps Footer Note -->
+    <div class="absolute bottom-8 text-center w-full text-[9px] font-black text-gray-400 uppercase tracking-[0.25em] px-8">
+        NOTE: ALL NEW REGISTRATIONS REQUIRE APPROVAL FROM ADMIN BEFORE ACCESS IS GRANTED.
     </div>
 </div>
+
+<style>
+    input:focus {
+        border-color: {{ accent_color or '#3B82F6' }}80 !important;
+        box-shadow: 0 0 0 4px {{ accent_color or '#3B82F6' }}10 !important;
+    }
+    .text-trademark {
+        color: {{ accent_color or '#3B82F6' }};
+    }
+    .group:focus-within .bi-person,
+    .group:focus-within .bi-envelope,
+    .group:focus-within .bi-lock { 
+        color: {{ accent_color or '#3B82F6' }} !important; 
+    }
+</style>
+
+<script>
+    // Update script to use trademark colors
+    const trademarkColor = "{{ accent_color or '#3B82F6' }}";
+</script>
 
 <script>
     function togglePassword() {
@@ -224,7 +233,7 @@
 
         // Update Bar and Text
         const states = [
-            { color: 'bg-gray-300', text: 'Empty', width: '0%', textColor: 'text-gray-400' },
+            { color: 'bg-gray-300', text: 'Empty', width: '0%', textColor: 'text-trademark' },
             { color: 'bg-red-500', text: 'Weak', width: '25%', textColor: 'text-red-500' },
             { color: 'bg-amber-500', text: 'Fair', width: '50%', textColor: 'text-amber-500' },
             { color: 'bg-blue-500', text: 'Good', width: '75%', textColor: 'text-blue-500' },

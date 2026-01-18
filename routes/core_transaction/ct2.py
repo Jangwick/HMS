@@ -8,8 +8,9 @@ from datetime import datetime, timedelta
 ct2_bp = Blueprint('ct2', __name__, template_folder='templates')
 
 # Subsystem configuration
-SUBSYSTEM_NAME = 'Clinical Operations'
-ACCENT_COLOR = '#10B981'  # Emerald 500
+SUBSYSTEM_NAME = 'CT2 - Clinical Operations'
+ACCENT_COLOR = '#10B981'
+SUBSYSTEM_ICON = 'clipboard-pulse'
 BLUEPRINT_NAME = 'ct2'
 
 @ct2_bp.route('/login', methods=['GET', 'POST'])
@@ -18,7 +19,13 @@ def login():
     locked, remaining_seconds, unlock_time_str = is_ip_locked()
     if locked:
         flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
-        return render_template('subsystems/core_transaction/ct2/login.html', remaining_seconds=remaining_seconds)
+        return render_template('shared/login.html', 
+                               remaining_seconds=remaining_seconds,
+                               subsystem_name=SUBSYSTEM_NAME,
+                               accent_color=ACCENT_COLOR,
+                               subsystem_icon=SUBSYSTEM_ICON,
+                               blueprint_name=BLUEPRINT_NAME,
+                               hub_route='portal.ct_hub')
     
     if request.method == 'POST':
         username = request.form.get('username')
@@ -43,7 +50,12 @@ def login():
                         flash('Your account is awaiting approval from HR3 Admin.', 'info')
                     else:
                         flash('Your account has been rejected or deactivated.', 'danger')
-                    return render_template('subsystems/core_transaction/ct2/login.html')
+                    return render_template('shared/login.html',
+                                           subsystem_name=SUBSYSTEM_NAME,
+                                           accent_color=ACCENT_COLOR,
+                                           subsystem_icon=SUBSYSTEM_ICON,
+                                           blueprint_name=BLUEPRINT_NAME,
+                                           hub_route='portal.ct_hub')
 
                 # Clear IP lockout attempts on successful login
                 register_successful_login()
@@ -56,14 +68,25 @@ def login():
                     return redirect(url_for('ct2.dashboard'))
                 else:
                     flash('Login failed. Your account may be deactivated.', 'danger')
-                    return render_template('subsystems/core_transaction/ct2/login.html')
+                    return render_template('shared/login.html',
+                                           subsystem_name=SUBSYSTEM_NAME,
+                                           accent_color=ACCENT_COLOR,
+                                           subsystem_icon=SUBSYSTEM_ICON,
+                                           blueprint_name=BLUEPRINT_NAME,
+                                           hub_route='portal.ct_hub')
             else:
                 # Register failed attempt by IP
                 is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
                 
                 if is_now_locked:
                     flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
-                    return render_template('subsystems/core_transaction/ct2/login.html', remaining_seconds=remaining_seconds)
+                    return render_template('shared/login.html', 
+                                           remaining_seconds=remaining_seconds,
+                                           subsystem_name=SUBSYSTEM_NAME,
+                                           accent_color=ACCENT_COLOR,
+                                           subsystem_icon=SUBSYSTEM_ICON,
+                                           blueprint_name=BLUEPRINT_NAME,
+                                           hub_route='portal.ct_hub')
                 else:
                     flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
         else:
@@ -82,9 +105,20 @@ def login():
             is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
             
             if is_now_locked:
-                return render_template('subsystems/core_transaction/ct2/login.html', remaining_seconds=remaining_seconds)
+                return render_template('shared/login.html', 
+                                       remaining_seconds=remaining_seconds,
+                                       subsystem_name=SUBSYSTEM_NAME,
+                                       accent_color=ACCENT_COLOR,
+                                       subsystem_icon=SUBSYSTEM_ICON,
+                                       blueprint_name=BLUEPRINT_NAME,
+                                       hub_route='portal.ct_hub')
             
-    return render_template('subsystems/core_transaction/ct2/login.html')
+    return render_template('shared/login.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           subsystem_icon=SUBSYSTEM_ICON,
+                           blueprint_name=BLUEPRINT_NAME,
+                           hub_route='portal.ct_hub')
 
 @ct2_bp.route('/register', methods=['GET', 'POST'])
 def register():

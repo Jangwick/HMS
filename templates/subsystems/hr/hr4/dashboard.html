@@ -7,7 +7,8 @@
 <div class="space-y-8">
     <!-- Welcome Card -->
     <div
-        class="bg-gradient-to-r from-[#6366F1] to-indigo-900 rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
+        class="rounded-3xl shadow-xl p-8 text-white relative overflow-hidden"
+        style="background: linear-gradient(to right, {{ accent_color or '#6366F1' }}, #1E1B4B);">
         <div
             class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl">
         </div>
@@ -21,7 +22,8 @@
 
             <div class="mt-8 flex space-x-4">
                 <a href="{{ url_for('hr4.compensation') }}"
-                    class="px-6 py-2.5 bg-white text-indigo-600 font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
+                    class="px-6 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors"
+                    style="color: {{ accent_color or '#6366F1' }};">
                     Manage Compensation
                 </a>
                 <a href="{{ url_for('hr4.salary_grades') }}"

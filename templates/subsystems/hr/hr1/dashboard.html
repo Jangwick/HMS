@@ -7,7 +7,8 @@
 <div class="space-y-8">
     <!-- Welcome Card -->
     <div
-        class="bg-gradient-to-r from-[#6366F1] to-gray-800 rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
+        class="rounded-3xl shadow-xl p-8 text-white relative overflow-hidden"
+        style="background: linear-gradient(to right, {{ accent_color or '#3B82F6' }}, #1F2937);">
         <div
             class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl">
         </div>
@@ -21,7 +22,8 @@
 
             <div class="mt-8 flex space-x-4">
                 <a href="{{ url_for('hr1.list_vacancies') }}"
-                    class="px-6 py-2.5 bg-white text-[#6366F1] font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
+                    class="px-6 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors"
+                    style="color: {{ accent_color or '#3B82F6' }};">
                     View Vacancies
                 </a>
                 <a href="{{ url_for('hr1.list_applicants', action='add') }}"
@@ -77,22 +79,26 @@
             <a href="{{ url_for('hr1.list_applicants', action='add') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
-                    class="bi bi-person-plus text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
+                    class="bi bi-person-plus text-2xl mb-2 block group-hover:scale-110 transition-transform"
+                    style="color: {{ accent_color or '#3B82F6' }};"></i>
                 <span class="text-sm font-bold text-gray-700">New Applicant</span>
             </a>
             <a href="{{ url_for('hr1.list_vacancies') }}" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
-                    class="bi bi-file-earmark-plus text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
+                    class="bi bi-file-earmark-plus text-2xl mb-2 block group-hover:scale-110 transition-transform"
+                    style="color: {{ accent_color or '#3B82F6' }};"></i>
                 <span class="text-sm font-bold text-gray-700">Manage Vacancies</span>
             </a>
             <a href="{{ url_for('hr1.schedule_interview') }}" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
-                    class="bi bi-calendar-event text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
+                    class="bi bi-calendar-event text-2xl mb-2 block group-hover:scale-110 transition-transform"
+                    style="color: {{ accent_color or '#3B82F6' }};"></i>
                 <span class="text-sm font-bold text-gray-700">Schedule Interview</span>
             </a>
             <a href="{{ url_for('hr1.list_applicants', status='Interview') }}" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
-                    class="bi bi-check2-circle text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
+                    class="bi bi-check2-circle text-2xl mb-2 block group-hover:scale-110 transition-transform"
+                    style="color: {{ accent_color or '#3B82F6' }};"></i>
                 <span class="text-sm font-bold text-gray-700">Process Handoffs</span>
             </a>
         </div>
@@ -104,13 +110,13 @@
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
             <div class="flex items-center justify-between mb-8">
                 <h4 class="text-xl font-bold text-gray-900">Recent Applicants</h4>
-                <a href="{{ url_for('hr1.list_applicants') }}" class="text-[#6366F1] text-sm font-bold hover:underline">View All</a>
+                <a href="{{ url_for('hr1.list_applicants') }}" class="text-sm font-bold hover:underline" style="color: {{ accent_color or '#3B82F6' }};">View All</a>
             </div>
             <div class="space-y-4">
                 {% for applicant in recent_applicants %}
                 <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors cursor-pointer" onclick="window.location.href='{{ url_for('hr1.applicant_details', id=applicant.id) }}';">
                     <div class="flex items-center">
-                        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-[#6366F1] font-bold shadow-sm mr-4">
+                        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center font-bold shadow-sm mr-4" style="color: {{ accent_color or '#3B82F6' }};">
                             {{ applicant.first_name[0] }}{{ applicant.last_name[0] }}
                         </div>
                         <div>
@@ -134,12 +140,12 @@
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
             <div class="flex items-center justify-between mb-8">
                 <h4 class="text-xl font-bold text-gray-900">Upcoming Interviews</h4>
-                <a href="{{ url_for('hr1.schedule_interview') }}" class="text-[#6366F1] text-sm font-bold hover:underline">Schedule More</a>
+                <a href="{{ url_for('hr1.schedule_interview') }}" class="text-sm font-bold hover:underline" style="color: {{ accent_color or '#3B82F6' }};">Schedule More</a>
             </div>
             <div class="space-y-4">
                 {% for interview in recent_interviews %}
                 <div class="flex items-center p-4 bg-gray-50 rounded-2xl">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 mr-4">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center mr-4" style="background-color: {{ accent_color or '#3B82F6' }}15; color: {{ accent_color or '#3B82F6' }};">
                         <i class="bi bi-calendar-check"></i>
                     </div>
                     <div class="flex-1">

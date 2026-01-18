@@ -6,14 +6,10 @@
 {% block content %}
 <div class="space-y-8">
     <!-- Welcome Card -->
-    <div
-        class="bg-gradient-to-r from-[#0891B2] to-cyan-900 rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
-        <div
-            class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl">
-        </div>
-        <div
-            class="absolute bottom-0 left-0 w-48 h-48 bg-black opacity-10 rounded-full transform -translate-x-1/2 translate-y-1/2 blur-2xl">
-        </div>
+    <div class="rounded-3xl shadow-xl p-8 text-white relative overflow-hidden"
+         style="background: linear-gradient(to right, {{ accent_color or '#0891B2' }}, #1F2937);">
+        <div class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
+        <div class="absolute bottom-0 left-0 w-48 h-48 bg-black opacity-10 rounded-full transform -translate-x-1/2 translate-y-1/2 blur-2xl"></div>
 
         <div class="relative z-10">
             <h3 class="text-3xl font-bold mb-2">Welcome back, {{ current_user.username }}!</h3>
@@ -21,7 +17,8 @@
 
             <div class="mt-8 flex space-x-4">
                 <a href="{{ url_for('hr2.onboarding_pipeline') }}"
-                    class="px-6 py-2.5 bg-white text-[#0891B2] font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
+                    class="px-6 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors"
+                    style="color: {{ accent_color or '#0891B2' }};">
                     Onboarding Queue
                 </a>
                 <a href="{{ url_for('hr2.list_trainings') }}"

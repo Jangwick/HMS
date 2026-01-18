@@ -10,7 +10,8 @@ hr3_bp = Blueprint('hr3', __name__)
 
 # Subsystem configuration
 SUBSYSTEM_NAME = 'HR3 - Workforce Operations'
-ACCENT_COLOR = '#4F46E5'
+ACCENT_COLOR = '#0EA5E9'
+SUBSYSTEM_ICON = 'clock-history'
 BLUEPRINT_NAME = 'hr3'
 
 @hr3_bp.route('/login', methods=['GET', 'POST'])
@@ -19,7 +20,13 @@ def login():
     locked, remaining_seconds, unlock_time_str = is_ip_locked()
     if locked:
         flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
-        return render_template('subsystems/hr/hr3/login.html', remaining_seconds=remaining_seconds)
+        return render_template('shared/login.html', 
+                               remaining_seconds=remaining_seconds,
+                               subsystem_name=SUBSYSTEM_NAME,
+                               accent_color=ACCENT_COLOR,
+                               subsystem_icon=SUBSYSTEM_ICON,
+                               blueprint_name=BLUEPRINT_NAME,
+                               hub_route='portal.hr_hub')
     
     if request.method == 'POST':
         username = request.form.get('username')
@@ -37,7 +44,12 @@ def login():
                         flash('Your account is awaiting approval from HR3 Admin.', 'info')
                     else:
                         flash('Your account has been rejected or deactivated.', 'danger')
-                    return render_template('subsystems/hr/hr3/login.html')
+                    return render_template('shared/login.html',
+                                           subsystem_name=SUBSYSTEM_NAME,
+                                           accent_color=ACCENT_COLOR,
+                                           subsystem_icon=SUBSYSTEM_ICON,
+                                           blueprint_name=BLUEPRINT_NAME,
+                                           hub_route='portal.hr_hub')
 
                 # Check for password expiration - redirect to change password
                 if user.password_expires_at and user.password_expires_at < now_utc:
@@ -57,14 +69,25 @@ def login():
                     return redirect(url_for('hr3.dashboard'))
                 else:
                     flash('Login failed. Your account may be deactivated.', 'danger')
-                    return render_template('subsystems/hr/hr3/login.html')
+                    return render_template('shared/login.html',
+                                           subsystem_name=SUBSYSTEM_NAME,
+                                           accent_color=ACCENT_COLOR,
+                                           subsystem_icon=SUBSYSTEM_ICON,
+                                           blueprint_name=BLUEPRINT_NAME,
+                                           hub_route='portal.hr_hub')
             else:
                 # Register failed attempt by IP
                 is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
                 
                 if is_now_locked:
                     flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
-                    return render_template('subsystems/hr/hr3/login.html', remaining_seconds=remaining_seconds)
+                    return render_template('shared/login.html', 
+                                           remaining_seconds=remaining_seconds,
+                                           subsystem_name=SUBSYSTEM_NAME,
+                                           accent_color=ACCENT_COLOR,
+                                           subsystem_icon=SUBSYSTEM_ICON,
+                                           blueprint_name=BLUEPRINT_NAME,
+                                           hub_route='portal.hr_hub')
                 else:
                     flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
         else:
@@ -83,9 +106,20 @@ def login():
             is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
             
             if is_now_locked:
-                return render_template('subsystems/hr/hr3/login.html', remaining_seconds=remaining_seconds)
+                return render_template('shared/login.html', 
+                                       remaining_seconds=remaining_seconds,
+                                       subsystem_name=SUBSYSTEM_NAME,
+                                       accent_color=ACCENT_COLOR,
+                                       subsystem_icon=SUBSYSTEM_ICON,
+                                       blueprint_name=BLUEPRINT_NAME,
+                                       hub_route='portal.hr_hub')
             
-    return render_template('subsystems/hr/hr3/login.html')
+    return render_template('shared/login.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           subsystem_icon=SUBSYSTEM_ICON,
+                           blueprint_name=BLUEPRINT_NAME,
+                           hub_route='portal.hr_hub')
 
 @hr3_bp.route('/register', methods=['GET', 'POST'])
 def register():

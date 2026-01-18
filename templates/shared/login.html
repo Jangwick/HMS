@@ -1,0 +1,170 @@
+{% extends "base/base.html" %}
+
+{% block title %}Login - {{ subsystem_name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-[#F8FAFC] relative overflow-hidden font-['Inter']">
+    <!-- Dynamic Trademark Background -->
+    <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+        <div class="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full opacity-10 blur-3xl"
+             style="background: radial-gradient(circle, {{ accent_color or '#3B82F6' }} 0%, transparent 70%);"></div>
+        <div class="absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] rounded-full opacity-10 blur-3xl"
+             style="background: radial-gradient(circle, {{ accent_color or '#3B82F6' }} 0%, transparent 70%);"></div>
+    </div>
+
+    <div class="max-w-[448px] w-full bg-white/90 backdrop-blur-sm px-10 py-12 rounded-[40px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.06)] border border-gray-100 relative z-10 mx-4">
+        <!-- Floating Header Icon -->
+        <div class="absolute -top-10 left-1/2 transform -translate-x-1/2">
+            <div class="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg border-4 border-white text-white"
+                 style="background: linear-gradient(to bottom right, {{ accent_color or '#3B82F6' }}, #1F2937);">
+                <i class="bi bi-{{ subsystem_icon or 'person-fill' }} text-4xl"></i>
+            </div>
+        </div>
+
+        <div class="text-center space-y-2 mb-8 mt-4">
+            {% set name_parts = subsystem_name.split(' - ') %}
+            <h2 class="text-3xl font-bold text-gray-900 tracking-tight">
+                {{ name_parts[0] }}
+            </h2>
+            <p class="text-sm font-bold uppercase tracking-wider" style="color: {{ accent_color or '#3B82F6' }};">
+                {{ name_parts[1] if name_parts|length > 1 else 'Subsystem Portal' }}
+            </p>
+            <p class="text-gray-500 text-sm">Secure Access Portal</p>
+        </div>
+
+        <div class="mt-8">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="rounded-xl p-4 mb-4 border flex items-start animate-fade-in"
+                 style="background-color: {{ '#FEF2F2' if category == 'danger' else '#F0FDF4' }}; border-color: {{ '#FEE2E2' if category == 'danger' else '#DCFCE7' }};">
+                <div class="flex-shrink-0">
+                    <i class="bi bi-{{ 'x-circle-fill' if category == 'danger' else 'check-circle-fill' }} text-lg"
+                       style="color: {{ '#EF4444' if category == 'danger' else '#22C55E' }};"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium" style="color: {{ '#991B1B' if category == 'danger' else '#166534' }};">
+                        {{ message }}
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            {% if remaining_seconds %}
+            <div id="lockout-timer" class="rounded-xl bg-red-50 p-4 mb-6 text-center border border-red-100 animate-pulse">
+                <p class="text-sm font-medium text-red-800">
+                    Time remaining: <span id="countdown" class="font-bold text-lg font-mono"></span>
+                </p>
+            </div>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    var remaining = {{ remaining_seconds }};
+                    function updateTimer() {
+                        if (remaining < 0) {
+                            document.getElementById("lockout-timer").innerHTML = '<p class="text-sm font-medium text-green-800">Lockout expired. Please refresh to login.</p>';
+                            setTimeout(function () { location.reload(); }, 2000);
+                            return;
+                        }
+                        var minutes = Math.floor(remaining / 60);
+                        var seconds = Math.floor(remaining % 60);
+                        document.getElementById("countdown").innerHTML = minutes + "m " + seconds + "s ";
+                        remaining--;
+                    }
+                    updateTimer();
+                    setInterval(updateTimer, 1000);
+                });
+            </script>
+            {% endif %}
+
+            <form class="space-y-6" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div class="space-y-4">
+                    <div>
+                        <label for="username" class="block text-sm font-medium text-gray-700 mb-1 ml-1">Username</label>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[{{ accent_color or '#3B82F6' }}] transition-colors">
+                                <i class="bi bi-person"></i>
+                            </div>
+                            <input id="username" name="username" type="text" required
+                                class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[{{ accent_color or '#3B82F6' }}] focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
+                                placeholder="Enter your username">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1 ml-1">Password</label>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[{{ accent_color or '#3B82F6' }}] transition-colors">
+                                <i class="bi bi-lock"></i>
+                            </div>
+                            <input id="password" name="password" type="password" required
+                                class="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[{{ accent_color or '#3B82F6' }}] focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white sm:text-sm"
+                                placeholder="Enter your password">
+                            <button type="button" onclick="togglePassword()"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                <i id="toggleIcon" class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit"
+                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 shadow-lg transform hover:-translate-y-0.5"
+                        style="background: linear-gradient(to right, {{ accent_color or '#3B82F6' }}, #1F2937); box-shadow: 0 10px 20px -5px {{ accent_color or '#3B82F6' }}40; --tw-ring-color: {{ accent_color or '#3B82F6' }};">
+                        <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                            <i class="bi bi-box-arrow-in-right group-hover:text-white/80 transition-colors"></i>
+                        </span>
+                        Sign in
+                    </button>
+                </div>
+
+                <div class="flex flex-col space-y-4 text-center pt-2">
+                    <p class="text-sm text-gray-500">
+                        Don't have an account?
+                        <a href="{{ url_for(blueprint_name + '.register') }}"
+                            class="font-bold hover:underline" style="color: {{ accent_color or '#3B82F6' }};">Register here</a>
+                    </p>
+                    <a href="{{ url_for(hub_route) if hub_route else url_for('portal.index') }}"
+                        class="inline-flex items-center justify-center text-sm text-gray-500 hover:text-gray-900 transition-colors group">
+                        <i class="bi bi-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i> Back to Hub
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="absolute bottom-6 text-center w-full text-[10px] uppercase tracking-widest text-gray-400">
+        &copy; 2026 Hospital Management System. Secure Environment.
+    </div>
+</div>
+
+<style>
+    input:focus {
+        border-color: {{ accent_color or '#3B82F6' }}80 !important;
+        box-shadow: 0 0 0 4px {{ accent_color or '#3B82F6' }}10 !important;
+    }
+    .group:focus-within .bi-person,
+    .group:focus-within .bi-lock { 
+        color: {{ accent_color or '#3B82F6' }} !important; 
+    }
+</style>
+
+<script>
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.getElementById('toggleIcon');
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('bi-eye');
+            toggleIcon.classList.add('bi-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('bi-eye-slash');
+            toggleIcon.classList.add('bi-eye');
+        }
+    }
+</script>
+{% endblock %}
