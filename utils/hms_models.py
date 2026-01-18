@@ -106,7 +106,7 @@ class Applicant:
     @staticmethod
     def get_all():
         client = get_supabase_client()
-        response = client.table('applicants').select('*').order('created_at', ascending=False).execute()
+        response = client.table('applicants').select('*').order('created_at', desc=True).execute()
         return [Applicant(d) for d in response.data] if response.data else []
 
     @staticmethod

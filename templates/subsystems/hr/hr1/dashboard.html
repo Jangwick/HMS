@@ -97,5 +97,68 @@
             </a>
         </div>
     </div>
+
+    <!-- Recent Activity -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Recent Applicants -->
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            <div class="flex items-center justify-between mb-8">
+                <h4 class="text-xl font-bold text-gray-900">Recent Applicants</h4>
+                <a href="{{ url_for('hr1.list_applicants') }}" class="text-[#6366F1] text-sm font-bold hover:underline">View All</a>
+            </div>
+            <div class="space-y-4">
+                {% for applicant in recent_applicants %}
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors cursor-pointer" onclick="window.location.href='{{ url_for('hr1.applicant_details', id=applicant.id) }}';">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-[#6366F1] font-bold shadow-sm mr-4">
+                            {{ applicant.first_name[0] }}{{ applicant.last_name[0] }}
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-900">{{ applicant.first_name }} {{ applicant.last_name }}</p>
+                            <p class="text-xs text-gray-400">{{ applicant.source }} • {{ applicant.created_at[:10] }}</p>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-white text-gray-600 border border-gray-100 uppercase">
+                        {{ applicant.status }}
+                    </span>
+                </div>
+                {% else %}
+                <div class="text-center py-10">
+                    <p class="text-gray-400 font-medium">No recent applicants.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Upcoming Interviews -->
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            <div class="flex items-center justify-between mb-8">
+                <h4 class="text-xl font-bold text-gray-900">Upcoming Interviews</h4>
+                <a href="{{ url_for('hr1.schedule_interview') }}" class="text-[#6366F1] text-sm font-bold hover:underline">Schedule More</a>
+            </div>
+            <div class="space-y-4">
+                {% for interview in recent_interviews %}
+                <div class="flex items-center p-4 bg-gray-50 rounded-2xl">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 mr-4">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-bold text-gray-900">{{ interview.applicants.first_name }} {{ interview.applicants.last_name }}</p>
+                        <p class="text-xs text-gray-400">{{ interview.interview_date }} • {{ interview.location }}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="px-2 py-1 rounded-lg text-[10px] font-bold bg-green-100 text-green-700 uppercase">
+                            {{ interview.status }}
+                        </span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-10">
+                    <p class="text-gray-400 font-medium">No interviews scheduled today.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

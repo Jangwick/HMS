@@ -49,10 +49,12 @@
                         <td class="px-6 py-5 text-gray-400 text-sm">{{ vacancy.created_at[:10] }}</td>
                         <td class="px-8 py-5 text-right">
                             <div class="flex justify-end space-x-2">
-                                <button
-                                    class="p-2 text-gray-400 hover:text-[#6366F1] hover:bg-white rounded-lg transition-all">
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
+                                <form action="{{ url_for('hr1.delete_vacancy', id=vacancy.id) }}" method="POST" onsubmit="return confirm('Delete this vacancy?');" class="inline">
+                                    <button type="submit"
+                                        class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
                                 <button
                                     class="px-4 py-2 bg-gray-50 text-[#6366F1] font-bold text-sm rounded-lg hover:bg-[#6366F1] hover:text-white transition-all">
                                     View Applicants

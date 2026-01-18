@@ -209,16 +209,25 @@ def dashboard():
     
     # Fetch interviews today
     today = datetime.utcnow().strftime('%Y-%m-%d')
-    interviews_today = client.table('interviews').select('id', count='exact').gte('interview_date', today).execute().count or 0
+    interviews_today_resp = client.table('interviews').select('*, applicants(first_name, last_name)').gte('interview_date', today).order('interview_date').limit(5).execute()
+    interviews_today_count = client.table('interviews').select('id', count='exact').gte('interview_date', today).execute().count or 0
+    recent_interviews = interviews_today_resp.data if interviews_today_resp.data else []
     
+    # Recent applicants
+    recent_applicants_resp = client.table('applicants').select('*').order('created_at', desc=True).limit(5).execute()
+    recent_applicants = recent_applicants_resp.data if recent_applicants_resp.data else []
+
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
+    
     return render_template('subsystems/hr/hr1/dashboard.html', 
                            now=datetime.utcnow,
                            vacancies_count=vacancies_count,
                            applicants_count=applicants_count,
-                           interviews_today=interviews_today,
+                           interviews_today=interviews_today_count,
+                           recent_applicants=recent_applicants,
+                           recent_interviews=recent_interviews,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -341,6 +350,79 @@ def schedule_interview():
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
+@hr1_bp.route('/applicants/<int:id>')
+@login_required
+def applicant_details(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Fetch applicant details
+    applicant_resp = client.table('applicants').select('*').eq('id', id).single().execute()
+    if not applicant_resp.data:
+        flash('Applicant not found.', 'danger')
+        return redirect(url_for('hr1.list_applicants'))
+    
+    applicant = applicant_resp.data
+    
+    # Fetch interviews for this applicant
+    interviews_resp = client.table('interviews').select('*, users(username)').eq('applicant_id', id).execute()
+    interviews = interviews_resp.data if interviews_resp.data else []
+    
+    # Fetch open vacancies for handoff
+    vacancies_resp = client.table('vacancies').select('id, position_name').eq('status', 'Open').execute()
+    vacancies = vacancies_resp.data if vacancies_resp.data else []
+    
+    return render_template('subsystems/hr/hr1/applicant_details.html',
+                           applicant=applicant,
+                           interviews=interviews,
+                           vacancies=vacancies,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr1_bp.route('/applicants/<int:id>/update-status', methods=['POST'])
+@login_required
+def update_applicant_status(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    new_status = request.form.get('status')
+    try:
+        client.table('applicants').update({'status': new_status}).eq('id', id).execute()
+        flash(f'Applicant status updated to {new_status}.', 'success')
+    except Exception as e:
+        flash(f'Error updating status: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr1.applicant_details', id=id))
+
+@hr1_bp.route('/applicants/<int:id>/delete', methods=['POST'])
+@login_required
+def delete_applicant(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('applicants').delete().eq('id', id).execute()
+        flash('Applicant deleted successfully.', 'success')
+    except Exception as e:
+        flash(f'Error deleting applicant: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr1.list_applicants'))
+
+@hr1_bp.route('/vacancies/<int:id>/delete', methods=['POST'])
+@login_required
+def delete_vacancy(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('vacancies').delete().eq('id', id).execute()
+        flash('Vacancy deleted successfully.', 'success')
+    except Exception as e:
+        flash(f'Error deleting vacancy: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr1.list_vacancies'))
+
 @hr1_bp.route('/handoff/hr2', methods=['POST'])
 @login_required
 def handoff_hr2():
@@ -348,6 +430,8 @@ def handoff_hr2():
     client = get_supabase_client()
     
     applicant_id = request.form.get('applicant_id')
+    position_id = request.form.get('position_id')
+    start_date = request.form.get('start_date')
     
     try:
         # Update applicant status
@@ -356,15 +440,20 @@ def handoff_hr2():
         # Create onboarding record
         onboarding_data = {
             'applicant_id': applicant_id,
+            'position_id': position_id,
+            'start_date': start_date,
             'status': 'Pending'
         }
         client.table('onboarding').insert(onboarding_data).execute()
+        
+        # Optional: update vacancy status to 'Filled' or keep 'Open' if multiple slots
+        # For now, we'll just keep it simple.
         
         flash('Applicant successfully handed off to HR2 (Talent Development/Onboarding)!', 'success')
     except Exception as e:
         flash(f'Error during handoff: {str(e)}', 'danger')
         
-    return redirect(url_for('hr1.list_applicants'))
+    return redirect(url_for('hr1.applicant_details', id=applicant_id))
 
 @hr1_bp.route('/settings', methods=['GET', 'POST'])
 @login_required

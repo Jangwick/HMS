@@ -76,24 +76,15 @@
                         <td class="px-6 py-5 text-gray-400 text-sm">{{ applicant.created_at[:10] }}</td>
                         <td class="px-8 py-5 text-right">
                             <div class="flex justify-end space-x-2">
-                                {% if applicant.status == 'Screening' %}
-                                <a href="{{ url_for('hr1.schedule_interview', applicant_id=applicant.id) }}"
-                                    class="px-4 py-2 bg-gray-50 text-gray-700 font-bold text-sm rounded-lg hover:bg-gray-100 transition-all">
-                                    Schedule Interview
+                                <a href="{{ url_for('hr1.applicant_details', id=applicant.id) }}"
+                                    class="px-4 py-2 bg-[#6366F1] text-white font-bold text-sm rounded-lg hover:bg-[#4F46E5] transition-all shadow-sm">
+                                    View Details
                                 </a>
-                                {% elif applicant.status == 'Interview' %}
-                                <form action="{{ url_for('hr1.handoff_hr2') }}" method="POST" class="inline">
-                                    <input type="hidden" name="applicant_id" value="{{ applicant.id }}">
-                                    <button type="submit"
-                                        class="px-4 py-2 bg-green-50 text-green-700 font-bold text-sm rounded-lg hover:bg-green-100 transition-all">
-                                        Handoff to HR2
+                                <form action="{{ url_for('hr1.delete_applicant', id=applicant.id) }}" method="POST" onsubmit="return confirm('Delete this applicant?');" class="inline">
+                                    <button type="submit" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
+                                        <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
-                                {% endif %}
-                                <button
-                                    class="px-4 py-2 bg-[#6366F1] text-white font-bold text-sm rounded-lg hover:bg-[#4F46E5] transition-all shadow-sm">
-                                    Details
-                                </button>
                             </div>
                         </td>
                     </tr>
