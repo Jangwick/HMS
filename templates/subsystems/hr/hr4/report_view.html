@@ -1,0 +1,91 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}{{ title }} - {{ subsystem_name }}{% endblock %}
+{% block header_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Breadcrumbs & Actions -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center space-x-2 text-sm text-gray-500">
+            <a href="{{ url_for('hr4.reports') }}" class="hover:text-indigo-600 transition-colors">Reporting Center</a>
+            <i class="bi bi-chevron-right text-[10px]"></i>
+            <span class="font-bold text-gray-900">{{ title }}</span>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="window.print()" class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors flex items-center shadow-sm">
+                <i class="bi bi-printer mr-2"></i> Print Table
+            </button>
+            <a href="{{ url_for('hr4.export_report', report_type=report_type) }}?download=true" class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all flex items-center">
+                <i class="bi bi-download mr-2"></i> Download CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Data Table Card -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-50 bg-gray-50/30">
+            <h3 class="font-bold text-gray-900 text-lg">Report Data Preview</h3>
+            <p class="text-xs text-gray-500 mt-1">Generated on {{ datetime.utcnow().strftime('%B %d, %Y %H:%M') }} UTC</p>
+        </div>
+        
+        <div class="overflow-x-auto min-h-[400px]">
+            {% if data %}
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50/80">
+                        {% for col in headers %}
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for row in data %}
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        {% for key in row_keys %}
+                        <td class="px-8 py-4 text-sm text-gray-600">
+                            {% if row[key] is none %}
+                                <span class="text-gray-300">--</span>
+                            {% elif key in ['base_salary', 'net_pay', 'allowances', 'bonuses', 'base_payroll', 'total_allowances', 'total_budget'] %}
+                                <span class="font-bold text-gray-900">${{ "%.2f"|format(row[key]|float) }}</span>
+                            {% elif key == 'status' %}
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase {{ 'bg-green-50 text-green-600' if row[key] == 'Active' or row[key] == 'Paid' or row[key] == 'Processed' else 'bg-gray-100 text-gray-500' }}">
+                                    {{ row[key] }}
+                                </span>
+                            {% else %}
+                                {{ row[key] }}
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="flex flex-col items-center justify-center p-20 text-center">
+                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                    <i class="bi bi-database-exclamation text-4xl text-gray-300"></i>
+                </div>
+                <h4 class="text-lg font-bold text-gray-900">No data available</h4>
+                <p class="text-gray-500">There are currently no records for this report type.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+        aside, nav, .flex.items-center.space-x-2, button, a {
+            display: none !important;
+        }
+        main {
+            padding: 0 !important;
+        }
+        .bg-white {
+            border: none !important;
+            box-shadow: none !important;
+        }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Reporting Center - {{ subsystem_name }}{% endblock %}
+{% block header_title %}HR Financial Reports{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Reporting Center</h3>
+            <p class="text-gray-500">Generate and export financial HR data and compensation summaries.</p>
+        </div>
+        <div class="flex space-x-3">
+            <button class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors flex items-center shadow-sm">
+                <i class="bi bi-clock-history mr-2"></i> Report History
+            </button>
+        </div>
+    </div>
+
+    <!-- Featured Reports Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Annual Compensation Summary -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                <i class="bi bi-calendar-check text-xl"></i>
+            </div>
+            <h4 class="text-lg font-bold text-gray-900 mb-2">Annual Compensation Summary</h4>
+            <p class="text-gray-500 text-sm mb-6 leading-relaxed">A complete breakdown of total compensation costs including base, bonuses, and benefits for the current fiscal year.</p>
+            <a href="{{ url_for('hr4.view_report', report_type='compensation') }}" class="w-full py-2.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center">
+                <i class="bi bi-eye mr-2"></i> View Report
+            </a>
+        </div>
+
+        <!-- Tax Withholding Report -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
+            <div class="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center mb-6 group-hover:bg-green-600 group-hover:text-white transition-colors">
+                <i class="bi bi-bank text-xl"></i>
+            </div>
+            <h4 class="text-lg font-bold text-gray-900 mb-2">Internal Revenue Report</h4>
+            <p class="text-gray-500 text-sm mb-6 leading-relaxed">Detailed summary of tax withholdings and employer contributions required for regulatory compliance.</p>
+            <a href="{{ url_for('hr4.view_report', report_type='payroll') }}" class="w-full py-2.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-green-600 hover:text-white transition-all flex items-center justify-center">
+                <i class="bi bi-eye mr-2"></i> View Data
+            </a>
+        </div>
+
+        <!-- Departmental Budget Variance -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow group">
+            <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-6 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                <i class="bi bi-diagram-3 text-xl"></i>
+            </div>
+            <h4 class="text-lg font-bold text-gray-900 mb-2">Budget Allocation Report</h4>
+            <p class="text-gray-500 text-sm mb-6 leading-relaxed">Analysis of departmental payroll spending against allocated budgets to identify variances.</p>
+            <a href="{{ url_for('hr4.view_report', report_type='budget') }}" class="w-full py-2.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-amber-600 hover:text-white transition-all flex items-center justify-center">
+                <i class="bi bi-graph-up mr-2"></i> View Analysis
+            </a>
+        </div>
+    </div>
+
+    <!-- All Reports List -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-50 flex items-center justify-between">
+            <h4 class="font-bold text-gray-900 text-lg">Report Library</h4>
+            <div class="relative">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" placeholder="Search reports..." class="pl-10 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 w-64">
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50/50">
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Report Name</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Category</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Frequency</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Last Run</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-8 py-4">
+                            <div class="flex items-center">
+                                <i class="bi bi-file-earmark-text text-indigo-500 mr-3"></i>
+                                <span class="text-sm font-medium text-gray-900">Monthly Payroll Register</span>
+                            </div>
+                        </td>
+                        <td class="px-8 py-4"><span class="text-sm text-gray-600">Payroll</span></td>
+                        <td class="px-8 py-4"><span class="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg uppercase">Monthly</span></td>
+                        <td class="px-8 py-4 text-sm text-gray-500">2 days ago</td>
+                        <td class="px-8 py-4 text-right">
+                            <a href="{{ url_for('hr4.view_report', report_type='payroll') }}" class="text-indigo-600 hover:text-indigo-900 text-sm font-bold transition-colors">View</a>
+                        </td>
+                    </tr>
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-8 py-4">
+                            <div class="flex items-center">
+                                <i class="bi bi-file-earmark-medical text-indigo-500 mr-3"></i>
+                                <span class="text-sm font-medium text-gray-900">Benefits Cost Analysis</span>
+                            </div>
+                        </td>
+                        <td class="px-8 py-4"><span class="text-sm text-gray-600">Benefits</span></td>
+                        <td class="px-8 py-4"><span class="px-2 py-1 bg-purple-50 text-purple-600 text-[10px] font-bold rounded-lg uppercase">Quarterly</span></td>
+                        <td class="px-8 py-4 text-sm text-gray-500">1 month ago</td>
+                        <td class="px-8 py-4 text-right">
+                            <button class="text-indigo-600 hover:text-indigo-900 text-sm font-bold transition-colors">Run</button>
+                        </td>
+                    </tr>
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-8 py-4">
+                            <div class="flex items-center">
+                                <i class="bi bi-file-earmark-person text-indigo-500 mr-3"></i>
+                                <span class="text-sm font-medium text-gray-900">Employee Turnover Costs</span>
+                            </div>
+                        </td>
+                        <td class="px-8 py-4"><span class="text-sm text-gray-600">HR Metrics</span></td>
+                        <td class="px-8 py-4"><span class="px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-lg uppercase">On-Demand</span></td>
+                        <td class="px-8 py-4 text-sm text-gray-500">Yesterday</td>
+                        <td class="px-8 py-4 text-right">
+                            <button class="text-indigo-600 hover:text-indigo-900 text-sm font-bold transition-colors">Run</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

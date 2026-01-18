@@ -276,6 +276,202 @@ def salary_grades():
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
+@hr4_bp.route('/reports')
+@login_required
+def reports():
+    return render_template('subsystems/hr/hr4/reports.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr4_bp.route('/reports/view/<report_type>')
+@login_required
+def view_report(report_type):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    data = []
+    headers = []
+    row_keys = []
+    title = ""
+
+    if report_type == 'compensation':
+        title = "Annual Compensation Summary"
+        try:
+            res = client.table('compensation_records').select('*, users(username, department)').execute()
+            raw_data = res.data
+            for r in raw_data:
+                data.append({
+                    'employee': r.get('users', {}).get('username', 'N/A'),
+                    'department': r.get('users', {}).get('department', 'N/A'),
+                    'base_salary': r.get('base_salary'),
+                    'allowances': r.get('allowances'),
+                    'bonuses': r.get('bonuses'),
+                    'effective_date': r.get('effective_date'),
+                    'status': r.get('status')
+                })
+            headers = ['Employee', 'Department', 'Base Salary', 'Allowances', 'Bonuses', 'Effective Date', 'Status']
+            row_keys = ['employee', 'department', 'base_salary', 'allowances', 'bonuses', 'effective_date', 'status']
+        except Exception as e:
+            print(f"Error: {e}")
+
+    elif report_type == 'payroll':
+        title = "Payroll Register Report"
+        try:
+            res = client.table('payroll_records').select('*, users(username)').execute()
+            raw_data = res.data
+            for r in raw_data:
+                data.append({
+                    'employee': r.get('users', {}).get('username', 'N/A'),
+                    'period_start': r.get('pay_period_start'),
+                    'period_end': r.get('pay_period_end'),
+                    'net_pay': r.get('net_pay'),
+                    'status': r.get('status'),
+                    'processed_date': r.get('processed_date')
+                })
+            headers = ['Employee', 'Period Start', 'Period End', 'Net Pay', 'Status', 'Processed Date']
+            row_keys = ['employee', 'period_start', 'period_end', 'net_pay', 'status', 'processed_date']
+        except Exception as e:
+            print(f"Error: {e}")
+
+    elif report_type == 'budget':
+        title = "Departmental Budget Allocation"
+        try:
+            res = client.table('compensation_records').select('*, users(department)').execute()
+            raw_data = res.data
+            
+            dept_totals = {}
+            for r in raw_data:
+                dept = r.get('users', {}).get('department', 'Unknown')
+                if dept not in dept_totals:
+                    dept_totals[dept] = {'count': 0, 'total': 0.0, 'allowances': 0.0}
+                
+                dept_totals[dept]['count'] += 1
+                dept_totals[dept]['total'] += float(r.get('base_salary') or 0)
+                dept_totals[dept]['allowances'] += float(r.get('allowances') or 0)
+
+            for dept, stats in dept_totals.items():
+                data.append({
+                    'department': dept,
+                    'staff_count': stats['count'],
+                    'base_payroll': stats['total'],
+                    'total_allowances': stats['allowances'],
+                    'total_budget': stats['total'] + stats['allowances'],
+                    'status': 'Active'
+                })
+            
+            headers = ['Department', 'Staff count', 'Base Payroll', 'Allowances', 'Total Budget', 'Status']
+            row_keys = ['department', 'staff_count', 'base_payroll', 'total_allowances', 'total_budget', 'status']
+        except Exception as e:
+            print(f"Error: {e}")
+
+    if not title:
+        flash('Report type not found.', 'warning')
+        return redirect(url_for('hr4.reports'))
+
+    return render_template('subsystems/hr/hr4/report_view.html',
+                           title=title,
+                           data=data,
+                           headers=headers,
+                           row_keys=row_keys,
+                           report_type=report_type,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME,
+                           datetime=datetime)
+
+@hr4_bp.route('/reports/export/<report_type>')
+@login_required
+def export_report(report_type):
+    from utils.supabase_client import get_supabase_client
+    import io
+    import csv
+    from flask import Response
+
+    client = get_supabase_client()
+    
+    if report_type == 'compensation':
+        # ...existing code...
+        try:
+            res = client.table('compensation_records').select('*, users(username, department)').execute()
+            data = res.data
+        except:
+            data = []
+            
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Employee', 'Department', 'Base Salary', 'Allowances', 'Bonuses', 'Effective Date', 'Status'])
+        
+        for r in data:
+            username = r.get('users', {}).get('username', 'N/A')
+            dept = r.get('users', {}).get('department', 'N/A')
+            writer.writerow([
+                username, dept, r.get('base_salary'), 
+                r.get('allowances'), r.get('bonuses'), 
+                r.get('effective_date'), r.get('status')
+            ])
+        
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-disposition": "attachment; filename=compensation_summary_2026.csv"}
+        )
+
+    elif report_type == 'payroll':
+        # ...existing code...
+        try:
+            res = client.table('payroll_records').select('*, users(username)').execute()
+            data = res.data
+        except:
+            data = []
+            
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Employee', 'Period Start', 'Period End', 'Net Pay', 'Status', 'Processed Date'])
+        
+        for r in data:
+            username = r.get('users', {}).get('username', 'N/A')
+            writer.writerow([
+                username, r.get('pay_period_start'), 
+                r.get('pay_period_end'), r.get('net_pay'), 
+                r.get('status'), r.get('processed_date')
+            ])
+            
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-disposition": "attachment; filename=payroll_register.csv"}
+        )
+
+    elif report_type == 'budget':
+        try:
+            res = client.table('compensation_records').select('*, users(department)').execute()
+            raw_data = res.data
+            dept_totals = {}
+            for r in raw_data:
+                dept = r.get('users', {}).get('department', 'Unknown')
+                if dept not in dept_totals:
+                    dept_totals[dept] = {'count': 0, 'total': 0.0}
+                dept_totals[dept]['count'] += 1
+                dept_totals[dept]['total'] += float(r.get('base_salary') or 0) + float(r.get('allowances') or 0)
+
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(['Department', 'Staff count', 'Total Budget Allocation'])
+            for dept, stats in dept_totals.items():
+                writer.writerow([dept, stats['count'], stats['total']])
+            
+            return Response(
+                output.getvalue(),
+                mimetype="text/csv",
+                headers={"Content-disposition": "attachment; filename=budget_allocation.csv"}
+            )
+        except:
+            pass
+
+    flash('Report generation for this type is not yet fully configured.', 'info')
+    return redirect(url_for('hr4.reports'))
+
 @hr4_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
