@@ -110,6 +110,27 @@ CREATE TABLE IF NOT EXISTS leave_requests (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- HR4: Compensation & Analytics
+CREATE TABLE IF NOT EXISTS salary_grades (
+    id SERIAL PRIMARY KEY,
+    grade_name VARCHAR(50) UNIQUE NOT NULL, -- Grade 1, Grade 2, etc.
+    min_salary DECIMAL(12, 2) NOT NULL,
+    max_salary DECIMAL(12, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS compensation_records (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    base_salary DECIMAL(12, 2) NOT NULL,
+    allowances DECIMAL(12, 2) DEFAULT 0.00,
+    bonuses DECIMAL(12, 2) DEFAULT 0.00,
+    deductions DECIMAL(12, 2) DEFAULT 0.00,
+    effective_date DATE DEFAULT CURRENT_DATE,
+    status VARCHAR(50) DEFAULT 'Active', -- Active, History
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- =====================================================
 -- CORE TRANSACTION TABLES
 -- =====================================================
@@ -222,6 +243,17 @@ CREATE TABLE IF NOT EXISTS general_ledger (
     balance DECIMAL(15, 2) DEFAULT 0.00,
     last_updated TIMESTAMP DEFAULT NOW()
 );
+
+-- =====================================================
+-- SAMPLE DATA FOR HR4
+-- =====================================================
+
+INSERT INTO salary_grades (grade_name, min_salary, max_salary) VALUES
+('Grade 1', 15000.00, 25000.00),
+('Grade 2', 25001.00, 40000.00),
+('Grade 3', 40001.00, 65000.00),
+('Grade 4', 65001.00, 100000.00)
+ON CONFLICT (grade_name) DO NOTHING;
 
 -- =====================================================
 -- INDEXES FOR PERFORMANCE

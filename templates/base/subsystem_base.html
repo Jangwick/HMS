@@ -129,7 +129,31 @@
                 {% elif blueprint_name == 'hr3' %}
                 <a href="{{ url_for('hr3.user_list') }}"
                     class="flex items-center px-4 py-3 {% if request.endpoint == 'hr3.user_list' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-people-fill text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    User Management
                 </a>
+                <a href="{{ url_for('hr3.pending_approvals') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr3.pending_approvals' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-person-check text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Approvals
+                </a>
+                {% elif blueprint_name == 'hr4' %}
+                <a href="{{ url_for('hr4.compensation') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr4.compensation' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-wallet2 text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Compensation
+                </a>
+                <a href="{{ url_for('hr4.salary_grades') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr4.salary_grades' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-bar-chart-steps text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    Salary Grades
+                </a>
+                <a href="{{ url_for('hr4.analytics') }}"
+                    class="flex items-center px-4 py-3 {% if request.endpoint == 'hr4.analytics' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
+                    <i class="bi bi-pie-chart text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
+                    HR Analytics
+                </a>
+                {% elif blueprint_name == 'ct1' %}
                 <a href="{{ url_for('ct1.search_patients') }}"
                     class="flex items-center px-4 py-3 {% if request.endpoint == 'ct1.search_patients' %}bg-accent-light text-accent font-bold shadow-sm{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium{% endif %} rounded-xl transition-all duration-200 group">
                     <i class="bi bi-search text-xl mr-3 text-gray-400 group-hover:text-accent transition-colors"></i>
