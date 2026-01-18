@@ -4,74 +4,109 @@
 {% block header_title %}Patient Directory{% endblock %}
 
 {% block content %}
-<div class="space-y-8">
+<div class="space-y-8 pb-12">
     <!-- Search Bar -->
-    <div class="max-w-2xl mx-auto">
+    <div class="max-w-3xl mx-auto">
+        <div class="text-center mb-8">
+            <h3 class="text-3xl font-bold text-gray-900 mb-2">Patient Directory</h3>
+            <p class="text-gray-500">Quickly find and manage patient records across the hospital</p>
+        </div>
         <form method="GET" action="{{ url_for('ct1.search_patients') }}" class="relative group">
-            <i
-                class="bi bi-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#10B981] transition-colors"></i>
-            <input type="text" name="q" value="{{ query }}" placeholder="Search by name or patient ID..."
-                class="w-full pl-14 pr-6 py-5 bg-white border border-gray-100 rounded-3xl shadow-sm focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981] outline-none transition-all text-lg">
+            <div class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none transition-colors group-focus-within:text-emerald-500 text-gray-400">
+                <i class="bi bi-search text-xl"></i>
+            </div>
+            <input type="text" name="q" value="{{ query }}" placeholder="Search by name, patient ID, or contact number..."
+                class="w-full pl-16 pr-32 py-6 bg-white border border-gray-100 rounded-[2rem] shadow-2xl shadow-emerald-900/5 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-xl">
             <button type="submit"
-                class="absolute right-3 top-1/2 -translate-y-1/2 px-6 py-2 bg-[#10B981] text-white font-bold rounded-2xl hover:bg-[#059669] transition-colors">
+                class="absolute right-3 top-1/2 -translate-y-1/2 px-8 py-4 bg-emerald-500 text-white font-bold rounded-[1.5rem] hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition-all active:scale-95">
                 Search
             </button>
         </form>
     </div>
 
-    <!-- Results -->
+    <!-- Results Section -->
     {% if query %}
-    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="p-6 border-b border-gray-100">
-            <h4 class="text-lg font-bold text-gray-900">Search Results for "{{ query }}"</h4>
+    <div class="glass-card rounded-3xl overflow-hidden shadow-2xl">
+        <div class="p-8 border-b border-gray-100 bg-white/50 flex justify-between items-center">
+            <div>
+                <h4 class="text-xl font-bold text-gray-900">Search Results</h4>
+                <p class="text-sm text-gray-500">Found {{ patients|length }} record(s) matching "{{ query }}"</p>
+            </div>
+            <a href="{{ url_for('ct1.register_patient') }}" class="text-emerald-600 font-bold text-sm hover:underline flex items-center">
+                <i class="bi bi-person-plus-fill mr-2"></i> Register New Patient
+            </a>
         </div>
+        
         <div class="overflow-x-auto">
-            <table class="w-full text-left">
-                <thead class="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-gray-50/50 text-gray-400 text-xs font-bold uppercase tracking-wider">
                     <tr>
-                        <th class="px-8 py-5">Patient</th>
-                        <th class="px-6 py-5">DOB</th>
-                        <th class="px-6 py-5">Contact</th>
-                        <th class="px-6 py-5">Status</th>
+                        <th class="px-8 py-5">Patient Identity</th>
+                        <th class="px-6 py-5">Demographics</th>
+                        <th class="px-6 py-5">Contact Info</th>
+                        <th class="px-6 py-5">Record Status</th>
                         <th class="px-8 py-5 text-right">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody class="divide-y divide-gray-100 bg-white/30 backdrop-blur-sm">
                     {% for patient in patients %}
-                    <tr class="hover:bg-gray-50/50 transition-colors group">
-                        <td class="px-8 py-5">
-                            <div class="font-bold text-gray-900 group-hover:text-[#10B981] transition-colors">{{
-                                patient.first_name }} {{ patient.last_name }}</div>
-                            <div class="text-xs text-gray-400">ID: {{ patient.patient_id_alt }}</div>
+                    <tr class="hover:bg-emerald-50/50 transition-colors group">
+                        <td class="px-8 py-6">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-lg mr-4 group-hover:scale-110 transition-transform">
+                                    {{ patient.first_name[0] }}{{ patient.last_name[0] }}
+                                </div>
+                                <div>
+                                    <div class="font-bold text-gray-900 text-lg group-hover:text-emerald-700 transition-colors">
+                                        {{ patient.first_name }} {{ patient.last_name }}
+                                    </div>
+                                    <div class="text-xs text-emerald-600 font-mono font-medium">{{ patient.patient_id_alt }}</div>
+                                </div>
+                            </div>
                         </td>
-                        <td class="px-6 py-5 text-gray-600">{{ patient.dob }}</td>
-                        <td class="px-6 py-5 text-gray-600">{{ patient.contact_number }}</td>
-                        <td class="px-6 py-5">
-                            <span
-                                class="px-3 py-1 bg-green-50 text-green-600 rounded-full text-xs font-bold">Active</span>
+                        <td class="px-6 py-6">
+                            <div class="text-sm font-bold text-gray-700">{{ patient.gender }}</div>
+                            <div class="text-xs text-gray-400">{{ patient.dob }}</div>
                         </td>
-                        <td class="px-8 py-5 text-right">
-                            <div class="flex justify-end space-x-2">
-                                <a href="{{ url_for('ct1.book_appointment', patient_id=patient.id) }}"
-                                    class="px-4 py-2 bg-gray-50 text-[#10B981] font-bold text-sm rounded-lg hover:bg-[#10B981] hover:text-white transition-all">
-                                    Book Appt
+                        <td class="px-6 py-6">
+                            <div class="text-sm text-gray-900 font-medium">{{ patient.contact_number }}</div>
+                            <div class="text-[11px] text-gray-400 truncate max-w-[150px]">{{ patient.address }}</div>
+                        </td>
+                        <td class="px-6 py-6">
+                            <span class="inline-flex items-center px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg uppercase border border-emerald-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                                Active HER
+                            </span>
+                        </td>
+                        <td class="px-8 py-6 text-right">
+                            <div class="flex justify-end space-x-3">
+                                <a href="{{ url_for('ct1.view_patient', patient_id=patient.id) }}"
+                                   class="p-2.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                                   title="View Health Record">
+                                    <i class="bi bi-person-vcard text-xl"></i>
                                 </a>
-                                <button
-                                    class="p-2 text-gray-400 hover:text-[#10B981] hover:bg-white rounded-lg transition-all">
-                                    <i class="bi bi-eye"></i>
-                                </button>
+                                <a href="{{ url_for('ct1.book_appointment', patient_id=patient.id) }}"
+                                   class="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                   title="Schedule Appointment">
+                                    <i class="bi bi-calendar-plus text-xl"></i>
+                                </a>
                             </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" class="px-8 py-20 text-center">
-                            <div class="flex flex-col items-center">
-                                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                                    <i class="bi bi-person-x text-4xl text-gray-300"></i>
+                        <td colspan="5" class="px-8 py-24 text-center">
+                            <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                                <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6 border border-gray-100 shadow-inner">
+                                    <i class="bi bi-person-x text-5xl text-gray-200"></i>
                                 </div>
-                                <h4 class="text-lg font-bold text-gray-900">No patients found</h4>
-                                <p class="text-gray-500 mt-2">Try searching with a different name or ID.</p>
+                                <h4 class="text-xl font-bold text-gray-900 mb-2">No matching records</h4>
+                                <p class="text-gray-500 mb-6">We couldn't find any patient matching "{{ query }}". Verification of details or a new registration might be required.</p>
+                                <div class="flex space-x-4">
+                                    <a href="{{ url_for('ct1.register_patient') }}" class="px-6 py-3 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100">
+                                        Register New Patient
+                                    </a>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -81,12 +116,28 @@
         </div>
     </div>
     {% else %}
-    <div class="flex flex-col items-center justify-center py-20 text-center">
-        <div class="w-24 h-24 bg-white rounded-full shadow-sm flex items-center justify-center mb-6">
-            <i class="bi bi-search text-4xl text-gray-200"></i>
+    <!-- Initial State -->
+    <div class="flex flex-col items-center justify-center py-32 text-center">
+        <div class="w-32 h-32 bg-white/50 backdrop-blur-md rounded-[2.5rem] shadow-2xl flex items-center justify-center mb-8 border border-white/50 relative group transition-all hover:scale-105">
+            <div class="absolute inset-0 bg-emerald-500/5 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <i class="bi bi-search text-6xl text-gray-200 group-hover:text-emerald-200 transition-colors"></i>
         </div>
-        <h4 class="text-xl font-bold text-gray-900 mb-2">Ready to Search</h4>
-        <p class="text-gray-500 max-w-md">Enter a patient's name or ID above to search the hospital directory.</p>
+        <h4 class="text-2xl font-bold text-gray-900 mb-3">Begin Your Search</h4>
+        <p class="text-gray-500 max-w-md text-lg leading-relaxed">Search for existing patients by their full name, unique Patient ID, or registered contact number.</p>
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-2xl px-6">
+            <div class="p-4 bg-white/40 border border-white/60 rounded-2xl flex items-center space-x-3">
+                <i class="bi bi-person-vcard text-emerald-500 text-xl"></i>
+                <span class="text-sm font-bold text-gray-600 uppercase tracking-tight">Full Name</span>
+            </div>
+            <div class="p-4 bg-white/40 border border-white/60 rounded-2xl flex items-center space-x-3">
+                <i class="bi bi-upc-scan text-blue-500 text-xl"></i>
+                <span class="text-sm font-bold text-gray-600 uppercase tracking-tight">Patient ID</span>
+            </div>
+            <div class="p-4 bg-white/40 border border-white/60 rounded-2xl flex items-center space-x-3">
+                <i class="bi bi-phone text-orange-500 text-xl"></i>
+                <span class="text-sm font-bold text-gray-600 uppercase tracking-tight">Phone #</span>
+            </div>
+        </div>
     </div>
     {% endif %}
 </div>

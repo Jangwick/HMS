@@ -4,43 +4,59 @@
 {% block header_title %}Patient Registration{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-        <div class="bg-gradient-to-r from-[#10B981] to-teal-800 px-8 py-10 text-white">
-            <h3 class="text-3xl font-bold mb-2">New Patient Record</h3>
-            <p class="text-teal-100">Create a new electronic health record for a patient.</p>
+<div class="max-w-4xl mx-auto pb-12">
+    <!-- Breadcrumbs -->
+    <nav class="flex mb-8 text-sm" aria-label="Breadcrumb">
+        <ol class="flex items-center space-x-2 text-gray-400">
+            <li><a href="{{ url_for('ct1.dashboard') }}" class="hover:text-emerald-600">Dashboard</a></li>
+            <li><i class="bi bi-chevron-right text-[10px]"></i></li>
+            <li class="text-gray-600 font-medium">Register Patient</li>
+        </ol>
+    </nav>
+
+    <div class="glass-card rounded-3xl overflow-hidden shadow-2xl">
+        <div class="bg-gradient-to-r from-emerald-500 to-teal-600 px-8 py-10 text-white relative">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+            <div class="relative z-10">
+                <h3 class="text-3xl font-bold mb-2">Patient Registration</h3>
+                <p class="text-emerald-50 opacity-90">Create a new Electronic Health Record (EHR)</p>
+            </div>
         </div>
 
-        <form method="POST" class="p-8 space-y-8">
+        <form method="POST" class="p-8 space-y-10 bg-white/50 backdrop-blur-md">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-            <!-- Personal Information -->
-            <div class="space-y-4">
-                <h4 class="text-lg font-bold text-gray-900 flex items-center">
-                    <i class="bi bi-person-circle mr-2 text-[#10B981]"></i> Personal Information
-                </h4>
+            <!-- Section 1: Identity -->
+            <div class="space-y-6">
+                <div class="flex items-center space-x-3 mb-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                        <i class="bi bi-person-badge"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-gray-900">Personal Identity</h4>
+                </div>
+                
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-2">
-                        <label class="text-sm font-bold text-gray-700 ml-1">First Name</label>
+                    <div class="form-group">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">First Name</label>
                         <input type="text" name="first_name" required
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none"
-                            placeholder="John">
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
+                            placeholder="e.g. John">
                     </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-bold text-gray-700 ml-1">Last Name</label>
+                    <div class="form-group">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Last Name</label>
                         <input type="text" name="last_name" required
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none"
-                            placeholder="Doe">
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
+                            placeholder="e.g. Doe">
                     </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-bold text-gray-700 ml-1">Date of Birth</label>
+                    <div class="form-group">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Date of Birth</label>
                         <input type="date" name="dob" required
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none">
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none">
                     </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-bold text-gray-700 ml-1">Gender</label>
+                    <div class="form-group">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Gender</label>
                         <select name="gender" required
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none appearance-none">
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none">
                             <option value="" disabled selected>Select gender...</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
@@ -50,56 +66,70 @@
                 </div>
             </div>
 
-            <!-- Contact Information -->
-            <div class="space-y-4">
-                <h4 class="text-lg font-bold text-gray-900 flex items-center">
-                    <i class="bi bi-telephone-fill mr-2 text-[#10B981]"></i> Contact Details
-                </h4>
+            <!-- Section 2: Contact -->
+            <div class="space-y-6">
+                <div class="flex items-center space-x-3 mb-2">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                        <i class="bi bi-telephone"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-gray-900">Contact Information</h4>
+                </div>
+                
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-2">
-                        <label class="text-sm font-bold text-gray-700 ml-1">Contact Number</label>
+                    <div class="form-group col-span-1">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Contact Number</label>
                         <input type="tel" name="contact_number" required
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none"
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
                             placeholder="+1 (555) 000-0000">
                     </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-bold text-gray-700 ml-1">Address</label>
+                    <div class="form-group col-span-1 md:col-span-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Residential Address</label>
                         <input type="text" name="address" required
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none"
-                            placeholder="123 Medical Way, Health City">
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
+                            placeholder="Full residential address...">
                     </div>
                 </div>
             </div>
 
-            <!-- Insurance Information -->
-            <div class="space-y-4">
-                <h4 class="text-lg font-bold text-gray-900 flex items-center">
-                    <i class="bi bi-shield-check mr-2 text-[#10B981]"></i> Insurance Information
-                </h4>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-2">
-                        <label class="text-sm font-bold text-gray-700 ml-1">Insurance Provider</label>
+            <!-- Section 3: Finance -->
+            <div class="space-y-6 p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                <div class="flex items-center space-x-3 mb-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-emerald-900">Insurance Details (Optional)</h4>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="form-group">
+                        <label class="block text-sm font-bold text-emerald-800 mb-2">Provider</label>
                         <input type="text" name="insurance_provider"
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none"
-                            placeholder="Blue Cross / Aetna">
+                            class="w-full px-4 py-2 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                            placeholder="e.g. Aetna">
                     </div>
-                    <div class="space-y-2">
-                        <label class="text-sm font-bold text-gray-700 ml-1">Policy Number</label>
+                    <div class="form-group">
+                        <label class="block text-sm font-bold text-emerald-800 mb-2">Policy #</label>
                         <input type="text" name="policy_number"
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none"
-                            placeholder="POL-12345678">
+                            class="w-full px-4 py-2 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                            placeholder="POL-00000">
+                    </div>
+                    <div class="form-group">
+                        <label class="block text-sm font-bold text-emerald-800 mb-2">Group #</label>
+                        <input type="text" name="group_number"
+                            class="w-full px-4 py-2 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                            placeholder="GRP-00000">
                     </div>
                 </div>
             </div>
 
-            <div class="pt-8 flex items-center justify-between border-t border-gray-100">
+            <div class="pt-6 flex items-center justify-between border-t border-gray-100 mt-10">
                 <a href="{{ url_for('ct1.dashboard') }}"
-                    class="text-gray-500 font-bold hover:text-gray-700 transition-colors">
-                    Cancel
+                    class="px-6 py-3 text-gray-500 font-bold hover:text-gray-700 transition-colors text-sm">
+                    Back to Dashboard
                 </a>
                 <button type="submit"
-                    class="px-10 py-4 bg-[#10B981] text-white font-bold rounded-2xl shadow-lg hover:bg-[#059669] transition-all transform hover:-translate-y-1">
-                    Register Patient
+                    class="px-10 py-4 bg-emerald-500 text-white font-bold rounded-2xl shadow-xl shadow-emerald-200 hover:bg-emerald-600 hover:scale-[1.02] transform transition-all">
+                    Register Patient Record
                 </button>
             </div>
         </form>

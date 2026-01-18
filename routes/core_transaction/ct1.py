@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
-from utils.supabase_client import User, format_db_error
+from utils.supabase_client import User, format_db_error, get_supabase_client
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
 from datetime import datetime
@@ -180,15 +180,52 @@ def change_password():
 @ct1_bp.route('/dashboard')
 @login_required
 def dashboard():
-    from utils.hms_models import Appointment
+    from utils.hms_models import Appointment, Patient
+    from datetime import datetime, timedelta
+    
+    # Get stats
+    client = get_supabase_client()
+    
+    # Total Patients
+    total_patients = client.table('patients').select('id', count='exact').execute().count or 0
+    
+    # New Patients this week
+    last_week = (datetime.now() - timedelta(days=7)).isoformat()
+    new_patients_week = client.table('patients').select('id', count='exact').gte('created_at', last_week).execute().count or 0
+    
+    # Appointments today
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999).isoformat()
+    appointments_today = client.table('appointments').select('id', count='exact').gte('appointment_date', today_start).lte('appointment_date', today_end).execute().count or 0
+
     upcoming_appointments = Appointment.get_upcoming()
+    
+    metrics = {
+        'total_patients': total_patients,
+        'new_patients_week': new_patients_week,
+        'appointments_today': appointments_today,
+        'system_status': 'Operational'
+    }
     
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
+        
     return render_template('subsystems/core_transaction/ct1/dashboard.html', 
                            now=datetime.utcnow,
                            appointments=upcoming_appointments,
+                           metrics=metrics,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct1_bp.route('/patients')
+@login_required
+def list_patients():
+    from utils.hms_models import Patient
+    patients = Patient.get_all()
+    return render_template('subsystems/core_transaction/ct1/patient_list.html',
+                           patients=patients,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -198,24 +235,28 @@ def dashboard():
 def register_patient():
     if request.method == 'POST':
         from utils.hms_models import Patient
-        patient_data = {
-            'first_name': request.form.get('first_name'),
-            'last_name': request.form.get('last_name'),
-            'dob': request.form.get('dob'),
-            'gender': request.form.get('gender'),
-            'contact_number': request.form.get('contact_number'),
-            'address': request.form.get('address'),
-            'insurance_info': {
-                'provider': request.form.get('insurance_provider'),
-                'policy_number': request.form.get('policy_number')
+        try:
+            patient_data = {
+                'first_name': request.form.get('first_name'),
+                'last_name': request.form.get('last_name'),
+                'dob': request.form.get('dob'),
+                'gender': request.form.get('gender'),
+                'contact_number': request.form.get('contact_number'),
+                'address': request.form.get('address'),
+                'insurance_info': {
+                    'provider': request.form.get('insurance_provider'),
+                    'policy_number': request.form.get('policy_number'),
+                    'group_number': request.form.get('group_number')
+                }
             }
-        }
-        patient = Patient.create(patient_data)
-        if patient:
-            flash(f'Patient {patient.first_name} {patient.last_name} registered successfully! ID: {patient.patient_id_alt}', 'success')
-            return redirect(url_for('ct1.dashboard'))
-        else:
-            flash('Failed to register patient.', 'danger')
+            patient = Patient.create(patient_data)
+            if patient:
+                flash(f'Patient {patient.first_name} {patient.last_name} registered successfully! ID: {patient.patient_id_alt}', 'success')
+                return redirect(url_for('ct1.list_patients'))
+            else:
+                flash('Failed to register patient.', 'danger')
+        except Exception as e:
+            flash(f'Error: {str(e)}', 'danger')
             
     return render_template('subsystems/core_transaction/ct1/patient_registration.html',
                            subsystem_name=SUBSYSTEM_NAME,
@@ -227,10 +268,27 @@ def register_patient():
 def search_patients():
     query = request.args.get('q', '')
     from utils.hms_models import Patient
-    patients = Patient.search(query) if query else []
+    patients = []
+    if query:
+        patients = Patient.search(query)
     return render_template('subsystems/core_transaction/ct1/patient_search.html', 
                            patients=patients, 
                            query=query,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct1_bp.route('/patients/<patient_id>')
+@login_required
+def view_patient(patient_id):
+    client = get_supabase_client()
+    response = client.table('patients').select('*, appointments(*)').eq('id', patient_id).single().execute()
+    if not response.data:
+        flash('Patient not found.', 'danger')
+        return redirect(url_for('ct1.list_patients'))
+    
+    return render_template('subsystems/core_transaction/ct1/view_patient.html',
+                           patient=response.data,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -240,23 +298,32 @@ def search_patients():
 def book_appointment():
     from utils.hms_models import Patient, Appointment
     if request.method == 'POST':
-        appointment_data = {
-            'patient_id': request.form.get('patient_id'),
-            'doctor_id': current_user.id, # Default to current user for now or add doctor selection
-            'appointment_date': request.form.get('appointment_date'),
-            'type': request.form.get('type'),
-            'status': 'Scheduled'
-        }
-        appointment = Appointment.create(appointment_data)
-        if appointment:
-            flash('Appointment booked successfully!', 'success')
-            return redirect(url_for('ct1.dashboard'))
-        else:
-            flash('Failed to book appointment.', 'danger')
+        try:
+            appointment_data = {
+                'patient_id': request.form.get('patient_id'),
+                'doctor_id': request.form.get('doctor_id'), # Now selectable
+                'appointment_date': request.form.get('appointment_date'),
+                'type': request.form.get('type'),
+                'status': 'Scheduled',
+                'notes': request.form.get('notes')
+            }
+            appointment = Appointment.create(appointment_data)
+            if appointment:
+                flash('Appointment booked successfully!', 'success')
+                return redirect(url_for('ct1.dashboard'))
+            else:
+                flash('Failed to book appointment.', 'danger')
+        except Exception as e:
+            flash(f'Error: {str(e)}', 'danger')
             
     patients = Patient.get_all()
+    # Get doctors (users in CT2 or CT3)
+    client = get_supabase_client()
+    doctors = client.table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
+    
     return render_template('subsystems/core_transaction/ct1/book_appointment.html', 
                            patients=patients,
+                           doctors=doctors,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

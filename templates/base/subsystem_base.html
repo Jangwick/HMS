@@ -193,9 +193,9 @@
                 {% elif blueprint_name.startswith('ct') %}
                     <!-- CT1: Patient Registration -->
                     {% if blueprint_name == 'ct1' %}
-                    <a href="{{ url_for('ct1.register_patient') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.register_patient' }}">
-                        <i class="bi bi-person-plus mr-3"></i>
-                        <span>Register Patient</span>
+                    <a href="{{ url_for('ct1.list_patients') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.list_patients' }}">
+                        <i class="bi bi-people mr-3"></i>
+                        <span>Patient Directory</span>
                     </a>
                     <a href="{{ url_for('ct1.search_patients') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.search_patients' }}">
                         <i class="bi bi-search mr-3"></i>

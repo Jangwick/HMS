@@ -1,0 +1,193 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Patient Profile - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Patient Profile{% endblock %}
+
+{% block content %}
+<div class="space-y-8 pb-12">
+    <!-- Breadcrumbs -->
+    <nav class="flex text-sm" aria-label="Breadcrumb">
+        <ol class="flex items-center space-x-2 text-gray-400">
+            <li><a href="{{ url_for('ct1.dashboard') }}" class="hover:text-emerald-600 transition-colors">Dashboard</a></li>
+            <li><i class="bi bi-chevron-right text-[10px]"></i></li>
+            <li><a href="{{ url_for('ct1.list_patients') }}" class="hover:text-emerald-600 transition-colors">Directory</a></li>
+            <li><i class="bi bi-chevron-right text-[10px]"></i></li>
+            <li class="text-gray-600 font-medium">Profile: {{ patient.first_name }} {{ patient.last_name }}</li>
+        </ol>
+    </nav>
+
+    <!-- Patient Header Card -->
+    <div class="glass-card rounded-3xl overflow-hidden shadow-2xl">
+        <div class="bg-gradient-to-r from-emerald-500 to-teal-600 px-8 py-10 text-white relative">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+            <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div class="flex items-center space-x-6">
+                    <div class="w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center text-4xl font-bold shadow-inner border border-white/30">
+                        {{ patient.first_name[0] }}{{ patient.last_name[0] }}
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-3">
+                            <h2 class="text-3xl font-bold tracking-tight">{{ patient.first_name }} {{ patient.last_name }}</h2>
+                            <span class="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-bold border border-white/20">
+                                {{ patient.patient_id_alt }}
+                            </span>
+                        </div>
+                        <p class="text-emerald-50 opacity-90 mt-1 flex items-center">
+                            <i class="bi bi-calendar-event mr-2"></i> Born {{ patient.dob }} 
+                            <span class="mx-2">•</span> 
+                            <i class="bi bi-gender-ambiguous mr-2"></i> {{ patient.gender }}
+                        </p>
+                    </div>
+                </div>
+                <div class="flex space-x-3">
+                    <a href="{{ url_for('ct1.book_appointment', patient_id=patient.id) }}" 
+                       class="px-6 py-3 bg-white text-emerald-600 font-bold rounded-2xl hover:bg-emerald-50 transition-all shadow-lg flex items-center">
+                        <i class="bi bi-calendar-plus mr-2"></i> Schedule Visit
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-gray-100 bg-white/50">
+            <!-- Basic Info -->
+            <div class="p-8 space-y-6">
+                <div>
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Contact Information</h4>
+                    <div class="space-y-4">
+                        <div class="flex items-start group">
+                            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center mr-4 transition-colors group-hover:bg-blue-100">
+                                <i class="bi bi-telephone-fill"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 font-medium">Phone Number</p>
+                                <p class="text-sm font-bold text-gray-900">{{ patient.contact_number }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start group">
+                            <div class="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center mr-4 transition-colors group-hover:bg-orange-100">
+                                <i class="bi bi-geo-alt-fill"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 font-medium">Residential Address</p>
+                                <p class="text-sm font-bold text-gray-900 leading-relaxed">{{ patient.address }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Insurance Info -->
+            <div class="p-8 space-y-6">
+                <div>
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Insurance Details</h4>
+                    {% if patient.insurance_info and patient.insurance_info.provider %}
+                    <div class="space-y-4">
+                        <div class="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 border-dashed">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-emerald-700 uppercase">{{ patient.insurance_info.provider }}</span>
+                                <i class="bi bi-shield-check text-emerald-500"></i>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <div>
+                                    <p class="text-[10px] text-emerald-600 font-bold uppercase opacity-60">Policy Number</p>
+                                    <p class="text-lg font-mono font-bold text-emerald-900">{{ patient.insurance_info.policy_number }}</p>
+                                </div>
+                                {% if patient.insurance_info.group_number %}
+                                <div class="text-right">
+                                    <p class="text-[10px] text-emerald-600 font-bold uppercase opacity-60">Group #</p>
+                                    <p class="text-sm font-mono font-bold text-emerald-900">{{ patient.insurance_info.group_number }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="flex items-center justify-center h-24 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                        <p class="text-sm text-gray-400 italic">No insurance information registered</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- System Info -->
+            <div class="p-8 space-y-6">
+                <div>
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">System Record</h4>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center py-2 border-b border-gray-50">
+                            <span class="text-sm text-gray-500">Record Created</span>
+                            <span class="text-sm font-bold text-gray-900">{{ patient.created_at[:10] }}</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-50">
+                            <span class="text-sm text-gray-500">Registry ID</span>
+                            <span class="text-xs font-mono font-bold bg-gray-100 px-2 py-1 rounded text-gray-700">#{{ patient.id }}</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2">
+                            <span class="text-sm text-gray-500">Account Status</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active Record</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Appointment History -->
+    <div class="glass-card rounded-3xl overflow-hidden min-h-[300px]">
+        <div class="p-6 border-b border-gray-100 bg-white/50 flex justify-between items-center">
+            <h4 class="text-lg font-bold text-gray-900">Appointment History</h4>
+            <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-bold text-gray-500">
+                {{ patient.appointments|length }} Visits
+            </span>
+        </div>
+        
+        <div class="p-6">
+            {% if patient.appointments %}
+            <div class="relative pl-8 space-y-8 before:content-[''] before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-emerald-100">
+                {% for appt in patient.appointments|sort(attribute='appointment_date', reverse=True) %}
+                <div class="relative group">
+                    <div class="absolute -left-[28px] top-1 w-4 h-4 rounded-full bg-white border-4 border-emerald-500 z-10 ring-4 ring-emerald-50"></div>
+                    <div class="bg-gray-50 rounded-2xl p-5 hover:bg-emerald-50 transition-colors border border-gray-100 group-hover:border-emerald-200">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <div class="flex items-center space-x-3 mb-1">
+                                    <span class="text-sm font-bold text-gray-900">{{ appt.appointment_date }}</span>
+                                    <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase 
+                                        {% if appt.status == 'Scheduled' %}bg-blue-100 text-blue-700
+                                        {% elif appt.status == 'Completed' %}bg-emerald-100 text-emerald-700
+                                        {% else %}bg-gray-100 text-gray-700{% endif %}">
+                                        {{ appt.status }}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-gray-500 font-bold uppercase tracking-tight">{{ appt.type }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-gray-400">Attending Physician</p>
+                                <p class="text-sm font-bold text-gray-900">Dr. ID: {{ appt.doctor_id }}</p>
+                            </div>
+                        </div>
+                        {% if appt.notes %}
+                        <div class="mt-4 pt-4 border-t border-gray-100">
+                            <p class="text-sm text-gray-600 leading-relaxed italic">"{{ appt.notes }}"</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="py-20 text-center">
+                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="bi bi-calendar2-x text-3xl text-gray-200"></i>
+                </div>
+                <h5 class="text-gray-900 font-bold">No Visit History</h5>
+                <p class="text-gray-500 text-sm mt-1">This patient hasn't had any appointments yet.</p>
+                <a href="{{ url_for('ct1.book_appointment', patient_id=patient.id) }}" class="mt-4 inline-block text-emerald-600 font-bold hover:underline">
+                    Book first appointment →
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

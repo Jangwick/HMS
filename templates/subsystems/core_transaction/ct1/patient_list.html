@@ -1,0 +1,127 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Patient Directory - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Patient Directory{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header Actions -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Patient Registry</h3>
+            <p class="text-gray-500">View and manage all registered patients</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+            <a href="{{ url_for('ct1.register_patient') }}" 
+               class="px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-600 transition-all flex items-center">
+                <i class="bi bi-person-plus-fill mr-2"></i>
+                Register Patient
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="glass-card p-6 rounded-2xl">
+            <p class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">Total Registry</p>
+            <p class="text-3xl font-bold text-gray-900">{{ patients|length }}</p>
+        </div>
+        <div class="glass-card p-6 rounded-2xl">
+            <p class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">Active Patients</p>
+            <p class="text-3xl font-bold text-emerald-600">{{ patients|length }}</p>
+        </div>
+        <div class="glass-card p-6 rounded-2xl">
+            <p class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">New This Month</p>
+            <p class="text-3xl font-bold text-blue-600">--</p>
+        </div>
+    </div>
+
+    <!-- Patient Table -->
+    <div class="glass-card rounded-2xl overflow-hidden min-h-[400px]">
+        <div class="p-6 border-b border-gray-100 bg-white/50">
+            <form action="{{ url_for('ct1.search_patients') }}" method="GET" class="relative">
+                <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" name="q" placeholder="Search by name, ID, or contact..." 
+                       class="w-full pl-12 pr-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all">
+            </form>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50/50 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4">Patient Details</th>
+                        <th class="px-6 py-4">Gender & DOB</th>
+                        <th class="px-6 py-4">Contact</th>
+                        <th class="px-6 py-4">Insurance</th>
+                        <th class="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for patient in patients %}
+                    <tr class="hover:bg-emerald-50/30 transition-colors group">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold mr-3 shadow-sm">
+                                    {{ patient.first_name[0] }}{{ patient.last_name[0] }}
+                                </div>
+                                <div>
+                                    <div class="font-bold text-gray-900 group-hover:text-emerald-600 transition-colors">
+                                        {{ patient.first_name }} {{ patient.last_name }}
+                                    </div>
+                                    <div class="text-xs text-gray-400 font-mono italic">{{ patient.patient_id_alt }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">{{ patient.gender }}</div>
+                            <div class="text-xs text-gray-500">{{ patient.dob }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">{{ patient.contact_number }}</div>
+                            <div class="text-xs text-gray-500 truncate max-w-[150px]">{{ patient.address }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if patient.insurance_info and patient.insurance_info.provider %}
+                            <span class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold border border-blue-100">
+                                {{ patient.insurance_info.provider }}
+                            </span>
+                            {% else %}
+                            <span class="text-gray-400 text-xs italic">No insurance</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex justify-end space-x-2">
+                                <a href="{{ url_for('ct1.view_patient', patient_id=patient.id) }}" 
+                                   class="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                                   title="View Profile">
+                                    <i class="bi bi-person-vcard text-lg"></i>
+                                </a>
+                                <a href="{{ url_for('ct1.book_appointment', patient_id=patient.id) }}" 
+                                   class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                   title="Book Appointment">
+                                    <i class="bi bi-calendar-plus text-lg"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-20 text-center">
+                            <div class="max-w-xs mx-auto">
+                                <i class="bi bi-people text-5xl text-gray-200 mb-4 block"></i>
+                                <h4 class="text-gray-900 font-bold">No Patients Found</h4>
+                                <p class="text-gray-500 text-sm mt-1">Start by registering your first patient into the system.</p>
+                                <a href="{{ url_for('ct1.register_patient') }}" class="mt-4 inline-block text-emerald-600 font-bold hover:underline">
+                                    Register now →
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

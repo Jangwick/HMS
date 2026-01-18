@@ -33,53 +33,71 @@
     </div>
 
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="glass-card p-6 rounded-2xl hover-scale">
             <div class="flex items-center justify-between mb-4">
                 <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Today's Appointments</h4>
-                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                    <i class="bi bi-calendar-check"></i>
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <i class="bi bi-calendar-check text-xl"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">{{ appointments|length }}</p>
-            <p class="text-gray-400 text-sm font-medium mt-2">Scheduled for today</p>
+            <p class="text-3xl font-bold text-gray-900">{{ metrics.appointments_today }}</p>
+            <p class="text-gray-400 text-xs font-medium mt-2">Scheduled for today</p>
         </div>
 
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div class="glass-card p-6 rounded-2xl hover-scale">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">New Patients</h4>
-                <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
-                    <i class="bi bi-person-plus"></i>
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Total Patients</h4>
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <i class="bi bi-people text-xl"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">12</p>
-            <p class="text-green-500 text-sm font-medium mt-2 flex items-center">
-                <i class="bi bi-arrow-up-short text-lg"></i> 5% this week
+            <p class="text-3xl font-bold text-gray-900">{{ metrics.total_patients }}</p>
+            <p class="text-gray-400 text-xs font-medium mt-2">Registered in system</p>
+        </div>
+
+        <div class="glass-card p-6 rounded-2xl hover-scale">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">New Patients</h4>
+                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <i class="bi bi-person-plus text-xl"></i>
+                </div>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">{{ metrics.new_patients_week }}</p>
+            <p class="text-emerald-500 text-xs font-medium mt-2 flex items-center">
+                <i class="bi bi-arrow-up-short text-lg"></i> This week
             </p>
         </div>
 
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div class="glass-card p-6 rounded-2xl hover-scale">
             <div class="flex items-center justify-between mb-4">
                 <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">System Status</h4>
-                <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                    <i class="bi bi-activity"></i>
+                <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+                    <i class="bi bi-activity text-xl"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">Online</p>
-            <p class="text-green-500 text-sm font-medium mt-2">All modules operational</p>
+            <p class="text-3xl font-bold text-gray-900">{{ metrics.system_status }}</p>
+            <p class="text-green-500 text-xs font-medium mt-2">Core modules active</p>
         </div>
     </div>
 
     <!-- Upcoming Appointments Table -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+    <div class="glass-card rounded-2xl overflow-hidden mt-8">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-white/50">
             <h4 class="text-lg font-bold text-gray-900">Upcoming Appointments</h4>
-            <a href="{{ url_for('ct1.book_appointment') }}"
-                class="text-[#10B981] font-bold text-sm hover:underline">Book New</a>
+            <div class="flex space-x-2">
+                <a href="{{ url_for('ct1.list_patients') }}" class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-emerald-600 transition-colors">
+                    Patient Directory
+                </a>
+                <a href="{{ url_for('ct1.book_appointment') }}"
+                    class="px-4 py-2 bg-emerald-500 text-white text-sm font-bold rounded-lg hover:bg-emerald-600 transition-all shadow-sm">
+                    Book New
+                </a>
+            </div>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left">
-                <thead class="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                <thead class="bg-gray-50/50 text-gray-400 text-xs font-bold uppercase tracking-wider">
                     <tr>
                         <th class="px-6 py-4">Patient</th>
                         <th class="px-6 py-4">Date & Time</th>
@@ -90,30 +108,48 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     {% for appt in appointments %}
-                    <tr class="hover:bg-gray-50 transition-colors group">
+                    <tr class="hover:bg-emerald-50/30 transition-colors group">
                         <td class="px-6 py-4">
-                            <div class="font-bold text-gray-900 group-hover:text-[#10B981] transition-colors">{{
-                                appt.patients.first_name }} {{ appt.patients.last_name }}</div>
-                            <div class="text-xs text-gray-400">{{ appt.patients.patient_id_alt }}</div>
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs mr-3">
+                                    {{ appt.patient.first_name[0] if appt.patient else '?' }}{{ appt.patient.last_name[0] if appt.patient else '?' }}
+                                </div>
+                                <div>
+                                    <div class="font-bold text-gray-900 group-hover:text-emerald-600 transition-colors">
+                                        {{ appt.patient.first_name if appt.patient else 'Unknown' }} {{ appt.patient.last_name if appt.patient else 'Patient' }}
+                                    </div>
+                                    <div class="text-xs text-gray-400">{{ appt.patient.patient_id_alt if appt.patient else 'N/A' }}</div>
+                                </div>
+                            </div>
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-600">{{ appt.appointment_date }}</td>
-                        <td class="px-6 py-4">
-                            <span class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-bold">{{
-                                appt.type }}</span>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {{ appt.appointment_date }}
                         </td>
                         <td class="px-6 py-4">
-                            <span class="px-3 py-1 bg-green-100 text-green-600 rounded-full text-xs font-bold">{{
-                                appt.status }}</span>
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold 
+                                {% if appt.type == 'Follow-up' %}bg-blue-100 text-blue-700
+                                {% elif appt.type == 'Consultation' %}bg-purple-100 text-purple-700
+                                {% else %}bg-gray-100 text-gray-700{% endif %}">
+                                {{ appt.type }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="flex items-center text-xs font-bold text-emerald-600">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
+                                {{ appt.status }}
+                            </span>
                         </td>
                         <td class="px-6 py-4 text-right">
-                            <button class="text-gray-400 hover:text-[#10B981] transition-colors"><i
-                                    class="bi bi-three-dots-vertical"></i></button>
+                            <a href="{{ url_for('ct1.view_patient', patient_id=appt.patient_id) }}" 
+                               class="text-gray-400 hover:text-emerald-600 transition-colors">
+                                <i class="bi bi-eye-fill"></i>
+                            </a>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
                         <td colspan="5" class="px-6 py-12 text-center text-gray-400">
-                            <i class="bi bi-calendar-x text-4xl mb-3 block"></i>
+                            <i class="bi bi-calendar2-x text-4xl mb-2 block"></i>
                             No upcoming appointments found.
                         </td>
                     </tr>

@@ -4,65 +4,113 @@
 {% block header_title %}Appointment Scheduling{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto">
-    <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-        <div class="bg-gradient-to-r from-[#10B981] to-teal-800 px-8 py-10 text-white">
-            <h3 class="text-3xl font-bold mb-2">Schedule Appointment</h3>
-            <p class="text-teal-100">Book a new consultation or follow-up for a patient.</p>
+<div class="max-w-4xl mx-auto pb-12">
+    <!-- Breadcrumbs -->
+    <nav class="flex mb-8 text-sm" aria-label="Breadcrumb">
+        <ol class="flex items-center space-x-2 text-gray-400">
+            <li><a href="{{ url_for('ct1.dashboard') }}" class="hover:text-emerald-600">Dashboard</a></li>
+            <li><i class="bi bi-chevron-right text-[10px]"></i></li>
+            <li class="text-gray-600 font-medium">Schedule Appointment</li>
+        </ol>
+    </nav>
+
+    <div class="glass-card rounded-3xl overflow-hidden shadow-2xl">
+        <div class="bg-gradient-to-r from-emerald-500 to-teal-600 px-8 py-10 text-white relative">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+            <div class="relative z-10">
+                <div class="flex items-center space-x-4 mb-2">
+                    <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+                        <i class="bi bi-calendar-plus text-2xl"></i>
+                    </div>
+                    <h3 class="text-3xl font-bold">Schedule Appointment</h3>
+                </div>
+                <p class="text-emerald-50 opacity-90">Book a new medical consultation or follow-up session.</p>
+            </div>
         </div>
 
-        <form method="POST" class="p-8 space-y-6">
+        <form method="POST" class="p-8 space-y-8 bg-white/50 backdrop-blur-md">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-            <div class="space-y-2">
-                <label class="text-sm font-bold text-gray-700 ml-1">Select Patient</label>
-                <div class="relative">
-                    <i class="bi bi-person absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    <select name="patient_id" required
-                        class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none appearance-none">
-                        <option value="" disabled selected>Choose a patient...</option>
-                        {% for patient in patients %}
-                        <option value="{{ patient.id }}" {% if request.args.get('patient_id')|int==patient.id
-                            %}selected{% endif %}>
-                            {{ patient.first_name }} {{ patient.last_name }} ({{ patient.patient_id_alt }})
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Patient Selection -->
                 <div class="space-y-2">
-                    <label class="text-sm font-bold text-gray-700 ml-1">Appointment Date & Time</label>
-                    <input type="datetime-local" name="appointment_date" required
-                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none">
+                    <label class="block text-sm font-bold text-gray-700 ml-1">Select Patient</label>
+                    <div class="relative group">
+                        <i class="bi bi-person absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors"></i>
+                        <select name="patient_id" required
+                            class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none appearance-none">
+                            <option value="" disabled selected>Choose a patient...</option>
+                            {% for patient in patients %}
+                            <option value="{{ patient.id }}" {% if (request.args.get('patient_id')|int == patient.id) or (patient_id|int == patient.id) %}selected{% endif %}>
+                                {{ patient.first_name }} {{ patient.last_name }} ({{ patient.patient_id_alt }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <i class="bi bi-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                    </div>
                 </div>
+
+                <!-- Doctor Selection -->
                 <div class="space-y-2">
-                    <label class="text-sm font-bold text-gray-700 ml-1">Appointment Type</label>
-                    <select name="type" required
-                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none appearance-none">
-                        <option value="Consultation">Consultation</option>
-                        <option value="Follow-up">Follow-up</option>
-                        <option value="Emergency">Emergency</option>
-                        <option value="Routine Checkup">Routine Checkup</option>
-                    </select>
+                    <label class="block text-sm font-bold text-gray-700 ml-1">Assign Doctor / Consultant</label>
+                    <div class="relative group">
+                        <i class="bi bi-person-workspace absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors"></i>
+                        <select name="doctor_id" required
+                            class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none appearance-none">
+                            <option value="" disabled selected>Select a healthcare provider...</option>
+                            {% for doctor in doctors %}
+                            <option value="{{ doctor.id }}">
+                                Dr. {{ doctor.username }} ({{ doctor.subsystem|upper }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <i class="bi bi-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <!-- Date & Time -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-bold text-gray-700 ml-1">Appointment Date & Time</label>
+                    <div class="relative group">
+                        <i class="bi bi-clock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors"></i>
+                        <input type="datetime-local" name="appointment_date" required
+                            class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none">
+                    </div>
+                </div>
+
+                <!-- Type -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-bold text-gray-700 ml-1">Type of Visit</label>
+                    <div class="relative group">
+                        <i class="bi bi-tag absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors"></i>
+                        <select name="type" required
+                            class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none appearance-none">
+                            <option value="Consultation">Consultation</option>
+                            <option value="Follow-up">Follow-up</option>
+                            <option value="Emergency">Emergency</option>
+                            <option value="Routine Checkup">Routine Checkup</option>
+                            <option value="Specialist Visit">Specialist Visit</option>
+                        </select>
+                        <i class="bi bi-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                    </div>
                 </div>
             </div>
 
+            <!-- Notes -->
             <div class="space-y-2">
-                <label class="text-sm font-bold text-gray-700 ml-1">Notes / Reason for Visit</label>
-                <textarea name="notes" rows="3"
-                    class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#10B981] focus:bg-white transition-all outline-none"
-                    placeholder="Briefly describe the reason for the appointment..."></textarea>
+                <label class="block text-sm font-bold text-gray-700 ml-1">Clinical Notes / Reason for Visit</label>
+                <textarea name="notes" rows="4"
+                    class="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
+                    placeholder="Briefly describe the symptoms or reason for the appointment..."></textarea>
             </div>
 
-            <div class="pt-6 flex items-center justify-between">
+            <div class="pt-8 flex items-center justify-between border-t border-gray-100 mt-6">
                 <a href="{{ url_for('ct1.dashboard') }}"
-                    class="text-gray-500 font-bold hover:text-gray-700 transition-colors">
+                    class="px-6 py-3 text-gray-500 font-bold hover:text-gray-700 transition-colors text-sm">
                     Cancel
                 </a>
                 <button type="submit"
-                    class="px-10 py-4 bg-[#10B981] text-white font-bold rounded-2xl shadow-lg hover:bg-[#059669] transition-all transform hover:-translate-y-1">
+                    class="px-12 py-4 bg-emerald-500 text-white font-bold rounded-2xl shadow-xl shadow-emerald-200 hover:bg-emerald-600 hover:scale-[1.02] transform transition-all">
                     Confirm Appointment
                 </button>
             </div>
