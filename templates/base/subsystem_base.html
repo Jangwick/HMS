@@ -123,23 +123,19 @@
                         <span>Schedule Interview</span>
                     </a>
 
-                    <!-- HR2: Payroll & Onboarding -->
+                    <!-- HR2: Talent Development -->
                     {% elif blueprint_name == 'hr2' %}
-                    <a href="{{ url_for('hr2.payroll_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.payroll_list' or request.endpoint == 'hr2.dashboard' }}">
-                        <i class="bi bi-cash-stack mr-3"></i>
-                        <span>Payroll Admin</span>
-                    </a>
                     <a href="{{ url_for('hr2.onboarding_pipeline') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.onboarding_pipeline' }}">
-                        <i class="bi bi-person-plus mr-3"></i>
+                        <i class="bi bi-person-check mr-3"></i>
                         <span>Onboarding Queue</span>
                     </a>
-                    <a href="{{ url_for('hr2.process_payroll') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.process_payroll' }}">
-                        <i class="bi bi-gear-wide-connected mr-3"></i>
-                        <span>Process Payroll</span>
+                    <a href="{{ url_for('hr2.list_trainings') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_trainings' }}">
+                        <i class="bi bi-mortarboard mr-3"></i>
+                        <span>Training Programs</span>
                     </a>
-                    <a href="{{ url_for('hr2.list_payslips') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_payslips' }}">
-                        <i class="bi bi-file-pdf mr-3"></i>
-                        <span>Generate Payslips</span>
+                    <a href="{{ url_for('hr2.list_competencies') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_competencies' }}">
+                        <i class="bi bi-award mr-3"></i>
+                        <span>Competencies</span>
                     </a>
 
                     <!-- HR3: Employee Management -->

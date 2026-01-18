@@ -8,8 +8,8 @@ from datetime import datetime
 hr2_bp = Blueprint('hr2', __name__)
 
 # Subsystem configuration
-SUBSYSTEM_NAME = 'HR2 - Payroll Management'
-ACCENT_COLOR = '#6366F1'
+SUBSYSTEM_NAME = 'HR2 - Talent Development'
+ACCENT_COLOR = '#0891B2'
 BLUEPRINT_NAME = 'hr2'
 
 @hr2_bp.route('/login', methods=['GET', 'POST'])
@@ -183,137 +183,44 @@ def dashboard():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    # Get payroll stats
+    # Get Talent Development stats
     try:
-        # Get total active employees
-        response = client.table('users').select('id', count='exact').eq('status', 'Active').execute()
-        total_employees = response.count if response.count is not None else 0
+        # Get pending onboarding
+        response = client.table('onboarding').select('id', count='exact').eq('status', 'Pending').execute()
+        pending_onboarding = response.count if response.count is not None else 0
         
-        # Get pending payrolls
-        response = client.table('payroll_records').select('id', count='exact').eq('status', 'Pending').execute()
-        pending_payroll = response.count if response.count is not None else 0
+        # Get active trainings
+        response = client.table('trainings').select('id', count='exact').execute()
+        active_trainings = response.count if response.count is not None else 0
         
-        # Get processed this month
-        now = datetime.utcnow()
-        first_day = now.replace(day=1).strftime('%Y-%m-%d')
-        response = client.table('payroll_records').select('id', count='exact').gte('processed_date', first_day).execute()
-        processed_this_month = response.count if response.count is not None else 0
+        # Get total competencies defined
+        response = client.table('competencies').select('id', count='exact').execute()
+        total_competencies = response.count if response.count is not None else 0
+        
+        # Recent onboarding items
+        recent_onboarding_resp = client.table('onboarding').select('*, applicants(first_name, last_name)').order('created_at', desc=True).limit(5).execute()
+        recent_onboarding = recent_onboarding_resp.data if recent_onboarding_resp.data else []
         
     except Exception as e:
         print(f"Error fetching stats: {e}")
-        total_employees = 0
-        pending_payroll = 0
-        processed_this_month = 0
+        pending_onboarding = 0
+        active_trainings = 0
+        total_competencies = 0
+        recent_onboarding = []
     
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
+        
     return render_template('subsystems/hr/hr2/dashboard.html', 
                            now=datetime.utcnow,
-                           total_employees=total_employees,
-                           pending_payroll=pending_payroll,
-                           processed_this_month=processed_this_month,
+                           pending_onboarding=pending_onboarding,
+                           active_trainings=active_trainings,
+                           total_competencies=total_competencies,
+                           recent_onboarding=recent_onboarding,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
-
-@hr2_bp.route('/payroll')
-@login_required
-def payroll_list():
-    from utils.supabase_client import get_supabase_client
-    client = get_supabase_client()
-    
-    # Get all active employees
-    all_users = User.get_all()
-    employees = [u for u in all_users if u.status == 'Active']
-    
-    # Get latest payroll status for each employee (simplified)
-    # In a real app, we'd join tables or do a batch query
-    
-    return render_template('subsystems/hr/hr2/payroll_list.html',
-                           employees=employees,
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
-
-@hr2_bp.route('/payroll/process', methods=['GET', 'POST'])
-@login_required
-def process_payroll():
-    from utils.supabase_client import get_supabase_client
-    client = get_supabase_client()
-    
-    if request.method == 'POST':
-        selected_employees = request.form.getlist('employee_ids')
-        pay_period_start = request.form.get('start_date')
-        pay_period_end = request.form.get('end_date')
-        
-        if not selected_employees:
-            flash('Please select at least one employee.', 'warning')
-            return redirect(url_for('hr2.process_payroll'))
-            
-        try:
-            records = []
-            for emp_id in selected_employees:
-                # Placeholder calculations
-                base_salary = 5000.00 
-                deductions = 500.00
-                bonuses = 0.00
-                net_pay = base_salary - deductions + bonuses
-                
-                records.append({
-                    'user_id': int(emp_id),
-                    'pay_period_start': pay_period_start,
-                    'pay_period_end': pay_period_end,
-                    'base_salary': base_salary,
-                    'deductions': deductions,
-                    'bonuses': bonuses,
-                    'net_pay': net_pay,
-                    'status': 'Processed',
-                    'processed_date': datetime.utcnow().isoformat()
-                })
-            
-            if records:
-                client.table('payroll_records').insert(records).execute()
-                flash(f'Successfully processed payroll for {len(records)} employees.', 'success')
-            
-        except Exception as e:
-            flash(f'Error processing payroll: {format_db_error(e)}', 'danger')
-            
-        return redirect(url_for('hr2.payroll_list'))
-    
-    # Get active employees
-    all_users = User.get_all()
-    employees = [u for u in all_users if u.status == 'Active']
-    
-    return render_template('subsystems/hr/hr2/process_payroll.html',
-                           employees=employees,
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
-
-@hr2_bp.route('/settings', methods=['GET', 'POST'])
-@login_required
-def settings():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        if email:
-            try:
-                current_user.update(email=email)
-                flash('Settings updated successfully.', 'success')
-            except Exception as e:
-                flash(f'Update failed: {str(e)}', 'danger')
-        return redirect(url_for(f'{BLUEPRINT_NAME}.settings'))
-        
-    return render_template('shared/settings.html',
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
-
-@hr2_bp.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('hr2.login'))
 
 @hr2_bp.route('/onboarding')
 @login_required
@@ -348,38 +255,102 @@ def complete_onboarding():
         
     return redirect(url_for('hr2.onboarding_pipeline'))
 
-@hr2_bp.route('/payslips')
+@hr2_bp.route('/trainings')
 @login_required
-def list_payslips():
+def list_trainings():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    # Fetch all processed payroll records joined with user info
-    response = client.table('payroll_records').select('*, users(username, email, role)').execute()
-    payslips = response.data if response.data else []
+    response = client.table('trainings').select('*').execute()
+    trainings = response.data if response.data else []
     
-    return render_template('subsystems/hr/hr2/payslips.html',
-                           payslips=payslips,
+    return render_template('subsystems/hr/hr2/trainings.html',
+                           trainings=trainings,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
-@hr2_bp.route('/payslips/<int:record_id>')
+@hr2_bp.route('/trainings/add', methods=['GET', 'POST'])
 @login_required
-def view_payslip(record_id):
+def add_training():
+    if request.method == 'POST':
+        from utils.supabase_client import get_supabase_client
+        client = get_supabase_client()
+        
+        data = {
+            'title': request.form.get('title'),
+            'type': request.form.get('type'),
+            'schedule_date': request.form.get('schedule_date'),
+            'materials_url': request.form.get('materials_url'),
+            'status': 'Scheduled'
+        }
+        
+        try:
+            client.table('trainings').insert(data).execute()
+            flash('Training session scheduled successfully!', 'success')
+        except Exception as e:
+            flash(f'Error scheduling training: {str(e)}', 'danger')
+            
+        return redirect(url_for('hr2.list_trainings'))
+    
+    return redirect(url_for('hr2.list_trainings'))
+
+@hr2_bp.route('/competencies')
+@login_required
+def list_competencies():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    # Fetch specific payroll record
-    response = client.table('payroll_records').select('*, users(*)').eq('id', record_id).single().execute()
-    if not response.data:
-        flash('Payslip not found.', 'danger')
-        return redirect(url_for('hr2.list_payslips'))
+    response = client.table('competencies').select('*').execute()
+    competencies = response.data if response.data else []
     
-    payslip = response.data
-    return render_template('subsystems/hr/hr2/view_payslip.html',
-                           payslip=payslip,
+    return render_template('subsystems/hr/hr2/competencies.html',
+                           competencies=competencies,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+@hr2_bp.route('/competencies/add', methods=['POST'])
+@login_required
+def add_competency():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    data = {
+        'skill_name': request.form.get('skill_name'),
+        'role': request.form.get('role'),
+        'description': request.form.get('description')
+    }
+    
+    try:
+        client.table('competencies').insert(data).execute()
+        flash('Competency requirement added!', 'success')
+    except Exception as e:
+        flash(f'Error adding competency: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_competencies'))
+
+@hr2_bp.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        if email:
+            try:
+                current_user.update(email=email)
+                flash('Settings updated successfully.', 'success')
+            except Exception as e:
+                flash(f'Update failed: {str(e)}', 'danger')
+        return redirect(url_for(f'{BLUEPRINT_NAME}.settings'))
+        
+    return render_template('shared/settings.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr2_bp.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('hr2.login'))
 

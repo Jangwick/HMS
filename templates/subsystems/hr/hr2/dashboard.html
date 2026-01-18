@@ -1,13 +1,13 @@
 {% extends "base/subsystem_base.html" %}
 
 {% block title %}Dashboard - {{ subsystem_name }}{% endblock %}
-{% block header_title %}Payroll Management{% endblock %}
+{% block header_title %}Talent Development{% endblock %}
 
 {% block content %}
 <div class="space-y-8">
     <!-- Welcome Card -->
     <div
-        class="bg-gradient-to-r from-[#6366F1] to-gray-800 rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
+        class="bg-gradient-to-r from-[#0891B2] to-cyan-900 rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
         <div
             class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl">
         </div>
@@ -17,16 +17,16 @@
 
         <div class="relative z-10">
             <h3 class="text-3xl font-bold mb-2">Welcome back, {{ current_user.username }}!</h3>
-            <p class="text-white/80 text-lg max-w-2xl">Manage employee payroll and salary processing.</p>
+            <p class="text-white/80 text-lg max-w-2xl">Manage employee onboarding, training programs, and competency tracking.</p>
 
             <div class="mt-8 flex space-x-4">
-                <a href="{{ url_for('hr2.payroll_list') }}"
-                    class="px-6 py-2.5 bg-white text-[#6366F1] font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
-                    View Payroll
+                <a href="{{ url_for('hr2.onboarding_pipeline') }}"
+                    class="px-6 py-2.5 bg-white text-[#0891B2] font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
+                    Onboarding Queue
                 </a>
-                <a href="{{ url_for('hr2.process_payroll') }}"
+                <a href="{{ url_for('hr2.list_trainings') }}"
                     class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
-                    Process Payroll
+                    Training Programs
                 </a>
             </div>
         </div>
@@ -36,65 +36,90 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Active Employees</h4>
-                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                    <i class="bi bi-people"></i>
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Pending Onboarding</h4>
+                <div class="w-10 h-10 rounded-full bg-cyan-50 flex items-center justify-center text-cyan-600">
+                    <i class="bi bi-person-plus"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">{{ total_employees }}</p>
-            <p class="text-gray-400 text-sm font-medium mt-2">On payroll</p>
+            <p class="text-3xl font-bold text-gray-900">{{ pending_onboarding }}</p>
+            <p class="text-gray-400 text-sm font-medium mt-2">New hires waiting</p>
         </div>
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Pending Payroll</h4>
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Active Trainings</h4>
                 <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
-                    <i class="bi bi-clock"></i>
+                    <i class="bi bi-mortarboard"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">{{ pending_payroll }}</p>
-            <p class="text-amber-500 text-sm font-medium mt-2">Need processing</p>
+            <p class="text-3xl font-bold text-gray-900">{{ active_trainings }}</p>
+            <p class="text-amber-500 text-sm font-medium mt-2">Planned sessions</p>
         </div>
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Processed This Month</h4>
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Competencies Defined</h4>
                 <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                    <i class="bi bi-check-circle"></i>
+                    <i class="bi bi-award"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">{{ processed_this_month }}</p>
-            <p class="text-green-500 text-sm font-medium mt-2">Successfully paid</p>
+            <p class="text-3xl font-bold text-gray-900">{{ total_competencies }}</p>
+            <p class="text-green-500 text-sm font-medium mt-2">Skill profiles</p>
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h4 class="text-xl font-bold text-gray-900 mb-6">Payroll Actions</h4>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <a href="{{ url_for('hr2.process_payroll') }}"
-                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-cash-stack text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Run Payroll</span>
-            </a>
-            <a href="{{ url_for('hr2.payroll_list') }}"
-                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-file-earmark-spreadsheet text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Payroll History</span>
-            </a>
-            <a href="{{ url_for('hr2.onboarding_pipeline') }}"
-                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-person-plus text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Onboarding Queue</span>
-            </a>
-            <a href="{{ url_for('hr2.list_payslips') }}" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-file-pdf text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Generate Payslips</span>
-            </a>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Recent Onboarding -->
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            <div class="flex items-center justify-between mb-8">
+                <h4 class="text-xl font-bold text-gray-900">Recent Onboarding</h4>
+                <a href="{{ url_for('hr2.onboarding_pipeline') }}" class="text-[#0891B2] text-sm font-bold hover:underline">View All</a>
+            </div>
+            <div class="space-y-4">
+                {% for item in recent_onboarding %}
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-[#0891B2] font-bold shadow-sm mr-4">
+                            {{ item.applicants.first_name[0] }}{{ item.applicants.last_name[0] }}
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-900">{{ item.applicants.first_name }} {{ item.applicants.last_name }}</p>
+                            <p class="text-xs text-gray-400">Target Start: {{ item.start_date }}</p>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-white text-cyan-600 border border-cyan-100 uppercase">
+                        {{ item.status }}
+                    </span>
+                </div>
+                {% else %}
+                <div class="text-center py-10">
+                    <p class="text-gray-400 font-medium">No recent onboarding activities.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- System Actions -->
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            <h4 class="text-xl font-bold text-gray-900 mb-6">Talent Actions</h4>
+            <div class="grid grid-cols-2 gap-4">
+                <a href="{{ url_for('hr2.onboarding_pipeline') }}" class="p-6 bg-cyan-50 rounded-2xl hover:bg-cyan-100 transition-colors group">
+                    <i class="bi bi-person-check text-2xl text-cyan-600 mb-2 block"></i>
+                    <span class="font-bold text-cyan-900">Finalize Onboarding</span>
+                </a>
+                <a href="{{ url_for('hr2.list_trainings') }}" class="p-6 bg-amber-50 rounded-2xl hover:bg-amber-100 transition-colors group">
+                    <i class="bi bi-calendar-event text-2xl text-amber-600 mb-2 block"></i>
+                    <span class="font-bold text-amber-900">Schedule training</span>
+                </a>
+                <a href="{{ url_for('hr2.list_competencies') }}" class="p-6 bg-indigo-50 rounded-2xl hover:bg-indigo-100 transition-colors group">
+                    <i class="bi bi-list-check text-2xl text-indigo-600 mb-2 block"></i>
+                    <span class="font-bold text-indigo-900">Manage Skills</span>
+                </a>
+                <a href="#" class="p-6 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors group opacity-50 cursor-not-allowed">
+                    <i class="bi bi-graph-up text-2xl text-gray-400 mb-2 block"></i>
+                    <span class="font-bold text-gray-400">Analytics</span>
+                </a>
+            </div>
         </div>
     </div>
 </div>
