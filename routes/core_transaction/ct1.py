@@ -225,14 +225,16 @@ def list_patients():
     from utils.hms_models import Patient
     patients = Patient.get_all()
     return render_template('subsystems/core_transaction/ct1/patient_list.html',
+                           now=datetime.utcnow,
                            patients=patients,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
-@ct1_bp.route('/patients/register', methods=['GET', 'POST'])
+@ct1_bp.route('/register-patient', methods=['GET', 'POST'])
 @login_required
 def register_patient():
+    from datetime import datetime
     if request.method == 'POST':
         from utils.hms_models import Patient
         try:
@@ -259,43 +261,53 @@ def register_patient():
             flash(f'Error: {str(e)}', 'danger')
             
     return render_template('subsystems/core_transaction/ct1/patient_registration.html',
+                           now=datetime.utcnow,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
-@ct1_bp.route('/patients/search')
+@ct1_bp.route('/search-patients')
 @login_required
 def search_patients():
+    from datetime import datetime
     query = request.args.get('q', '')
     from utils.hms_models import Patient
     patients = []
     if query:
         patients = Patient.search(query)
     return render_template('subsystems/core_transaction/ct1/patient_search.html', 
-                           patients=patients, 
+                           now=datetime.utcnow,
+                           patients=patients,
                            query=query,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
-@ct1_bp.route('/patients/<patient_id>')
+@ct1_bp.route('/view-patient/<patient_id>')
 @login_required
 def view_patient(patient_id):
+    from datetime import datetime
     client = get_supabase_client()
     response = client.table('patients').select('*, appointments(*)').eq('id', patient_id).single().execute()
     if not response.data:
         flash('Patient not found.', 'danger')
         return redirect(url_for('ct1.list_patients'))
     
+    patient = response.data
+    appointments = patient.pop('appointments', [])
+    
     return render_template('subsystems/core_transaction/ct1/view_patient.html',
-                           patient=response.data,
+                           now=datetime.utcnow,
+                           patient=patient,
+                           appointments=appointments,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
-@ct1_bp.route('/appointments/book', methods=['GET', 'POST'])
+@ct1_bp.route('/book-appointment', methods=['GET', 'POST'])
 @login_required
 def book_appointment():
+    from datetime import datetime
     from utils.hms_models import Patient, Appointment
     if request.method == 'POST':
         try:
@@ -322,7 +334,7 @@ def book_appointment():
     doctors = client.table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
     
     return render_template('subsystems/core_transaction/ct1/book_appointment.html', 
-                           patients=patients,
+                           now=datetime.utcnow,
                            doctors=doctors,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
@@ -331,6 +343,7 @@ def book_appointment():
 @ct1_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
+    from datetime import datetime
     if request.method == 'POST':
         email = request.form.get('email')
         if email:
@@ -342,6 +355,7 @@ def settings():
         return redirect(url_for(f'{BLUEPRINT_NAME}.settings'))
         
     return render_template('shared/settings.html',
+                           now=datetime.utcnow,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

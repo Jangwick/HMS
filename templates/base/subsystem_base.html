@@ -209,16 +209,16 @@
                     <!-- CT2: Lab & Pharmacy -->
                     {% elif blueprint_name == 'ct2' %}
                     <a href="{{ url_for('ct2.lab_orders') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.lab_orders' }}">
-                        <i class="bi bi-microscope mr-3"></i>
-                        <span>Lab Orders</span>
+                        <i class="bi bi-flask mr-3"></i>
+                        <span>Lab Dashboard</span>
                     </a>
                     <a href="{{ url_for('ct2.pharmacy_inventory') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.pharmacy_inventory' }}">
-                        <i class="bi bi-capsule mr-3"></i>
-                        <span>Pharmacy</span>
+                        <i class="bi bi-box-seam mr-3"></i>
+                        <span>Pharmacy Stock</span>
                     </a>
                     <a href="{{ url_for('ct2.dispense_meds') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.dispense_meds' }}">
-                        <i class="bi bi-prescription2 mr-3"></i>
-                        <span>Dispense</span>
+                        <i class="bi bi-capsule-pill mr-3"></i>
+                        <span>Dispense Meds</span>
                     </a>
 
                     <!-- CT3: Admin & Finance -->

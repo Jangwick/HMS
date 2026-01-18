@@ -1,102 +1,109 @@
 {% extends "base/subsystem_base.html" %}
 
 {% block title %}Dashboard - {{ subsystem_name }}{% endblock %}
-{% block header_title %}Clinical Operations{% endblock %}
 
 {% block content %}
-<div class="space-y-8">
+<div class="space-y-8 animate-fade-in">
     <!-- Welcome Card -->
-    <div
-        class="bg-gradient-to-r from-[#3B82F6] to-gray-800 rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
-        <div
-            class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl">
-        </div>
-        <div
-            class="absolute bottom-0 left-0 w-48 h-48 bg-black opacity-10 rounded-full transform -translate-x-1/2 translate-y-1/2 blur-2xl">
-        </div>
-
+    <div class="bg-gradient-to-r from-[#10B981] to-gray-800 rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
+        <div class="absolute bottom-0 left-0 w-48 h-48 bg-black opacity-10 rounded-full transform -translate-x-1/2 translate-y-1/2 blur-2xl"></div>
+        
         <div class="relative z-10">
             <h3 class="text-3xl font-bold mb-2">Welcome back, {{ current_user.username }}!</h3>
-            <p class="text-white/80 text-lg max-w-2xl">Manage laboratory orders and pharmacy operations.</p>
+            <p class="text-white/80 text-lg max-w-2xl">Manage laboratory diagnostics, pharmacy inventory, and medical dispensing.</p>
 
             <div class="mt-8 flex space-x-4">
                 <a href="{{ url_for('ct2.lab_orders') }}"
-                    class="px-6 py-2.5 bg-white text-[#3B82F6] font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
-                    View Lab Orders
+                    class="px-6 py-2.5 bg-white text-[#10B981] font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
+                    LIS Dashboard
                 </a>
-                <a href="{{ url_for('ct2.pharmacy_inventory') }}"
+                <a href="{{ url_for('ct2.dispense_meds') }}"
                     class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
-                    Pharmacy Stock
+                    Dispense Meds
                 </a>
             </div>
         </div>
     </div>
 
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="glass-card p-6 rounded-2xl hover-scale">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Pending Lab Orders</h4>
-                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                    <i class="bi bi-flask"></i>
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Total Lab Orders</h4>
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <i class="bi bi-flask text-xl"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">8</p>
-            <p class="text-gray-400 text-sm font-medium mt-2">Awaiting results</p>
+            <p class="text-3xl font-bold text-gray-900">{{ metrics.total_lab_orders }}</p>
+            <p class="text-gray-400 text-xs font-medium mt-2">Active orders</p>
         </div>
 
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div class="glass-card p-6 rounded-2xl hover-scale">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Pending Reports</h4>
+                <div class="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                    <i class="bi bi-hourglass-split text-xl"></i>
+                </div>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">{{ metrics.pending_labs }}</p>
+            <p class="text-orange-500 text-xs font-medium mt-2">Action required</p>
+        </div>
+
+        <div class="glass-card p-6 rounded-2xl hover-scale">
             <div class="flex items-center justify-between mb-4">
                 <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Low Stock Items</h4>
-                <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
-                    <i class="bi bi-exclamation-triangle"></i>
+                <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                    <i class="bi bi-exclamation-triangle text-xl"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">14</p>
-            <p class="text-amber-600 text-sm font-medium mt-2 flex items-center">
-                <i class="bi bi-arrow-up-short text-lg"></i> Requires reorder
-            </p>
+            <p class="text-3xl font-bold text-gray-900">{{ metrics.low_stock_items }}</p>
+            <p class="text-red-500 text-xs font-medium mt-2">Restock needed</p>
         </div>
 
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div class="glass-card p-6 rounded-2xl hover-scale">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Dispensed Today</h4>
-                <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                    <i class="bi bi-pills"></i>
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Patients Today</h4>
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <i class="bi bi-people text-xl"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">42</p>
-            <p class="text-green-500 text-sm font-medium mt-2">Prescriptions filled</p>
+            <p class="text-3xl font-bold text-gray-900">{{ metrics.today_patients }}</p>
+            <p class="text-blue-500 text-xs font-medium mt-2">Hospital wide</p>
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h4 class="text-xl font-bold text-gray-900 mb-6">Clinical Actions</h4>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <a href="{{ url_for('ct2.lab_orders') }}"
-                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-clipboard-pulse text-2xl text-[#3B82F6] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">LIS Dashboard</span>
-            </a>
-            <a href="{{ url_for('ct2.dispense_meds') }}"
-                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-capsule text-2xl text-[#3B82F6] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Dispense Meds</span>
-            </a>
-            <a href="{{ url_for('ct2.pharmacy_inventory') }}"
-                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-box-seam text-2xl text-[#3B82F6] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Pharmacy Stock</span>
-            </a>
-            <a href="#" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-file-earmark-medical text-2xl text-[#3B82F6] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Clinical Reports</span>
-            </a>
+    <div class="grid grid-cols-1 gap-8">
+        <!-- Recent Lab Orders -->
+        <div class="glass-card rounded-2xl overflow-hidden mt-8">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-white/50">
+                <h4 class="text-lg font-bold text-gray-900">Recent Lab Traffic</h4>
+                <a href="{{ url_for('ct2.lab_orders') }}" class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-emerald-600 transition-colors">
+                    LIS Dashboard
+                </a>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50/50 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                        <tr>
+                            <th class="px-6 py-4">Reference</th>
+                            <th class="px-6 py-4">Patient</th>
+                            <th class="px-6 py-4">Test Name</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <!-- Data will be populated when orders exist -->
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                                <i class="bi bi-inbox text-4xl mb-2 block"></i>
+                                No active lab orders found.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
