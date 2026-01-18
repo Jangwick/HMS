@@ -1,0 +1,101 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Generate Payslips - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Payroll Documents{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Payslip Archive</h3>
+            <p class="text-gray-500">View and generate PDF records for processed payroll</p>
+        </div>
+    </div>
+
+    <!-- Filters/Search (Optional placeholder) -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center">
+        <div class="relative flex-1 min-w-[300px]">
+            <i class="bi bi-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <input type="text" placeholder="Search employee name or ID..." 
+                class="w-full pl-11 pr-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#6366F1] transition-all">
+        </div>
+        <select class="px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#6366F1] transition-all">
+            <option>All Pay Periods</option>
+            <option>Last 30 Days</option>
+            <option>This Quarter</option>
+        </select>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50/50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-8 py-5">Employee</th>
+                        <th class="px-6 py-5">Pay Period</th>
+                        <th class="px-6 py-5 text-right">Net Pay</th>
+                        <th class="px-6 py-5">Status</th>
+                        <th class="px-8 py-5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for payslip in payslips %}
+                    <tr class="hover:bg-gray-50/50 transition-colors group">
+                        <td class="px-8 py-5">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-[#6366F1] font-bold mr-3">
+                                    {{ payslip.users.username[0] | upper }}
+                                </div>
+                                <div>
+                                    <div class="font-bold text-gray-900 underline decoration-indigo-100 underline-offset-4">{{ payslip.users.username }}</div>
+                                    <div class="text-xs text-gray-400">{{ payslip.users.role }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="text-sm text-gray-600 font-medium">
+                                {{ payslip.pay_period_start }} to {{ payslip.pay_period_end }}
+                            </div>
+                            <div class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-1">
+                                Processed: {{ payslip.processed_date[:10] }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-5 text-right font-bold text-gray-900">
+                            ${{ "%.2f" | format(payslip.net_pay) }}
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-600 uppercase">
+                                {{ payslip.status }}
+                            </span>
+                        </td>
+                        <td class="px-8 py-5 text-right">
+                            <a href="{{ url_for('hr2.view_payslip', record_id=payslip.id) }}" 
+                                class="inline-flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold text-xs rounded-lg hover:border-[#6366F1] hover:text-[#6366F1] transition-all shadow-sm">
+                                <i class="bi bi-file-earmark-pdf mr-2 text-lg"></i>
+                                View Payslip
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-8 py-20 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                    <i class="bi bi-file-earmark-text text-4xl text-gray-300"></i>
+                                </div>
+                                <h4 class="text-lg font-bold text-gray-900">No payroll records found</h4>
+                                <p class="text-gray-500 mt-2">Process payroll first to generate payslips.</p>
+                                <a href="{{ url_for('hr2.process_payroll') }}" 
+                                    class="mt-6 px-6 py-2 bg-[#6366F1] text-white font-bold rounded-xl hover:bg-[#4F46E5] transition-colors">
+                                    Run Payroll Process
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -125,7 +125,7 @@
 
                     <!-- HR2: Payroll & Onboarding -->
                     {% elif blueprint_name == 'hr2' %}
-                    <a href="{{ url_for('hr2.payroll_dashboard') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.payroll_dashboard' or request.endpoint == 'hr2.dashboard' }}">
+                    <a href="{{ url_for('hr2.payroll_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.payroll_list' or request.endpoint == 'hr2.dashboard' }}">
                         <i class="bi bi-cash-stack mr-3"></i>
                         <span>Payroll Admin</span>
                     </a>
@@ -136,6 +136,10 @@
                     <a href="{{ url_for('hr2.process_payroll') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.process_payroll' }}">
                         <i class="bi bi-gear-wide-connected mr-3"></i>
                         <span>Process Payroll</span>
+                    </a>
+                    <a href="{{ url_for('hr2.list_payslips') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_payslips' }}">
+                        <i class="bi bi-file-pdf mr-3"></i>
+                        <span>Generate Payslips</span>
                     </a>
 
                     <!-- HR3: Employee Management -->

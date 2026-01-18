@@ -152,6 +152,20 @@ CREATE TABLE IF NOT EXISTS compensation_records (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS payroll_records (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    pay_period_start DATE NOT NULL,
+    pay_period_end DATE NOT NULL,
+    base_salary DECIMAL(12, 2) NOT NULL,
+    bonuses DECIMAL(12, 2) DEFAULT 0.00,
+    deductions DECIMAL(12, 2) DEFAULT 0.00,
+    net_pay DECIMAL(12, 2) NOT NULL,
+    status VARCHAR(50) DEFAULT 'Processed', -- Processed, Paid, Cancelled
+    processed_date TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- =====================================================
 -- CORE TRANSACTION TABLES
 -- =====================================================

@@ -241,10 +241,17 @@ def list_vacancies():
 def list_applicants():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    response = client.table('applicants').select('*').execute()
+    
+    status_filter = request.args.get('status')
+    if status_filter:
+        response = client.table('applicants').select('*').eq('status', status_filter).execute()
+    else:
+        response = client.table('applicants').select('*').execute()
+        
     applicants = response.data if response.data else []
     return render_template('subsystems/hr/hr1/applicants.html', 
                            applicants=applicants,
+                           status_filter=status_filter,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

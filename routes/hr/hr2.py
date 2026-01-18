@@ -348,3 +348,38 @@ def complete_onboarding():
         
     return redirect(url_for('hr2.onboarding_pipeline'))
 
+@hr2_bp.route('/payslips')
+@login_required
+def list_payslips():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Fetch all processed payroll records joined with user info
+    response = client.table('payroll_records').select('*, users(username, email, role)').execute()
+    payslips = response.data if response.data else []
+    
+    return render_template('subsystems/hr/hr2/payslips.html',
+                           payslips=payslips,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr2_bp.route('/payslips/<int:record_id>')
+@login_required
+def view_payslip(record_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Fetch specific payroll record
+    response = client.table('payroll_records').select('*, users(*)').eq('id', record_id).single().execute()
+    if not response.data:
+        flash('Payslip not found.', 'danger')
+        return redirect(url_for('hr2.list_payslips'))
+    
+    payslip = response.data
+    return render_template('subsystems/hr/hr2/view_payslip.html',
+                           payslip=payslip,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+

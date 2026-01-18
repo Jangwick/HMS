@@ -84,12 +84,13 @@
                     class="bi bi-file-earmark-spreadsheet text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
                 <span class="text-sm font-bold text-gray-700">Payroll History</span>
             </a>
-            <a href="#" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
+            <a href="{{ url_for('hr2.onboarding_pipeline') }}"
+                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
-                    class="bi bi-calculator text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Tax Calculator</span>
+                    class="bi bi-person-plus text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Onboarding Queue</span>
             </a>
-            <a href="#" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
+            <a href="{{ url_for('hr2.list_payslips') }}" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-file-pdf text-2xl text-[#6366F1] mb-2 block group-hover:scale-110 transition-transform"></i>
                 <span class="text-sm font-bold text-gray-700">Generate Payslips</span>
