@@ -372,6 +372,15 @@ CREATE POLICY "Allow all on attendance_logs" ON attendance_logs FOR ALL USING (t
 ALTER TABLE IF EXISTS leave_requests ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all on leave_requests" ON leave_requests FOR ALL USING (true) WITH CHECK (true);
 
+-- Fix for HR1 Handoff RLS
+ALTER TABLE IF EXISTS onboarding ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on onboarding" ON onboarding;
+CREATE POLICY "Allow all on onboarding" ON onboarding FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS interviews ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on interviews" ON interviews;
+CREATE POLICY "Allow all on interviews" ON interviews FOR ALL USING (true) WITH CHECK (true);
+
 -- Ensure patients has allergies column
 DO $$ 
 BEGIN

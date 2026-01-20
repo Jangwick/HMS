@@ -15,6 +15,7 @@
         </a>
         <div class="flex space-x-3">
             <form action="{{ url_for('hr1.delete_applicant', id=applicant.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this applicant?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="px-6 py-2.5 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-colors">
                     Delete Candidate
                 </button>
@@ -31,18 +32,18 @@
         <!-- Left Column: Primary Info -->
         <div class="lg:col-span-2 space-y-8">
             <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
-                <div class="h-32 bg-gradient-to-r from-[#6366F1] to-indigo-600"></div>
+                <div class="h-32" style="background: linear-gradient(to right, {{ accent_color or '#3B82F6' }}, #1F2937);"></div>
                 <div class="px-10 pb-10 -mt-16">
                     <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
                         <div class="flex items-end">
                             <div class="w-32 h-32 rounded-[2rem] bg-white p-2 shadow-xl">
-                                <div class="w-full h-full rounded-[1.75rem] bg-gray-50 flex items-center justify-center text-4xl font-black text-[#6366F1]">
+                                <div class="w-full h-full rounded-[1.75rem] bg-gray-50 flex items-center justify-center text-4xl font-black" style="color: {{ accent_color or '#3B82F6' }};">
                                     {{ applicant.first_name[0] }}{{ applicant.last_name[0] }}
                                 </div>
                             </div>
                             <div class="ml-6 mb-2">
                                 <h1 class="text-3xl font-black text-gray-900">{{ applicant.first_name }} {{ applicant.last_name }}</h1>
-                                <p class="text-gray-500 font-medium">Applied on {{ applicant.created_at[:10] }} via <span class="text-[#6366F1]">{{ applicant.source }}</span></p>
+                                <p class="text-gray-500 font-medium">Applied on {{ applicant.created_at[:10] }} via <span style="color: {{ accent_color or '#3B82F6' }}; font-weight: 700;">{{ applicant.source }}</span></p>
                             </div>
                         </div>
                         <div class="flex items-center space-x-2 mb-2">
@@ -62,7 +63,7 @@
                             <h3 class="text-sm font-black text-gray-400 uppercase tracking-[0.2em]">Contact Information</h3>
                             <div class="space-y-4">
                                 <div class="flex items-center p-4 bg-gray-50 rounded-2xl">
-                                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-[#6366F1] shadow-sm mr-4">
+                                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm mr-4" style="color: {{ accent_color or '#3B82F6' }};">
                                         <i class="bi bi-envelope-fill"></i>
                                     </div>
                                     <div>
@@ -71,7 +72,7 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center p-4 bg-gray-50 rounded-2xl">
-                                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-[#6366F1] shadow-sm mr-4">
+                                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm mr-4" style="color: {{ accent_color or '#3B82F6' }};">
                                         <i class="bi bi-telephone-fill"></i>
                                     </div>
                                     <div>
@@ -85,18 +86,18 @@
                         <div class="space-y-6">
                             <h3 class="text-sm font-black text-gray-400 uppercase tracking-[0.2em]">Quick Actions</h3>
                             <div class="grid grid-cols-1 gap-3">
-                                <button onclick="openModal('statusModal')" class="w-full flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl hover:border-[#6366F1] hover:shadow-md transition-all group text-left">
+                                <button onclick="openModal('statusModal')" class="w-full flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl transition-all group text-left" style="--tw-border-opacity: 0.5; --tw-border-color: {{ accent_color or '#3B82F6' }};">
                                     <div class="flex items-center">
-                                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 mr-4 group-hover:bg-[#6366F1] group-hover:text-white transition-colors">
+                                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 mr-4 group-hover:text-white transition-colors" style="background-color: {{ accent_color or '#3B82F6' }}10; color: {{ accent_color or '#3B82F6' }};">
                                             <i class="bi bi-arrow-left-right"></i>
                                         </div>
                                         <span class="font-bold text-gray-700">Change Status</span>
                                     </div>
                                     <i class="bi bi-chevron-right text-gray-300"></i>
                                 </button>
-                                <a href="{{ url_for('hr1.schedule_interview', applicant_id=applicant.id) }}" class="w-full flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl hover:border-[#6366F1] hover:shadow-md transition-all group text-left">
+                                <a href="{{ url_for('hr1.schedule_interview', applicant_id=applicant.id) }}" class="w-full flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl transition-all group text-left">
                                     <div class="flex items-center">
-                                        <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 mr-4 group-hover:bg-[#6366F1] group-hover:text-white transition-colors">
+                                        <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 mr-4 group-hover:text-white transition-colors">
                                             <i class="bi bi-calendar-plus"></i>
                                         </div>
                                         <span class="font-bold text-gray-700">Schedule Interview</span>
@@ -119,10 +120,10 @@
                 {% if interviews %}
                 <div class="space-y-4">
                     {% for interview in interviews %}
-                    <div class="p-6 bg-gray-50 rounded-3xl border border-transparent hover:border-indigo-100 transition-all">
+                    <div class="p-6 bg-gray-50 rounded-3xl border border-transparent transition-all">
                         <div class="flex justify-between items-start mb-4">
                             <div class="flex items-center">
-                                <div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-2xl text-[#6366F1] shadow-sm mr-4">
+                                <div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-2xl shadow-sm mr-4" style="color: {{ accent_color or '#3B82F6' }};">
                                     <i class="bi bi-person-video3"></i>
                                 </div>
                                 <div>
@@ -130,7 +131,7 @@
                                     <p class="text-xs font-bold text-gray-400 uppercase">{{ interview.interview_date }}</p>
                                 </div>
                             </div>
-                            <span class="px-3 py-1 bg-white rounded-full text-[10px] font-black uppercase text-indigo-600 border border-indigo-50">
+                            <span class="px-3 py-1 bg-white rounded-full text-[10px] font-black uppercase border" style="color: {{ accent_color or '#3B82F6' }}; border-color: {{ accent_color or '#3B82F6' }}20;">
                                 {{ interview.status }}
                             </span>
                         </div>
@@ -158,10 +159,10 @@
 
         <!-- Right Column: Sidebar -->
         <div class="space-y-8">
-            <div class="bg-[#1e1b4b] rounded-[2.5rem] shadow-xl p-8 text-white">
+            <div class="rounded-[2.5rem] shadow-xl p-8 text-white" style="background: linear-gradient(135deg, #1F2937, {{ accent_color or '#3B82F6' }});">
                 <h3 class="text-lg font-black mb-6">Status Management</h3>
                 <div class="space-y-3">
-                    <p class="text-indigo-200/60 text-xs font-bold uppercase tracking-wider">Current Pipeline Position</p>
+                    <p class="text-white/60 text-xs font-bold uppercase tracking-wider">Current Pipeline Position</p>
                     <div class="flex flex-col space-y-2">
                         {% set statuses = ['Screening', 'Interview', 'Offer', 'Handoff', 'Rejected'] %}
                         {% for s in statuses %}
@@ -174,7 +175,7 @@
                 </div>
                 
                 <div class="mt-10 pt-8 border-t border-white/10">
-                    <button onclick="openModal('statusModal')" class="w-full py-4 bg-[#6366F1] text-white font-black rounded-2xl hover:bg-[#4F46E5] transition-all shadow-lg active:scale-95">
+                    <button onclick="openModal('statusModal')" class="w-full py-4 text-white font-black rounded-2xl transition-all shadow-lg active:scale-95 hover:scale-[1.02]" style="background: linear-gradient(to right, {{ accent_color or '#3B82F6' }}, #1F2937);">
                         Advance Candidate
                     </button>
                 </div>
@@ -198,11 +199,11 @@
     <div class="flex items-center justify-center min-h-screen p-4 text-center">
         <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeModal('statusModal')"></div>
         <div class="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all text-left">
-            <div class="bg-gradient-to-r from-[#6366F1] to-indigo-800 px-8 py-10 text-white">
+            <div class="px-8 py-10 text-white" style="background: linear-gradient(to right, {{ accent_color or '#3B82F6' }}, #1F2937);">
                 <div class="flex justify-between items-start">
                     <div>
                         <h3 class="text-2xl font-black mb-1">Update Status</h3>
-                        <p class="text-indigo-100/60 font-medium text-sm">Move candidate to the next stage.</p>
+                        <p class="text-white/60 font-medium text-sm italic">Move candidate to the next stage.</p>
                     </div>
                     <button onclick="closeModal('statusModal')" class="text-white/60 hover:text-white transition-colors">
                         <i class="bi bi-x-lg"></i>
@@ -210,17 +211,18 @@
                 </div>
             </div>
             <form action="{{ url_for('hr1.update_applicant_status', id=applicant.id) }}" method="POST" class="p-8 space-y-6">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="space-y-4">
                     {% for s in ['Screening', 'Interview', 'Offer', 'Rejected'] %}
                     <label class="flex items-center p-4 rounded-2xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-all group">
-                        <input type="radio" name="status" value="{{ s }}" {% if applicant.status == s %}checked{% endif %} class="w-5 h-5 text-[#6366F1] border-gray-300 focus:ring-[#6366F1]">
-                        <span class="ml-4 font-bold text-gray-700 group-hover:text-[#6366F1] transition-colors">{{ s }}</span>
+                        <input type="radio" name="status" value="{{ s }}" {% if applicant.status == s %}checked{% endif %} class="w-5 h-5 border-gray-300 focus:ring-0" style="color: {{ accent_color or '#3B82F6' }};">
+                        <span class="ml-4 font-bold text-gray-700 transition-colors">{{ s }}</span>
                     </label>
                     {% endfor %}
                 </div>
                 <div class="pt-4 flex space-x-3">
                     <button type="button" onclick="closeModal('statusModal')" class="flex-1 py-4 text-gray-400 font-bold hover:text-gray-600 transition-colors">Cancel</button>
-                    <button type="submit" class="flex-1 py-4 bg-[#6366F1] text-white font-black rounded-2xl shadow-lg hover:shadow-xl transition-all">Update Status</button>
+                    <button type="submit" class="flex-1 py-4 text-white font-black rounded-2xl shadow-lg hover:scale-[1.02] transition-all" style="background: linear-gradient(to right, {{ accent_color or '#3B82F6' }}, #1F2937);">Update Status</button>
                 </div>
             </form>
         </div>
@@ -232,11 +234,11 @@
     <div class="flex items-center justify-center min-h-screen p-4 text-center">
         <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeModal('handoffModal')"></div>
         <div class="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all text-left">
-            <div class="bg-gradient-to-r from-green-600 to-teal-800 px-8 py-10 text-white">
+            <div class="px-8 py-10 text-white" style="background: linear-gradient(to right, #059669, #1F2937);">
                 <div class="flex justify-between items-start">
                     <div>
                         <h3 class="text-2xl font-black mb-1">Handoff to HR2</h3>
-                        <p class="text-green-100/60 font-medium text-sm">Initiate onboarding for this candidate.</p>
+                        <p class="text-green-100/60 font-medium text-sm italic">Initiate onboarding for this candidate.</p>
                     </div>
                     <button onclick="closeModal('handoffModal')" class="text-white/60 hover:text-white transition-colors">
                         <i class="bi bi-x-lg"></i>
@@ -244,6 +246,7 @@
                 </div>
             </div>
             <form action="{{ url_for('hr1.handoff_hr2') }}" method="POST" class="p-8 space-y-6">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="applicant_id" value="{{ applicant.id }}">
                 
                 <div class="space-y-2">
