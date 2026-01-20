@@ -238,6 +238,18 @@ def onboarding_pipeline():
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
+@hr2_bp.route('/onboarding/start/<int:id>', methods=['POST'])
+@login_required
+def start_onboarding(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('onboarding').update({'status': 'In Progress'}).eq('id', id).execute()
+        flash('Onboarding process started!', 'info')
+    except Exception as e:
+        flash(f'Error starting process: {str(e)}', 'danger')
+    return redirect(url_for('hr2.onboarding_pipeline'))
+
 @hr2_bp.route('/onboarding/complete', methods=['POST'])
 @login_required
 def complete_onboarding():
@@ -245,11 +257,21 @@ def complete_onboarding():
     client = get_supabase_client()
     
     onboarding_id = request.form.get('onboarding_id')
+    start_date = request.form.get('start_date')
     
     try:
-        # Update onboarding status
-        client.table('onboarding').update({'status': 'Completed'}).eq('id', onboarding_id).execute()
-        flash('Onboarding completed successfully!', 'success')
+        # Update onboarding status and start date
+        client.table('onboarding').update({
+            'status': 'Completed',
+            'start_date': start_date
+        }).eq('id', onboarding_id).execute()
+        
+        # Also update the applicant status to reflect successful hire
+        response = client.table('onboarding').select('applicant_id').eq('id', onboarding_id).single().execute()
+        if response.data:
+            client.table('applicants').update({'status': 'Hired'}).eq('id', response.data['applicant_id']).execute()
+            
+        flash('Onboarding completed! Candidate is now marked as Hired.', 'success')
     except Exception as e:
         flash(f'Error finishing onboarding: {str(e)}', 'danger')
         

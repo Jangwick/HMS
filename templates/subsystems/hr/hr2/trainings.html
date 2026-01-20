@@ -87,7 +87,7 @@
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex justify-end gap-1">
-                                <button onclick="openEnrollModal({{ training | tojson | safe }})" 
+                                <button onclick='openEnrollModal({{ training | tojson | safe }})' 
                                         class="p-2 text-[#0891B2] hover:bg-cyan-50 rounded-xl transition-all"
                                         title="Enroll Staff">
                                     <i class="bi bi-person-plus-fill"></i>
@@ -97,7 +97,7 @@
                                         title="View Participants">
                                     <i class="bi bi-people-fill"></i>
                                 </button>
-                                <button onclick="openEditTrainingModal({{ training | tojson | safe }})" 
+                                <button onclick='openEditTrainingModal({{ training | tojson | safe }})' 
                                         class="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
                                         title="Edit Program">
                                     <i class="bi bi-pencil-square"></i>
