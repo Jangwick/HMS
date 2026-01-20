@@ -25,6 +25,7 @@
                         <th class="px-8 py-5">Employee</th>
                         <th class="px-6 py-5">Clock In</th>
                         <th class="px-6 py-5">Clock Out</th>
+                        <th class="px-6 py-5">Remarks</th>
                         <th class="px-6 py-5">Status</th>
                         <th class="px-8 py-5 text-right">Actions</th>
                     </tr>
@@ -41,6 +42,7 @@
                                 <span class="bg-green-50 text-green-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">Active Now</span>
                             {% endif %}
                         </td>
+                        <td class="px-6 py-5 text-gray-500 text-xs italic">{{ log.remarks or '-' }}</td>
                         <td class="px-6 py-5">
                             <span class="px-3 py-1 rounded-full text-xs font-bold 
                                 {% if log.status == 'On-time' %}bg-green-50 text-green-600

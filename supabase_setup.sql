@@ -162,9 +162,18 @@ CREATE TABLE IF NOT EXISTS leave_requests (
     start_date DATE,
     end_date DATE,
     status VARCHAR(50) DEFAULT 'Pending',
+    remarks TEXT,
     approved_by INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Ensure remarks column exists in leave_requests
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='leave_requests' AND column_name='remarks') THEN
+        ALTER TABLE leave_requests ADD COLUMN remarks TEXT;
+    END IF;
+END $$;
 
 -- HR4: Compensation & Analytics
 CREATE TABLE IF NOT EXISTS salary_grades (

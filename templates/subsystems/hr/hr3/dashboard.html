@@ -81,7 +81,7 @@
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
             <div class="flex items-center justify-between mb-8">
                 <h4 class="text-xl font-bold text-gray-900">Recent Leave Requests</h4>
-                <a href="#" class="text-[#4F46E5] text-sm font-bold hover:underline">View All</a>
+                <a href="{{ url_for('hr3.list_leaves') }}" class="text-[#4F46E5] text-sm font-bold hover:underline">View All</a>
             </div>
             <div class="space-y-4">
                 {% for leave in recent_leaves %}
@@ -136,10 +136,13 @@
         <!-- Attendance Control -->
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
             <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                <h4 class="font-bold text-gray-900 flex items-center">
-                    <i class="bi bi-clock-fill mr-2 text-accent"></i>
-                    Staff Attendance
-                </h4>
+                <div class="flex items-center gap-4">
+                    <h4 class="font-bold text-gray-900 flex items-center">
+                        <i class="bi bi-clock-fill mr-2 text-accent"></i>
+                        Staff Attendance
+                    </h4>
+                    <a href="{{ url_for('hr3.list_attendance') }}" class="text-[#4F46E5] text-xs font-bold hover:underline">View All</a>
+                </div>
                 <div id="current-time" class="text-sm font-mono font-bold text-accent bg-accent/10 px-3 py-1 rounded-lg"></div>
             </div>
             <div class="p-8 flex-1 flex flex-col justify-center">

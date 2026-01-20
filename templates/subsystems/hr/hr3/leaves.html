@@ -19,6 +19,7 @@
                     <tr>
                         <th class="px-8 py-5">Employee</th>
                         <th class="px-6 py-5">Type</th>
+                        <th class="px-6 py-5">Reason</th>
                         <th class="px-6 py-5">Duration</th>
                         <th class="px-6 py-5">Status</th>
                         <th class="px-8 py-5 text-right">Actions</th>
@@ -29,6 +30,7 @@
                     <tr class="hover:bg-gray-50/50 transition-colors">
                         <td class="px-8 py-5 font-bold text-gray-900">{{ leave.users.username if leave.users else 'System' }}</td>
                         <td class="px-6 py-5 font-medium text-gray-600">{{ leave.leave_type }}</td>
+                        <td class="px-6 py-5 text-gray-500 text-sm italic">{{ leave.remarks or 'No remarks' }}</td>
                         <td class="px-6 py-5 text-gray-500 text-sm">
                             <i class="bi bi-calendar-range mr-1.5 opacity-40"></i>
                             {{ leave.start_date }} to {{ leave.end_date }}
