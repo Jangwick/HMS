@@ -102,22 +102,26 @@
         <!-- System Actions -->
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
             <h4 class="text-xl font-bold text-gray-900 mb-6">Finance Actions</h4>
-            <div class="grid grid-cols-2 gap-4">
-                <a href="{{ url_for('hr4.compensation') }}" class="p-6 bg-indigo-50 rounded-2xl hover:bg-indigo-100 transition-colors group">
-                    <i class="bi bi-wallet2 text-2xl text-indigo-600 mb-2 block"></i>
-                    <span class="font-bold text-indigo-900">Compensation</span>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <a href="{{ url_for('hr4.compensation') }}" class="p-6 bg-indigo-50 rounded-2xl hover:bg-indigo-100 transition-colors group text-center">
+                    <i class="bi bi-wallet2 text-2xl text-indigo-600 mb-2 block mx-auto"></i>
+                    <span class="font-bold text-indigo-900 text-sm">Compensation</span>
                 </a>
-                <a href="{{ url_for('hr4.salary_grades') }}" class="p-6 bg-blue-50 rounded-2xl hover:bg-blue-100 transition-colors group">
-                    <i class="bi bi-layers text-2xl text-blue-600 mb-2 block"></i>
-                    <span class="font-bold text-blue-900">Salary Grades</span>
+                <a href="{{ url_for('hr4.payroll') }}" class="p-6 bg-emerald-50 rounded-2xl hover:bg-emerald-100 transition-colors group text-center">
+                    <i class="bi bi-receipt text-2xl text-emerald-600 mb-2 block mx-auto"></i>
+                    <span class="font-bold text-emerald-900 text-sm">Payroll</span>
                 </a>
-                <a href="{{ url_for('hr4.analytics') }}" class="p-6 bg-emerald-50 rounded-2xl hover:bg-emerald-100 transition-colors group">
-                    <i class="bi bi-bar-chart text-2xl text-emerald-600 mb-2 block"></i>
-                    <span class="font-bold text-emerald-900">HR Analytics</span>
+                <a href="{{ url_for('hr4.salary_grades') }}" class="p-6 bg-blue-50 rounded-2xl hover:bg-blue-100 transition-colors group text-center">
+                    <i class="bi bi-layers text-2xl text-blue-600 mb-2 block mx-auto"></i>
+                    <span class="font-bold text-blue-900 text-sm">Salary Grades</span>
                 </a>
-                <a href="{{ url_for('hr4.reports') }}" class="p-6 bg-rose-50 rounded-2xl hover:bg-rose-100 transition-colors group">
-                    <i class="bi bi-file-earmark-bar-graph text-2xl text-rose-600 mb-2 block"></i>
-                    <span class="font-bold text-rose-900">Reports</span>
+                <a href="{{ url_for('hr4.analytics') }}" class="p-6 bg-amber-50 rounded-2xl hover:bg-amber-100 transition-colors group text-center">
+                    <i class="bi bi-bar-chart text-2xl text-amber-600 mb-2 block mx-auto"></i>
+                    <span class="font-bold text-amber-900 text-sm">HR Analytics</span>
+                </a>
+                <a href="{{ url_for('hr4.reports') }}" class="p-6 bg-rose-50 rounded-2xl hover:bg-rose-100 transition-colors group text-center">
+                    <i class="bi bi-file-earmark-bar-graph text-2xl text-rose-600 mb-2 block mx-auto"></i>
+                    <span class="font-bold text-rose-900 text-sm">Reports</span>
                 </a>
             </div>
         </div>

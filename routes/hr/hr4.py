@@ -185,13 +185,23 @@ def change_password():
 def dashboard():
     client = get_supabase_client()
     try:
-        response = client.table('compensation_records').select('base_salary').execute()
-        salaries = [float(r['base_salary']) for r in response.data] if response.data else []
+        response = client.table('compensation_records').select('base_salary, allowances, bonuses').eq('status', 'Active').execute()
+        raw_data = response.data if response.data else []
+        
+        salaries = [float(r['base_salary']) for r in raw_data]
+        total = sum(float(r['base_salary']) + float(r.get('allowances', 0)) + float(r.get('bonuses', 0)) for r in raw_data)
+        
         avg_salary = sum(salaries) / len(salaries) if salaries else 0
-        total_payroll = sum(salaries)
+        total_payroll = total
         
         grades_resp = client.table('salary_grades').select('id', count='exact').execute()
         total_grades = grades_resp.count if grades_resp.count is not None else 0
+        
+        # New: Pending payroll check
+        now = datetime.utcnow()
+        month_str = now.strftime('%m-%Y')
+        payroll_resp = client.table('payroll_records').select('id').gte('pay_period_start', now.replace(day=1).strftime('%Y-%m-%d')).execute()
+        payroll_processed = len(payroll_resp.data) > 0
         
         recent_updates = client.table('compensation_records').select('*, users(username)').order('effective_date', desc=True).limit(5).execute().data or []
     except Exception as e:
@@ -199,6 +209,7 @@ def dashboard():
         avg_salary = 0
         total_payroll = 0
         total_grades = 0
+        payroll_processed = False
         recent_updates = []
     
     return render_template('subsystems/hr/hr4/dashboard.html', 
@@ -206,6 +217,7 @@ def dashboard():
                            avg_salary=avg_salary,
                            total_payroll=total_payroll,
                            total_grades=total_grades,
+                           payroll_processed=payroll_processed,
                            recent_updates=recent_updates,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
@@ -249,6 +261,24 @@ def add_compensation():
         flash('Compensation record added successfully.', 'success')
     except Exception as e:
         flash(f'Error adding record: {str(e)}', 'danger')
+    return redirect(url_for('hr4.compensation'))
+
+@hr4_bp.route('/compensation/edit/<int:record_id>', methods=['POST'])
+@login_required
+def edit_compensation(record_id):
+    client = get_supabase_client()
+    try:
+        data = {
+            'base_salary': float(request.form.get('base_salary') or 0),
+            'allowances': float(request.form.get('allowances') or 0),
+            'bonuses': float(request.form.get('bonuses') or 0),
+            'deductions': float(request.form.get('deductions') or 0),
+            'status': request.form.get('status', 'Active')
+        }
+        client.table('compensation_records').update(data).eq('id', record_id).execute()
+        flash('Compensation record updated.', 'success')
+    except Exception as e:
+        flash(f'Error updating record: {str(e)}', 'danger')
     return redirect(url_for('hr4.compensation'))
 
 @hr4_bp.route('/compensation/delete/<int:record_id>', methods=['POST'])
@@ -295,6 +325,22 @@ def add_salary_grade():
         flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('hr4.salary_grades'))
 
+@hr4_bp.route('/salary-grades/edit/<int:grade_id>', methods=['POST'])
+@login_required
+def edit_salary_grade(grade_id):
+    client = get_supabase_client()
+    try:
+        data = {
+            'grade_name': request.form.get('grade_name'),
+            'min_salary': float(request.form.get('min_salary') or 0),
+            'max_salary': float(request.form.get('max_salary') or 0)
+        }
+        client.table('salary_grades').update(data).eq('id', grade_id).execute()
+        flash('Salary grade updated.', 'success')
+    except Exception as e:
+        flash(f'Error updating grade: {str(e)}', 'danger')
+    return redirect(url_for('hr4.salary_grades'))
+
 @hr4_bp.route('/salary-grades/delete/<int:grade_id>', methods=['POST'])
 @login_required
 def delete_salary_grade(grade_id):
@@ -305,6 +351,79 @@ def delete_salary_grade(grade_id):
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('hr4.salary_grades'))
+
+@hr4_bp.route('/payroll')
+@login_required
+def payroll():
+    client = get_supabase_client()
+    try:
+        # Get payroll records for the current month
+        now = datetime.utcnow()
+        first_day = now.replace(day=1).strftime('%Y-%m-%d')
+        last_day = now.strftime('%Y-%m-%d') # Simplified for current state
+        
+        response = client.table('payroll_records').select('*, users(username, department)').order('processed_date', desc=True).limit(50).execute()
+        payroll_history = response.data if response.data else []
+        
+        # Check if current month is already processed
+        # For simplicity, we'll just check if any record exists for this month
+        month_str = now.strftime('%m-%Y')
+        is_processed = any(datetime.strptime(r['pay_period_end'], '%Y-%m-%d').strftime('%m-%Y') == month_str for r in payroll_history)
+        
+    except Exception as e:
+        print(f"Error fetching payroll: {e}")
+        payroll_history = []
+        is_processed = False
+        
+    return render_template('subsystems/hr/hr4/payroll.html',
+                           payroll_history=payroll_history,
+                           is_processed=is_processed,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr4_bp.route('/payroll/process', methods=['POST'])
+@login_required
+def process_payroll():
+    client = get_supabase_client()
+    try:
+        # 1. Get all active compensation records
+        res = client.table('compensation_records').select('*').eq('status', 'Active').execute()
+        comp_records = res.data or []
+        
+        if not comp_records:
+            flash('No active compensation records found to process.', 'warning')
+            return redirect(url_for('hr4.payroll'))
+            
+        now = datetime.utcnow()
+        pay_period_start = now.replace(day=1).strftime('%Y-%m-%d')
+        # Last day of month (simple calculation)
+        import calendar
+        last_day_num = calendar.monthrange(now.year, now.month)[1]
+        pay_period_end = now.replace(day=last_day_num).strftime('%Y-%m-%d')
+        
+        processed_count = 0
+        for rec in comp_records:
+            net_pay = float(rec['base_salary']) + float(rec['allowances']) + float(rec['bonuses']) - float(rec['deductions'])
+            
+            payroll_data = {
+                'user_id': rec['user_id'],
+                'pay_period_start': pay_period_start,
+                'pay_period_end': pay_period_end,
+                'base_salary': rec['base_salary'],
+                'bonuses': rec['bonuses'],
+                'deductions': rec['deductions'],
+                'net_pay': net_pay,
+                'status': 'Processed'
+            }
+            client.table('payroll_records').insert(payroll_data).execute()
+            processed_count += 1
+            
+        flash(f'Successfully processed payroll for {processed_count} employees.', 'success')
+    except Exception as e:
+        flash(f'Error processing payroll: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr4.payroll'))
 
 @hr4_bp.route('/analytics')
 @login_required
@@ -423,6 +542,24 @@ def view_report(report_type):
             row_keys = ['department', 'staff_count', 'total_budget', 'status']
         except Exception as e: print(f"Error: {e}")
 
+    elif report_type == 'payroll':
+        title = "Recent Payroll Transactions"
+        try:
+            res = client.table('payroll_records').select('*, users(username, department)').order('processed_date', desc=True).limit(50).execute()
+            raw_data = res.data or []
+            for r in raw_data:
+                data.append({
+                    'employee': r.get('users', {}).get('username', 'N/A'),
+                    'department': r.get('users', {}).get('department', 'N/A'),
+                    'net_pay': r.get('net_pay', 0),
+                    'period': f"{r.get('pay_period_start')} - {r.get('pay_period_end')}",
+                    'status': r.get('status'),
+                    'date': r.get('processed_date')[:10] if r.get('processed_date') else 'N/A'
+                })
+            headers = ['Employee', 'Department', 'Net Pay', 'Pay Period', 'Status', 'Processed Date']
+            row_keys = ['employee', 'department', 'net_pay', 'period', 'status', 'date']
+        except Exception as e: print(f"Error: {e}")
+
     if not title:
         flash('Report type not found.', 'warning')
         return redirect(url_for('hr4.reports'))
@@ -472,6 +609,21 @@ def export_report(report_type):
             writer.writerow(['Department', 'Total Budget Allocation'])
             for dept, total in dept_totals.items():
                 writer.writerow([dept, total])
+
+        elif report_type == 'payroll':
+            res = client.table('payroll_records').select('*, users(username, department)').order('processed_date', desc=True).execute()
+            raw_data = res.data or []
+            writer.writerow(['Employee', 'Department', 'Net Pay', 'Pay Period Start', 'Pay Period End', 'Status', 'Processed Date'])
+            for r in raw_data:
+                writer.writerow([
+                    r.get('users', {}).get('username'),
+                    r.get('users', {}).get('department'),
+                    r.get('net_pay'),
+                    r.get('pay_period_start'),
+                    r.get('pay_period_end'),
+                    r.get('status'),
+                    r.get('processed_date')
+                ])
                 
         output.seek(0)
         return Response(
