@@ -12,7 +12,8 @@
             <p class="text-gray-500">Track open positions and hiring triggers</p>
         </div>
         <button onclick="openModal('addVacancyModal')"
-            class="px-6 py-3 bg-[#6366F1] text-white font-bold rounded-xl shadow-lg hover:bg-[#4F46E5] transition-all transform hover:-translate-y-1">
+            class="px-6 py-3 text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition-all transform hover:-translate-y-1"
+            style="background-color: {{ accent_color or '#3B82F6' }};">
             <i class="bi bi-plus-lg mr-2"></i> Post New Role
         </button>
     </div>
@@ -35,7 +36,7 @@
                     {% for vacancy in vacancies %}
                     <tr class="hover:bg-gray-50/50 transition-colors group">
                         <td class="px-8 py-5">
-                            <div class="font-bold text-gray-900 group-hover:text-[#6366F1] transition-colors">{{
+                            <div class="font-bold text-gray-900 transition-colors group-hover:text-accent">{{
                                 vacancy.position_name }}</div>
                         </td>
                         <td class="px-6 py-5 text-gray-600 font-medium">{{ vacancy.department }}</td>
@@ -55,10 +56,11 @@
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
-                                <button
-                                    class="px-4 py-2 bg-gray-50 text-[#6366F1] font-bold text-sm rounded-lg hover:bg-[#6366F1] hover:text-white transition-all">
+                                <a href="{{ url_for('hr1.list_applicants', vacancy_id=vacancy.id) }}"
+                                    class="px-4 py-2 bg-gray-50 font-bold text-sm rounded-lg hover:text-white hover-bg-accent transition-all"
+                                    style="color: {{ accent_color or '#3B82F6' }};">
                                     View Applicants
-                                </button>
+                                </a>
                             </div>
                         </td>
                     </tr>
@@ -91,11 +93,11 @@
             <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeModal('addVacancyModal')"></div>
 
             <div class="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all text-left">
-                <div class="bg-gradient-to-r from-[#6366F1] to-indigo-800 px-8 py-10 text-white">
+                <div class="px-8 py-10 text-white" style="background: linear-gradient(to right, {{ accent_color or '#3B82F6' }}, #1F2937);">
                     <div class="flex justify-between items-start">
                         <div>
                             <h3 class="text-3xl font-bold mb-2">Post New Role</h3>
-                            <p class="text-indigo-100 italic">Define the requirements for the new position.</p>
+                            <p class="text-white/80 italic">Define the requirements for the new position.</p>
                         </div>
                         <button onclick="closeModal('addVacancyModal')" class="text-white/80 hover:text-white transition-colors">
                             <i class="bi bi-x-lg text-2xl"></i>
@@ -109,7 +111,8 @@
                     <div class="space-y-2">
                         <label class="text-[13px] font-bold text-slate-500 ml-1 uppercase tracking-wider">Position Title</label>
                         <input type="text" name="position_name" required
-                            class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-[#6366F1] focus:bg-white transition-all outline-none"
+                            class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 transition-all outline-none"
+                            style="--tw-ring-color: {{ accent_color or '#3B82F6' }}; shadow-sm; font-weight: 500;"
                             placeholder="e.g. Senior Nurse">
                     </div>
 
@@ -117,7 +120,8 @@
                         <div class="space-y-2">
                             <label class="text-[13px] font-bold text-slate-500 ml-1 uppercase tracking-wider">Department</label>
                             <select name="department" required
-                                class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-[#6366F1] focus:bg-white transition-all outline-none appearance-none cursor-pointer">
+                                class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 transition-all outline-none appearance-none cursor-pointer"
+                                style="--tw-ring-color: {{ accent_color or '#3B82F6' }};">
                                 <option value="" disabled selected>Select Department...</option>
                                 <option value="Medical">Medical</option>
                                 <option value="Nursing">Nursing</option>
@@ -129,7 +133,8 @@
                         <div class="space-y-2">
                             <label class="text-[13px] font-bold text-slate-500 ml-1 uppercase tracking-wider">Reason for Vacancy</label>
                             <select name="reason" required
-                                class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-[#6366F1] focus:bg-white transition-all outline-none appearance-none cursor-pointer">
+                                class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 transition-all outline-none appearance-none cursor-pointer"
+                                style="--tw-ring-color: {{ accent_color or '#3B82F6' }};">
                                 <option value="New Position">New Position</option>
                                 <option value="Resignation">Resignation</option>
                                 <option value="Expansion">Expansion</option>
@@ -144,7 +149,8 @@
                             Cancel
                         </button>
                         <button type="submit"
-                            class="px-10 py-4 bg-[#6366F1] text-white font-bold rounded-2xl shadow-xl hover:bg-[#4F46E5] transition-all transform hover:-translate-y-1">
+                            class="px-10 py-4 text-white font-bold rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all transform"
+                            style="background: linear-gradient(to right, {{ accent_color or '#3B82F6' }}, #1F2937);">
                             Publish Vacancy
                         </button>
                     </div>
