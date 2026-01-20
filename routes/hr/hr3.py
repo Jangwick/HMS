@@ -218,6 +218,17 @@ def dashboard():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
+    # Check if user is currently clocked in
+    is_clocked_in = False
+    current_log = None
+    try:
+        active_log_resp = client.table('attendance_logs').select('*').eq('user_id', current_user.id).is_('clock_out', 'null').execute()
+        if active_log_resp.data:
+            is_clocked_in = True
+            current_log = active_log_resp.data[0]
+    except Exception as e:
+        print(f"Error checking clock-in status: {e}")
+
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
@@ -257,9 +268,98 @@ def dashboard():
                           today_attendance=today_attendance,
                           pending_leaves=pending_leaves,
                           recent_leaves=recent_leaves,
+                          is_clocked_in=is_clocked_in,
+                          current_log=current_log,
                           subsystem_name=SUBSYSTEM_NAME,
                           accent_color=ACCENT_COLOR,
                           blueprint_name=BLUEPRINT_NAME)
+
+# Attendance & Leave for Current User
+@hr3_bp.route('/attendance/clock-in', methods=['POST'])
+@login_required
+def clock_in():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Check if already clocked in
+    active_log = client.table('attendance_logs').select('*').eq('user_id', current_user.id).is_('clock_out', 'null').execute()
+    if active_log.data:
+        flash('You are already clocked in.', 'warning')
+        return redirect(url_for('hr3.dashboard'))
+    
+    now = datetime.now()
+    # Logic for Late status (assuming 9 AM start)
+    status = 'On-time'
+    if now.hour >= 9 and now.minute > 0:
+        status = 'Late'
+        
+    try:
+        data = {
+            'user_id': current_user.id,
+            'clock_in': now.isoformat(),
+            'status': status,
+            'remarks': request.form.get('remarks')
+        }
+        client.table('attendance_logs').insert(data).execute()
+        flash(f'Clocked in successfully at {now.strftime("%H:%M")}. Status: {status}', 'success')
+    except Exception as e:
+        flash(f'Error during clock-in: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr3.dashboard'))
+
+@hr3_bp.route('/attendance/clock-out', methods=['POST'])
+@login_required
+def clock_out():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    active_log = client.table('attendance_logs').select('*').eq('user_id', current_user.id).is_('clock_out', 'null').execute()
+    if not active_log.data:
+        flash('No active clock-in found.', 'warning')
+        return redirect(url_for('hr3.dashboard'))
+    
+    try:
+        log_id = active_log.data[0]['id']
+        client.table('attendance_logs').update({
+            'clock_out': datetime.now().isoformat()
+        }).eq('id', log_id).execute()
+        flash('Clocked out successfully.', 'success')
+    except Exception as e:
+        flash(f'Error during clock-out: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr3.dashboard'))
+
+@hr3_bp.route('/leaves/request', methods=['GET', 'POST'])
+@login_required
+def request_leave():
+    if request.method == 'POST':
+        leave_type = request.form.get('leave_type')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        remarks = request.form.get('remarks')
+        
+        from utils.supabase_client import get_supabase_client
+        client = get_supabase_client()
+        
+        try:
+            data = {
+                'user_id': current_user.id,
+                'leave_type': leave_type,
+                'start_date': start_date,
+                'end_date': end_date,
+                'status': 'Pending',
+                'remarks': remarks
+            }
+            client.table('leave_requests').insert(data).execute()
+            flash('Leave request submitted successfully!', 'success')
+            return redirect(url_for('hr3.dashboard'))
+        except Exception as e:
+            flash(f'Error submitting leave request: {str(e)}', 'danger')
+            
+    return render_template('subsystems/hr/hr3/leave_request_form.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 # Admin: User Management & Approvals
 @hr3_bp.route('/admin/users')
@@ -657,14 +757,16 @@ def logout():
 @hr3_bp.route('/attendance')
 @login_required
 def list_attendance():
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
-        flash('Access denied.', 'danger')
-        return redirect(url_for('hr3.dashboard'))
-    
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    response = client.table('attendance_logs').select('*, users(username)').order('clock_in', desc=True).execute()
+    query = client.table('attendance_logs').select('*, users(username)')
+    
+    # Non-admins only see their own logs
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        query = query.eq('user_id', current_user.id)
+        
+    response = query.order('clock_in', desc=True).execute()
     logs = response.data if response.data else []
     
     return render_template('subsystems/hr/hr3/attendance.html',
@@ -676,14 +778,16 @@ def list_attendance():
 @hr3_bp.route('/leaves')
 @login_required
 def list_leaves():
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
-        flash('Access denied.', 'danger')
-        return redirect(url_for('hr3.dashboard'))
-    
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    response = client.table('leave_requests').select('*, users:users!leave_requests_user_id_fkey(username)').order('created_at', desc=True).execute()
+    query = client.table('leave_requests').select('*, users:users!leave_requests_user_id_fkey(username)')
+    
+    # Non-admins only see their own requests
+    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+        query = query.eq('user_id', current_user.id)
+        
+    response = query.order('created_at', desc=True).execute()
     leaves = response.data if response.data else []
     
     return render_template('subsystems/hr/hr3/leaves.html',

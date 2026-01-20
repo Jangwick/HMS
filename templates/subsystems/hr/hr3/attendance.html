@@ -1,15 +1,20 @@
 {% extends "base/subsystem_base.html" %}
 
-{% block title %}Attendance Logs - {{ subsystem_name }}{% endblock %}
-{% block header_title %}Staff Attendance{% endblock %}
-
 {% block content %}
-<div class="space-y-8">
+<div class="space-y-6">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h3 class="text-2xl font-bold text-gray-900">Attendance Monitoring</h3>
-            <p class="text-gray-500">Track clock-in and clock-out times across all departments</p>
+            <p class="text-gray-500">{% if current_user.role in ['Admin', 'Administrator'] %}Track clock-in and clock-out times across all departments{% else %}Your personal attendance record{% endif %}</p>
         </div>
+        {% if not is_clocked_in %}
+        <form action="{{ url_for('hr3.clock_in') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="bg-accent hover:opacity-90 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-accent/20 transition-all flex items-center">
+                <i class="bi bi-fingerprint mr-2"></i> Clock In
+            </button>
+        </form>
+        {% endif %}
     </div>
 
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
@@ -21,15 +26,21 @@
                         <th class="px-6 py-5">Clock In</th>
                         <th class="px-6 py-5">Clock Out</th>
                         <th class="px-6 py-5">Status</th>
-                        <th class="px-8 py-5">Remarks</th>
+                        <th class="px-8 py-5 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     {% for log in logs %}
                     <tr class="hover:bg-gray-50/50 transition-colors">
-                        <td class="px-8 py-5 font-bold text-gray-900">{{ log.users.username }}</td>
-                        <td class="px-6 py-5 text-gray-600 font-medium">{{ log.clock_in }}</td>
-                        <td class="px-6 py-5 text-gray-400 text-sm">{{ log.clock_out or '---' }}</td>
+                        <td class="px-8 py-5 font-bold text-gray-900">{{ log.users.username if log.users else 'System' }}</td>
+                        <td class="px-6 py-5 text-gray-600 font-medium">{{ log.clock_in|datetime }}</td>
+                        <td class="px-6 py-5 text-gray-400 text-sm">
+                            {% if log.clock_out %}
+                                {{ log.clock_out|datetime }}
+                            {% else %}
+                                <span class="bg-green-50 text-green-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">Active Now</span>
+                            {% endif %}
+                        </td>
                         <td class="px-6 py-5">
                             <span class="px-3 py-1 rounded-full text-xs font-bold 
                                 {% if log.status == 'On-time' %}bg-green-50 text-green-600
@@ -38,16 +49,23 @@
                                 {{ log.status }}
                             </span>
                         </td>
-                        <td class="px-8 py-5 text-sm text-gray-500">
-                            {{ log.remarks or '-' }}
+                        <td class="px-8 py-5 text-right">
+                            {% if not log.clock_out and log.user_id == current_user.id %}
+                            <form action="{{ url_for('hr3.clock_out') }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="text-rose-600 hover:text-rose-700 font-bold text-xs uppercase tracking-widest">
+                                    Clock Out
+                                </button>
+                            </form>
+                            {% endif %}
                         </td>
                     </tr>
                     {% else %}
                     <tr>
                         <td colspan="5" class="px-8 py-20 text-center">
                             <i class="bi bi-clock-history text-4xl text-gray-300 mb-4 block"></i>
-                            <h4 class="text-lg font-bold text-gray-900">No attendance logs available</h4>
-                            <p class="text-gray-500">Logs will be created when staff clock in via their respective portals.</p>
+                            <h4 class="text-lg font-bold text-gray-900">No attendance records found</h4>
+                            <p class="text-gray-500">Logs will appear here once shift activity begins.</p>
                         </td>
                     </tr>
                     {% endfor %}

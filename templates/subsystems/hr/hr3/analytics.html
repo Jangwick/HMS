@@ -1,8 +1,5 @@
 {% extends "base/subsystem_base.html" %}
 
-{% block title %}Analytics - {{ subsystem_name }}{% endblock %}
-{% block header_title %}Workforce Analytics{% endblock %}
-
 {% block extra_css %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
@@ -35,24 +32,27 @@
             </div>
         </div>
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Attendance Rate</h4>
+            <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Today's Attendance</h4>
             <div class="flex items-end justify-between">
-                <span class="text-3xl font-bold text-gray-900">94.2%</span>
-                <span class="text-indigo-500 text-xs font-bold mb-1">Target 95%</span>
+                {% set total_att = attendance_stats['On-time'] + attendance_stats['Late'] %}
+                <span class="text-3xl font-bold text-gray-900">{{ total_att }}</span>
+                <span class="text-indigo-500 text-xs font-bold mb-1">Active Now</span>
             </div>
         </div>
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Pending Leaves</h4>
             <div class="flex items-end justify-between">
                 <span class="text-3xl font-bold text-gray-900">{{ leave_stats['Pending'] }}</span>
-                <a href="{{ url_for('hr3.pending_approvals') }}" class="text-xs text-indigo-600 font-bold hover:underline mb-1">Review All</a>
+                <a href="{{ url_for('hr3.list_leaves') }}" class="text-xs text-indigo-600 font-bold hover:underline mb-1">Review All</a>
             </div>
         </div>
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Avg. Response</h4>
+            <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Late Rate</h4>
             <div class="flex items-end justify-between">
-                <span class="text-3xl font-bold text-gray-900">1.2d</span>
-                <span class="text-gray-400 text-xs font-bold mb-1">Approval time</span>
+                {% set total_att = attendance_stats['On-time'] + attendance_stats['Late'] %}
+                {% set late_pct = ((attendance_stats['Late'] / total_att * 100) if total_att > 0 else 0) | round(1) %}
+                <span class="text-3xl font-bold text-gray-900">{{ late_pct }}%</span>
+                <span class="text-gray-400 text-xs font-bold mb-1">{{ attendance_stats['Late'] }} logs</span>
             </div>
         </div>
     </div>
@@ -73,8 +73,8 @@
         <!-- Attendance Status -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div class="flex items-center justify-between mb-6">
-                <h3 class="font-bold text-gray-900">Attendance Status</h3>
-                <div class="text-xs text-gray-400">Last 30 Days</div>
+                <h3 class="font-bold text-gray-900">Attendance Overview</h3>
+                <div class="text-xs text-gray-400">Global Records</div>
             </div>
             <div class="h-64 relative">
                 <canvas id="attendanceChart"></canvas>
@@ -82,132 +82,100 @@
         </div>
     </div>
 
-    <!-- Charts Row 2 -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Leave Types -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-1">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="font-bold text-gray-900">Leave Categories</h3>
-            </div>
-            <div class="h-64 relative">
-                <canvas id="leaveTypeChart"></canvas>
-            </div>
+    <!-- Activity Matrix -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+            <h3 class="font-bold text-gray-900">Subsystem Activity Matrix</h3>
         </div>
-
-        <!-- System Activity -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="font-bold text-gray-900">System Engagement</h3>
-                <select class="text-sm bg-gray-50 border-none rounded-lg px-3 py-1 text-gray-600 focus:ring-0">
-                    <option>Yearly</option>
-                    <option>Monthly</option>
-                    <option selected>Weekly</option>
-                </select>
-            </div>
-            <div class="h-64 relative">
-                <canvas id="activityChart"></canvas>
-            </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50/50 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+                    <tr>
+                        <th class="px-6 py-4">Subsystem</th>
+                        <th class="px-6 py-4">Staff Count</th>
+                        <th class="px-6 py-4">Activity Progress</th>
+                        <th class="px-6 py-4 text-right">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for sub, count in subsystem_dist.items() %}
+                    <tr class="hover:bg-gray-50/20 transition-colors">
+                        <td class="px-6 py-4 font-bold text-gray-900">{{ sub }}</td>
+                        <td class="px-6 py-4 text-gray-500 text-sm">{{ count }} members</td>
+                        <td class="px-6 py-4">
+                            {% set pct = (count / total_users * 100) if total_users > 0 else 0 %}
+                            <div class="w-full bg-gray-100 rounded-full h-1.5 max-w-[200px]">
+                                <div class="bg-accent h-1.5 rounded-full" style="width: {{ pct }}%"></div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <span class="inline-flex items-center text-[10px] font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                                <span class="w-1 h-1 bg-green-500 rounded-full mr-1.5 animate-pulse"></span>
+                                ACTIVE
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
 <script>
-    // Colors based on branding
-    const colors = [
-        '#6366F1', '#F59E0B', '#10B981', '#EF4444', 
-        '#8B5CF6', '#EC4899', '#3B82F6', '#06B6D4'
-    ];
+    document.addEventListener('DOMContentLoaded', function() {
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#64748b';
 
-    // Staff Distribution Chart
-    new Chart(document.getElementById('subsystemChart'), {
-        type: 'bar',
-        data: {
-            labels: {{ subsystem_dist.keys() | list | tojson }},
-            datasets: [{
-                label: 'Staff Count',
-                data: {{ subsystem_dist.values() | list | tojson }},
-                backgroundColor: '#6366F1',
-                borderRadius: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true, grid: { display: false } },
-                x: { grid: { display: false } }
-            }
-        }
-    });
-
-    // Attendance Doughnut Chart
-    new Chart(document.getElementById('attendanceChart'), {
-        type: 'doughnut',
-        data: {
-            labels: ['On-time', 'Late', 'Absent'],
-            datasets: [{
-                data: [
-                    {{ attendance_stats.get('On-time', 0) }},
-                    {{ attendance_stats.get('Late', 0) }},
-                    {{ attendance_stats.get('Absent', 0) }}
-                ],
-                backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 6 } }
+        // Subsystem Chart
+        new Chart(document.getElementById('subsystemChart'), {
+            type: 'doughnut',
+            data: {
+                labels: {{ subsystem_dist.keys() | list | tojson }},
+                datasets: [{
+                    data: {{ subsystem_dist.values() | list | tojson }},
+                    backgroundColor: ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#06b6d4'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 20
+                }]
             },
-            cutout: '70%'
-        }
-    });
-
-    // Leave Types Polar Area
-    new Chart(document.getElementById('leaveTypeChart'), {
-        type: 'polarArea',
-        data: {
-            labels: {{ leave_types.keys() | list | tojson }},
-            datasets: [{
-                data: {{ leave_types.values() | list | tojson }},
-                backgroundColor: colors,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 6 } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'right', labels: { usePointStyle: true, padding: 20 } }
+                }
             }
-        }
-    });
+        });
 
-    // Activity Line Chart (Mock Data for display)
-    new Chart(document.getElementById('activityChart'), {
-        type: 'line',
-        data: {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            datasets: [{
-                label: 'Logins',
-                data: [65, 78, 90, 85, 95, 40, 30],
-                borderColor: '#6366F1',
-                tension: 0.4,
-                fill: true,
-                backgroundColor: 'rgba(99, 102, 241, 0.1)'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true, grid: { borderDash: [2, 2] } },
-                x: { grid: { display: false } }
+        // Attendance Chart
+        new Chart(document.getElementById('attendanceChart'), {
+            type: 'bar',
+            data: {
+                labels: {{ attendance_stats.keys() | list | tojson }},
+                datasets: [{
+                    label: 'Total Logs',
+                    data: {{ attendance_stats.values() | list | tojson }},
+                    backgroundColor: function(context) {
+                        const label = context.chart.data.labels[context.dataIndex];
+                        return label === 'On-time' ? '#22c55e' : (label === 'Late' ? '#f59e0b' : '#f43f5e');
+                    },
+                    borderRadius: 10,
+                    barThickness: 40
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { display: false } },
+                    x: { grid: { display: false } }
+                }
             }
-        }
+        });
     });
 </script>
 {% endblock %}

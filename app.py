@@ -82,6 +82,23 @@ def create_app(config_class=Config):
         except Exception:
             return None
 
+    @app.template_filter('datetime')
+    def format_datetime(value, format="%Y-%m-%d %H:%M"):
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            try:
+                from datetime import datetime
+                # Handle ISO format and some potential variations
+                if 'T' in value:
+                    dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                else:
+                    dt = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+                return dt.strftime(format)
+            except Exception:
+                return value
+        return value.strftime(format)
+
     @app.context_processor
     def inject_now():
         from datetime import datetime
