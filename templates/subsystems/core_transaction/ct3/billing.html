@@ -53,6 +53,7 @@
                             <div class="flex space-x-2">
                                 {% if bill.status == 'Unpaid' %}
                                 <form action="{{ url_for('ct3.pay_bill', bill_id=bill.id) }}" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="text-blue-600 hover:text-blue-800 font-bold text-xs uppercase tracking-tight">
                                         <i class="bi bi-currency-dollar mr-1"></i> Mark Paid
                                     </button>

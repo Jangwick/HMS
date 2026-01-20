@@ -48,6 +48,7 @@
                             {% if leave.status == 'Pending' %}
                             <div class="flex justify-end space-x-2">
                                 <form action="{{ url_for('hr3.approve_leave') }}" method="POST" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="leave_id" value="{{ leave.id }}">
                                     <input type="hidden" name="status" value="Approved">
                                     <button type="submit" class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition-colors">
@@ -55,6 +56,7 @@
                                     </button>
                                 </form>
                                 <form action="{{ url_for('hr3.approve_leave') }}" method="POST" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="leave_id" value="{{ leave.id }}">
                                     <input type="hidden" name="status" value="Rejected">
                                     <button type="submit" class="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-colors">

@@ -50,6 +50,7 @@
                         <td class="px-8 py-5 text-right">
                             {% if item.status == 'Pending' %}
                             <form action="{{ url_for('hr2.complete_onboarding') }}" method="POST" class="inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="onboarding_id" value="{{ item.id }}">
                                 <button type="submit" 
                                     class="px-4 py-2 bg-[#0891B2] text-white font-bold text-sm rounded-lg hover:bg-cyan-700 transition-all shadow-sm">
