@@ -297,15 +297,49 @@ def list_applicants():
     client = get_supabase_client()
     
     status_filter = request.args.get('status')
+    vacancy_id_filter = request.args.get('vacancy_id')
+    
+    # Fetch all applicants for stats calculation
+    all_resp = client.table('applicants').select('*').execute()
+    all_applicants = all_resp.data if all_resp.data else []
+    
+    # Calculate stats
+    stats = {
+        'total': len(all_applicants),
+        'screening': len([a for a in all_applicants if a['status'] == 'Screening']),
+        'interview': len([a for a in all_applicants if a['status'] == 'Interview']),
+        'offer': len([a for a in all_applicants if a['status'] == 'Offer']),
+        'reject': len([a for a in all_applicants if a['status'] == 'Rejected'])
+    }
+    
+    query = client.table('applicants').select('*')
     if status_filter:
-        response = client.table('applicants').select('*').eq('status', status_filter).execute()
-    else:
-        response = client.table('applicants').select('*').execute()
+        query = query.eq('status', status_filter)
+    if vacancy_id_filter:
+        query = query.eq('vacancy_id', vacancy_id_filter)
+        
+    response = query.order('created_at', desc=True).execute()
         
     applicants = response.data if response.data else []
+    
+    # Fetch vacancies for mapping (since FK might be missing)
+    vacancies_all_resp = client.table('vacancies').select('id, position_name').execute()
+    vacancies_map = {v['id']: v['position_name'] for v in vacancies_all_resp.data} if vacancies_all_resp.data else {}
+    
+    # Add vacancy title to applicants manually
+    for applicant in applicants:
+        applicant['job_title'] = vacancies_map.get(applicant.get('vacancy_id'), 'N/A')
+    
+    # Fetch open vacancies for the "Add Applicant" modal
+    vacancies_resp = client.table('vacancies').select('id, position_name').eq('status', 'Open').execute()
+    vacancies = vacancies_resp.data if vacancies_resp.data else []
+
     return render_template('subsystems/hr/hr1/applicants.html', 
                            applicants=applicants,
+                           stats=stats,
+                           vacancies=vacancies,
                            status_filter=status_filter,
+                           vacancy_id_filter=vacancy_id_filter,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -322,6 +356,7 @@ def add_applicant():
             'email': request.form.get('email'),
             'phone': request.form.get('phone'),
             'source': request.form.get('source'),
+            'vacancy_id': request.form.get('vacancy_id'),
             'status': 'Screening'
         }
         client.table('applicants').insert(data).execute()
@@ -426,6 +461,81 @@ def schedule_interview():
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
+@hr1_bp.route('/applicants/<int:id>/status/<string:status>', methods=['POST'])
+@login_required
+def update_applicant_status_quick(id, status):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('applicants').update({'status': status}).eq('id', id).execute()
+        flash(f'Applicant status updated to {status}.', 'success')
+    except Exception as e:
+        flash(f'Error updating status: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr1.list_applicants'))
+
+@hr1_bp.route('/applicants/<int:id>/handoff', methods=['POST'])
+@login_required
+def handoff_hr2(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetch applicant to get their vacancy_id
+        applicant_resp = client.table('applicants').select('first_name, last_name, vacancy_id').eq('id', id).single().execute()
+        if not applicant_resp.data:
+            flash('Applicant not found', 'danger')
+            return redirect(url_for('hr1.list_applicants'))
+        
+        applicant = applicant_resp.data
+        
+        # Update applicant status
+        client.table('applicants').update({'status': 'Hired'}).eq('id', id).execute()
+        
+        # Create onboarding record in HR2
+        onboarding_data = {
+            'applicant_id': id,
+            'position_id': applicant.get('vacancy_id'),
+            'status': 'Pending'
+        }
+        client.table('onboarding').insert(onboarding_data).execute()
+        
+        flash(f'Success! {applicant["first_name"]} {applicant["last_name"]} has been handed off to HR2 for onboarding.', 'success')
+    except Exception as e:
+        flash(f'Error during handoff: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr1.list_applicants'))
+
+@hr1_bp.route('/applicants/<int:id>/schedule', methods=['POST'])
+@login_required
+def schedule_interview_quick(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    interview_date = request.form.get('interview_date')
+    location = request.form.get('location')
+    
+    try:
+        # Create interview record
+        interview_data = {
+            'applicant_id': id,
+            'interviewer_id': current_user.id,
+            'interview_date': interview_date,
+            'location': location,
+            'status': 'Scheduled'
+        }
+        client.table('interviews').insert(interview_data).execute()
+        
+        # Update applicant status
+        client.table('applicants').update({'status': 'Interview'}).eq('id', id).execute()
+        
+        flash('Interview scheduled successfully!', 'success')
+    except Exception as e:
+        flash(f'Error scheduling interview: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr1.list_applicants'))
+
 @hr1_bp.route('/applicants/<int:id>')
 @login_required
 def applicant_details(id):
@@ -501,35 +611,10 @@ def delete_vacancy(id):
 
 @hr1_bp.route('/handoff/hr2', methods=['POST'])
 @login_required
-def handoff_hr2():
-    from utils.supabase_client import get_supabase_client
-    client = get_supabase_client()
-    
+def legacy_handoff_hr2():
+    # Keep as a redirect to unified flow if needed, or remove later
     applicant_id = request.form.get('applicant_id')
-    position_id = request.form.get('position_id')
-    start_date = request.form.get('start_date')
-    
-    try:
-        # Update applicant status
-        client.table('applicants').update({'status': 'Handoff'}).eq('id', applicant_id).execute()
-        
-        # Create onboarding record
-        onboarding_data = {
-            'applicant_id': applicant_id,
-            'position_id': position_id,
-            'start_date': start_date,
-            'status': 'Pending'
-        }
-        client.table('onboarding').insert(onboarding_data).execute()
-        
-        # Optional: update vacancy status to 'Filled' or keep 'Open' if multiple slots
-        # For now, we'll just keep it simple.
-        
-        flash('Applicant successfully handed off to HR2 (Talent Development/Onboarding)!', 'success')
-    except Exception as e:
-        flash(f'Error during handoff: {str(e)}', 'danger')
-        
-    return redirect(url_for('hr1.applicant_details', id=applicant_id))
+    return redirect(url_for('hr1.handoff_hr2', id=applicant_id))
 
 @hr1_bp.route('/settings', methods=['GET', 'POST'])
 @login_required

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS applicants (
     email VARCHAR(120),
     phone VARCHAR(20),
     source VARCHAR(50), -- Walk-in, Referral, Agency
+    vacancy_id INTEGER REFERENCES vacancies(id),
     status VARCHAR(50) DEFAULT 'Screening', -- Screening, Interview, Offer, Handoff
     documents JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP DEFAULT NOW()
