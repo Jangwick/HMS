@@ -18,17 +18,38 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for competency in competencies %}
-        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col relative group">
+            <div class="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onclick='openEditModal({{ competency | tojson | safe }})' class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                <form action="{{ url_for('hr2.delete_competency', id=competency.id) }}" method="POST" onsubmit="return confirm('Delete this competency profile?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+            </div>
+
             <div class="w-12 h-12 rounded-2xl bg-cyan-50 flex items-center justify-center text-[#0891B2] mb-4">
                 <i class="bi bi-award text-2xl"></i>
             </div>
-            <h4 class="text-xl font-bold text-gray-900 mb-2">{{ competency.skill_name }}</h4>
-            <p class="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-2">{{ competency.role or 'All Roles' }}</p>
+            <h4 class="text-xl font-bold text-gray-900 mb-1">{{ competency.skill_name }}</h4>
+            <p class="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-3">{{ competency.role or 'All Roles' }}</p>
             <p class="text-gray-500 text-sm mb-6 line-clamp-3">{{ competency.description }}</p>
             
-            <div class="flex items-center justify-between mt-auto">
-                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Level: Required</span>
-                <button class="text-sm font-bold text-[#0891B2] hover:underline">View Details</button>
+            <div class="mt-auto space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Level: Required</span>
+                    <button onclick='viewDetails({{ competency | tojson | safe }}, {{ assessments | selectattr("competency_id", "equalto", competency.id) | list | tojson | safe }})' 
+                        class="text-sm font-bold text-[#0891B2] hover:underline">
+                        View Records
+                    </button>
+                </div>
+                <button onclick="openAssessModal({{ competency.id }}, '{{ competency.skill_name }}')"
+                    class="w-full py-2.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-[#0891B2] hover:text-white transition-all text-sm">
+                    <i class="bi bi-person-check mr-2"></i> Record Assessment
+                </button>
             </div>
         </div>
         {% else %}
@@ -70,4 +91,168 @@
         </form>
     </div>
 </div>
+
+<!-- Edit Competency Modal -->
+<div id="editCompetencyModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-[#0891B2] text-white">
+            <h3 class="text-2xl font-bold">Edit Profile</h3>
+            <button onclick="document.getElementById('editCompetencyModal').classList.add('hidden')" class="text-white/80 hover:text-white">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="editCompetencyForm" method="POST" class="p-8 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Skill Name</label>
+                <input type="text" name="skill_name" id="edit_skill_name" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Target Role</label>
+                <input type="text" name="role" id="edit_role" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Description</label>
+                <textarea name="description" id="edit_description" rows="4" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]"></textarea>
+            </div>
+            <button type="submit" class="w-full py-4 bg-[#0891B2] text-white font-bold rounded-2xl shadow-lg hover:bg-cyan-700 transition-all mt-4">
+                Update Profile
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Record Assessment Modal -->
+<div id="assessModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="p-8 border-b border-gray-100 flex justify-between items-center">
+            <div>
+                <h3 class="text-2xl font-bold text-gray-900">Record Assessment</h3>
+                <p id="assess_skill_name" class="text-[#0891B2] font-medium"></p>
+            </div>
+            <button onclick="document.getElementById('assessModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('hr2.assess_staff') }}" method="POST" class="p-8 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="competency_id" id="assess_competency_id">
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Staff Member</label>
+                <select name="user_id" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                    <option value="">Select Employee...</option>
+                    {% for staff in staff_members %}
+                    <option value="{{ staff.id }}">{{ staff.username }} ({{ staff.department }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Proficiency Level</label>
+                    <select name="level" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                        <option value="Beginner">Beginner</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Expert">Expert</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Assessment Date</label>
+                    <input type="date" name="assessment_date" value="{{ current_date }}" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                </div>
+            </div>
+            <button type="submit" class="w-full py-4 bg-[#0891B2] text-white font-bold rounded-2xl shadow-lg hover:bg-cyan-700 transition-all mt-4">
+                Submit Assessment
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- View Details Modal -->
+<div id="detailsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden">
+        <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <div>
+                <h3 id="details_title" class="text-2xl font-bold text-gray-900"></h3>
+                <p id="details_role" class="text-gray-500 uppercase tracking-widest text-xs font-black"></p>
+            </div>
+            <button onclick="document.getElementById('detailsModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="p-8">
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Assessed Staff</h4>
+            <div id="records_list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                <!-- Records injected here -->
+            </div>
+            <div id="no_records" class="hidden text-center py-10">
+                <p class="text-gray-400 italic">No staff members have been assessed for this competency yet.</p>
+            </div>
+            <div class="mt-8 flex justify-end">
+                <button onclick="document.getElementById('detailsModal').classList.add('hidden')" 
+                    class="px-6 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openEditModal(competency) {
+        document.getElementById('edit_skill_name').value = competency.skill_name;
+        document.getElementById('edit_role').value = competency.role || '';
+        document.getElementById('edit_description').value = competency.description || '';
+        document.getElementById('editCompetencyForm').action = `/hr/hr2/competencies/edit/${competency.id}`;
+        document.getElementById('editCompetencyModal').classList.remove('hidden');
+    }
+
+    function openAssessModal(id, name) {
+        document.getElementById('assess_competency_id').value = id;
+        document.getElementById('assess_skill_name').textContent = name;
+        document.getElementById('assessModal').classList.remove('hidden');
+    }
+
+    function viewDetails(competency, records) {
+        document.getElementById('details_title').textContent = competency.skill_name;
+        document.getElementById('details_role').textContent = competency.role || 'All Roles';
+        
+        const list = document.getElementById('records_list');
+        const empty = document.getElementById('no_records');
+        list.innerHTML = '';
+        
+        if (records.length === 0) {
+            empty.classList.remove('hidden');
+            list.classList.add('hidden');
+        } else {
+            empty.classList.add('hidden');
+            list.classList.remove('hidden');
+            
+            records.forEach(rec => {
+                const levelColor = rec.level === 'Expert' ? 'text-green-600 bg-green-50' : 
+                                  rec.level === 'Intermediate' ? 'text-blue-600 bg-blue-50' : 'text-amber-600 bg-amber-50';
+                
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-2xl';
+                item.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-bold text-[#0891B2] shadow-sm">
+                            ${rec.users.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-900">${rec.users.username}</p>
+                            <p class="text-xs text-gray-500">${rec.users.department} • ${rec.users.role}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="px-3 py-1 rounded-full text-xs font-bold ${levelColor}">${rec.level}</span>
+                        <p class="text-[10px] text-gray-400 mt-1 uppercase font-bold">${rec.assessment_date}</p>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+        
+        document.getElementById('detailsModal').classList.remove('hidden');
+    }
+</script>
 {% endblock %}

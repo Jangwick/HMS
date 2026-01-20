@@ -360,11 +360,27 @@ def list_competencies():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
+    # Fetch competency definitions
     response = client.table('competencies').select('*').execute()
     competencies = response.data if response.data else []
     
+    # Fetch all staff members (users) for the assessment dropdown
+    # Filtering by those who are Active/Approved
+    staff_response = client.table('users').select('id, username, email, department, role').eq('status', 'Active').execute()
+    staff_members = staff_response.data if staff_response.data else []
+
+    # Fetch staff assessments with user details
+    # Explicitly specify the user_id relationship to avoid ambiguity with assessor_id
+    assessments_response = client.table('staff_competencies').select('*, users:users!staff_competencies_user_id_fkey(username, department, role)').execute()
+    assessments = assessments_response.data if assessments_response.data else []
+    
+    from datetime import datetime
+    
     return render_template('subsystems/hr/hr2/competencies.html',
                            competencies=competencies,
+                           staff_members=staff_members,
+                           assessments=assessments,
+                           current_date=datetime.now().strftime('%Y-%m-%d'),
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -386,6 +402,62 @@ def add_competency():
         flash('Competency requirement added!', 'success')
     except Exception as e:
         flash(f'Error adding competency: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_competencies'))
+
+@hr2_bp.route('/competencies/edit/<int:id>', methods=['POST'])
+@login_required
+def edit_competency(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    data = {
+        'skill_name': request.form.get('skill_name'),
+        'role': request.form.get('role'),
+        'description': request.form.get('description')
+    }
+    
+    try:
+        client.table('competencies').update(data).eq('id', id).execute()
+        flash('Competency updated successfully!', 'success')
+    except Exception as e:
+        flash(f'Error updating competency: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_competencies'))
+
+@hr2_bp.route('/competencies/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_competency(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('competencies').delete().eq('id', id).execute()
+        flash('Competency removed.', 'info')
+    except Exception as e:
+        flash(f'Error deleting competency: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_competencies'))
+
+@hr2_bp.route('/competencies/assess', methods=['POST'])
+@login_required
+def assess_staff():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    data = {
+        'user_id': request.form.get('user_id'),
+        'competency_id': request.form.get('competency_id'),
+        'assessment_date': request.form.get('assessment_date'),
+        'level': request.form.get('level'),
+        'assessor_id': current_user.id
+    }
+    
+    try:
+        client.table('staff_competencies').insert(data).execute()
+        flash('Staff assessment recorded!', 'success')
+    except Exception as e:
+        flash(f'Error recording assessment: {str(e)}', 'danger')
         
     return redirect(url_for('hr2.list_competencies'))
 

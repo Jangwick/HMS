@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS competencies (
 CREATE TABLE IF NOT EXISTS staff_competencies (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
-    competency_id INTEGER REFERENCES competencies(id),
+    competency_id INTEGER REFERENCES competencies(id) ON DELETE CASCADE,
     assessment_date DATE DEFAULT CURRENT_DATE,
     level VARCHAR(50), -- Beginner, Intermediate, Expert
     assessor_id INTEGER REFERENCES users(id)
