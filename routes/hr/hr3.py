@@ -719,6 +719,15 @@ def analytics():
         sub = u.subsystem.upper()
         subsystem_dist[sub] = subsystem_dist.get(sub, 0) + 1
 
+    # Today's late logs
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    late_today = []
+    try:
+        late_resp = client.table('attendance_logs').select('*, users(username)').gte('clock_in', today_str).eq('status', 'Late').execute()
+        late_today = late_resp.data or []
+    except Exception as e:
+        print(f"Error fetching late logs: {e}")
+
     return render_template('subsystems/hr/hr3/analytics.html',
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
@@ -727,6 +736,7 @@ def analytics():
                            leave_stats=leave_stats,
                            leave_types=leave_types,
                            subsystem_dist=subsystem_dist,
+                           late_today=late_today,
                            total_users=len(all_users),
                            datetime=datetime)
 
