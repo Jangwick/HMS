@@ -415,9 +415,66 @@ def edit_vacancy(id):
         
     return redirect(url_for('hr1.list_vacancies'))
 
+@hr1_bp.route('/interviews')
+@login_required
+def list_interviews():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Fetch all interviews with applicant names
+    response = client.table('interviews').select('*, applicants(first_name, last_name)').order('interview_date', desc=False).execute()
+    interviews = response.data if response.data else []
+    
+    # Get stats
+    stats = {
+        'total': len(interviews),
+        'upcoming': len([i for i in interviews if i['status'] == 'Scheduled']),
+        'completed': len([i for i in interviews if i['status'] == 'Completed']),
+        'cancelled': len([i for i in interviews if i['status'] == 'Cancelled'])
+    }
+    
+    return render_template('subsystems/hr/hr1/interviews.html', 
+                           interviews=interviews,
+                           stats=stats,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr1_bp.route('/interviews/<int:id>/update', methods=['POST'])
+@login_required
+def update_interview_status(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    status = request.form.get('status')
+    notes = request.form.get('notes')
+    
+    try:
+        # Update interview record
+        client.table('interviews').update({
+            'status': status,
+            'notes': notes
+        }).eq('id', id).execute()
+        
+        # Logic for status progression
+        # Fetch interview to get applicant_id
+        intv_resp = client.table('interviews').select('applicant_id').eq('id', id).single().execute()
+        if intv_resp.data:
+            app_id = intv_resp.data['applicant_id']
+            if status == 'Cancelled':
+                client.table('applicants').update({'status': 'Rejected'}).eq('id', app_id).execute()
+            # If completed, the user would usually use the details page to move to 'Offer'
+        
+        flash(f'Interview updated successfully.', 'success')
+    except Exception as e:
+        flash(f'Error updating interview: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr1.list_interviews'))
+
 @hr1_bp.route('/interviews/schedule', methods=['GET', 'POST'])
 @login_required
 def schedule_interview():
+    # ... existing implementation ...
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
