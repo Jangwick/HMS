@@ -261,11 +261,36 @@ def list_trainings():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    response = client.table('trainings').select('*').execute()
+    # Fetch trainings with their participant counts
+    response = client.table('trainings').select('*').order('schedule_date', desc=True).execute()
     trainings = response.data if response.data else []
+    
+    # Fetch participants for all trainings to show counts and details
+    participants_response = client.table('training_participants').select('*, users(username, department, role)').execute()
+    participants = participants_response.data if participants_response.data else []
+
+    # Attach participant counts and ensure numeric values for template calculations
+    for training in trainings:
+        training['participant_count'] = len([p for p in participants if p['training_id'] == training['id']])
+        training['max_participants'] = int(training.get('max_participants') or 0)
+
+    # Fetch active staff for enrollment dropdown
+    staff_response = client.table('users').select('id, username, department, role').eq('status', 'Active').execute()
+    staff_members = staff_response.data if staff_response.data else []
+
+    # Calculate basic stats
+    stats = {
+        'total': len(trainings),
+        'scheduled': len([t for t in trainings if t['status'] == 'Scheduled']),
+        'completed': len([t for t in trainings if t['status'] == 'Completed']),
+        'total_participants': len(participants)
+    }
     
     return render_template('subsystems/hr/hr2/trainings.html',
                            trainings=trainings,
+                           participants=participants,
+                           staff_members=staff_members,
+                           stats=stats,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -351,6 +376,61 @@ def complete_training(id):
         flash('Training marked as completed!', 'success')
     except Exception as e:
         flash(f'Error updating training: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_trainings'))
+
+@hr2_bp.route('/trainings/enroll', methods=['POST'])
+@login_required
+def enroll_staff():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    training_id = request.form.get('training_id')
+    user_id = request.form.get('user_id')
+    
+    try:
+        # Check if already enrolled
+        client.table('training_participants').insert({
+            'training_id': training_id,
+            'user_id': user_id
+        }).execute()
+        flash('Staff member enrolled successfully!', 'success')
+    except Exception as e:
+        if 'unique_training_participant' in str(e):
+            flash('This employee is already enrolled in this session.', 'warning')
+        else:
+            flash(f'Error enrolling staff: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_trainings'))
+
+@hr2_bp.route('/trainings/mark-attendance', methods=['POST'])
+@login_required
+def mark_attendance():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    participant_id = request.form.get('participant_id')
+    status = request.form.get('status') # Attended, Absent, Enrolled
+    
+    try:
+        client.table('training_participants').update({'attendance_status': status}).eq('id', participant_id).execute()
+        flash('Attendance updated.', 'success')
+    except Exception as e:
+        flash(f'Error updating attendance: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_trainings'))
+
+@hr2_bp.route('/trainings/remove-participant/<int:id>', methods=['POST'])
+@login_required
+def remove_participant(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('training_participants').delete().eq('id', id).execute()
+        flash('Participant removed.', 'info')
+    except Exception as e:
+        flash(f'Error removing participant: {str(e)}', 'danger')
         
     return redirect(url_for('hr2.list_trainings'))
 

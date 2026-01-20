@@ -115,6 +115,15 @@ CREATE TABLE IF NOT EXISTS trainings (
     status VARCHAR(50) DEFAULT 'Scheduled'
 );
 
+CREATE TABLE IF NOT EXISTS training_participants (
+    id SERIAL PRIMARY KEY,
+    training_id INTEGER REFERENCES trainings(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    enrolled_at TIMESTAMP DEFAULT NOW(),
+    attendance_status VARCHAR(50) DEFAULT 'Enrolled', -- Enrolled, Attended, Absent
+    CONSTRAINT unique_training_participant UNIQUE (training_id, user_id)
+);
+
 -- Ensure new columns exist in trainings table if it already exists
 DO $$ 
 BEGIN
@@ -413,6 +422,10 @@ CREATE POLICY "Allow all on competencies" ON competencies FOR ALL USING (true) W
 ALTER TABLE IF EXISTS staff_competencies ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on staff_competencies" ON staff_competencies;
 CREATE POLICY "Allow all on staff_competencies" ON staff_competencies FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS training_participants ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on training_participants" ON training_participants;
+CREATE POLICY "Allow all on training_participants" ON training_participants FOR ALL USING (true) WITH CHECK (true);
 
 -- Financials & Logistics RLS
 ALTER TABLE IF EXISTS patients ENABLE ROW LEVEL SECURITY;

@@ -5,6 +5,26 @@
 
 {% block content %}
 <div class="space-y-8">
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Total Programs</p>
+            <h4 class="text-3xl font-black text-gray-900">{{ stats.total }}</h4>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Upcoming</p>
+            <h4 class="text-3xl font-black text-amber-500">{{ stats.scheduled }}</h4>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Completed</p>
+            <h4 class="text-3xl font-black text-green-500">{{ stats.completed }}</h4>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Total Enrollments</p>
+            <h4 class="text-3xl font-black text-[#0891B2]">{{ stats.total_participants }}</h4>
+        </div>
+    </div>
+
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h3 class="text-2xl font-bold text-gray-900">Training Programs</h3>
@@ -19,70 +39,76 @@
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left">
-                <thead class="bg-gray-50/50 text-gray-500 text-xs font-bold uppercase tracking-wider">
-                    <tr>
-                        <th class="px-8 py-5">Training Title</th>
-                        <th class="px-6 py-5">Type</th>
-                        <th class="px-6 py-5">Schedule Date</th>
-                        <th class="px-6 py-5">Status</th>
-                        <th class="px-8 py-5 text-right">Actions</th>
+                <thead>
+                    <tr class="bg-gray-50/50">
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Program Details</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Date & Location</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Status</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Target Dept</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Participants</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     {% for training in trainings %}
                     <tr class="hover:bg-gray-50/50 transition-colors">
-                        <td class="px-8 py-5 font-bold text-gray-900">{{ training.title }}</td>
-                        <td class="px-6 py-5 text-gray-600">{{ training.type }}</td>
-                        <td class="px-6 py-5 text-gray-500 text-sm">
-                            <div class="font-medium">{{ training.schedule_date[:10] }}</div>
-                            <div class="text-xs opacity-60">{{ training.schedule_date[11:16] }}</div>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-bold text-gray-900">{{ training.title }}</div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                <i class="bi bi-person-badge"></i> {{ training.trainer }}
+                            </div>
                         </td>
-                        <td class="px-6 py-5">
-                            <span class="px-3 py-1 rounded-full text-xs font-bold 
-                                {% if training.status == 'Scheduled' %}bg-amber-50 text-amber-600
-                                {% elif training.status == 'Completed' %}bg-green-50 text-green-600
-                                {% else %}bg-blue-50 text-blue-600{% endif %}">
-                                {{ training.status }}
-                            </span>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">{{ training.schedule_date }}</div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                <i class="bi bi-geo-alt"></i> {{ training.location }}
+                            </div>
                         </td>
-                        <td class="px-8 py-5 text-right">
-                            <div class="flex justify-end items-center gap-2">
-                                <button onclick='viewTraining({{ training | tojson | safe }})' title="View Details"
-                                    class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
-                                    <i class="bi bi-eye"></i>
+                        <td class="px-6 py-4">
+                            {% if training.status == 'Scheduled' %}
+                            <span class="px-3 py-1 rounded-full text-[10px] font-black bg-amber-50 text-amber-600 border border-amber-100 uppercase tracking-wider italic">Scheduled</span>
+                            {% elif training.status == 'Completed' %}
+                            <span class="px-3 py-1 rounded-full text-[10px] font-black bg-green-50 text-green-600 border border-green-100 uppercase tracking-wider italic">Completed</span>
+                            {% else %}
+                            <span class="px-3 py-1 rounded-full text-[10px] font-black bg-gray-50 text-gray-600 border border-gray-100 uppercase tracking-wider italic">{{ training.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="text-sm font-medium text-gray-600">{{ training.target_department }}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-bold text-gray-900">{{ training.participant_count }}<span class="text-gray-400 font-normal">/{{ training.max_participants }}</span></span>
+                                <div class="w-12 h-1 bg-gray-100 rounded-full overflow-hidden">
+                                    {% set percent = (training.participant_count / training.max_participants * 100) if training.max_participants > 0 else 0 %}
+                                    <div class="h-full bg-[#0891B2]" style="width: {{ percent }}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex justify-end gap-1">
+                                <button onclick="openEnrollModal({{ training | tojson | safe }})" 
+                                        class="p-2 text-[#0891B2] hover:bg-cyan-50 rounded-xl transition-all"
+                                        title="Enroll Staff">
+                                    <i class="bi bi-person-plus-fill"></i>
                                 </button>
-
-                                <button onclick='openEditModal({{ training | tojson | safe }})' title="Edit Training"
-                                    class="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-all">
-                                    <i class="bi bi-pencil"></i>
+                                <button onclick='openViewTrainingModal({{ training | tojson | safe }}, {{ participants | selectattr("training_id", "equalto", training.id) | list | tojson | safe }})' 
+                                        class="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
+                                        title="View Participants">
+                                    <i class="bi bi-people-fill"></i>
                                 </button>
-
-                                {% if training.status == 'Scheduled' %}
-                                <form action="{{ url_for('hr2.complete_training', id=training.id) }}" method="POST" class="inline">
+                                <button onclick="openEditTrainingModal({{ training | tojson | safe }})" 
+                                        class="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
+                                        title="Edit Program">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <form action="{{ url_for('hr2.delete_training', id=training.id) }}" method="POST" class="inline" onsubmit="return confirm('Delete this training program?')">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" title="Mark as Completed" 
-                                        class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all">
-                                        <i class="bi bi-check-circle"></i>
-                                    </button>
-                                </form>
-                                {% endif %}
-                                
-                                <form action="{{ url_for('hr2.delete_training', id=training.id) }}" method="POST" class="inline" onsubmit="return confirm('Remove this training session?');">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" title="Delete" 
-                                        class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
-                                        <i class="bi bi-trash"></i>
+                                    <button type="submit" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
+                                        <i class="bi bi-trash-fill"></i>
                                     </button>
                                 </form>
                             </div>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="px-8 py-20 text-center">
-                            <i class="bi bi-journal-bookmark text-4xl text-gray-300 mb-4 block"></i>
-                            <h4 class="text-lg font-bold text-gray-900">No training sessions scheduled</h4>
-                            <p class="text-gray-500">Click the button above to add a new session.</p>
                         </td>
                     </tr>
                     {% endfor %}
@@ -227,70 +253,93 @@
 </div>
 
 <!-- View Training Modal -->
-<div id="viewTrainingModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
-        <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-[#0891B2] text-white">
-            <h3 class="text-2xl font-bold">Training Details</h3>
-            <button onclick="document.getElementById('viewTrainingModal').classList.add('hidden')" class="text-white/80 hover:text-white">
-                <i class="bi bi-x-lg"></i>
+<div id="viewTrainingModal" class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div>
+                <h3 class="text-2xl font-black text-gray-900" id="viewTitle"></h3>
+                <p class="text-gray-500 font-medium" id="viewTrainer"></p>
+            </div>
+            <button onclick="closeViewTrainingModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="bi bi-x-lg text-xl"></i>
             </button>
         </div>
-        <div class="p-8 space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Title</p>
-                    <p id="view_title" class="text-lg font-bold text-gray-900"></p>
+        <div class="p-8 overflow-y-auto flex-1">
+            <div class="grid grid-cols-2 gap-8 mb-8">
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Date & Time</p>
+                    <p class="text-gray-900 font-semibold" id="viewDate"></p>
                 </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Type</p>
-                    <p id="view_type" class="text-lg font-medium text-gray-700"></p>
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Location</p>
+                    <p class="text-gray-900 font-semibold" id="viewLocation"></p>
                 </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Target Department</p>
-                    <p id="view_target_department" class="text-lg font-medium text-gray-700"></p>
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Target Dept</p>
+                    <p class="text-gray-900 font-semibold" id="viewDept"></p>
                 </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
-                    <p id="view_status" class="inline-block px-3 py-1 rounded-full text-xs font-bold"></p>
-                </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Scheduled Date</p>
-                    <p id="view_schedule_date" class="text-lg font-medium text-gray-700"></p>
-                </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Location</p>
-                    <p id="view_location" class="text-lg font-medium text-gray-700"></p>
-                </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Trainer</p>
-                    <p id="view_trainer" class="text-lg font-medium text-gray-700"></p>
-                </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Max Participants</p>
-                    <p id="view_max_participants" class="text-lg font-medium text-gray-700"></p>
+                <div class="space-y-1">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+                    <span id="viewStatusBadge" class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"></span>
                 </div>
             </div>
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Description</p>
-                <p id="view_description" class="text-gray-600 italic"></p>
+
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-bold text-gray-900 uppercase tracking-widest">Enrolled Participants</h4>
+                    <span class="text-xs font-bold text-[#0891B2]" id="viewParticipantCount"></span>
+                </div>
+                <div id="participantsList" class="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                    <!-- Dynamic content -->
+                </div>
             </div>
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Materials URL</p>
-                <a id="view_materials_url" href="#" target="_blank" class="text-[#0891B2] hover:underline font-medium break-all"></a>
-                <p id="no_materials" class="text-gray-400 italic hidden">No materials provided</p>
-            </div>
-            <div class="pt-6 border-t border-gray-100 flex justify-end">
-                <button onclick="document.getElementById('viewTrainingModal').classList.add('hidden')" 
-                    class="px-6 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all">
-                    Close
+        </div>
+        <div class="p-8 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50">
+            <form id="completeTrainingForm" action="" method="POST" class="hidden">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="px-6 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all shadow-sm shadow-green-100">
+                    Mark as Completed
                 </button>
-            </div>
+            </form>
+            <button onclick="closeViewTrainingModal()" class="px-6 py-2.5 border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-100 transition-all">Close</button>
         </div>
     </div>
 </div>
 
+<!-- Enroll Staff Modal -->
+<div id="enrollModal" class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h3 class="text-2xl font-black text-gray-900">Enroll Staff</h3>
+                <p class="text-sm text-gray-500 mt-1" id="enrollProgramTitle"></p>
+            </div>
+            <button onclick="closeEnrollModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg text-xl"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('hr2.enroll_staff') }}" method="POST" class="space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="training_id" id="enrollTrainingId">
+            
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Select Employee</label>
+                    <select name="user_id" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#0891B2] focus:border-transparent outline-none transition-all text-gray-900">
+                        <option value="">Choose an employee...</option>
+                        {% for user in staff_members %}
+                        <option value="{{ user.id }}">{{ user.username }} ({{ user.department }})</option>
+                        {% endfor %}
+                    </select>
+                </div>            <div class="flex justify-end gap-3 pt-4">
+                <button type="button" onclick="closeEnrollModal()" class="px-6 py-2.5 text-gray-500 font-bold text-sm hover:bg-gray-100 rounded-xl transition-all">Cancel</button>
+                <button type="submit" class="px-6 py-2.5 bg-[#0891B2] text-white rounded-xl font-bold text-sm hover:bg-[#06b6d4] transition-all shadow-lg shadow-cyan-100">Confirm Enrollment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
-    function openEditModal(training) {
+    function openEditTrainingModal(training) {
         document.getElementById('edit_title').value = training.title;
         document.getElementById('edit_type').value = training.type;
         document.getElementById('edit_target_department').value = training.target_department || 'All Departments';
@@ -310,36 +359,74 @@
         document.getElementById('editTrainingModal').classList.remove('hidden');
     }
 
-    function viewTraining(training) {
-        document.getElementById('view_title').textContent = training.title;
-        document.getElementById('view_type').textContent = training.type;
-        document.getElementById('view_target_department').textContent = training.target_department || 'All Departments';
-        
-        const statusEl = document.getElementById('view_status');
-        statusEl.textContent = training.status;
-        statusEl.className = 'px-3 py-1 rounded-full text-xs font-bold ' + 
-            (training.status === 'Scheduled' ? 'bg-amber-50 text-amber-600' : 
-             training.status === 'Completed' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600');
-        
-        document.getElementById('view_schedule_date').textContent = training.schedule_date.replace('T', ' ');
-        document.getElementById('view_location').textContent = training.location || 'Not specified';
-        document.getElementById('view_trainer').textContent = training.trainer || 'Not assigned';
-        document.getElementById('view_max_participants').textContent = training.max_participants || 'Unrestricted';
-        document.getElementById('view_description').textContent = training.description || 'No description provided';
-        
-        const urlEl = document.getElementById('view_materials_url');
-        const noUrlEl = document.getElementById('no_materials');
-        if (training.materials_url) {
-            urlEl.textContent = training.materials_url;
-            urlEl.href = training.materials_url;
-            urlEl.classList.remove('hidden');
-            noUrlEl.classList.add('hidden');
+    function openViewTrainingModal(training, participants) {
+        document.getElementById('viewTitle').textContent = training.title;
+        document.getElementById('viewTrainer').textContent = 'Trainer: ' + training.trainer;
+        document.getElementById('viewDate').textContent = training.schedule_date;
+        document.getElementById('viewLocation').textContent = training.location;
+        document.getElementById('viewDept').textContent = training.target_department;
+        document.getElementById('viewParticipantCount').textContent = training.participant_count + ' / ' + training.max_participants;
+
+        const badge = document.getElementById('viewStatusBadge');
+        badge.textContent = training.status;
+        if (training.status === 'Scheduled') {
+            badge.className = 'px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-600 border border-amber-100 italic';
+            document.getElementById('completeTrainingForm').classList.remove('hidden');
+            document.getElementById('completeTrainingForm').action = `/hr/hr2/trainings/complete/${training.id}`;
         } else {
-            urlEl.classList.add('hidden');
-            noUrlEl.classList.remove('hidden');
+            badge.className = 'px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-green-50 text-green-600 border border-green-100 italic';
+            document.getElementById('completeTrainingForm').classList.add('hidden');
         }
-        
+
+        const list = document.getElementById('participantsList');
+        list.innerHTML = '';
+        if (participants && participants.length > 0) {
+            participants.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100';
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-[#0891B2] text-white flex items-center justify-center font-bold text-xs">
+                            ${p.users.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-900">${p.users.username}</p>
+                            <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest">${p.users.role} • ${p.users.department}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-black uppercase italic ${p.attendance_status === 'Attended' ? 'text-green-600' : 'text-amber-600'}">
+                            ${p.attendance_status}
+                        </span>
+                        <form action="/hr/hr2/trainings/remove-participant/${p.id}" method="POST" onsubmit="return confirm('Remove participant?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="text-gray-400 hover:text-red-500 transition-colors">
+                                <i class="bi bi-person-x text-lg"></i>
+                            </button>
+                        </form>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        } else {
+            list.innerHTML = '<p class="text-center py-8 text-gray-400 text-sm font-medium italic">No staff members enrolled yet.</p>';
+        }
+
         document.getElementById('viewTrainingModal').classList.remove('hidden');
+    }
+
+    function closeViewTrainingModal() {
+        document.getElementById('viewTrainingModal').classList.add('hidden');
+    }
+
+    function openEnrollModal(training) {
+        document.getElementById('enrollTrainingId').value = training.id;
+        document.getElementById('enrollProgramTitle').textContent = training.title;
+        document.getElementById('enrollModal').classList.remove('hidden');
+    }
+
+    function closeEnrollModal() {
+        document.getElementById('enrollModal').classList.add('hidden');
     }
 </script>
 {% endblock %}
