@@ -271,10 +271,21 @@ def dashboard():
 def list_vacancies():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    response = client.table('vacancies').select('*').execute()
+    
+    # Fetch all vacancies
+    response = client.table('vacancies').select('*').order('created_at', desc=True).execute()
     vacancies = response.data if response.data else []
+    
+    # Calculate summary stats for the dashboard
+    stats = {
+        'total': len(vacancies),
+        'open': len([v for v in vacancies if v['status'] == 'Open']),
+        'closed': len([v for v in vacancies if v['status'] != 'Open'])
+    }
+    
     return render_template('subsystems/hr/hr1/vacancies.html', 
                            vacancies=vacancies,
+                           stats=stats,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -327,15 +338,46 @@ def add_vacancy():
     if request.method == 'POST':
         from utils.supabase_client import get_supabase_client
         client = get_supabase_client()
+        
         data = {
             'position_name': request.form.get('position_name'),
             'department': request.form.get('department'),
             'reason': request.form.get('reason'),
-            'status': 'Open'
+            'requirements': request.form.get('requirements'),
+            'status': 'Open',
+            'approved_by': current_user.id
         }
-        client.table('vacancies').insert(data).execute()
-        flash('Vacancy posted successfully!', 'success')
+        
+        try:
+            client.table('vacancies').insert(data).execute()
+            flash('New role has been posted to the recruitment board.', 'success')
+        except Exception as e:
+            flash(f'Failed to post vacancy: {str(e)}', 'danger')
+            
         return redirect(url_for('hr1.list_vacancies'))
+    
+    return redirect(url_for('hr1.list_vacancies'))
+
+@hr1_bp.route('/vacancies/edit/<int:id>', methods=['POST'])
+@login_required
+def edit_vacancy(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    data = {
+        'position_name': request.form.get('position_name'),
+        'department': request.form.get('department'),
+        'reason': request.form.get('reason'),
+        'requirements': request.form.get('requirements'),
+        'status': request.form.get('status', 'Open')
+    }
+    
+    try:
+        client.table('vacancies').update(data).eq('id', id).execute()
+        flash('Vacancy details updated.', 'success')
+    except Exception as e:
+        flash(f'Error updating vacancy: {str(e)}', 'danger')
+        
     return redirect(url_for('hr1.list_vacancies'))
 
 @hr1_bp.route('/interviews/schedule', methods=['GET', 'POST'])

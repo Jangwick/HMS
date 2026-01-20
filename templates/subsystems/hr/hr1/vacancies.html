@@ -5,10 +5,29 @@
 
 {% block content %}
 <div class="space-y-8">
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">Total Requests
+            </p>
+            <h4 class="text-3xl font-black text-gray-900 text-center">{{ stats.total }}</h4>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">Active Openings
+            </p>
+            <h4 class="text-3xl font-black text-blue-500 text-center">{{ stats.open }}</h4>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">Filled/Closed
+            </p>
+            <h4 class="text-3xl font-black text-green-500 text-center">{{ stats.closed }}</h4>
+        </div>
+    </div>
+
     <!-- Page Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h3 class="text-2xl font-bold text-gray-900">Open Vacancies</h3>
+            <h3 class="text-2xl font-bold text-gray-900 uppercase italic">Open Vacancies</h3>
             <p class="text-gray-500">Track open positions and hiring triggers</p>
         </div>
         <button onclick="openModal('addVacancyModal')"
@@ -50,17 +69,23 @@
                         <td class="px-6 py-5 text-gray-400 text-sm">{{ vacancy.created_at[:10] }}</td>
                         <td class="px-8 py-5 text-right">
                             <div class="flex justify-end space-x-2">
+                                <button onclick='openEditVacancyModal({{ vacancy | tojson | safe }})'
+                                    class="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                    title="Edit Vacancy">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
                                 <form action="{{ url_for('hr1.delete_vacancy', id=vacancy.id) }}" method="POST" onsubmit="return confirm('Delete this vacancy?');" class="inline">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit"
-                                        class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
+                                        class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                        title="Delete Vacancy">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
                                 <a href="{{ url_for('hr1.list_applicants', vacancy_id=vacancy.id) }}"
-                                    class="px-4 py-2 bg-gray-50 font-bold text-sm rounded-lg hover:text-white hover-bg-accent transition-all"
+                                    class="px-4 py-2 bg-gray-50 font-bold text-sm rounded-lg hover:text-white hover:bg-accent transition-all flex items-center gap-2"
                                     style="color: {{ accent_color or '#3B82F6' }};">
-                                    View Applicants
+                                    <i class="bi bi-people"></i> Applicants
                                 </a>
                             </div>
                         </td>
@@ -144,6 +169,11 @@
                         </div>
                     </div>
 
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Job Requirements</label>
+                        <textarea name="requirements" rows="3" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" placeholder="List key requirements..."></textarea>
+                    </div>
+
                     <div class="pt-6 flex items-center justify-end space-x-4">
                         <button type="button" onclick="closeModal('addVacancyModal')"
                             class="px-6 py-4 text-slate-500 font-bold hover:text-slate-700 transition-colors">
@@ -154,6 +184,69 @@
                             style="background: linear-gradient(to right, {{ accent_color or '#3B82F6' }}, #1F2937);">
                             Publish Vacancy
                         </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Vacancy Modal -->
+    <div id="editVacancyModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen p-4 text-center">
+            <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeModal('editVacancyModal')"></div>
+
+            <div class="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all text-left">
+                <div class="px-8 py-10 text-white" style="background: linear-gradient(to right, {{ accent_color or '#3B82F6' }}, #1F2937);">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-3xl font-bold mb-2 uppercase italic">Update Vacancy</h3>
+                            <p class="text-blue-100 font-medium">Modify position details or status</p>
+                        </div>
+                        <button onclick="closeModal('editVacancyModal')" class="bg-white/20 hover:bg-white/30 p-2 rounded-full transition-colors">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <form id="editVacancyForm" method="POST" class="p-8 space-y-6 bg-white">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="col-span-2">
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Position Name</label>
+                            <input type="text" name="position_name" id="edit_position_name" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-gray-700">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Department</label>
+                            <select name="department" id="edit_department" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-gray-700">
+                                <option value="Medical">Medical</option>
+                                <option value="Nursing">Nursing</option>
+                                <option value="HR">Human Resources</option>
+                                <option value="Logistics">Logistics</option>
+                                <option value="Finance">Finance</option>
+                                <option value="IT">Information Technology</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Status</label>
+                            <select name="status" id="edit_status" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-gray-700">
+                                <option value="Open">Open</option>
+                                <option value="Filled">Filled</option>
+                                <option value="Closed">Closed</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Reason for Vacancy</label>
+                            <input type="text" name="reason" id="edit_reason" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-gray-700">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Job Requirements</label>
+                            <textarea name="requirements" id="edit_requirements" rows="3" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-gray-700"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4 pt-4">
+                        <button type="button" onclick="closeModal('editVacancyModal')" class="flex-1 px-8 py-4 bg-gray-100 text-gray-500 font-bold rounded-2xl hover:bg-gray-200 transition-all uppercase tracking-widest text-xs">Cancel</button>
+                        <button type="submit" class="flex-1 px-8 py-4 text-white font-bold rounded-2xl shadow-xl hover:opacity-90 transition-all uppercase tracking-widest text-xs" style="background-color: {{ accent_color or '#3B82F6' }};">Save Changes</button>
                     </div>
                 </form>
             </div>
@@ -183,5 +276,16 @@ function closeModal(modalId) {
     modal.classList.add('hidden');
     document.body.style.overflow = 'auto';
 }
+
+function openEditVacancyModal(vacancy) {
+        document.getElementById('edit_position_name').value = vacancy.position_name;
+        document.getElementById('edit_department').value = vacancy.department;
+        document.getElementById('edit_reason').value = vacancy.reason;
+        document.getElementById('edit_status').value = vacancy.status;
+        document.getElementById('edit_requirements').value = vacancy.requirements || '';
+        
+        document.getElementById('editVacancyForm').action = `/hr/hr1/vacancies/edit/${vacancy.id}`;
+        openModal('editVacancyModal');
+    }
 </script>
 {% endblock %}
