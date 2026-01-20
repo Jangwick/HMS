@@ -314,10 +314,17 @@ def salary_grades():
 def add_salary_grade():
     client = get_supabase_client()
     try:
+        min_salary = float(request.form.get('min_salary') or 0)
+        max_salary = float(request.form.get('max_salary') or 0)
+        
+        if min_salary >= max_salary:
+            flash('Minimum salary must be less than maximum salary.', 'danger')
+            return redirect(url_for('hr4.salary_grades'))
+
         data = {
             'grade_name': request.form.get('grade_name'),
-            'min_salary': float(request.form.get('min_salary') or 0),
-            'max_salary': float(request.form.get('max_salary') or 0)
+            'min_salary': min_salary,
+            'max_salary': max_salary
         }
         client.table('salary_grades').insert(data).execute()
         flash('Salary grade created.', 'success')
@@ -330,10 +337,17 @@ def add_salary_grade():
 def edit_salary_grade(grade_id):
     client = get_supabase_client()
     try:
+        min_salary = float(request.form.get('min_salary') or 0)
+        max_salary = float(request.form.get('max_salary') or 0)
+        
+        if min_salary >= max_salary:
+            flash('Minimum salary must be less than maximum salary.', 'danger')
+            return redirect(url_for('hr4.salary_grades'))
+
         data = {
             'grade_name': request.form.get('grade_name'),
-            'min_salary': float(request.form.get('min_salary') or 0),
-            'max_salary': float(request.form.get('max_salary') or 0)
+            'min_salary': min_salary,
+            'max_salary': max_salary
         }
         client.table('salary_grades').update(data).eq('id', grade_id).execute()
         flash('Salary grade updated.', 'success')
