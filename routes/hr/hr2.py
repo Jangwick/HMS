@@ -281,6 +281,11 @@ def add_training():
             'title': request.form.get('title'),
             'type': request.form.get('type'),
             'schedule_date': request.form.get('schedule_date'),
+            'description': request.form.get('description'),
+            'location': request.form.get('location'),
+            'trainer': request.form.get('trainer'),
+            'target_department': request.form.get('target_department'),
+            'max_participants': request.form.get('max_participants'),
             'materials_url': request.form.get('materials_url'),
             'status': 'Scheduled'
         }
@@ -293,6 +298,60 @@ def add_training():
             
         return redirect(url_for('hr2.list_trainings'))
     
+    return redirect(url_for('hr2.list_trainings'))
+
+@hr2_bp.route('/trainings/edit/<int:id>', methods=['POST'])
+@login_required
+def edit_training(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    data = {
+        'title': request.form.get('title'),
+        'type': request.form.get('type'),
+        'schedule_date': request.form.get('schedule_date'),
+        'description': request.form.get('description'),
+        'location': request.form.get('location'),
+        'trainer': request.form.get('trainer'),
+        'target_department': request.form.get('target_department'),
+        'max_participants': request.form.get('max_participants'),
+        'materials_url': request.form.get('materials_url')
+    }
+    
+    try:
+        client.table('trainings').update(data).eq('id', id).execute()
+        flash('Training session updated successfully!', 'success')
+    except Exception as e:
+        flash(f'Error updating training: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_trainings'))
+
+@hr2_bp.route('/trainings/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_training(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('trainings').delete().eq('id', id).execute()
+        flash('Training session removed.', 'info')
+    except Exception as e:
+        flash(f'Error deleting training: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_trainings'))
+
+@hr2_bp.route('/trainings/complete/<int:id>', methods=['POST'])
+@login_required
+def complete_training(id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('trainings').update({'status': 'Completed'}).eq('id', id).execute()
+        flash('Training marked as completed!', 'success')
+    except Exception as e:
+        flash(f'Error updating training: {str(e)}', 'danger')
+        
     return redirect(url_for('hr2.list_trainings'))
 
 @hr2_bp.route('/competencies')

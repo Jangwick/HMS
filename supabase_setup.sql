@@ -106,9 +106,34 @@ CREATE TABLE IF NOT EXISTS trainings (
     title VARCHAR(200) NOT NULL,
     type VARCHAR(100), -- Mandatory, Role-based
     schedule_date TIMESTAMP,
+    description TEXT,
+    location VARCHAR(200),
+    trainer VARCHAR(100),
+    target_department VARCHAR(100),
+    max_participants INTEGER,
     materials_url TEXT,
     status VARCHAR(50) DEFAULT 'Scheduled'
 );
+
+-- Ensure new columns exist in trainings table if it already exists
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='trainings' AND column_name='description') THEN
+        ALTER TABLE trainings ADD COLUMN description TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='trainings' AND column_name='location') THEN
+        ALTER TABLE trainings ADD COLUMN location VARCHAR(200);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='trainings' AND column_name='trainer') THEN
+        ALTER TABLE trainings ADD COLUMN trainer VARCHAR(100);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='trainings' AND column_name='target_department') THEN
+        ALTER TABLE trainings ADD COLUMN target_department VARCHAR(100);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='trainings' AND column_name='max_participants') THEN
+        ALTER TABLE trainings ADD COLUMN max_participants INTEGER;
+    END IF;
+END $$;
 
 -- HR3: Workforce Operations
 CREATE TABLE IF NOT EXISTS attendance_logs (
@@ -246,11 +271,6 @@ CREATE TABLE IF NOT EXISTS medical_records (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- RLS for Medical Records
-ALTER TABLE IF EXISTS medical_records ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all on medical_records" ON medical_records;
-CREATE POLICY "Allow all on medical_records" ON medical_records FOR ALL USING (true) WITH CHECK (true);
-
 -- CT3: Bed Management
 CREATE TABLE IF NOT EXISTS beds (
     id SERIAL PRIMARY KEY,
@@ -380,6 +400,40 @@ CREATE POLICY "Allow all on onboarding" ON onboarding FOR ALL USING (true) WITH 
 ALTER TABLE IF EXISTS interviews ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on interviews" ON interviews;
 CREATE POLICY "Allow all on interviews" ON interviews FOR ALL USING (true) WITH CHECK (true);
+
+-- HR2: Trainings and Competencies RLS
+ALTER TABLE IF EXISTS trainings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on trainings" ON trainings;
+CREATE POLICY "Allow all on trainings" ON trainings FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS competencies ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on competencies" ON competencies;
+CREATE POLICY "Allow all on competencies" ON competencies FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS staff_competencies ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on staff_competencies" ON staff_competencies;
+CREATE POLICY "Allow all on staff_competencies" ON staff_competencies FOR ALL USING (true) WITH CHECK (true);
+
+-- Financials & Logistics RLS
+ALTER TABLE IF EXISTS patients ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on patients" ON patients;
+CREATE POLICY "Allow all on patients" ON patients FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS medical_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on medical_records" ON medical_records;
+CREATE POLICY "Allow all on medical_records" ON medical_records FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS inventory ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on inventory" ON inventory;
+CREATE POLICY "Allow all on inventory" ON inventory FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS billing_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on billing_records" ON billing_records;
+CREATE POLICY "Allow all on billing_records" ON billing_records FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS general_ledger ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on general_ledger" ON general_ledger;
+CREATE POLICY "Allow all on general_ledger" ON general_ledger FOR ALL USING (true) WITH CHECK (true);
 
 -- Ensure patients has allergies column
 DO $$ 

@@ -33,16 +33,48 @@
                     <tr class="hover:bg-gray-50/50 transition-colors">
                         <td class="px-8 py-5 font-bold text-gray-900">{{ training.title }}</td>
                         <td class="px-6 py-5 text-gray-600">{{ training.type }}</td>
-                        <td class="px-6 py-5 text-gray-500 text-sm">{{ training.schedule_date }}</td>
+                        <td class="px-6 py-5 text-gray-500 text-sm">
+                            <div class="font-medium">{{ training.schedule_date[:10] }}</div>
+                            <div class="text-xs opacity-60">{{ training.schedule_date[11:16] }}</div>
+                        </td>
                         <td class="px-6 py-5">
-                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600">
-                                Planned
+                            <span class="px-3 py-1 rounded-full text-xs font-bold 
+                                {% if training.status == 'Scheduled' %}bg-amber-50 text-amber-600
+                                {% elif training.status == 'Completed' %}bg-green-50 text-green-600
+                                {% else %}bg-blue-50 text-blue-600{% endif %}">
+                                {{ training.status }}
                             </span>
                         </td>
                         <td class="px-8 py-5 text-right">
-                            <button class="text-gray-400 hover:text-[#0891B2] transition-colors">
-                                <i class="bi bi-pencil-square"></i>
-                            </button>
+                            <div class="flex justify-end items-center gap-2">
+                                <button onclick='viewTraining({{ training | tojson | safe }})' title="View Details"
+                                    class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+
+                                <button onclick='openEditModal({{ training | tojson | safe }})' title="Edit Training"
+                                    class="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-all">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+
+                                {% if training.status == 'Scheduled' %}
+                                <form action="{{ url_for('hr2.complete_training', id=training.id) }}" method="POST" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" title="Mark as Completed" 
+                                        class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                                
+                                <form action="{{ url_for('hr2.delete_training', id=training.id) }}" method="POST" class="inline" onsubmit="return confirm('Remove this training session?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" title="Delete" 
+                                        class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     {% else %}
@@ -71,25 +103,54 @@
         </div>
         <form action="{{ url_for('hr2.add_training') }}" method="POST" class="p-8 space-y-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">Training Title</label>
-                <input type="text" name="title" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">Type</label>
-                <select name="type" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
-                    <option value="Mandatory">Mandatory</option>
-                    <option value="Role-based">Role-based</option>
-                    <option value="Supplemental">Supplemental</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">Schedule Date</label>
-                <input type="datetime-local" name="schedule_date" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">Materials URL (Optional)</label>
-                <input type="url" name="materials_url" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="col-span-1 md:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Training Title</label>
+                    <input type="text" name="title" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Type</label>
+                    <select name="type" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                        <option value="Mandatory">Mandatory</option>
+                        <option value="Role-based">Role-based</option>
+                        <option value="Supplemental">Supplemental</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Target Department</label>
+                    <select name="target_department" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                        <option value="All Departments">All Departments</option>
+                        <option value="Nursing">Nursing</option>
+                        <option value="Medical Staff">Medical Staff</option>
+                        <option value="HR">HR</option>
+                        <option value="Logistics">Logistics</option>
+                        <option value="Financials">Financials</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Schedule Date</label>
+                    <input type="datetime-local" name="schedule_date" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Location / Room</label>
+                    <input type="text" name="location" placeholder="e.g. Conference Room A" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Trainer / Instructor</label>
+                    <input type="text" name="trainer" placeholder="Name of instructor" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Max Participants</label>
+                    <input type="number" name="max_participants" placeholder="0 for unlimited" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                </div>
+                <div class="col-span-1 md:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Description</label>
+                    <textarea name="description" rows="3" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]" placeholder="Brief summary of the training topics..."></textarea>
+                </div>
+                <div class="col-span-1 md:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Materials URL (Optional)</label>
+                    <input type="url" name="materials_url" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]" placeholder="https://...">
+                </div>
             </div>
             <button type="submit" class="w-full py-4 bg-[#0891B2] text-white font-bold rounded-2xl shadow-lg hover:bg-cyan-700 transition-all mt-4">
                 Schedule Session
@@ -97,4 +158,188 @@
         </form>
     </div>
 </div>
+
+<!-- Edit Training Modal -->
+<div id="editTrainingModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="p-8 border-b border-gray-100 flex justify-between items-center">
+            <h3 class="text-2xl font-bold text-gray-900">Edit Training</h3>
+            <button onclick="document.getElementById('editTrainingModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="editTrainingForm" method="POST" class="p-8 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="col-span-1 md:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Training Title</label>
+                    <input type="text" name="title" id="edit_title" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Type</label>
+                    <select name="type" id="edit_type" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                        <option value="Mandatory">Mandatory</option>
+                        <option value="Role-based">Role-based</option>
+                        <option value="Supplemental">Supplemental</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Target Department</label>
+                    <select name="target_department" id="edit_target_department" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                        <option value="All Departments">All Departments</option>
+                        <option value="Nursing">Nursing</option>
+                        <option value="Medical Staff">Medical Staff</option>
+                        <option value="HR">HR</option>
+                        <option value="Logistics">Logistics</option>
+                        <option value="Financials">Financials</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Schedule Date</label>
+                    <input type="datetime-local" name="schedule_date" id="edit_schedule_date" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Location / Room</label>
+                    <input type="text" name="location" id="edit_location" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Trainer / Instructor</label>
+                    <input type="text" name="trainer" id="edit_trainer" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Max Participants</label>
+                    <input type="number" name="max_participants" id="edit_max_participants" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                </div>
+                <div class="col-span-1 md:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Description</label>
+                    <textarea name="description" id="edit_description" rows="3" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]"></textarea>
+                </div>
+                <div class="col-span-1 md:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Materials URL (Optional)</label>
+                    <input type="url" name="materials_url" id="edit_materials_url" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                </div>
+            </div>
+            <button type="submit" class="w-full py-4 bg-[#0891B2] text-white font-bold rounded-2xl shadow-lg hover:bg-cyan-700 transition-all mt-4">
+                Update Session
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- View Training Modal -->
+<div id="viewTrainingModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-[#0891B2] text-white">
+            <h3 class="text-2xl font-bold">Training Details</h3>
+            <button onclick="document.getElementById('viewTrainingModal').classList.add('hidden')" class="text-white/80 hover:text-white">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="p-8 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Title</p>
+                    <p id="view_title" class="text-lg font-bold text-gray-900"></p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Type</p>
+                    <p id="view_type" class="text-lg font-medium text-gray-700"></p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Target Department</p>
+                    <p id="view_target_department" class="text-lg font-medium text-gray-700"></p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+                    <p id="view_status" class="inline-block px-3 py-1 rounded-full text-xs font-bold"></p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Scheduled Date</p>
+                    <p id="view_schedule_date" class="text-lg font-medium text-gray-700"></p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Location</p>
+                    <p id="view_location" class="text-lg font-medium text-gray-700"></p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Trainer</p>
+                    <p id="view_trainer" class="text-lg font-medium text-gray-700"></p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Max Participants</p>
+                    <p id="view_max_participants" class="text-lg font-medium text-gray-700"></p>
+                </div>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Description</p>
+                <p id="view_description" class="text-gray-600 italic"></p>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Materials URL</p>
+                <a id="view_materials_url" href="#" target="_blank" class="text-[#0891B2] hover:underline font-medium break-all"></a>
+                <p id="no_materials" class="text-gray-400 italic hidden">No materials provided</p>
+            </div>
+            <div class="pt-6 border-t border-gray-100 flex justify-end">
+                <button onclick="document.getElementById('viewTrainingModal').classList.add('hidden')" 
+                    class="px-6 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openEditModal(training) {
+        document.getElementById('edit_title').value = training.title;
+        document.getElementById('edit_type').value = training.type;
+        document.getElementById('edit_target_department').value = training.target_department || 'All Departments';
+        
+        // Format date for datetime-local input (YYYY-MM-DDTHH:MM)
+        if (training.schedule_date) {
+            document.getElementById('edit_schedule_date').value = training.schedule_date.substring(0, 16);
+        }
+        
+        document.getElementById('edit_location').value = training.location || '';
+        document.getElementById('edit_trainer').value = training.trainer || '';
+        document.getElementById('edit_max_participants').value = training.max_participants || '';
+        document.getElementById('edit_description').value = training.description || '';
+        document.getElementById('edit_materials_url').value = training.materials_url || '';
+        
+        document.getElementById('editTrainingForm').action = `/hr/hr2/trainings/edit/${training.id}`;
+        document.getElementById('editTrainingModal').classList.remove('hidden');
+    }
+
+    function viewTraining(training) {
+        document.getElementById('view_title').textContent = training.title;
+        document.getElementById('view_type').textContent = training.type;
+        document.getElementById('view_target_department').textContent = training.target_department || 'All Departments';
+        
+        const statusEl = document.getElementById('view_status');
+        statusEl.textContent = training.status;
+        statusEl.className = 'px-3 py-1 rounded-full text-xs font-bold ' + 
+            (training.status === 'Scheduled' ? 'bg-amber-50 text-amber-600' : 
+             training.status === 'Completed' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600');
+        
+        document.getElementById('view_schedule_date').textContent = training.schedule_date.replace('T', ' ');
+        document.getElementById('view_location').textContent = training.location || 'Not specified';
+        document.getElementById('view_trainer').textContent = training.trainer || 'Not assigned';
+        document.getElementById('view_max_participants').textContent = training.max_participants || 'Unrestricted';
+        document.getElementById('view_description').textContent = training.description || 'No description provided';
+        
+        const urlEl = document.getElementById('view_materials_url');
+        const noUrlEl = document.getElementById('no_materials');
+        if (training.materials_url) {
+            urlEl.textContent = training.materials_url;
+            urlEl.href = training.materials_url;
+            urlEl.classList.remove('hidden');
+            noUrlEl.classList.add('hidden');
+        } else {
+            urlEl.classList.add('hidden');
+            noUrlEl.classList.remove('hidden');
+        }
+        
+        document.getElementById('viewTrainingModal').classList.remove('hidden');
+    }
+</script>
 {% endblock %}
