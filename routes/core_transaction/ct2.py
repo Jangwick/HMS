@@ -325,10 +325,9 @@ def update_lab_order(order_id):
 @ct2_bp.route('/pharmacy/inventory')
 @login_required
 def pharmacy_inventory():
-    supabase = get_supabase_client()
+    from utils.hms_models import InventoryItem
     try:
-        response = supabase.table('inventory').select('*').eq('category', 'Medical').order('item_name').execute()
-        items = response.data if response.data else []
+        items = InventoryItem.get_all(category='Medical')
     except Exception as e:
         flash(f"Error fetching inventory: {str(e)}", "danger")
         items = []
@@ -343,7 +342,7 @@ def pharmacy_inventory():
 @ct2_bp.route('/pharmacy/item/add', methods=['POST'])
 @login_required
 def add_pharmacy_item():
-    client = get_supabase_client()
+    from utils.hms_models import InventoryItem
     try:
         data = {
             'item_name': request.form.get('item_name'),
@@ -353,7 +352,7 @@ def add_pharmacy_item():
             'expiry_date': request.form.get('expiry_date'),
             'batch_number': request.form.get('batch_number')
         }
-        client.table('inventory').insert(data).execute()
+        InventoryItem.create(data)
         flash('Medication added to inventory.', 'success')
     except Exception as e:
         flash(f'Error adding item: {str(e)}', 'danger')
@@ -362,18 +361,47 @@ def add_pharmacy_item():
 @ct2_bp.route('/pharmacy/item/<int:item_id>/update', methods=['POST'])
 @login_required
 def update_pharmacy_item(item_id):
-    client = get_supabase_client()
+    from utils.hms_models import InventoryItem
     try:
         data = {
             'quantity': int(request.form.get('quantity')),
             'reorder_level': int(request.form.get('reorder_level')),
             'expiry_date': request.form.get('expiry_date')
         }
-        client.table('inventory').update(data).eq('id', item_id).execute()
+        InventoryItem.update(item_id, data)
         flash('Inventory updated.', 'success')
     except Exception as e:
         flash(f'Update failed: {str(e)}', 'danger')
     return redirect(url_for('ct2.pharmacy_inventory'))
+
+@ct2_bp.route('/pharmacy/item/<int:item_id>/delete', methods=['POST'])
+@login_required
+def delete_pharmacy_item(item_id):
+    from utils.hms_models import InventoryItem
+    try:
+        InventoryItem.delete(item_id)
+        flash('Medication record removed.', 'info')
+    except Exception as e:
+        flash(f'Deletion failed: {str(e)}', 'danger')
+    return redirect(url_for('ct2.pharmacy_inventory'))
+
+@ct2_bp.route('/pharmacy/history')
+@login_required
+def dispensing_history():
+    client = get_supabase_client()
+    try:
+        # Get prescriptions with status 'Dispensed' and join patients/doctors
+        response = client.table('prescriptions').select('*, patients(*), users(*)').eq('status', 'Dispensed').order('created_at', desc=True).execute()
+        history = response.data if response.data else []
+    except Exception as e:
+        flash(f'Error fetching history: {str(e)}', 'danger')
+        history = []
+        
+    return render_template('subsystems/core_transaction/ct2/dispensing_history.html',
+                           history=history,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @ct2_bp.route('/pharmacy/dispense', methods=['GET', 'POST'])
 @login_required

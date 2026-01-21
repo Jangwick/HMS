@@ -1,0 +1,76 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Dispensing History - {{ subsystem_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Dispensing History</h3>
+            <p class="text-gray-500">Audit trail of medications issued to patients.</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{{ url_for('ct2.pharmacy_inventory') }}" class="px-5 py-2.5 bg-white text-gray-700 font-bold rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-all flex items-center">
+                <i class="bi bi-arrow-left mr-2"></i>
+                Back to Inventory
+            </a>
+            <button onclick="window.print()" class="px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-600 transition-all">
+                <i class="bi bi-printer mr-2"></i>
+                Print Audit
+            </button>
+        </div>
+    </div>
+
+    <!-- History Table -->
+    <div class="glass-card rounded-2xl overflow-hidden mt-8">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50/50 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4">Transaction Date</th>
+                        <th class="px-6 py-4">Patient</th>
+                        <th class="px-6 py-4">Medication</th>
+                        <th class="px-6 py-4">Quantity/Dosage</th>
+                        <th class="px-6 py-4">Dispensed By</th>
+                        <th class="px-6 py-4 text-right">Reference</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for log in history %}
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-bold text-gray-700">{{ log.created_at | datetime("%b %d, %Y") }}</div>
+                            <div class="text-[10px] text-gray-400">{{ log.created_at | datetime("%I:%M %p") }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-gray-900">{{ log.patients.first_name }} {{ log.patients.last_name }}</div>
+                            <div class="text-xs text-gray-400">{{ log.patients.patient_id_alt }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold">{{ log.medication_name }}</span>
+                        </td>
+                        <td class="px-6 py-4 text-sm font-medium text-gray-600">
+                            {{ log.dosage }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            Dr. {{ log.users.username if log.users else 'Unknown' }}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <span class="text-xs font-mono text-gray-400">#RX-{{ log.id }}</span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-16 text-center text-gray-400">
+                            <i class="bi bi-journal-x text-5xl mb-4 block"></i>
+                            No dispensing history records found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

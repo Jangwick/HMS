@@ -84,14 +84,31 @@ class InventoryItem:
             self.batch_number = data.get('batch_number')
 
     @staticmethod
-    def get_low_stock():
+    def get_all(category=None):
         client = get_supabase_client()
-        # Using a raw filter since quantity < reorder_level
-        response = client.table('inventory').select('*').lt('quantity', 'reorder_level').execute()
-        # Note: Supabase might not support column-to-column comparison directly in .lt() easily without RPC or raw SQL
-        # For now, we'll fetch all and filter or use a safe default
-        response = client.table('inventory').select('*').execute()
-        return [InventoryItem(d) for d in response.data if d['quantity'] <= d['reorder_level']] if response.data else []
+        query = client.table('inventory').select('*').order('item_name')
+        if category:
+            query = query.eq('category', category)
+        response = query.execute()
+        return [InventoryItem(d) for d in response.data] if response.data else []
+
+    @staticmethod
+    def create(data: dict):
+        client = get_supabase_client()
+        response = client.table('inventory').insert(data).execute()
+        return response.data
+
+    @staticmethod
+    def update(item_id, data: dict):
+        client = get_supabase_client()
+        response = client.table('inventory').update(data).eq('id', item_id).execute()
+        return response.data
+
+    @staticmethod
+    def delete(item_id):
+        client = get_supabase_client()
+        response = client.table('inventory').delete().eq('id', item_id).execute()
+        return response.data
 
 class Applicant:
     def __init__(self, data: dict = None):
