@@ -470,3 +470,14 @@ def settings():
 def logout():
     logout_user()
     return redirect(url_for('ct1.login'))
+
+@ct1_bp.route('/appointment/<int:appointment_id>/cancel', methods=['POST'])
+@login_required
+def cancel_appointment(appointment_id):
+    client = get_supabase_client()
+    try:
+        client.table('appointments').update({'status': 'Cancelled'}).eq('id', appointment_id).execute()
+        flash('Appointment cancelled.', 'info')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct1.dashboard'))

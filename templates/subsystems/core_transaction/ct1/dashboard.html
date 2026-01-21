@@ -102,6 +102,7 @@
                 <thead class="bg-gray-50/50 text-gray-400 text-xs font-bold uppercase tracking-wider">
                     <tr>
                         <th class="px-6 py-4">Patient</th>
+                        <th class="px-6 py-4">Physician</th>
                         <th class="px-6 py-4">Date & Time</th>
                         <th class="px-6 py-4">Type</th>
                         <th class="px-6 py-4">Status</th>
@@ -113,44 +114,81 @@
                     <tr class="hover:bg-emerald-50/30 transition-colors group">
                         <td class="px-6 py-4">
                             <div class="flex items-center">
-                                <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs mr-3">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-100/50 text-emerald-600 flex items-center justify-center font-bold text-sm mr-3 border border-emerald-200">
                                     {{ appt.patient.first_name[0] if appt.patient else '?' }}{{ appt.patient.last_name[0] if appt.patient else '?' }}
                                 </div>
                                 <div>
                                     <div class="font-bold text-gray-900 group-hover:text-emerald-600 transition-colors">
                                         {{ appt.patient.first_name if appt.patient else 'Unknown' }} {{ appt.patient.last_name if appt.patient else 'Patient' }}
                                     </div>
-                                    <div class="text-xs text-gray-400">{{ appt.patient.patient_id_alt if appt.patient else 'N/A' }}</div>
+                                    <div class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-md inline-block mt-1">
+                                        {{ appt.patient.patient_id_alt if appt.patient else 'N/A' }}
+                                    </div>
                                 </div>
                             </div>
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-600">
-                            {{ appt.appointment_date }}
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center text-xs mr-2">
+                                    <i class="bi bi-person-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-semibold text-gray-700">Dr. {{ appt.doctor.username if appt.doctor else 'Unassigned' }}</div>
+                                    <div class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">
+                                        {{ appt.doctor.role if appt.doctor else 'Medical Staff' }}
+                                    </div>
+                                </div>
+                            </div>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="px-2.5 py-1 rounded-full text-xs font-bold 
+                            <div class="text-sm font-bold text-gray-700">{{ appt.appointment_date | datetime("%b %d, %Y") }}</div>
+                            <div class="text-xs text-gray-400">{{ appt.appointment_date | datetime("%I:%M %p") }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider
                                 {% if appt.type == 'Follow-up' %}bg-blue-100 text-blue-700
                                 {% elif appt.type == 'Consultation' %}bg-purple-100 text-purple-700
+                                {% elif appt.type == 'Emergency' %}bg-red-100 text-red-700
                                 {% else %}bg-gray-100 text-gray-700{% endif %}">
                                 {{ appt.type }}
                             </span>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="flex items-center text-xs font-bold text-emerald-600">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
+                            <span class="flex items-center text-xs font-bold {% if appt.status == 'Scheduled' %}text-emerald-600{% elif appt.status == 'Cancelled' %}text-red-500{% else %}text-gray-500{% endif %}">
+                                <span class="w-1.5 h-1.5 rounded-full {% if appt.status == 'Scheduled' %}bg-emerald-500 animate-pulse{% elif appt.status == 'Cancelled' %}bg-red-500{% else %}bg-gray-400{% endif %} mr-2"></span>
                                 {{ appt.status }}
                             </span>
                         </td>
                         <td class="px-6 py-4 text-right">
-                            <a href="{{ url_for('ct1.view_patient', patient_id=appt.patient_id) }}" 
-                               class="text-gray-400 hover:text-emerald-600 transition-colors">
-                                <i class="bi bi-eye-fill"></i>
-                            </a>
+                            <div class="flex items-center justify-end space-x-2">
+                                {% if appt.notes %}
+                                <div class="relative group/note">
+                                    <i class="bi bi-chat-left-text text-gray-300 hover:text-emerald-500 cursor-help transition-colors"></i>
+                                    <div class="absolute bottom-full right-0 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] rounded-lg opacity-0 group-hover/note:opacity-100 transition-opacity pointer-events-none z-10">
+                                        {{ appt.notes }}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                <a href="{{ url_for('ct1.view_patient', patient_id=appt.patient_id) }}" 
+                                   class="w-8 h-8 rounded-lg bg-gray-50 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 flex items-center justify-center transition-all border border-gray-100"
+                                   title="View Patient Profile">
+                                    <i class="bi bi-eye-fill"></i>
+                                </a>
+                                {% if appt.status == 'Scheduled' %}
+                                <form action="{{ url_for('ct1.cancel_appointment', appointment_id=appt.id) }}" method="POST" class="inline" onsubmit="return confirm('Cancel this appointment?')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="w-8 h-8 rounded-lg bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-all border border-gray-100"
+                                            title="Cancel Appointment">
+                                        <i class="bi bi-calendar-x"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                        <td colspan="6" class="px-6 py-16 text-center">
                             <i class="bi bi-calendar2-x text-4xl mb-2 block"></i>
                             No upcoming appointments found.
                         </td>

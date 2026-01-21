@@ -52,8 +52,10 @@ class Appointment:
             self.status = data.get('status')
             self.type = data.get('type')
             self.created_at = data.get('created_at')
+            self.notes = data.get('notes')
             # Joined data
             self.patient = Patient(data.get('patients')) if data.get('patients') else None
+            self.doctor = data.get('users') if data.get('users') else None
 
     @staticmethod
     def create(data: dict):
@@ -66,7 +68,8 @@ class Appointment:
     @staticmethod
     def get_upcoming():
         client = get_supabase_client()
-        response = client.table('appointments').select('*, patients(*)').gte('appointment_date', datetime.now().isoformat()).order('appointment_date').execute()
+        # Joins patients and the doctor (users table)
+        response = client.table('appointments').select('*, patients(*), users(*)').gte('appointment_date', datetime.now().isoformat()).order('appointment_date').limit(10).execute()
         return [Appointment(d) for d in response.data] if response.data else []
 
 class InventoryItem:
