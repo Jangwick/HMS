@@ -214,24 +214,27 @@ def change_password():
 @ct2_bp.route('/dashboard')
 @login_required
 def dashboard():
+    from utils.hms_models import LabOrder
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
     
     supabase = get_supabase_client()
-    today = datetime.utcnow().strftime('%Y-%m-%d')
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     
     # Get stats
     try:
         # Lab stats
         lab_orders_count = supabase.table('lab_orders').select('id', count='exact').execute().count or 0
-        pending_lab_count = supabase.table('lab_orders').select('id', count='exact').eq('status', 'Pending').execute().count or 0
+        pending_lab_count = supabase.table('lab_orders').select('id', count='exact').eq('status', 'Ordered').execute().count or 0
         
         # Pharmacy stats
-        low_stock_count = supabase.table('inventory').select('id', count='exact').lt('quantity', 10).eq('category', 'Medical').execute().count or 0
+        low_stock_count = supabase.table('inventory').select('id', count='exact').lt('quantity', 10).execute().count or 0
         
         # Today's activity
-        today_appointments = supabase.table('appointments').select('id', count='exact').eq('appointment_date', today).execute().count or 0
+        today_appointments = supabase.table('appointments').select('id', count='exact').gte('appointment_date', today_start).execute().count or 0
+        
+        recent_orders = LabOrder.get_recent(5)
         
         metrics = {
             'total_lab_orders': lab_orders_count,
@@ -242,6 +245,7 @@ def dashboard():
         
     except Exception as e:
         print(f"Error fetching dashboard metrics: {e}")
+        recent_orders = []
         metrics = {
             'total_lab_orders': 0,
             'pending_labs': 0,
@@ -252,6 +256,7 @@ def dashboard():
     return render_template('subsystems/core_transaction/ct2/dashboard.html', 
                            now=datetime.utcnow,
                            metrics=metrics,
+                           recent_orders=recent_orders,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -259,21 +264,63 @@ def dashboard():
 @ct2_bp.route('/lab/orders')
 @login_required
 def lab_orders():
-    supabase = get_supabase_client()
-    try:
-        response = supabase.table('lab_orders').select('*, patients(first_name, last_name, patient_id_alt)').order('created_at', desc=True).execute()
-        orders = response.data if response.data else []
-    except Exception as e:
-        print(f"DEBUG Error fetching lab orders: {e}")
-        flash(f"Error fetching lab orders: {str(e)}", "danger")
-        orders = []
+    from utils.hms_models import LabOrder, Patient
+    orders = LabOrder.get_all()
+    patients = Patient.get_all()
+    
+    client = get_supabase_client()
+    doctors = client.table('users').select('*').in_('subsystem', ['ct1', 'ct2', 'ct3']).execute().data or []
         
     return render_template('subsystems/core_transaction/ct2/lab_orders.html', 
                            now=datetime.utcnow,
                            orders=orders,
+                           patients=patients,
+                           doctors=doctors,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+@ct2_bp.route('/lab/order/new', methods=['POST'])
+@login_required
+def new_lab_order():
+    from utils.hms_models import LabOrder
+    try:
+        data = {
+            'patient_id': request.form.get('patient_id'),
+            'doctor_id': request.form.get('doctor_id') or current_user.id,
+            'test_name': request.form.get('test_name'),
+            'status': 'Ordered',
+            'critical_alert': 'critical_alert' in request.form
+        }
+        LabOrder.create(data)
+        flash('Lab order created successfully!', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('ct2.lab_orders'))
+
+@ct2_bp.route('/lab/order/<int:order_id>/update', methods=['POST'])
+@login_required
+def update_lab_order(order_id):
+    from utils.hms_models import LabOrder
+    try:
+        results = request.form.get('results')
+        status = request.form.get('status')
+        critical = 'critical_alert' in request.form
+        
+        update_data = {
+            'status': status,
+            'critical_alert': critical
+        }
+        
+        if results:
+            update_data['results'] = {'finding': results, 'updated_by': current_user.username}
+            
+        LabOrder.update(order_id, update_data)
+        flash('Lab order updated.', 'success')
+    except Exception as e:
+        flash(f'Update failed: {str(e)}', 'danger')
+    return redirect(url_for('ct2.lab_orders'))
+
 
 @ct2_bp.route('/pharmacy/inventory')
 @login_required
@@ -293,36 +340,96 @@ def pharmacy_inventory():
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
+@ct2_bp.route('/pharmacy/item/add', methods=['POST'])
+@login_required
+def add_pharmacy_item():
+    client = get_supabase_client()
+    try:
+        data = {
+            'item_name': request.form.get('item_name'),
+            'category': 'Medical',
+            'quantity': int(request.form.get('quantity', 0)),
+            'reorder_level': int(request.form.get('reorder_level', 10)),
+            'expiry_date': request.form.get('expiry_date'),
+            'batch_number': request.form.get('batch_number')
+        }
+        client.table('inventory').insert(data).execute()
+        flash('Medication added to inventory.', 'success')
+    except Exception as e:
+        flash(f'Error adding item: {str(e)}', 'danger')
+    return redirect(url_for('ct2.pharmacy_inventory'))
+
+@ct2_bp.route('/pharmacy/item/<int:item_id>/update', methods=['POST'])
+@login_required
+def update_pharmacy_item(item_id):
+    client = get_supabase_client()
+    try:
+        data = {
+            'quantity': int(request.form.get('quantity')),
+            'reorder_level': int(request.form.get('reorder_level')),
+            'expiry_date': request.form.get('expiry_date')
+        }
+        client.table('inventory').update(data).eq('id', item_id).execute()
+        flash('Inventory updated.', 'success')
+    except Exception as e:
+        flash(f'Update failed: {str(e)}', 'danger')
+    return redirect(url_for('ct2.pharmacy_inventory'))
+
 @ct2_bp.route('/pharmacy/dispense', methods=['GET', 'POST'])
 @login_required
 def dispense_meds():
-    supabase = get_supabase_client()
-    if request.method == 'POST':
-        # Logic for dispensing meds would go here
-        flash('Medication dispensed successfully!', 'success')
-        return redirect(url_for('ct2.pharmacy_inventory'))
+    from utils.hms_models import Patient
+    client = get_supabase_client()
     
-    try:
-        # Get pending prescriptions or patients with recent clinical notes
-        # For now, just getting patients to demo
-        response = supabase.table('patients').select('id, first_name, last_name, patient_id_alt').limit(50).execute()
-        patients = response.data if response.data else []
-        
-        # Also get medication list for dropdown
-        med_response = supabase.table('inventory').select('id, item_name, quantity').eq('category', 'Medical').gt('quantity', 0).execute()
-        medications = med_response.data if med_response.data else []
-    except Exception as e:
-        flash(f"Error fetching data: {str(e)}", "danger")
-        patients = []
-        medications = []
-
+    if request.method == 'POST':
+        try:
+            patient_id = request.form.get('patient_id')
+            med_name = request.form.get('medication')
+            qty = int(request.form.get('quantity'))
+            
+            # 1. Update Inventory
+            item_res = client.table('inventory').select('*').eq('item_name', med_name).eq('category', 'Medical').execute()
+            if not item_res.data:
+                flash('Medication not found.', 'danger')
+                return redirect(url_for('ct2.dispense_meds'))
+            
+            item = item_res.data[0]
+            if item['quantity'] < qty:
+                flash(f'Insufficient stock. Only {item["quantity"]} remaining.', 'warning')
+                return redirect(url_for('ct2.dispense_meds'))
+            
+            new_qty = item['quantity'] - qty
+            client.table('inventory').update({'quantity': new_qty}).eq('id', item['id']).execute()
+            
+            # 2. Record Prescription (as dispensed)
+            prescription_data = {
+                'patient_id': patient_id,
+                'doctor_id': current_user.id, # In reality, should be the prescribing doctor
+                'medication_name': med_name,
+                'dosage': f"{qty} units",
+                'instructions': request.form.get('instructions'),
+                'status': 'Dispensed'
+            }
+            client.table('prescriptions').insert(prescription_data).execute()
+            
+            flash(f'Successfully dispensed {qty} of {med_name}.', 'success')
+            return redirect(url_for('ct2.pharmacy_inventory'))
+            
+        except Exception as e:
+            flash(f'Dispensing error: {str(e)}', 'danger')
+    
+    # GET request
+    patients = Patient.get_all()
+    meds = client.table('inventory').select('*').eq('category', 'Medical').gt('quantity', 0).execute().data or []
+    
     return render_template('subsystems/core_transaction/ct2/dispense_meds.html', 
                            now=datetime.utcnow,
                            patients=patients,
-                           medications=medications,
+                           medications=meds,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
 
 @ct2_bp.route('/settings', methods=['GET', 'POST'])
 @login_required

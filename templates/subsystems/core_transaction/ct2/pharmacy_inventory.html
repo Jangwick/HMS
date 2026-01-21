@@ -11,14 +11,15 @@
             <p class="text-gray-500">Monitoring medication inventory levels and expirations.</p>
         </div>
         <div class="flex flex-wrap gap-3">
-            <button class="px-5 py-2.5 bg-white text-gray-700 font-bold rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-all flex items-center">
-                <i class="bi bi-download mr-2"></i>
-                Export List
+            <button onclick="window.print()" class="px-5 py-2.5 bg-white text-gray-700 font-bold rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-all flex items-center">
+                <i class="bi bi-printer mr-2"></i>
+                Print List
             </button>
-            <a href="{{ url_for('ct2.dispense_meds') }}" class="px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-600 transition-all flex items-center">
-                <i class="bi bi-capsule mr-2"></i>
-                Dispense Meds
-            </a>
+            <button onclick="document.getElementById('addItemModal').classList.remove('hidden')" 
+                    class="px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-600 transition-all flex items-center">
+                <i class="bi bi-plus-lg mr-2"></i>
+                Add Medication
+            </button>
         </div>
     </div>
 
@@ -114,18 +115,19 @@
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex justify-end space-x-2">
-                                <button class="p-2 text-gray-400 hover:text-emerald-600 transition-colors">
+                                <button onclick="openUpdateModal('{{ item.id }}', '{{ item.quantity }}', '{{ item.reorder_level }}', '{{ item.expiry_date }}')"
+                                        class="p-2 bg-gray-50 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-gray-100">
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
-                                <button class="p-2 text-gray-400 hover:text-blue-600 transition-colors">
-                                    <i class="bi bi-plus-circle"></i>
-                                </button>
+                                <a href="{{ url_for('ct2.dispense_meds') }}" class="p-2 bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all border border-gray-100">
+                                    <i class="bi bi-capsule"></i>
+                                </a>
                             </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" class="px-6 py-24 text-center text-gray-400">
+                        <td colspan="5" class="px-6 py-16 text-center text-gray-400">
                             <i class="bi bi-box-seam text-5xl mb-4 block"></i>
                             No items found in pharmacy stock.
                         </td>
@@ -136,4 +138,118 @@
         </div>
     </div>
 </div>
+
+<!-- Add Item Modal -->
+<div id="addItemModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <h3 class="text-xl font-bold text-gray-900">Add New Medication</h3>
+            <button onclick="document.getElementById('addItemModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('ct2.add_pharmacy_item') }}" method="POST" class="p-6 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Medication Name</label>
+                <input type="text" name="item_name" required placeholder="e.g. Paracetamol 500mg" 
+                       class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Initial Quantity</label>
+                    <input type="number" name="quantity" required min="0" value="0"
+                           class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Alert Threshold</label>
+                    <input type="number" name="reorder_level" required min="1" value="10"
+                           class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Batch Number</label>
+                    <input type="text" name="batch_number" placeholder="BATCH-123" 
+                           class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Expiry Date</label>
+                    <input type="date" name="expiry_date" required
+                           class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500">
+                </div>
+            </div>
+
+            <div class="pt-4 flex space-x-3">
+                <button type="button" onclick="document.getElementById('addItemModal').classList.add('hidden')" 
+                        class="flex-1 px-6 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 px-6 py-3 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition-all">
+                    Register Item
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Update Item Modal -->
+<div id="updateItemModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <h3 class="text-xl font-bold text-gray-900">Update Stock Levels</h3>
+            <button onclick="document.getElementById('updateItemModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="updateItemForm" method="POST" class="p-6 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Current Quantity</label>
+                <input type="number" name="quantity" id="up_qty" required min="0" 
+                       class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Reorder Alert Level</label>
+                <input type="number" name="reorder_level" id="up_threshold" required min="1" 
+                       class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Updated Expiry</label>
+                <input type="date" name="expiry_date" id="up_expiry" required
+                       class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <div class="pt-4 flex space-x-3">
+                <button type="button" onclick="document.getElementById('updateItemModal').classList.add('hidden')" 
+                        class="flex-1 px-6 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openUpdateModal(id, qty, threshold, expiry) {
+    const modal = document.getElementById('updateItemModal');
+    const form = document.getElementById('updateItemForm');
+    
+    document.getElementById('up_qty').value = qty;
+    document.getElementById('up_threshold').value = threshold;
+    document.getElementById('up_expiry').value = expiry;
+    
+    form.action = `/core-transaction/ct2/pharmacy/item/${id}/update`;
+    modal.classList.remove('hidden');
+}
+</script>
 {% endblock %}

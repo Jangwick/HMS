@@ -147,3 +147,44 @@ class Interview:
         client = get_supabase_client()
         response = client.table('interviews').select('*, applicants(*)').gte('interview_date', datetime.now().isoformat()).order('interview_date').execute()
         return [Interview(d) for d in response.data] if response.data else []
+
+class LabOrder:
+    def __init__(self, data: dict = None):
+        if data:
+            self.id = data.get('id')
+            self.patient_id = data.get('patient_id')
+            self.doctor_id = data.get('doctor_id')
+            self.test_name = data.get('test_name')
+            self.status = data.get('status')
+            self.results = data.get('results') or {}
+            self.critical_alert = data.get('critical_alert', False)
+            self.created_at = data.get('created_at')
+            # Joined data
+            self.patient = Patient(data.get('patients')) if data.get('patients') else None
+            self.doctor = data.get('users') if data.get('users') else None
+
+    @staticmethod
+    def create(data: dict):
+        client = get_supabase_client()
+        response = client.table('lab_orders').insert(data).execute()
+        if response.data:
+            return LabOrder(response.data[0])
+        return None
+
+    @staticmethod
+    def get_all():
+        client = get_supabase_client()
+        response = client.table('lab_orders').select('*, patients(*), users(*)').order('created_at', desc=True).execute()
+        return [LabOrder(d) for d in response.data] if response.data else []
+
+    @staticmethod
+    def get_recent(limit=5):
+        client = get_supabase_client()
+        response = client.table('lab_orders').select('*, patients(*), users(*)').order('created_at', desc=True).limit(limit).execute()
+        return [LabOrder(d) for d in response.data] if response.data else []
+
+    @staticmethod
+    def update(order_id, data: dict):
+        client = get_supabase_client()
+        response = client.table('lab_orders').update(data).eq('id', order_id).execute()
+        return response.data
