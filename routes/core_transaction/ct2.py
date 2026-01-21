@@ -230,6 +230,8 @@ def dashboard():
         
         # Pharmacy stats
         low_stock_count = supabase.table('inventory').select('id', count='exact').lt('quantity', 10).execute().count or 0
+        pending_rx_count = supabase.table('prescriptions').select('id', count='exact').eq('status', 'Pending').execute().count or 0
+        today_dispenses = supabase.table('dispensing_history').select('id', count='exact').gte('dispensed_at', today_start).execute().count or 0
         
         # Today's activity
         today_appointments = supabase.table('appointments').select('id', count='exact').gte('appointment_date', today_start).execute().count or 0
@@ -240,7 +242,9 @@ def dashboard():
             'total_lab_orders': lab_orders_count,
             'pending_labs': pending_lab_count,
             'low_stock_items': low_stock_count,
-            'today_patients': today_appointments
+            'today_patients': today_appointments,
+            'pending_prescriptions': pending_rx_count,
+            'today_dispenses': today_dispenses
         }
         
     except Exception as e:
@@ -411,36 +415,44 @@ def dispense_meds():
     
     if request.method == 'POST':
         try:
+            # Check if dispensing an existing prescription
+            prescription_id = request.form.get('prescription_id')
             patient_id = request.form.get('patient_id')
             med_name = request.form.get('medication')
-            qty = int(request.form.get('quantity'))
+            qty_str = request.form.get('quantity', '1')
+            qty = int(qty_str) if qty_str else 1
             
             # 1. Update Inventory
             item_res = client.table('inventory').select('*').eq('item_name', med_name).eq('category', 'Medical').execute()
             if not item_res.data:
-                flash('Medication not found.', 'danger')
+                flash(f'Medication "{med_name}" not found in medical inventory.', 'danger')
                 return redirect(url_for('ct2.dispense_meds'))
             
             item = item_res.data[0]
             if item['quantity'] < qty:
-                flash(f'Insufficient stock. Only {item["quantity"]} remaining.', 'warning')
+                flash(f'Insufficient stock for {med_name}. Available: {item["quantity"]}, Requested: {qty}', 'warning')
                 return redirect(url_for('ct2.dispense_meds'))
             
             new_qty = item['quantity'] - qty
             client.table('inventory').update({'quantity': new_qty}).eq('id', item['id']).execute()
             
-            # 2. Record Prescription (as dispensed)
-            prescription_data = {
-                'patient_id': patient_id,
-                'doctor_id': current_user.id, # In reality, should be the prescribing doctor
-                'medication_name': med_name,
-                'dosage': f"{qty} units",
-                'instructions': request.form.get('instructions'),
-                'status': 'Dispensed'
-            }
-            client.table('prescriptions').insert(prescription_data).execute()
+            if prescription_id:
+                # Update existing prescription
+                client.table('prescriptions').update({'status': 'Dispensed'}).eq('id', prescription_id).execute()
+                flash(f'Prescription #{prescription_id} dispensed successfully.', 'success')
+            else:
+                # 2. Record New Prescription (as dispensed)
+                prescription_data = {
+                    'patient_id': patient_id,
+                    'doctor_id': current_user.id,
+                    'medication_name': med_name,
+                    'dosage': f"{qty} units",
+                    'instructions': request.form.get('instructions'),
+                    'status': 'Dispensed'
+                }
+                client.table('prescriptions').insert(prescription_data).execute()
+                flash(f'Successfully dispensed {qty} of {med_name}.', 'success')
             
-            flash(f'Successfully dispensed {qty} of {med_name}.', 'success')
             return redirect(url_for('ct2.pharmacy_inventory'))
             
         except Exception as e:
@@ -450,10 +462,18 @@ def dispense_meds():
     patients = Patient.get_all()
     meds = client.table('inventory').select('*').eq('category', 'Medical').gt('quantity', 0).execute().data or []
     
+    # Fetch pending prescriptions with patient details
+    pending_prescriptions = client.table('prescriptions')\
+        .select('*, patients(first_name, last_name, patient_id_alt), users(username)')\
+        .eq('status', 'Pending')\
+        .order('created_at', desc=True)\
+        .execute().data or []
+    
     return render_template('subsystems/core_transaction/ct2/dispense_meds.html', 
                            now=datetime.utcnow,
                            patients=patients,
                            medications=meds,
+                           pending_prescriptions=pending_prescriptions,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

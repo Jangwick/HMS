@@ -78,18 +78,20 @@ class InventoryItem:
             self.id = data.get('id')
             self.item_name = data.get('item_name')
             self.category = data.get('category')
-            self.quantity = data.get('quantity')
-            self.reorder_level = data.get('reorder_level')
-            self.expiry_date = data.get('expiry_date')
             self.batch_number = data.get('batch_number')
+            self.quantity = data.get('quantity')
+            self.unit = data.get('unit')
+            self.expiry_date = data.get('expiry_date')
+            self.location = data.get('location')
+            self.last_updated = data.get('last_updated')
 
     @staticmethod
     def get_all(category=None):
         client = get_supabase_client()
-        query = client.table('inventory').select('*').order('item_name')
+        query = client.table('inventory').select('*')
         if category:
             query = query.eq('category', category)
-        response = query.execute()
+        response = query.order('item_name').execute()
         return [InventoryItem(d) for d in response.data] if response.data else []
 
     @staticmethod
@@ -109,6 +111,33 @@ class InventoryItem:
         client = get_supabase_client()
         response = client.table('inventory').delete().eq('id', item_id).execute()
         return response.data
+
+    @staticmethod
+    def get_low_stock(threshold=10):
+        client = get_supabase_client()
+        response = client.table('inventory').select('*').lt('quantity', threshold).execute()
+        return [InventoryItem(d) for d in response.data] if response.data else []
+
+class DispenseRecord:
+    def __init__(self, data: dict = None):
+        if data:
+            self.id = data.get('id')
+            self.inventory_item_id = data.get('inventory_item_id')
+            self.patient_id = data.get('patient_id')
+            self.quantity = data.get('quantity')
+            self.dispensed_by = data.get('dispensed_by')
+            self.dispensed_at = data.get('dispensed_at')
+            self.notes = data.get('notes')
+            # Joined data
+            self.item = InventoryItem(data.get('inventory')) if data.get('inventory') else None
+            self.patient = Patient(data.get('patients')) if data.get('patients') else None
+            self.staff = data.get('users') if data.get('users') else None
+
+    @staticmethod
+    def get_history(limit=50):
+        client = get_supabase_client()
+        response = client.table('dispensing_history').select('*, inventory(*), patients(*), users(*)').order('dispensed_at', desc=True).limit(limit).execute()
+        return [DispenseRecord(d) for d in response.data] if response.data else []
 
 class Applicant:
     def __init__(self, data: dict = None):

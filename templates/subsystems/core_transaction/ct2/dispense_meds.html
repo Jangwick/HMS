@@ -13,99 +13,199 @@
         </ol>
     </nav>
 
-    <div class="glass-card rounded-3xl overflow-hidden shadow-2xl">
-        <!-- Header -->
-        <div class="bg-gradient-to-r from-[#10B981] to-gray-800 px-8 py-10 text-white relative">
-            <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
-            <div class="relative z-10">
-                <h3 class="text-3xl font-bold mb-2">Dispense Medication</h3>
-                <p class="text-emerald-50 opacity-90">Pharmacy Point-of-Sale & Verification</p>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Sidebar: Pending Prescriptions -->
+        <div class="lg:col-span-1 space-y-6">
+            <div class="glass-card rounded-3xl p-6 border-emerald-100 border bg-white/50 backdrop-blur-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <h4 class="font-bold text-gray-900 flex items-center">
+                        <i class="bi bi-hourglass-split mr-2 text-emerald-500"></i>
+                        Pending Orders
+                    </h4>
+                    <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold">
+                        {{ pending_prescriptions|length }}
+                    </span>
+                </div>
+
+                <div class="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                    {% for rx in pending_prescriptions %}
+                    <div class="p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all cursor-pointer group"
+                         onclick="populateFromPrescription('{{ rx.id }}', '{{ rx.patient_id }}', '{{ rx.medication_name }}', '{{ rx.dosage }}', '{{ (rx.instructions or '') | replace('\'', '\\\'') }}')">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[10px] font-mono font-bold text-emerald-600">#RX-{{ rx.id }}</span>
+                            <span class="text-[10px] text-gray-400">{{ (rx.created_at or '')[:10] }}</span>
+                        </div>
+                        <div class="font-bold text-gray-900 text-sm group-hover:text-emerald-700">
+                            {% if rx.patients %}
+                                {{ rx.patients.first_name }} {{ rx.patients.last_name }}
+                            {% else %}
+                                Unknown Patient
+                            {% endif %}
+                        </div>
+                        <div class="text-xs text-gray-600 mt-1 flex items-center">
+                            <i class="bi bi-capsule mr-1"></i>
+                            {{ rx.medication_name }}
+                        </div>
+                        <div class="text-[10px] text-gray-400 mt-2 italic">Ref: Dr. {{ rx.users.username if rx.users else 'Staff' }}</div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-10">
+                        <i class="bi bi-clipboard-check text-gray-300 text-3xl mb-2 block"></i>
+                        <p class="text-xs text-gray-400 font-medium">No pending prescriptions</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="glass-card rounded-3xl p-6 bg-blue-50/50 border-blue-100 border">
+                <h5 class="text-sm font-bold text-blue-800 mb-2">Verification Notice</h5>
+                <p class="text-[11px] text-blue-600 leading-relaxed">
+                    Always verify the patient's identity and allergy history before dispensing medication. Ensure the batch number matches the physical package.
+                </p>
             </div>
         </div>
 
-        <form method="POST" class="p-8 space-y-10 bg-white/50 backdrop-blur-md">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <!-- Main Form -->
+        <div class="lg:col-span-2">
+            <div class="glass-card rounded-3xl overflow-hidden shadow-2xl">
+                <!-- Header -->
+                <div class="bg-gradient-to-r from-[#10B981] to-gray-800 px-8 py-10 text-white relative">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                    <div class="relative z-10">
+                        <h3 class="text-3xl font-bold mb-2">Dispense Medication</h3>
+                        <p class="text-emerald-50 opacity-90">Pharmacy Point-of-Sale & Verification</p>
+                    </div>
+                </div>
 
-            <!-- Section 1: Patient & Med -->
-            <div class="space-y-6">
-                <div class="flex items-center space-x-3 mb-2">
-                    <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                        <i class="bi bi-person-check"></i>
-                    </div>
-                    <h4 class="text-lg font-bold text-gray-900">Patient & Medication Selection</h4>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="form-group">
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Select Patient</label>
-                        <select name="patient_id" required
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none">
-                            <option value="" disabled selected>Select active patient...</option>
-                            {% for patient in patients %}
-                            <option value="{{ patient.id }}">
-                                {{ patient.first_name }} {{ patient.last_name }} (MRN: {{ patient.patient_id_alt }})
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Medication</label>
-                        <select name="medication" required
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none">
-                            <option value="" disabled selected>Search inventory...</option>
-                            {% for med in medications %}
-                            <option value="{{ med.item_name }}">
-                                {{ med.item_name }} (Stock: {{ med.quantity }})
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-            </div>
+                <form method="POST" id="dispenseForm" class="p-8 space-y-10 bg-white/50 backdrop-blur-md">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="prescription_id" id="rx_id_field">
 
-            <!-- Section 2: Details -->
-            <div class="space-y-6">
-                <div class="flex items-center space-x-3 mb-2">
-                    <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-                        <i class="bi bi-clipboard-pulse"></i>
+                    <!-- Section 1: Patient & Med -->
+                    <div class="space-y-6">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                <i class="bi bi-person-check"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-gray-900">Patient & Medication Selection</h4>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-group">
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Select Patient</label>
+                                <select name="patient_id" required
+                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none">
+                                    <option value="" disabled selected>Select active patient...</option>
+                                    {% for patient in patients %}
+                                    <option value="{{ patient.id }}">
+                                        {{ patient.first_name }} {{ patient.last_name }} (MRN: {{ patient.patient_id_alt }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Medication</label>
+                                <select name="medication" required
+                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none">
+                                    <option value="" disabled selected>Search inventory...</option>
+                                    {% for med in medications %}
+                                    <option value="{{ med.item_name }}">
+                                        {{ med.item_name }} (Stock: {{ med.quantity }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <h4 class="text-lg font-bold text-gray-900">Dispensing Details</h4>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="form-group">
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Quantity</label>
-                        <input type="number" name="quantity" required min="1"
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
-                            placeholder="0">
-                    </div>
-                    <div class="form-group md:col-span-2">
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Prescribing Clinician</label>
-                        <input type="text" name="doctor" required
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
-                            placeholder="e.g. Dr. Smith">
-                    </div>
-                    <div class="form-group md:col-span-3">
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Dosing Instructions</label>
-                        <textarea name="instructions" rows="3" required
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
-                            placeholder="e.g. 1 Tablet every 8 hours after food..."></textarea>
-                    </div>
-                </div>
-            </div>
 
-            <div class="pt-6 flex items-center justify-between border-t border-gray-100 mt-10">
-                <a href="{{ url_for('ct2.dashboard') }}"
-                    class="px-6 py-3 text-gray-500 font-bold hover:text-gray-700 transition-colors text-sm">
-                    Cancel Process
-                </a>
-                <button type="submit"
-                    class="px-10 py-4 bg-emerald-500 text-white font-bold rounded-2xl shadow-xl shadow-emerald-200 hover:bg-emerald-600 hover:scale-[1.02] transform transition-all flex items-center">
-                    <i class="bi bi-check2-circle mr-2 text-xl"></i>
-                    Complete Dispensing
-                </button>
+                    <!-- Section 2: Details -->
+                    <div class="space-y-6">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                                <i class="bi bi-clipboard-pulse"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-gray-900">Dispensing Details</h4>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="form-group">
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Quantity</label>
+                                <input type="number" name="quantity" required min="1"
+                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
+                                    placeholder="0">
+                            </div>
+                            <div class="form-group md:col-span-2">
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Prescribing Clinician</label>
+                                <input type="text" name="doctor" required
+                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
+                                    placeholder="e.g. Dr. Smith">
+                            </div>
+                            <div class="form-group md:col-span-3">
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Dosing Instructions</label>
+                                <textarea name="instructions" rows="3" required
+                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
+                                    placeholder="e.g. 1 Tablet every 8 hours after food..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-6 flex items-center justify-between border-t border-gray-100 mt-10">
+                        <a href="{{ url_for('ct2.dashboard') }}"
+                            class="px-6 py-3 text-gray-500 font-bold hover:text-gray-700 transition-colors text-sm">
+                            Cancel Process
+                        </a>
+                        <button type="submit"
+                            class="px-10 py-4 bg-emerald-500 text-white font-bold rounded-2xl shadow-xl shadow-emerald-200 hover:bg-emerald-600 hover:scale-[1.02] transform transition-all flex items-center">
+                            <i class="bi bi-check2-circle mr-2 text-xl"></i>
+                            Complete Dispensing
+                        </button>
+                    </div>
+                </form>
             </div>
-        </form>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function populateFromPrescription(rxId, patientId, medName, dosage, instructions) {
+    // Fill the hidden ID field
+    document.getElementById('rx_id_field').value = rxId;
+    
+    // Select patient
+    const patientSelect = document.querySelector('select[name="patient_id"]');
+    if (patientSelect) {
+        patientSelect.value = patientId;
+    }
+
+    // Select medication if it exists in the stock list
+    const medSelect = document.querySelector('select[name="medication"]');
+    if (medSelect) {
+        // Try to find a match by common name
+        for (let i = 0; i < medSelect.options.length; i++) {
+            if (medSelect.options[i].text.includes(medName)) {
+                medSelect.selectedIndex = i;
+                break;
+            }
+        }
+    }
+
+    // Add note about dosage/instructions
+    const notesField = document.querySelector('textarea[name="instructions"]');
+    if (notesField) {
+        notesField.value = `PRESCRIPTION #${rxId}\nDosage: ${dosage}\nInstructions: ${instructions}`;
+    }
+
+    // Add visual feedback
+    const sidebarItems = document.querySelectorAll('.space-y-4 > div');
+    sidebarItems.forEach(item => item.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50'));
+    
+    const form = document.getElementById('dispenseForm');
+    form.scrollIntoView({ behavior: 'smooth' });
+    
+    form.classList.add('ring-2', 'ring-emerald-400');
+    setTimeout(() => form.classList.remove('ring-2', 'ring-emerald-400'), 1500);
+}
+</script>
 {% endblock %}
