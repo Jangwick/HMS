@@ -444,22 +444,23 @@ def process_payroll():
 def analytics():
     client = get_supabase_client()
     try:
-        # Get all compensation records joined with users for department info
-        res = client.table('compensation_records').select('*, users(department)').execute()
+        # Get all active compensation records joined with users
+        res = client.table('compensation_records').select('*, users(username, department)').eq('status', 'Active').execute()
         records = res.data or []
         
         total_salary = sum(float(r.get('base_salary') or 0) for r in records)
         total_allowances = sum(float(r.get('allowances') or 0) for r in records)
         total_bonuses = sum(float(r.get('bonuses') or 0) for r in records)
+        total_deductions = sum(float(r.get('deductions') or 0) for r in records)
         
-        # Calculate department distribution
+        # 1. Department spending distribution
         dept_data = {}
         for r in records:
             dept = r.get('users', {}).get('department', 'Unassigned') or 'Unassigned'
-            amount = float(r.get('base_salary') or 0) + float(r.get('allowances') or 0)
+            amount = float(r.get('base_salary') or 0) + float(r.get('allowances') or 0) + float(r.get('bonuses') or 0)
             dept_data[dept] = dept_data.get(dept, 0) + amount
             
-        # Calculate salary ranges
+        # 2. Salary range frequency
         ranges = {"0-30k": 0, "30k-60k": 0, "60k-100k": 0, "100k+": 0}
         for r in records:
             val = float(r.get('base_salary') or 0)
@@ -468,11 +469,30 @@ def analytics():
             elif val < 100000: ranges["60k-100k"] += 1
             else: ranges["100k+"] += 1
 
+        # 3. Overall compensation structure
+        structure = {
+            'Base Salary': total_salary,
+            'Allowances': total_allowances,
+            'Bonuses': total_bonuses
+        }
+
+        # 4. Top 5 Highest Paid (Total Package)
+        sorted_records = sorted(records, key=lambda x: float(x.get('base_salary', 0)) + float(x.get('allowances', 0)) + float(x.get('bonuses', 0)), reverse=True)
+        top_earners = []
+        for r in sorted_records[:5]:
+            top_earners.append({
+                'name': r.get('users', {}).get('username', 'Unknown'),
+                'department': r.get('users', {}).get('department', 'N/A'),
+                'total': float(r.get('base_salary', 0)) + float(r.get('allowances', 0)) + float(r.get('bonuses', 0))
+            })
+
         metrics = {
             'total_annual_budget': total_salary + total_allowances + total_bonuses,
             'avg_salary': total_salary / len(records) if records else 0,
             'total_allowances': total_allowances,
             'total_bonuses': total_bonuses,
+            'total_deductions': total_deductions,
+            'count': len(records),
             'dept_distribution': {
                 'labels': list(dept_data.keys()),
                 'data': list(dept_data.values())
@@ -480,21 +500,23 @@ def analytics():
             'salary_ranges': {
                 'labels': list(ranges.keys()),
                 'data': list(ranges.values())
-            }
+            },
+            'structure': {
+                'labels': list(structure.keys()),
+                'data': list(structure.values())
+            },
+            'top_earners': top_earners
         }
     except Exception as e:
         print(f"Error calculating analytics: {e}")
-        metrics = {
-            'total_annual_budget': 0, 'avg_salary': 0, 'total_allowances': 0, 'total_bonuses': 0,
-            'dept_distribution': {'labels': [], 'data': []},
-            'salary_ranges': {'labels': [], 'data': []}
-        }
+        metrics = {'total_annual_budget': 0, 'avg_salary': 0, 'total_allowances': 0, 'total_bonuses': 0, 'count': 0, 'dept_distribution': {'labels': [], 'data': []}, 'salary_ranges': {'labels': [], 'data': []}, 'structure': {'labels': [], 'data': []}, 'top_earners': []}
 
     return render_template('subsystems/hr/hr4/analytics.html',
                            metrics=metrics,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
+                           blueprint_name=BLUEPRINT_NAME,
+                           datetime=datetime)
 
 @hr4_bp.route('/reports')
 @login_required
@@ -530,7 +552,8 @@ def view_report(report_type):
                 })
             headers = ['Employee', 'Department', 'Base Salary', 'Allowances', 'Bonuses', 'Effective Date', 'Status']
             row_keys = ['employee', 'department', 'base_salary', 'allowances', 'bonuses', 'effective_date', 'status']
-        except Exception as e: print(f"Error: {e}")
+        except Exception as e: 
+            flash(f"Error loading compensation data: {str(e)}", "danger")
 
     elif report_type == 'budget':
         title = "Departmental Budget Allocation"
@@ -554,7 +577,8 @@ def view_report(report_type):
                 })
             headers = ['Department', 'Staff count', 'Total Budget', 'Status']
             row_keys = ['department', 'staff_count', 'total_budget', 'status']
-        except Exception as e: print(f"Error: {e}")
+        except Exception as e: 
+            flash(f"Error calculating budget data: {str(e)}", "danger")
 
     elif report_type == 'payroll':
         title = "Recent Payroll Transactions"
@@ -572,7 +596,8 @@ def view_report(report_type):
                 })
             headers = ['Employee', 'Department', 'Net Pay', 'Pay Period', 'Status', 'Processed Date']
             row_keys = ['employee', 'department', 'net_pay', 'period', 'status', 'date']
-        except Exception as e: print(f"Error: {e}")
+        except Exception as e: 
+            flash(f"Error loading payroll data: {str(e)}", "danger")
 
     if not title:
         flash('Report type not found.', 'warning')
@@ -581,28 +606,30 @@ def view_report(report_type):
     return render_template('subsystems/hr/hr4/report_view.html',
                            title=title, data=data, headers=headers, row_keys=row_keys,
                            report_type=report_type, subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+                           accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME,
+                           datetime=datetime)
 
 @hr4_bp.route('/reports/export/<report_type>')
 @login_required
 def export_report(report_type):
     import io
     import csv
-    from flask import Response
+    from flask import Response, request
     
+    export_format = request.args.get('format', 'csv').lower()
     client = get_supabase_client()
-    output = io.StringIO()
-    writer = csv.writer(output)
     
-    filename = f"hr_report_{report_type}_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    data = []
+    headers = []
     
     try:
+        # Fetch Data based on report type
         if report_type == 'compensation':
             res = client.table('compensation_records').select('*, users(username, department)').execute()
             raw_data = res.data or []
-            writer.writerow(['Employee', 'Department', 'Base Salary', 'Allowances', 'Bonuses', 'Effective Date', 'Status'])
+            headers = ['Employee', 'Department', 'Base Salary', 'Allowances', 'Bonuses', 'Effective Date', 'Status']
             for r in raw_data:
-                writer.writerow([
+                data.append([
                     r.get('users', {}).get('username'),
                     r.get('users', {}).get('department'),
                     r.get('base_salary'),
@@ -617,19 +644,20 @@ def export_report(report_type):
             dept_totals = {}
             for r in raw_data:
                 dept = r.get('users', {}).get('department', 'Unknown')
-                if dept not in dept_totals: dept_totals[dept] = 0.0
-                dept_totals[dept] += float(r.get('base_salary') or 0) + float(r.get('allowances') or 0)
+                if dept not in dept_totals:
+                    dept_totals[dept] = {'count': 0, 'total': 0.0}
+                dept_totals[dept]['count'] += 1
+                dept_totals[dept]['total'] += float(r.get('base_salary') or 0) + float(r.get('allowances') or 0)
             
-            writer.writerow(['Department', 'Total Budget Allocation'])
-            for dept, total in dept_totals.items():
-                writer.writerow([dept, total])
-
+            headers = ['Department', 'Staff Count', 'Total Budget Allocation']
+            for dept, stats in dept_totals.items():
+                data.append([dept, stats['count'], stats['total']])
         elif report_type == 'payroll':
             res = client.table('payroll_records').select('*, users(username, department)').order('processed_date', desc=True).execute()
             raw_data = res.data or []
-            writer.writerow(['Employee', 'Department', 'Net Pay', 'Pay Period Start', 'Pay Period End', 'Status', 'Processed Date'])
+            headers = ['Employee', 'Department', 'Net Pay', 'Pay Period Start', 'Pay Period End', 'Status', 'Processed Date']
             for r in raw_data:
-                writer.writerow([
+                data.append([
                     r.get('users', {}).get('username'),
                     r.get('users', {}).get('department'),
                     r.get('net_pay'),
@@ -638,13 +666,80 @@ def export_report(report_type):
                     r.get('status'),
                     r.get('processed_date')
                 ])
-                
-        output.seek(0)
-        return Response(
-            output.getvalue(),
-            mimetype="text/csv",
-            headers={"Content-disposition": f"attachment; filename={filename}"}
-        )
+
+        if not data:
+            flash("No data found for this report type to export.", "warning")
+            return redirect(url_for('hr4.view_report', report_type=report_type))
+
+        # Format handling
+        if export_format == 'csv':
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(headers)
+            writer.writerows(data)
+            return Response(
+                output.getvalue(),
+                mimetype="text/csv",
+                headers={"Content-disposition": f"attachment; filename=hr_report_{report_type}.csv"}
+            )
+
+        elif export_format == 'excel':
+            from openpyxl import Workbook
+            wb = Workbook()
+            ws = wb.active
+            ws.append(headers)
+            for row in data:
+                ws.append(row)
+            
+            output = io.BytesIO()
+            wb.save(output)
+            output.seek(0)
+            return Response(
+                output.getvalue(),
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                headers={"Content-disposition": f"attachment; filename=hr_report_{report_type}.xlsx"}
+            )
+
+        elif export_format == 'pdf':
+            from reportlab.lib.pagesizes import letter, landscape
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.lib import colors
+            from reportlab.lib.styles import getSampleStyleSheet
+
+            output = io.BytesIO()
+            doc = SimpleDocTemplate(output, pagesize=landscape(letter))
+            elements = []
+            
+            styles = getSampleStyleSheet()
+            elements.append(Paragraph(f"HR Report: {report_type.replace('_', ' ').capitalize()}", styles['Title']))
+            elements.append(Spacer(1, 20))
+            
+            # Convert all data to string for PDF Table compatibility
+            pdf_data = [headers]
+            for row in data:
+                pdf_data.append([str(item) if item is not None else "" for item in row])
+            
+            t = Table(pdf_data)
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.indigo),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+            ]))
+            elements.append(t)
+            doc.build(elements)
+            output.seek(0)
+            return Response(
+                output.getvalue(),
+                mimetype="application/pdf",
+                headers={"Content-disposition": f"attachment; filename=hr_report_{report_type}.pdf"}
+            )
+
     except Exception as e:
         flash(f"Export failed: {str(e)}", "danger")
         return redirect(url_for('hr4.reports'))
