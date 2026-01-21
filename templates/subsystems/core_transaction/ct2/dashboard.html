@@ -97,6 +97,98 @@
         </div>
     </div>
 
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        <!-- Critical Lab Alerts -->
+        <div class="glass-card rounded-2xl overflow-hidden border-red-100 border bg-red-50/10">
+            <div class="p-6 border-b border-red-50 flex justify-between items-center">
+                <h4 class="text-lg font-bold text-red-700 flex items-center">
+                    <i class="bi bi-exclamation-octagon mr-2 animate-pulse"></i>
+                    Critical Results
+                </h4>
+                <span class="px-2 py-1 bg-red-100 text-red-700 rounded-full text-[10px] font-bold uppercase">Immediate Action</span>
+            </div>
+            <div class="divide-y divide-red-50">
+                {% for lab in critical_labs %}
+                <div class="p-4 hover:bg-red-50/50 transition-colors">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-gray-900 text-sm">
+                                {% if lab.patients %}
+                                    {{ lab.patients.first_name }} {{ lab.patients.last_name }}
+                                {% else %}
+                                    Unknown Patient
+                                {% endif %}
+                            </div>
+                            <div class="text-xs text-red-600 font-medium">{{ lab.test_name }}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[10px] text-gray-400 font-mono">#LIS-{{ lab.id }}</div>
+                            <a href="{{ url_for('ct2.lab_orders') }}" class="text-[10px] font-bold text-red-700 underline">Review</a>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="p-12 text-center text-gray-400">
+                    <i class="bi bi-shield-check text-4xl mb-2 block text-emerald-300"></i>
+                    <p class="text-sm">No critical alerts currently flagged.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Recent Dispensing -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-white/50">
+                <h4 class="text-lg font-bold text-gray-900">Recent Pharmacy Activity</h4>
+                <a href="{{ url_for('ct2.dispensing_history') }}" class="text-xs font-bold text-emerald-600 hover:underline">Full Audit</a>
+            </div>
+            <div class="divide-y divide-gray-100">
+                {% for log in recent_dispenses %}
+                <div class="p-4 hover:bg-emerald-50/30 transition-colors">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mr-3">
+                                <i class="bi bi-capsule"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-gray-900 text-sm">
+                                    {% if log.inventory %}
+                                        {{ log.inventory.item_name }}
+                                    {% else %}
+                                        Unknown Item
+                                    {% endif %}
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    {% if log.patients %}
+                                        {{ log.patients.first_name }} {{ log.patients.last_name }}
+                                    {% else %}
+                                        Unknown Patient
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[10px] font-bold text-emerald-600">
+                                {% if log.dispensed_at %}
+                                    {{ log.dispensed_at[:16] | replace('T', ' ') }}
+                                {% else %}
+                                    Just Now
+                                {% endif %}
+                            </div>
+                            <div class="text-[10px] text-gray-400">Dispensed</div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="p-12 text-center text-gray-400">
+                    <i class="bi bi-clipboard-x text-4xl mb-2 block"></i>
+                    <p class="text-sm">No recent dispensing history.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 gap-8">
         <!-- Recent Lab Orders -->
         <div class="glass-card rounded-2xl overflow-hidden mt-8">

@@ -315,6 +315,16 @@ CREATE TABLE IF NOT EXISTS inventory (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS dispensing_history (
+    id SERIAL PRIMARY KEY,
+    patient_id INTEGER REFERENCES patients(id),
+    inventory_id INTEGER REFERENCES inventory(id),
+    quantity INTEGER NOT NULL,
+    dispensed_by INTEGER REFERENCES users(id),
+    notes TEXT,
+    dispensed_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS assets (
     id SERIAL PRIMARY KEY,
     asset_name VARCHAR(200) NOT NULL,
@@ -475,6 +485,11 @@ CREATE POLICY "Allow all on prescriptions" ON prescriptions FOR ALL USING (true)
 ALTER TABLE IF EXISTS beds ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on beds" ON beds;
 CREATE POLICY "Allow all on beds" ON beds FOR ALL USING (true) WITH CHECK (true);
+
+-- Proactive RLS for Logistics and Pharmacy History
+ALTER TABLE IF EXISTS dispensing_history ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on dispensing_history" ON dispensing_history;
+CREATE POLICY "Allow all on dispensing_history" ON dispensing_history FOR ALL USING (true) WITH CHECK (true);
 
 -- Proactive RLS for Logistics
 ALTER TABLE IF EXISTS assets ENABLE ROW LEVEL SECURITY;

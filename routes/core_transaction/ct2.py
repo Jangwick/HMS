@@ -223,44 +223,70 @@ def dashboard():
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     
     # Get stats
+    metrics = {
+        'total_lab_orders': 0,
+        'pending_labs': 0,
+        'low_stock_items': 0,
+        'today_patients': 0,
+        'pending_prescriptions': 0,
+        'today_dispenses': 0,
+        'critical_count': 0
+    }
+    recent_orders = []
+    critical_labs = []
+    recent_dispenses = []
+
     try:
         # Lab stats
-        lab_orders_count = supabase.table('lab_orders').select('id', count='exact').execute().count or 0
-        pending_lab_count = supabase.table('lab_orders').select('id', count='exact').eq('status', 'Ordered').execute().count or 0
-        
+        res = supabase.table('lab_orders').select('*, patients(*)').execute()
+        lab_data = res.data if res.data else []
+        metrics['total_lab_orders'] = len(lab_data)
+        metrics['pending_labs'] = len([o for o in lab_data if o.get('status') == 'Ordered'])
+        critical_labs = [o for o in lab_data if o.get('critical_alert')]
+        metrics['critical_count'] = len(critical_labs)
+
         # Pharmacy stats
-        low_stock_count = supabase.table('inventory').select('id', count='exact').lt('quantity', 10).execute().count or 0
-        pending_rx_count = supabase.table('prescriptions').select('id', count='exact').eq('status', 'Pending').execute().count or 0
-        today_dispenses = supabase.table('dispensing_history').select('id', count='exact').gte('dispensed_at', today_start).execute().count or 0
-        
-        # Today's activity
-        today_appointments = supabase.table('appointments').select('id', count='exact').gte('appointment_date', today_start).execute().count or 0
-        
+        res = supabase.table('inventory').select('*').execute()
+        inv_data = res.data if res.data else []
+        metrics['low_stock_items'] = len([i for i in inv_data if (i.get('quantity') or 0) < 10])
+
+        res = supabase.table('prescriptions').select('*').execute()
+        rx_data = res.data if res.data else []
+        metrics['pending_prescriptions'] = len([r for r in rx_data if r.get('status') == 'Pending'])
+
+        res = supabase.table('appointments').select('*').execute()
+        app_data = res.data if res.data else []
+        # Filter for today
+        today_date = datetime.utcnow().date()
+        today_apps = []
+        for a in app_data:
+            a_date_str = a.get('appointment_date')
+            if a_date_str:
+                try:
+                    a_date = datetime.fromisoformat(a_date_str.replace('Z', '+00:00')).date()
+                    if a_date == today_date:
+                        today_apps.append(a)
+                except:
+                    pass
+        metrics['today_patients'] = len(today_apps)
+
+        # Dispensing
+        res = supabase.table('dispensing_history').select('*, patients(*), inventory(*)').execute()
+        dispense_data = res.data if res.data else []
+        metrics['today_dispenses'] = len([d for d in dispense_data if d.get('dispensed_at', '').startswith(datetime.utcnow().strftime('%Y-%m-%d'))])
+        recent_dispenses = sorted(dispense_data, key=lambda x: x.get('dispensed_at', ''), reverse=True)[:5]
+
         recent_orders = LabOrder.get_recent(5)
         
-        metrics = {
-            'total_lab_orders': lab_orders_count,
-            'pending_labs': pending_lab_count,
-            'low_stock_items': low_stock_count,
-            'today_patients': today_appointments,
-            'pending_prescriptions': pending_rx_count,
-            'today_dispenses': today_dispenses
-        }
-        
     except Exception as e:
-        print(f"Error fetching dashboard metrics: {e}")
-        recent_orders = []
-        metrics = {
-            'total_lab_orders': 0,
-            'pending_labs': 0,
-            'low_stock_items': 0,
-            'today_patients': 0
-        }
-
-    return render_template('subsystems/core_transaction/ct2/dashboard.html', 
+        print(f"Dashboard Data Error: {e}")
+    
+    return render_template('subsystems/core_transaction/ct2/dashboard.html',
                            now=datetime.utcnow,
                            metrics=metrics,
                            recent_orders=recent_orders,
+                           critical_labs=critical_labs,
+                           recent_dispenses=recent_dispenses,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
