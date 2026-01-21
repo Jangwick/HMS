@@ -257,10 +257,26 @@ def dashboard():
 @login_required
 def list_patients():
     from utils.hms_models import Patient
+    from datetime import datetime
+    
+    client = get_supabase_client()
     patients = Patient.get_all()
+    
+    # Calculate New This Month
+    now = datetime.now()
+    first_day_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+    
+    new_this_month = 0
+    try:
+        res = client.table('patients').select('id', count='exact').gte('created_at', first_day_month).execute()
+        new_this_month = res.count or 0
+    except Exception as e:
+        print(f"Error calculating monthly stats: {e}")
+
     return render_template('subsystems/core_transaction/ct1/patient_list.html',
                            now=datetime.utcnow,
                            patients=patients,
+                           new_this_month=new_this_month,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -280,15 +296,15 @@ def register_patient():
                 'contact_number': request.form.get('contact_number'),
                 'address': request.form.get('address'),
                 'insurance_info': {
-                    'provider': request.form.get('insurance_provider'),
-                    'policy_number': request.form.get('policy_number'),
-                    'group_number': request.form.get('group_number')
+                    'provider': request.form.get('insurance_provider') or 'None',
+                    'policy_number': request.form.get('policy_number') or 'N/A',
+                    'group_number': request.form.get('group_number') or 'N/A'
                 }
             }
             patient = Patient.create(patient_data)
             if patient:
                 flash(f'Patient {patient.first_name} {patient.last_name} registered successfully! ID: {patient.patient_id_alt}', 'success')
-                return redirect(url_for('ct1.list_patients'))
+                return redirect(url_for('ct1.view_patient', patient_id=patient.id))
             else:
                 flash('Failed to register patient.', 'danger')
         except Exception as e:
@@ -322,21 +338,72 @@ def search_patients():
 def view_patient(patient_id):
     from datetime import datetime
     client = get_supabase_client()
-    response = client.table('patients').select('*, appointments(*)').eq('id', patient_id).single().execute()
-    if not response.data:
-        flash('Patient not found.', 'danger')
+    try:
+        # Get patient details
+        patient_res = client.table('patients').select('*').eq('id', patient_id).single().execute()
+        if not patient_res.data:
+            flash('Patient not found.', 'danger')
+            return redirect(url_for('ct1.list_patients'))
+        
+        patient = patient_res.data
+        
+        # Get appointments for this patient and join with doctor info (users)
+        # Note: We need to use a join query that Supabase understands or separate queries
+        appointments_res = client.table('appointments').select('*, users!appointments_doctor_id_fkey(username, department, subsystem)').eq('patient_id', patient_id).execute()
+        appointments = appointments_res.data or []
+        
+        return render_template('subsystems/core_transaction/ct1/view_patient.html',
+                               now=datetime.utcnow,
+                               patient=patient,
+                               appointments=appointments,
+                               subsystem_name=SUBSYSTEM_NAME,
+                               accent_color=ACCENT_COLOR,
+                               blueprint_name=BLUEPRINT_NAME)
+    except Exception as e:
+        flash(f'Error retrieving patient profile: {str(e)}', 'danger')
         return redirect(url_for('ct1.list_patients'))
-    
-    patient = response.data
-    appointments = patient.pop('appointments', [])
-    
-    return render_template('subsystems/core_transaction/ct1/view_patient.html',
-                           now=datetime.utcnow,
-                           patient=patient,
-                           appointments=appointments,
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
+
+@ct1_bp.route('/view-patient/edit/<patient_id>', methods=['POST'])
+@login_required
+def update_patient(patient_id):
+    client = get_supabase_client()
+    try:
+        updated_data = {
+            'first_name': request.form.get('first_name'),
+            'last_name': request.form.get('last_name'),
+            'dob': request.form.get('dob'),
+            'gender': request.form.get('gender'),
+            'contact_number': request.form.get('contact_number'),
+            'address': request.form.get('address'),
+            'insurance_info': {
+                'provider': request.form.get('insurance_provider'),
+                'policy_number': request.form.get('policy_number'),
+                'group_number': request.form.get('group_number')
+            }
+        }
+        client.table('patients').update(updated_data).eq('id', patient_id).execute()
+        flash('Patient record updated successfully!', 'success')
+    except Exception as e:
+        flash(f'Update failed: {str(e)}', 'danger')
+    return redirect(url_for('ct1.view_patient', patient_id=patient_id))
+
+@ct1_bp.route('/patients/delete/<patient_id>', methods=['POST'])
+@login_required
+def delete_patient(patient_id):
+    client = get_supabase_client()
+    try:
+        # Check if patient has appointments
+        res = client.table('appointments').select('id').eq('patient_id', patient_id).execute()
+        if res.data:
+            flash('Cannot delete patient with existing appointment history.', 'warning')
+            return redirect(url_for('ct1.view_patient', patient_id=patient_id))
+            
+        client.table('patients').delete().eq('id', patient_id).execute()
+        flash('Patient record deleted successfully.', 'success')
+        return redirect(url_for('ct1.list_patients'))
+    except Exception as e:
+        flash(f'Deletion failed: {str(e)}', 'danger')
+        return redirect(url_for('ct1.view_patient', patient_id=patient_id))
 
 @ct1_bp.route('/book-appointment', methods=['GET', 'POST'])
 @login_required
@@ -367,9 +434,13 @@ def book_appointment():
     client = get_supabase_client()
     doctors = client.table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
     
+    selected_patient_id = request.args.get('patient_id')
+    
     return render_template('subsystems/core_transaction/ct1/book_appointment.html', 
                            now=datetime.utcnow,
                            doctors=doctors,
+                           patients=patients,
+                           selected_patient_id=selected_patient_id,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

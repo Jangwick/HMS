@@ -41,7 +41,7 @@
                             class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none appearance-none">
                             <option value="" disabled selected>Choose a patient...</option>
                             {% for patient in patients %}
-                            <option value="{{ patient.id }}" {% if (request.args.get('patient_id')|int == patient.id) or (patient_id|int == patient.id) %}selected{% endif %}>
+                            <option value="{{ patient.id }}" {% if selected_patient_id|string == patient.id|string %}selected{% endif %}>
                                 {{ patient.first_name }} {{ patient.last_name }} ({{ patient.patient_id_alt }})
                             </option>
                             {% endfor %}
