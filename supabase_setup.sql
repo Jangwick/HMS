@@ -252,6 +252,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     appointment_date TIMESTAMP NOT NULL,
     status VARCHAR(50) DEFAULT 'Scheduled', -- Scheduled, Completed, Cancelled
     type VARCHAR(50), -- Walk-in, Online, Phone
+    notes TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -457,6 +458,32 @@ CREATE POLICY "Allow all on billing_records" ON billing_records FOR ALL USING (t
 ALTER TABLE IF EXISTS general_ledger ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on general_ledger" ON general_ledger;
 CREATE POLICY "Allow all on general_ledger" ON general_ledger FOR ALL USING (true) WITH CHECK (true);
+
+-- Proactive RLS for Core Transaction Subsystems
+ALTER TABLE IF EXISTS appointments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on appointments" ON appointments;
+CREATE POLICY "Allow all on appointments" ON appointments FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS lab_orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on lab_orders" ON lab_orders;
+CREATE POLICY "Allow all on lab_orders" ON lab_orders FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS prescriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on prescriptions" ON prescriptions;
+CREATE POLICY "Allow all on prescriptions" ON prescriptions FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS beds ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on beds" ON beds;
+CREATE POLICY "Allow all on beds" ON beds FOR ALL USING (true) WITH CHECK (true);
+
+-- Proactive RLS for Logistics
+ALTER TABLE IF EXISTS assets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on assets" ON assets;
+CREATE POLICY "Allow all on assets" ON assets FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS fleet_vehicles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on fleet_vehicles" ON fleet_vehicles;
+CREATE POLICY "Allow all on fleet_vehicles" ON fleet_vehicles FOR ALL USING (true) WITH CHECK (true);
 
 -- Ensure patients has allergies column
 DO $$ 
