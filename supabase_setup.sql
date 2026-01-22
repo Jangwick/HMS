@@ -458,20 +458,19 @@ ALTER TABLE IF EXISTS users ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on users" ON users;
 CREATE POLICY "Allow all on users" ON users FOR ALL USING (true) WITH CHECK (true);
 
--- Proactive RLS for other modules
+-- =====================================================
+-- ROW LEVEL SECURITY POLICIES (Consolidated)
+-- =====================================================
+
+-- HR Module
 ALTER TABLE IF EXISTS applicants ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on applicants" ON applicants;
 CREATE POLICY "Allow all on applicants" ON applicants FOR ALL USING (true) WITH CHECK (true);
 
 ALTER TABLE IF EXISTS vacancies ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on vacancies" ON vacancies;
 CREATE POLICY "Allow all on vacancies" ON vacancies FOR ALL USING (true) WITH CHECK (true);
 
-ALTER TABLE IF EXISTS attendance_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all on attendance_logs" ON attendance_logs FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE IF EXISTS leave_requests ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all on leave_requests" ON leave_requests FOR ALL USING (true) WITH CHECK (true);
-
--- Fix for HR1 Handoff RLS
 ALTER TABLE IF EXISTS onboarding ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on onboarding" ON onboarding;
 CREATE POLICY "Allow all on onboarding" ON onboarding FOR ALL USING (true) WITH CHECK (true);
@@ -480,7 +479,14 @@ ALTER TABLE IF EXISTS interviews ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on interviews" ON interviews;
 CREATE POLICY "Allow all on interviews" ON interviews FOR ALL USING (true) WITH CHECK (true);
 
--- HR2: Trainings and Competencies RLS
+ALTER TABLE IF EXISTS attendance_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on attendance_logs" ON attendance_logs;
+CREATE POLICY "Allow all on attendance_logs" ON attendance_logs FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS leave_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on leave_requests" ON leave_requests;
+CREATE POLICY "Allow all on leave_requests" ON leave_requests FOR ALL USING (true) WITH CHECK (true);
+
 ALTER TABLE IF EXISTS trainings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on trainings" ON trainings;
 CREATE POLICY "Allow all on trainings" ON trainings FOR ALL USING (true) WITH CHECK (true);
@@ -497,28 +503,11 @@ ALTER TABLE IF EXISTS training_participants ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on training_participants" ON training_participants;
 CREATE POLICY "Allow all on training_participants" ON training_participants FOR ALL USING (true) WITH CHECK (true);
 
--- Financials & Logistics RLS
+-- Core Transaction Module
 ALTER TABLE IF EXISTS patients ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on patients" ON patients;
 CREATE POLICY "Allow all on patients" ON patients FOR ALL USING (true) WITH CHECK (true);
 
-ALTER TABLE IF EXISTS medical_records ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all on medical_records" ON medical_records;
-CREATE POLICY "Allow all on medical_records" ON medical_records FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE IF EXISTS inventory ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all on inventory" ON inventory;
-CREATE POLICY "Allow all on inventory" ON inventory FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE IF EXISTS billing_records ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all on billing_records" ON billing_records;
-CREATE POLICY "Allow all on billing_records" ON billing_records FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE IF EXISTS general_ledger ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all on general_ledger" ON general_ledger;
-CREATE POLICY "Allow all on general_ledger" ON general_ledger FOR ALL USING (true) WITH CHECK (true);
-
--- Proactive RLS for Core Transaction Subsystems
 ALTER TABLE IF EXISTS appointments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on appointments" ON appointments;
 CREATE POLICY "Allow all on appointments" ON appointments FOR ALL USING (true) WITH CHECK (true);
@@ -531,16 +520,23 @@ ALTER TABLE IF EXISTS prescriptions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on prescriptions" ON prescriptions;
 CREATE POLICY "Allow all on prescriptions" ON prescriptions FOR ALL USING (true) WITH CHECK (true);
 
+ALTER TABLE IF EXISTS medical_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on medical_records" ON medical_records;
+CREATE POLICY "Allow all on medical_records" ON medical_records FOR ALL USING (true) WITH CHECK (true);
+
 ALTER TABLE IF EXISTS beds ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on beds" ON beds;
 CREATE POLICY "Allow all on beds" ON beds FOR ALL USING (true) WITH CHECK (true);
 
--- Proactive RLS for Logistics and Pharmacy History
+-- Logistics Module
+ALTER TABLE IF EXISTS inventory ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on inventory" ON inventory;
+CREATE POLICY "Allow all on inventory" ON inventory FOR ALL USING (true) WITH CHECK (true);
+
 ALTER TABLE IF EXISTS dispensing_history ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on dispensing_history" ON dispensing_history;
 CREATE POLICY "Allow all on dispensing_history" ON dispensing_history FOR ALL USING (true) WITH CHECK (true);
 
--- Proactive RLS for Logistics
 ALTER TABLE IF EXISTS assets ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on assets" ON assets;
 CREATE POLICY "Allow all on assets" ON assets FOR ALL USING (true) WITH CHECK (true);
@@ -565,63 +561,50 @@ ALTER TABLE IF EXISTS fleet_vehicles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on fleet_vehicles" ON fleet_vehicles;
 CREATE POLICY "Allow all on fleet_vehicles" ON fleet_vehicles FOR ALL USING (true) WITH CHECK (true);
 
--- Ensure patients has allergies column
+-- Financials
+ALTER TABLE IF EXISTS billing_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on billing_records" ON billing_records;
+CREATE POLICY "Allow all on billing_records" ON billing_records FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS general_ledger ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on general_ledger" ON general_ledger;
+CREATE POLICY "Allow all on general_ledger" ON general_ledger FOR ALL USING (true) WITH CHECK (true);
+
+-- =====================================================
+-- DATABASE MAINTENANCE & SYNC
+-- Safe column injections for existing tables
+-- =====================================================
+
+-- HR Module Fixes
+ALTER TABLE IF EXISTS trainings ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE IF EXISTS trainings ADD COLUMN IF NOT EXISTS location VARCHAR(200);
+ALTER TABLE IF EXISTS trainings ADD COLUMN IF NOT EXISTS trainer VARCHAR(100);
+ALTER TABLE IF EXISTS trainings ADD COLUMN IF NOT EXISTS target_department VARCHAR(100);
+ALTER TABLE IF EXISTS trainings ADD COLUMN IF NOT EXISTS max_participants INTEGER;
+
+-- Logistics Module Fixes (Fix for PGRST200/PGRST204)
+ALTER TABLE IF EXISTS inventory ADD COLUMN IF NOT EXISTS batch_number VARCHAR(100);
+ALTER TABLE IF EXISTS inventory ADD COLUMN IF NOT EXISTS unit VARCHAR(50) DEFAULT 'units';
+ALTER TABLE IF EXISTS inventory ADD COLUMN IF NOT EXISTS reorder_level INTEGER DEFAULT 10;
+ALTER TABLE IF EXISTS inventory ADD COLUMN IF NOT EXISTS location VARCHAR(100);
+ALTER TABLE IF EXISTS inventory ADD COLUMN IF NOT EXISTS expiry_date DATE;
+
+ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS supplier_id INTEGER;
+ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS requested_by INTEGER;
+ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS approved_by INTEGER;
+
+ALTER TABLE IF EXISTS dispensing_history ADD COLUMN IF NOT EXISTS patient_id INTEGER;
+
+-- Patient & Medical Fixes
+ALTER TABLE IF EXISTS patients ADD COLUMN IF NOT EXISTS allergies TEXT DEFAULT 'None known';
+ALTER TABLE IF EXISTS medical_records ADD COLUMN IF NOT EXISTS vitals JSONB DEFAULT '{}'::jsonb;
+
+-- Robust Constraint Injection (Required for Foreign Keys)
 DO $$ 
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='patients' AND column_name='allergies') THEN
-        ALTER TABLE patients ADD COLUMN allergies TEXT DEFAULT 'None known';
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name='purchase_orders_supplier_id_fkey' AND table_name='purchase_orders') THEN
+        ALTER TABLE purchase_orders ADD CONSTRAINT purchase_orders_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES suppliers(id);
     END IF;
-END $$;
-
--- Update medical_records with vitals
-DO $$ 
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='medical_records' AND column_name='vitals') THEN
-        ALTER TABLE medical_records ADD COLUMN vitals JSONB DEFAULT '{}'::jsonb;
-    END IF;
-END $$;
-
--- Ensure Logistics tables have correct columns (Fix for PGRST200/42703)
-DO $$ 
-BEGIN
-    -- Ensure suppliers table exists (though CREATE TABLE IF NOT EXISTS handles this, we be safe)
-    
-    -- Fix for purchase_orders supplier_id
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='purchase_orders' AND column_name='supplier_id') THEN
-        ALTER TABLE purchase_orders ADD COLUMN supplier_id INTEGER;
-    END IF;
-
-    -- Fix for purchase_orders additional columns
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='purchase_orders' AND column_name='requested_by') THEN
-        ALTER TABLE purchase_orders ADD COLUMN requested_by INTEGER REFERENCES users(id);
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='purchase_orders' AND column_name='approved_by') THEN
-        ALTER TABLE purchase_orders ADD COLUMN approved_by INTEGER REFERENCES users(id);
-    END IF;
-
-    -- Re-apply foreign key if missing
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name='purchase_orders_supplier_id_fkey' 
-        AND table_name='purchase_orders'
-    ) THEN
-        BEGIN
-            ALTER TABLE purchase_orders 
-            ADD CONSTRAINT purchase_orders_supplier_id_fkey 
-            FOREIGN KEY (supplier_id) REFERENCES suppliers(id);
-        EXCEPTION
-            WHEN others THEN NULL; -- Might already exist under different name
-        END;
-    END IF;
-    
-    -- Fix for inventory batch_number
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='inventory' AND column_name='batch_number') THEN
-        ALTER TABLE inventory ADD COLUMN batch_number VARCHAR(100);
-    END IF;
-
-    -- Fix for dispensing_history patient_id
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='dispensing_history' AND column_name='patient_id') THEN
-        ALTER TABLE dispensing_history ADD COLUMN patient_id INTEGER REFERENCES patients(id);
-    END IF;
+EXCEPTION WHEN OTHERS THEN 
+    RAISE NOTICE 'Constraint might already exist or table missing';
 END $$;
