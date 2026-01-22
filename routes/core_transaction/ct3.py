@@ -185,8 +185,11 @@ def dashboard():
     
     try:
         patients_count = client.table('patients').select('id', count='exact').execute().count or 0
-        billing_total = client.table('billing_records').select('total_amount').execute()
-        revenue = sum(float(b['total_amount']) for b in billing_total.data) if billing_total.data else 0.0
+        
+        # Get billing stats
+        billing_resp = client.table('billing_records').select('total_amount, status').execute()
+        revenue = sum(float(b['total_amount']) for b in billing_resp.data if b['status'] == 'Paid') if billing_resp.data else 0.0
+        pending_bills = sum(1 for b in billing_resp.data if b['status'] != 'Paid') if billing_resp.data else 0
         
         # Get records created today
         today = datetime.utcnow().strftime('%Y-%m-%d')
@@ -194,13 +197,14 @@ def dashboard():
         records_today = response.count if response.count is not None else 0
         
         # Get recent activity
-        activity_resp = client.table('medical_records').select('*, patients(first_name, last_name)').order('visit_date', desc=True).limit(5).execute()
+        activity_resp = client.table('medical_records').select('*, patients(first_name, last_name, patient_id_alt)').order('visit_date', desc=True).limit(5).execute()
         recent_activity = activity_resp.data if activity_resp.data else []
         
     except Exception as e:
         print(f"Error fetching stats: {e}")
         patients_count = 0
         revenue = 0.0
+        pending_bills = 0
         records_today = 0
         recent_activity = []
     
@@ -211,6 +215,7 @@ def dashboard():
                            now=datetime.utcnow,
                            patients_count=patients_count,
                            revenue=revenue,
+                           pending_bills=pending_bills,
                            records_today=records_today,
                            recent_activity=recent_activity,
                            subsystem_name=SUBSYSTEM_NAME,
@@ -250,7 +255,8 @@ def billing():
     client = get_supabase_client()
     
     try:
-        response = client.table('billing_records').select('*, patients(first_name, last_name)').order('created_at', desc=True).execute()
+        # Get billing data
+        response = client.table('billing_records').select('*, patients(first_name, last_name, patient_id_alt)').order('created_at', desc=True).execute()
         bills = response.data if response.data else []
         # Fetch patients for the modal
         patients_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt').execute()
@@ -457,6 +463,39 @@ def delete_medical_record(patient_id, record_id):
         flash(f'Error deleting record: {str(e)}', 'danger')
     
     return redirect(url_for('ct3.view_record', patient_id=patient_id))
+
+@ct3_bp.route('/analytics')
+@login_required
+def analytics():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Get patient demographics (Simplified)
+        patients_resp = client.table('patients').select('gender').execute()
+        demographics = {'Male': 0, 'Female': 0, 'Other': 0}
+        for p in patients_resp.data:
+            gen = p.get('gender', 'Other')
+            demographics[gen] = demographics.get(gen, 0) + 1
+            
+        # Get billing stats
+        billing_resp = client.table('billing_records').select('status, total_amount').execute()
+        financials = {'Paid': 0.0, 'Unpaid': 0.0}
+        for b in billing_resp.data:
+            status = b.get('status', 'Unpaid')
+            financials[status] = financials.get(status, 0.0) + float(b['total_amount'])
+            
+    except Exception as e:
+        print(f"Analytics error: {e}")
+        demographics = {}
+        financials = {}
+        
+    return render_template('subsystems/core_transaction/ct3/analytics.html',
+                           demographics=demographics,
+                           financials=financials,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 @ct3_bp.route('/settings', methods=['GET', 'POST'])
 @login_required

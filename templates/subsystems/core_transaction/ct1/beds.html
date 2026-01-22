@@ -1,0 +1,80 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Bed Management - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Ward & Bed Management{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Bed Inventory</h3>
+            <p class="text-gray-500">Monitor and manage hospital bed availability across wards</p>
+        </div>
+        <div class="flex space-x-3">
+            <div class="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 flex items-center">
+                <span class="w-3 h-3 bg-emerald-500 rounded-full mr-2"></span>
+                <span class="text-sm font-bold">{{ beds|selectattr('status', 'equalto', 'Available')|list|length }} Available</span>
+            </div>
+            <div class="px-4 py-2 bg-red-50 text-red-700 rounded-xl border border-red-100 flex items-center">
+                <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                <span class="text-sm font-bold">{{ beds|selectattr('status', 'equalto', 'Occupied')|list|length }} Occupied</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {% for bed in beds %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">{{ bed.ward_name }}</span>
+                    <h4 class="text-xl font-bold text-gray-900">Room {{ bed.room_number }}</h4>
+                </div>
+                {% if bed.status == 'Available' %}
+                <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Available</span>
+                {% elif bed.status == 'Occupied' %}
+                <span class="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-full uppercase">Occupied</span>
+                {% else %}
+                <span class="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-full uppercase">{{ bed.status }}</span>
+                {% endif %}
+            </div>
+            
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Type:</span>
+                    <span class="font-medium text-gray-900">{{ bed.type }}</span>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <form action="{{ url_for('ct1.update_bed', bed_id=bed.id) }}" method="POST" class="flex-1">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% if bed.status == 'Available' %}
+                    <input type="hidden" name="status" value="Occupied">
+                    <button type="submit" class="w-full py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors">
+                        Mark Occupied
+                    </button>
+                    {% elif bed.status == 'Occupied' %}
+                    <input type="hidden" name="status" value="Cleaning">
+                    <button type="submit" class="w-full py-2 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600 transition-colors">
+                        Mark Cleaning
+                    </button>
+                    {% else %}
+                    <input type="hidden" name="status" value="Available">
+                    <button type="submit" class="w-full py-2 bg-gray-600 text-white text-xs font-bold rounded-lg hover:bg-gray-700 transition-colors">
+                        Mark Available
+                    </button>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-span-full py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+            <i class="bi bi-door-closed text-5xl text-gray-300 mb-4 block"></i>
+            <h4 class="text-lg font-bold text-gray-900">No beds configured</h4>
+            <p class="text-gray-500 mt-2">Beds will appear here once added to the database.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

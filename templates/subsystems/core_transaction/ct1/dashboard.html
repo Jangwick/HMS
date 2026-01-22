@@ -73,6 +73,17 @@
 
         <div class="glass-card p-6 rounded-2xl hover-scale">
             <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Bed Occupancy</h4>
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                    <i class="bi bi-door-open text-xl"></i>
+                </div>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">{{ metrics.occupied_beds }}/{{ metrics.total_beds }}</p>
+            <p class="text-purple-500 text-xs font-medium mt-2">Active Wards</p>
+        </div>
+
+        <div class="glass-card p-6 rounded-2xl hover-scale">
+            <div class="flex items-center justify-between mb-4">
                 <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">System Status</h4>
                 <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
                     <i class="bi bi-activity text-xl"></i>
@@ -90,6 +101,9 @@
             <div class="flex space-x-2">
                 <a href="{{ url_for('ct1.list_patients') }}" class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-emerald-600 transition-colors">
                     Patient Directory
+                </a>
+                <a href="{{ url_for('ct1.bed_management') }}" class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-emerald-600 transition-colors">
+                    Wards/Beds
                 </a>
                 <a href="{{ url_for('ct1.book_appointment') }}"
                     class="px-4 py-2 bg-emerald-500 text-white text-sm font-bold rounded-lg hover:bg-emerald-600 transition-all shadow-sm">

@@ -1,0 +1,77 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Analytics - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Operational Analytics{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div>
+        <h3 class="text-2xl font-bold text-gray-900">Analytics Overview</h3>
+        <p class="text-gray-500">Key performance indicators and demographic distribution</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Gender Demographics -->
+        <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            <h4 class="text-lg font-bold text-gray-900 mb-6">Patient Gender Distribution</h4>
+            <div class="space-y-4">
+                {% for gender, count in demographics.items() %}
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="font-bold text-gray-700">{{ gender }}</span>
+                        <span class="text-gray-500">{{ count }} patients</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2">
+                        <div class="bg-emerald-500 h-2 rounded-full" style="width: {{ (count / (demographics.values()|sum) * 100) if demographics.values()|sum > 0 else 0 }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Financial Breakdown -->
+        <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            <h4 class="text-lg font-bold text-gray-900 mb-6">Financial Revenue Performance</h4>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                    <p class="text-xs font-bold text-emerald-600 uppercase mb-1">Total Paid</p>
+                    <p class="text-2xl font-bold text-emerald-900">${{ "%.2f"|format(financials.Paid or 0) }}</p>
+                </div>
+                <div class="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                    <p class="text-xs font-bold text-amber-600 uppercase mb-1">Outstanding</p>
+                    <p class="text-2xl font-bold text-amber-900">${{ "%.2f"|format(financials.Unpaid or 0) }}</p>
+                </div>
+            </div>
+            <div class="mt-6">
+                <p class="text-sm text-gray-500 mb-2">Collection Rate</p>
+                {% set total = (financials.Paid or 0) + (financials.Unpaid or 0) %}
+                <div class="w-full bg-gray-100 rounded-full h-4">
+                    <div class="bg-blue-600 h-4 rounded-full" style="width: {{ (financials.Paid / total * 100) if total > 0 else 0 }}%"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-2 text-right font-medium">
+                    {{ "%.1f"|format(financials.Paid / total * 100) if total > 0 else 0 }}% of total billings collected
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Administrative Audit -->
+    <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+        <h4 class="text-lg font-bold text-gray-900 mb-4">System Utilization</h4>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="text-center">
+                <p class="text-3xl font-bold text-gray-900">{{ demographics.values()|sum }}</p>
+                <p class="text-sm text-gray-500 uppercase tracking-widest font-bold mt-1">Total Registrations</p>
+            </div>
+            <div class="text-center border-x border-gray-100">
+                 <p class="text-3xl font-bold text-gray-900">{{ financials.Paid|round|int if financials.Paid else 0 }}</p>
+                <p class="text-sm text-gray-500 uppercase tracking-widest font-bold mt-1">Processed Payments</p>
+            </div>
+            <div class="text-center">
+                 <p class="text-3xl font-bold text-gray-900">0</p>
+                <p class="text-sm text-gray-500 uppercase tracking-widest font-bold mt-1">Insurance Denials</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

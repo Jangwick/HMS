@@ -232,12 +232,19 @@ def dashboard():
     today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999).isoformat()
     appointments_today = client.table('appointments').select('id', count='exact').gte('appointment_date', today_start).lte('appointment_date', today_end).execute().count or 0
 
+    # Bed stats
+    bed_resp = client.table('beds').select('id, status', count='exact').execute()
+    total_beds = bed_resp.count or 0
+    occupied_beds = sum(1 for b in bed_resp.data if b['status'] == 'Occupied') if bed_resp.data else 0
+
     upcoming_appointments = Appointment.get_upcoming()
     
     metrics = {
         'total_patients': total_patients,
         'new_patients_week': new_patients_week,
         'appointments_today': appointments_today,
+        'occupied_beds': occupied_beds,
+        'total_beds': total_beds,
         'system_status': 'Operational'
     }
     
@@ -464,6 +471,44 @@ def settings():
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+@ct1_bp.route('/beds')
+@login_required
+def bed_management():
+    client = get_supabase_client()
+    
+    try:
+        response = client.table('beds').select('*').order('room_number').execute()
+        beds = response.data if response.data else []
+        
+        # Fetch patients for any future admission logic
+        patients_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt').execute()
+        patients_list = patients_resp.data if patients_resp.data else []
+    except Exception as e:
+        flash(f'Error fetching bed data: {str(e)}', 'danger')
+        beds = []
+        patients_list = []
+        
+    return render_template('subsystems/core_transaction/ct1/beds.html',
+                           beds=beds,
+                           patients_list=patients_list,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct1_bp.route('/beds/update/<int:bed_id>', methods=['POST'])
+@login_required
+def update_bed(bed_id):
+    client = get_supabase_client()
+    
+    new_status = request.form.get('status')
+    try:
+        client.table('beds').update({'status': new_status}).eq('id', bed_id).execute()
+        flash(f'Bed status updated to {new_status}.', 'success')
+    except Exception as e:
+        flash(f'Error updating bed: {str(e)}', 'danger')
+        
+    return redirect(url_for('ct1.bed_management'))
 
 @ct1_bp.route('/logout')
 @login_required

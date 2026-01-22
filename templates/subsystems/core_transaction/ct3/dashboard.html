@@ -21,7 +21,7 @@
                     style="color: {{ accent_color or '#10B981' }};">
                     View Records
                 </a>
-                <a href="{{ url_for('ct3.patient_records', search='') }}"
+                <a href="{{ url_for('ct3.patient_records', focus='search') }}"
                     class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
                     Search Patient
                 </a>
@@ -33,7 +33,7 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Total Patients</h4>
+                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Total Patients</h4>
                 <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
                     <i class="bi bi-people"></i>
                 </div>
@@ -44,24 +44,24 @@
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Total Revenue</h4>
+                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Payments Collected</h4>
                 <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                     <i class="bi bi-currency-dollar"></i>
                 </div>
             </div>
             <p class="text-3xl font-bold text-gray-900">${{ "%.2f"|format(revenue or 0) }}</p>
-            <p class="text-blue-500 text-sm font-medium mt-2">Transactional Total</p>
+            <p class="text-blue-500 text-sm font-medium mt-2">Revenue to date</p>
         </div>
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Clinical Updates</h4>
+                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Pending Invoices</h4>
                 <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
-                    <i class="bi bi-clipboard-check"></i>
+                    <i class="bi bi-receipt-cutoff"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">{{ records_today }}</p>
-            <p class="text-amber-500 text-sm font-medium mt-2">Recorded Today</p>
+            <p class="text-3xl font-bold text-gray-900">{{ pending_bills }}</p>
+            <p class="text-amber-500 text-sm font-medium mt-2">Unpaid Records</p>
         </div>
     </div>
 
@@ -85,9 +85,9 @@
                     class="bi bi-file-earmark-medical text-2xl text-emerald-600 mb-2 block group-hover:scale-110 transition-transform"></i>
                 <span class="text-sm font-bold text-gray-700">EMRS/Records</span>
             </a>
-            <a href="{{ url_for('ct3.settings') }}" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-emerald-50 transition-colors group">
+            <a href="{{ url_for('ct3.analytics') }}" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-emerald-50 transition-colors group">
                 <i
-                    class="bi bi-gear text-2xl text-emerald-600 mb-2 block group-hover:scale-110 transition-transform"></i>
+                    class="bi bi-bar-chart text-2xl text-emerald-600 mb-2 block group-hover:scale-110 transition-transform"></i>
                 <span class="text-sm font-bold text-gray-700">Analytics</span>
             </a>
         </div>
