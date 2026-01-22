@@ -580,3 +580,48 @@ BEGIN
         ALTER TABLE medical_records ADD COLUMN vitals JSONB DEFAULT '{}'::jsonb;
     END IF;
 END $$;
+
+-- Ensure Logistics tables have correct columns (Fix for PGRST200/42703)
+DO $$ 
+BEGIN
+    -- Ensure suppliers table exists (though CREATE TABLE IF NOT EXISTS handles this, we be safe)
+    
+    -- Fix for purchase_orders supplier_id
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='purchase_orders' AND column_name='supplier_id') THEN
+        ALTER TABLE purchase_orders ADD COLUMN supplier_id INTEGER;
+    END IF;
+
+    -- Fix for purchase_orders additional columns
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='purchase_orders' AND column_name='requested_by') THEN
+        ALTER TABLE purchase_orders ADD COLUMN requested_by INTEGER REFERENCES users(id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='purchase_orders' AND column_name='approved_by') THEN
+        ALTER TABLE purchase_orders ADD COLUMN approved_by INTEGER REFERENCES users(id);
+    END IF;
+
+    -- Re-apply foreign key if missing
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name='purchase_orders_supplier_id_fkey' 
+        AND table_name='purchase_orders'
+    ) THEN
+        BEGIN
+            ALTER TABLE purchase_orders 
+            ADD CONSTRAINT purchase_orders_supplier_id_fkey 
+            FOREIGN KEY (supplier_id) REFERENCES suppliers(id);
+        EXCEPTION
+            WHEN others THEN NULL; -- Might already exist under different name
+        END;
+    END IF;
+    
+    -- Fix for inventory batch_number
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='inventory' AND column_name='batch_number') THEN
+        ALTER TABLE inventory ADD COLUMN batch_number VARCHAR(100);
+    END IF;
+
+    -- Fix for dispensing_history patient_id
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='dispensing_history' AND column_name='patient_id') THEN
+        ALTER TABLE dispensing_history ADD COLUMN patient_id INTEGER REFERENCES patients(id);
+    END IF;
+END $$;

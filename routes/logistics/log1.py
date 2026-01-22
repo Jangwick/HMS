@@ -339,11 +339,32 @@ def procurement():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    pos = client.table('purchase_orders').select('*, suppliers(supplier_name)').execute()
+    try:
+        # Try joint fetch first
+        pos_resp = client.table('purchase_orders').select('*, suppliers(supplier_name)').execute()
+        pos_data = pos_resp.data if pos_resp.data else []
+    except Exception as e:
+        print(f"Relationship join failed, using fallback: {e}")
+        # Fallback: Fetch separately and join in Python if the DB relationship is missing
+        try:
+            pos_resp = client.table('purchase_orders').select('*').execute()
+            suppliers_resp = client.table('suppliers').select('id, supplier_name').execute()
+            
+            raw_pos = pos_resp.data if pos_resp.data else []
+            suppliers_dict = {s['id']: s for s in (suppliers_resp.data or [])}
+            
+            pos_data = []
+            for po in raw_pos:
+                po['suppliers'] = suppliers_dict.get(po['supplier_id'])
+                pos_data.append(po)
+        except Exception as e2:
+            print(f"Procurement fetch failed: {e2}")
+            pos_data = []
+            
     suppliers = client.table('suppliers').select('*').execute()
     
     return render_template('subsystems/logistics/log1/procurement.html',
-                           purchase_orders=pos.data if pos.data else [],
+                           purchase_orders=pos_data,
                            suppliers=suppliers.data if suppliers.data else [],
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,

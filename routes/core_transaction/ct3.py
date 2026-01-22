@@ -255,9 +255,21 @@ def billing():
     client = get_supabase_client()
     
     try:
-        # Get billing data
-        response = client.table('billing_records').select('*, patients(first_name, last_name, patient_id_alt)').order('created_at', desc=True).execute()
-        bills = response.data if response.data else []
+        # Get billing data with joint fetch fallback
+        try:
+            response = client.table('billing_records').select('*, patients(first_name, last_name, patient_id_alt)').order('created_at', desc=True).execute()
+            bills = response.data if response.data else []
+        except Exception as e:
+            print(f"Billing join failed: {e}")
+            billing_resp = client.table('billing_records').select('*').order('created_at', desc=True).execute()
+            patients_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt').execute()
+            
+            p_dict = {p['id']: p for p in (patients_resp.data or [])}
+            bills = []
+            for b in (billing_resp.data or []):
+                b['patients'] = p_dict.get(b['patient_id'])
+                bills.append(b)
+
         # Fetch patients for the modal
         patients_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt').execute()
         patients_list = patients_resp.data if patients_resp.data else []
