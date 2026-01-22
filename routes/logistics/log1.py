@@ -352,11 +352,11 @@ def inventory_history():
     
     try:
         # Fetch dispensing history with related item and user names
-        history_resp = client.table('dispensing_history').select('*, inventory(item_name), users(username)').order('dispensed_at', ascending=False).execute()
+        history_resp = client.table('dispensing_history').select('*, inventory(item_name), users(username)').order('dispensed_at', desc=True).execute()
         history = history_resp.data if history_resp.data else []
     except Exception as e:
         # Fallback if joins fail
-        history_resp = client.table('dispensing_history').select('*').order('dispensed_at', ascending=False).execute()
+        history_resp = client.table('dispensing_history').select('*').order('dispensed_at', desc=True).execute()
         history = history_resp.data if history_resp.data else []
         
     return render_template('subsystems/logistics/log1/history.html',
