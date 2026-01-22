@@ -309,7 +309,9 @@ CREATE TABLE IF NOT EXISTS inventory (
     item_name VARCHAR(200) NOT NULL,
     category VARCHAR(100), -- Medical, Office, Maintenance
     quantity INTEGER DEFAULT 0,
+    unit VARCHAR(50) DEFAULT 'units',
     reorder_level INTEGER DEFAULT 10,
+    location VARCHAR(100),
     expiry_date DATE,
     batch_number VARCHAR(100),
     created_at TIMESTAMP DEFAULT NOW()

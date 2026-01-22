@@ -182,17 +182,48 @@ def change_password():
 def dashboard():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
+    
     # Fetch stats
-    total_items = client.table('inventory').select('id', count='exact').execute().count
-    low_stock = client.table('inventory').select('id', count='exact').lte('quantity', 10).execute().count
+    total_items = 0
+    low_stock = 0
+    cat_labels = []
+    cat_values = []
+    
+    try:
+        total_items_resp = client.table('inventory').select('id', count='exact').execute()
+        total_items = total_items_resp.count or 0
+        
+        low_stock_resp = client.table('inventory').select('id', count='exact').lte('quantity', 10).execute()
+        low_stock = low_stock_resp.count or 0
+        
+        # Category breakdown
+        inv_resp = client.table('inventory').select('category').execute()
+        if inv_resp.data:
+            cats = {}
+            for item in inv_resp.data:
+                c = item.get('category') or 'Other'
+                cats[c] = cats.get(c, 0) + 1
+            cat_labels = list(cats.keys())
+            cat_values = list(cats.values())
+    except Exception as e:
+        print(f"Error fetching dashboard stats: {e}")
+
+    # Placeholder values for trend chart
+    consumption_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
+    consumption_values = [0, 0, 0, 0, 0, 0]
     
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
+        
     return render_template('subsystems/logistics/log1/dashboard.html', 
                            now=datetime.utcnow,
                            total_items=total_items,
                            low_stock_count=low_stock,
+                           cat_labels=cat_labels,
+                           cat_values=cat_values,
+                           consumption_labels=consumption_labels,
+                           consumption_values=consumption_values,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -214,20 +245,38 @@ def list_inventory():
 @login_required
 def add_inventory_item():
     if request.method == 'POST':
-        from utils.supabase_client import get_supabase_client
-        client = get_supabase_client()
-        data = {
-            'item_name': request.form.get('item_name'),
-            'category': request.form.get('category'),
-            'quantity': int(request.form.get('quantity')),
-            'unit': request.form.get('unit'),
-            'reorder_level': int(request.form.get('reorder_level')),
-            'batch_number': request.form.get('batch_number'),
-            'expiry_date': request.form.get('expiry_date')
-        }
-        client.table('inventory').insert(data).execute()
-        flash('Item added to inventory!', 'success')
-        return redirect(url_for('log1.list_inventory'))
+        try:
+            from utils.supabase_client import get_supabase_client
+            client = get_supabase_client()
+            
+            # Get form data and convert to appropriate types
+            quantity = request.form.get('quantity', '0')
+            reorder_level = request.form.get('reorder_level', '10')
+            
+            data = {
+                'item_name': request.form.get('item_name'),
+                'category': request.form.get('category'),
+                'quantity': int(quantity) if quantity else 0,
+                'reorder_level': int(reorder_level) if reorder_level else 10,
+                'batch_number': request.form.get('batch_number'),
+                'expiry_date': request.form.get('expiry_date') or None
+            }
+            
+            # Optional fields - check if they exist or handle gracefully
+            unit = request.form.get('unit')
+            if unit:
+                data['unit'] = unit
+                
+            client.table('inventory').insert(data).execute()
+            flash('Item added to inventory!', 'success')
+            return redirect(url_for('log1.list_inventory'))
+        except Exception as e:
+            flash(f'Error adding item: {format_db_error(e)}', 'danger')
+            return render_template('subsystems/logistics/log1/add_item.html',
+                                   subsystem_name=SUBSYSTEM_NAME,
+                                   accent_color=ACCENT_COLOR,
+                                   blueprint_name=BLUEPRINT_NAME)
+            
     return render_template('subsystems/logistics/log1/add_item.html',
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
