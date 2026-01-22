@@ -1,0 +1,118 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Procurement - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Procurement & Purchase Orders{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Purchase Orders</h3>
+            <p class="text-gray-500">Manage supply requests and vendor relationships</p>
+        </div>
+        <button onclick="document.getElementById('addPOModal').classList.remove('hidden')" 
+                class="px-6 py-2.5 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-colors flex items-center">
+            <i class="bi bi-plus-lg mr-2"></i>
+            New Purchase Order
+        </button>
+    </div>
+
+    <!-- PO List -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50 border-b border-gray-100">
+                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">PO Number</th>
+                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Supplier</th>
+                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Total Amount</th>
+                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Created</th>
+                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                {% for po in purchase_orders %}
+                <tr class="hover:bg-gray-50/50 transition-colors">
+                    <td class="px-6 py-4">
+                        <span class="font-bold text-gray-900">{{ po.po_number }}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-gray-600">{{ po.suppliers.supplier_name if po.suppliers else 'Unknown' }}</span>
+                    </td>
+                    <td class="px-6 py-4 font-medium text-gray-900">
+                        ${{ "{:,.20f}".format(po.total_amount).split('.')[0] + '.' + "{:,.2f}".format(po.total_amount).split('.')[1] if po.total_amount else '0.00' }}
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if po.status == 'Draft' %}
+                        <span class="px-2.5 py-1 bg-gray-100 text-gray-700 text-[10px] font-bold rounded-full uppercase">Draft</span>
+                        {% elif po.status == 'Sent' %}
+                        <span class="px-2.5 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full uppercase">Sent</span>
+                        {% elif po.status == 'Received' %}
+                        <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Received</span>
+                        {% else %}
+                        <span class="px-2.5 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-full uppercase">{{ po.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                        {{ po.created_at[:10] }}
+                    </td>
+                    <td class="px-6 py-4">
+                        <button class="text-gray-400 hover:text-[#F59E0B] transition-colors">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                        <i class="bi bi-inbox text-4xl mb-2 block text-gray-200"></i>
+                        No purchase orders found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add PO Modal -->
+<div id="addPOModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+            <h4 class="text-xl font-bold text-gray-900">Create Purchase Order</h4>
+            <button onclick="document.getElementById('addPOModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('log1.add_purchase_order') }}" method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Supplier</label>
+                <select name="supplier_id" required class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+                    {% for supplier in suppliers %}
+                    <option value="{{ supplier.id }}">{{ supplier.supplier_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Estimated Amount</label>
+                <input type="number" step="0.01" name="total_amount" required 
+                       class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Notes</label>
+                <textarea name="notes" rows="3" class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all"></textarea>
+            </div>
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="document.getElementById('addPOModal').classList.add('hidden')"
+                        class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 py-3 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-all">
+                    Create PO
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

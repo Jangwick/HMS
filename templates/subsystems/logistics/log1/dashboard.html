@@ -87,16 +87,29 @@
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h4 class="text-xl font-bold text-gray-900 mb-6">Logistics Actions</h4>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <a href="{{ url_for('log1.add_inventory_item') }}"
+            <a href="{{ url_for('log1.list_inventory') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
-                    class="bi bi-plus-circle text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Add New Item</span>
+                    class="bi bi-boxes text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Inventory</span>
             </a>
-            <a href="#" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
+            <a href="{{ url_for('log1.procurement') }}"
+                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
-                    class="bi bi-arrow-down-left-circle text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Stock In</span>
+                    class="bi bi-cart-check text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Procurement</span>
+            </a>
+            <a href="{{ url_for('log1.list_assets') }}"
+                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
+                <i
+                    class="bi bi-truck text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Assets</span>
+            </a>
+            <a href="{{ url_for('log1.list_documents') }}"
+                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
+                <i
+                    class="bi bi-file-earmark-text text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Documents</span>
             </a>
             <a href="#" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i

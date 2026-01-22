@@ -1,0 +1,45 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Documents - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Document Tracking{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Document Archive</h3>
+            <p class="text-gray-500">Track invoices, receipts, and compliance certificates</p>
+        </div>
+        <button class="px-6 py-2.5 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-colors flex items-center">
+            <i class="bi bi-upload mr-2"></i>
+            Upload Document
+        </button>
+    </div>
+
+    <!-- Document List -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {% for doc in documents %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex items-start gap-4 hover:shadow-md transition-all">
+            <div class="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-[#F59E0B]">
+                <i class="bi bi-file-earmark-pdf text-2xl"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-gray-900 truncate">{{ doc.title }}</h4>
+                <p class="text-xs text-gray-500">{{ doc.doc_type }} • {{ doc.created_at[:10] }}</p>
+                <div class="mt-4 flex gap-2">
+                    <a href="{{ doc.file_url or '#' }}" class="text-xs font-bold text-[#F59E0B] hover:underline">View</a>
+                    <span class="text-xs text-gray-300">|</span>
+                    <button class="text-xs font-bold text-gray-400 hover:text-gray-600">Archive</button>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-span-full py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+            <i class="bi bi-file-earmark-text text-5xl text-gray-300 mb-4 block"></i>
+            <h4 class="text-lg font-bold text-gray-900">No documents tracked</h4>
+            <p class="text-gray-500 mt-2">Upload supply chain documents to start tracking.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

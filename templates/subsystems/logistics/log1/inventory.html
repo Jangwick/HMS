@@ -60,12 +60,12 @@
                         <td class="px-6 py-5 text-gray-500 font-medium">{{ item.reorder_level }}</td>
                         <td class="px-8 py-5 text-right">
                             <div class="flex justify-end space-x-2">
-                                <button
+                                <button onclick="openDispenseModal('{{ item.id }}', '{{ item.item_name }}', '{{ item.quantity }}')"
                                     class="px-4 py-2 bg-gray-50 text-[#F59E0B] font-bold text-sm rounded-lg hover:bg-[#F59E0B] hover:text-white transition-all">
-                                    Stock In
+                                    Dispense
                                 </button>
                                 <button
-                                    class="p-2 text-gray-400 hover:text-[#F59E0B] hover:bg-white rounded-lg transition-all">
+                                    class="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-all">
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
                             </div>

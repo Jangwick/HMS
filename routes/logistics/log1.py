@@ -186,31 +186,42 @@ def dashboard():
     # Fetch stats
     total_items = 0
     low_stock = 0
+    inventory_value = 0
     cat_labels = []
     cat_values = []
     
     try:
-        total_items_resp = client.table('inventory').select('id', count='exact').execute()
-        total_items = total_items_resp.count or 0
+        # Total items and low stock
+        inv_data = client.table('inventory').select('*').execute()
+        items = inv_data.data if inv_data.data else []
+        total_items = len(items)
         
-        low_stock_resp = client.table('inventory').select('id', count='exact').lte('quantity', 10).execute()
-        low_stock = low_stock_resp.count or 0
+        low_stock = sum(1 for item in items if (item.get('quantity') or 0) <= (item.get('reorder_level') or 10))
         
         # Category breakdown
-        inv_resp = client.table('inventory').select('category').execute()
-        if inv_resp.data:
-            cats = {}
-            for item in inv_resp.data:
-                c = item.get('category') or 'Other'
-                cats[c] = cats.get(c, 0) + 1
-            cat_labels = list(cats.keys())
-            cat_values = list(cats.values())
+        cats = {}
+        for item in items:
+            c = item.get('category') or 'Other'
+            cats[c] = cats.get(c, 0) + 1
+        cat_labels = list(cats.keys())
+        cat_values = list(cats.values())
+        
+        # Asset stats
+        assets_resp = client.table('assets').select('id', count='exact').execute()
+        total_assets = assets_resp.count or 0
+        
+        # Procurement stats
+        po_resp = client.table('purchase_orders').select('id', count='exact').eq('status', 'Pending').execute()
+        pending_pos = po_resp.count or 0
+
     except Exception as e:
         print(f"Error fetching dashboard stats: {e}")
+        total_assets = 0
+        pending_pos = 0
 
     # Placeholder values for trend chart
     consumption_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
-    consumption_values = [0, 0, 0, 0, 0, 0]
+    consumption_values = [12, 19, 3, 5, 2, 3]
     
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
@@ -220,6 +231,8 @@ def dashboard():
                            now=datetime.utcnow,
                            total_items=total_items,
                            low_stock_count=low_stock,
+                           total_assets=total_assets,
+                           pending_pos=pending_pos,
                            cat_labels=cat_labels,
                            cat_values=cat_values,
                            consumption_labels=consumption_labels,
@@ -278,6 +291,128 @@ def add_inventory_item():
                                    blueprint_name=BLUEPRINT_NAME)
             
     return render_template('subsystems/logistics/log1/add_item.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log1_bp.route('/inventory/dispense', methods=['POST'])
+@login_required
+def dispense_item():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    item_id = request.form.get('item_id')
+    quantity_to_dispense = int(request.form.get('quantity', 0))
+    
+    try:
+        # Get current quantity
+        item_resp = client.table('inventory').select('quantity, item_name').eq('id', item_id).single().execute()
+        if not item_resp.data:
+            flash('Item not found.', 'danger')
+            return redirect(url_for('log1.list_inventory'))
+            
+        current_qty = item_resp.data.get('quantity', 0)
+        if current_qty < quantity_to_dispense:
+            flash(f'Insufficient stock for {item_resp.data.get("item_name")}.', 'danger')
+            return redirect(url_for('log1.list_inventory'))
+            
+        # Update quantity
+        client.table('inventory').update({'quantity': current_qty - quantity_to_dispense}).eq('id', item_id).execute()
+        
+        # Log in dispensing history
+        client.table('dispensing_history').insert({
+            'inventory_id': item_id,
+            'quantity': quantity_to_dispense,
+            'dispensed_by': current_user.id,
+            'notes': request.form.get('notes', 'Standard dispensing')
+        }).execute()
+        
+        flash(f'Successfully dispensed {quantity_to_dispense} units.', 'success')
+    except Exception as e:
+        flash(f'Error dispensing item: {str(e)}', 'danger')
+        
+    return redirect(url_for('log1.list_inventory'))
+
+@log1_bp.route('/procurement')
+@login_required
+def procurement():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    pos = client.table('purchase_orders').select('*, suppliers(supplier_name)').execute()
+    suppliers = client.table('suppliers').select('*').execute()
+    
+    return render_template('subsystems/logistics/log1/procurement.html',
+                           purchase_orders=pos.data if pos.data else [],
+                           suppliers=suppliers.data if suppliers.data else [],
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log1_bp.route('/procurement/po/add', methods=['POST'])
+@login_required
+def add_purchase_order():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        po_data = {
+            'po_number': f"PO-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+            'supplier_id': request.form.get('supplier_id'),
+            'total_amount': float(request.form.get('total_amount', 0)),
+            'status': 'Draft',
+            'requested_by': current_user.id,
+            'notes': request.form.get('notes')
+        }
+        client.table('purchase_orders').insert(po_data).execute()
+        flash('Purchase Order created successfully!', 'success')
+    except Exception as e:
+        flash(f'Error creating PO: {str(e)}', 'danger')
+        
+    return redirect(url_for('log1.procurement'))
+
+@log1_bp.route('/assets')
+@login_required
+def list_assets():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    assets = client.table('assets').select('*').execute()
+    return render_template('subsystems/logistics/log1/assets.html',
+                           assets=assets.data if assets.data else [],
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log1_bp.route('/assets/add', methods=['POST'])
+@login_required
+def add_asset():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        asset_data = {
+            'asset_name': request.form.get('asset_name'),
+            'tag_number': request.form.get('tag_number'),
+            'status': 'Active',
+            'last_maintenance': datetime.now().date().isoformat()
+        }
+        client.table('assets').insert(asset_data).execute()
+        flash('Asset registered successfully!', 'success')
+    except Exception as e:
+        flash(f'Error adding asset: {str(e)}', 'danger')
+        
+    return redirect(url_for('log1.list_assets'))
+
+@log1_bp.route('/documents')
+@login_required
+def list_documents():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    docs = client.table('log_documents').select('*').execute()
+    return render_template('subsystems/logistics/log1/documents.html',
+                           documents=docs.data if docs.data else [],
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

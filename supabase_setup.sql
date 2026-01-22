@@ -345,6 +345,53 @@ CREATE TABLE IF NOT EXISTS fleet_vehicles (
 );
 
 -- =====================================================
+-- LOGISTICS PROCUREMENT & DOCUMENTS
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS suppliers (
+    id SERIAL PRIMARY KEY,
+    supplier_name VARCHAR(200) NOT NULL,
+    contact_person VARCHAR(100),
+    email VARCHAR(120),
+    phone VARCHAR(20),
+    category VARCHAR(100), -- Medical, Office, etc.
+    status VARCHAR(50) DEFAULT 'Active',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS purchase_orders (
+    id SERIAL PRIMARY KEY,
+    po_number VARCHAR(50) UNIQUE NOT NULL,
+    supplier_id INTEGER REFERENCES suppliers(id),
+    total_amount DECIMAL(12, 2) DEFAULT 0.00,
+    status VARCHAR(50) DEFAULT 'Draft', -- Draft, Sent, Received, Cancelled
+    notes TEXT,
+    requested_by INTEGER REFERENCES users(id),
+    approved_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS po_items (
+    id SERIAL PRIMARY KEY,
+    po_id INTEGER REFERENCES purchase_orders(id) ON DELETE CASCADE,
+    item_name VARCHAR(200) NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price DECIMAL(12, 2) NOT NULL,
+    total_price DECIMAL(12, 2) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS log_documents (
+    id SERIAL PRIMARY KEY,
+    doc_type VARCHAR(50) NOT NULL, -- Invoice, Delivery Receipt, Certification
+    doc_number VARCHAR(100),
+    title VARCHAR(200) NOT NULL,
+    file_url TEXT,
+    status VARCHAR(50) DEFAULT 'Pending', -- Pending, Verified, Archived
+    uploaded_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- =====================================================
 -- FINANCIAL TABLES
 -- =====================================================
 
@@ -497,6 +544,22 @@ CREATE POLICY "Allow all on dispensing_history" ON dispensing_history FOR ALL US
 ALTER TABLE IF EXISTS assets ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on assets" ON assets;
 CREATE POLICY "Allow all on assets" ON assets FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS suppliers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on suppliers" ON suppliers;
+CREATE POLICY "Allow all on suppliers" ON suppliers FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS purchase_orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on purchase_orders" ON purchase_orders;
+CREATE POLICY "Allow all on purchase_orders" ON purchase_orders FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS po_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on po_items" ON po_items;
+CREATE POLICY "Allow all on po_items" ON po_items FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS log_documents ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on log_documents" ON log_documents;
+CREATE POLICY "Allow all on log_documents" ON log_documents FOR ALL USING (true) WITH CHECK (true);
 
 ALTER TABLE IF EXISTS fleet_vehicles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on fleet_vehicles" ON fleet_vehicles;

@@ -1,0 +1,97 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Assets - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Asset Management{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Hospital Assets</h3>
+            <p class="text-gray-500">Track equipment lifecycle and maintenance schedules</p>
+        </div>
+        <button onclick="document.getElementById('addAssetModal').classList.remove('hidden')" 
+                class="px-6 py-2.5 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-colors flex items-center">
+            <i class="bi bi-plus-lg mr-2"></i>
+            Register Asset
+        </button>
+    </div>
+
+    <!-- Asset Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for asset in assets %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h4 class="text-lg font-bold text-gray-900">{{ asset.asset_name }}</h4>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">{{ asset.tag_number }}</p>
+                </div>
+                <span class="px-2 py-1 {% if asset.status == 'Active' %}bg-emerald-100 text-emerald-700{% else %}bg-amber-100 text-amber-700{% endif %} text-[10px] font-bold rounded-full uppercase">
+                    {{ asset.status }}
+                </span>
+            </div>
+            
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Last Maintenance:</span>
+                    <span class="font-medium text-gray-900">{{ asset.last_maintenance or 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Warranty Until:</span>
+                    <span class="font-medium text-gray-900">{{ asset.warranty_expiry or 'Lifetime' }}</span>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button class="flex-1 py-2 bg-gray-50 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-100 transition-colors">
+                    History
+                </button>
+                <button class="flex-1 py-2 bg-[#F59E0B]/10 text-[#F59E0B] text-xs font-bold rounded-lg hover:bg-[#F59E0B]/20 transition-colors">
+                    Maintain
+                </button>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-span-full py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+            <i class="bi bi-tools text-5xl text-gray-300 mb-4 block"></i>
+            <h4 class="text-lg font-bold text-gray-900">No assets registered</h4>
+            <p class="text-gray-500 mt-2">Hospital equipment will appear here once added.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Add Asset Modal -->
+<div id="addAssetModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+            <h4 class="text-xl font-bold text-gray-900">Register New Asset</h4>
+            <button onclick="document.getElementById('addAssetModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('log1.add_asset') }}" method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Asset Name</label>
+                <input type="text" name="asset_name" required placeholder="e.g. MRI Scanner Model X"
+                       class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Tag Number / Serial</label>
+                <input type="text" name="tag_number" required placeholder="HOSP-ASSET-001"
+                       class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+            </div>
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="document.getElementById('addAssetModal').classList.add('hidden')"
+                        class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 py-3 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-all">
+                    Register
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
