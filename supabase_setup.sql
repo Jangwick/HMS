@@ -589,6 +589,22 @@ ALTER TABLE IF EXISTS inventory ADD COLUMN IF NOT EXISTS reorder_level INTEGER D
 ALTER TABLE IF EXISTS inventory ADD COLUMN IF NOT EXISTS location VARCHAR(100);
 ALTER TABLE IF EXISTS inventory ADD COLUMN IF NOT EXISTS expiry_date DATE;
 
+-- Logistics Transactions
+CREATE TABLE IF NOT EXISTS inventory_transactions (
+    id SERIAL PRIMARY KEY,
+    item_id INTEGER REFERENCES inventory(id) ON DELETE CASCADE,
+    transaction_type VARCHAR(20) NOT NULL, -- DISPENSE, RESTOCK, ADJUST
+    quantity INTEGER NOT NULL,
+    notes TEXT,
+    performed_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- RLS for Transactions
+ALTER TABLE IF EXISTS inventory_transactions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on transactions" ON inventory_transactions;
+CREATE POLICY "Allow all on transactions" ON inventory_transactions FOR ALL USING (true) WITH CHECK (true);
+
 ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS supplier_id INTEGER;
 ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS requested_by INTEGER;
 ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS approved_by INTEGER;

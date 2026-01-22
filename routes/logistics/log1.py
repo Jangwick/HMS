@@ -272,14 +272,11 @@ def add_inventory_item():
                 'quantity': int(quantity) if quantity else 0,
                 'reorder_level': int(reorder_level) if reorder_level else 10,
                 'batch_number': request.form.get('batch_number'),
-                'expiry_date': request.form.get('expiry_date') or None
+                'expiry_date': request.form.get('expiry_date') or None,
+                'unit': request.form.get('unit', 'units'),
+                'location': request.form.get('location', 'Warehouse')
             }
             
-            # Optional fields - check if they exist or handle gracefully
-            unit = request.form.get('unit')
-            if unit:
-                data['unit'] = unit
-                
             client.table('inventory').insert(data).execute()
             flash('Item added to inventory!', 'success')
             return redirect(url_for('log1.list_inventory'))
@@ -291,6 +288,79 @@ def add_inventory_item():
                                    blueprint_name=BLUEPRINT_NAME)
             
     return render_template('subsystems/logistics/log1/add_item.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log1_bp.route('/inventory/edit/<int:item_id>', methods=['GET', 'POST'])
+@login_required
+def edit_inventory_item(item_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    if request.method == 'POST':
+        try:
+            quantity = request.form.get('quantity', '0')
+            reorder_level = request.form.get('reorder_level', '10')
+            
+            data = {
+                'item_name': request.form.get('item_name'),
+                'category': request.form.get('category'),
+                'quantity': int(quantity) if quantity else 0,
+                'reorder_level': int(reorder_level) if reorder_level else 10,
+                'batch_number': request.form.get('batch_number'),
+                'expiry_date': request.form.get('expiry_date') or None,
+                'unit': request.form.get('unit', 'units'),
+                'location': request.form.get('location')
+            }
+            
+            client.table('inventory').update(data).eq('id', item_id).execute()
+            flash('Item updated successfully!', 'success')
+            return redirect(url_for('log1.list_inventory'))
+        except Exception as e:
+            flash(f'Error updating item: {str(e)}', 'danger')
+
+    # Fetch item for the form
+    resp = client.table('inventory').select('*').eq('id', item_id).single().execute()
+    if not resp.data:
+        flash('Item not found.', 'danger')
+        return redirect(url_for('log1.list_inventory'))
+        
+    return render_template('subsystems/logistics/log1/edit_item.html',
+                           item=resp.data,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log1_bp.route('/inventory/delete/<int:item_id>', methods=['POST'])
+@login_required
+def delete_inventory_item(item_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('inventory').delete().eq('id', item_id).execute()
+        flash('Item removed from inventory.', 'success')
+    except Exception as e:
+        flash(f'Error deleting item: {str(e)}', 'danger')
+    return redirect(url_for('log1.list_inventory'))
+
+@log1_bp.route('/inventory/history')
+@login_required
+def inventory_history():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetch dispensing history with related item and user names
+        history_resp = client.table('dispensing_history').select('*, inventory(item_name), users(username)').order('dispensed_at', ascending=False).execute()
+        history = history_resp.data if history_resp.data else []
+    except Exception as e:
+        # Fallback if joins fail
+        history_resp = client.table('dispensing_history').select('*').order('dispensed_at', ascending=False).execute()
+        history = history_resp.data if history_resp.data else []
+        
+    return render_template('subsystems/logistics/log1/history.html',
+                           history=history,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

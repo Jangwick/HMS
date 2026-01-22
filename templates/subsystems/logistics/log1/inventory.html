@@ -1,4 +1,4 @@
-{% extends "base/subsystem_base.html" %}
+﻿{% extends "base/subsystem_base.html" %}
 
 {% block title %}Inventory - {{ subsystem_name }}{% endblock %}
 {% block header_title %}Warehouse Inventory{% endblock %}
@@ -12,14 +12,33 @@
             <p class="text-gray-500">Track and manage hospital supplies and equipment</p>
         </div>
         <div class="flex space-x-3">
-            <button
+            <a href="{{ url_for('log1.inventory_history') }}"
                 class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
-                <i class="bi bi-download mr-2"></i> Export
-            </button>
+                <i class="bi bi-clock-history mr-2"></i> History
+            </a>
             <a href="{{ url_for('log1.add_inventory_item') }}"
                 class="px-6 py-2 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-[#D97706] transition-all transform hover:-translate-y-1">
                 <i class="bi bi-plus-lg mr-2"></i> Add Item
             </a>
+        </div>
+    </div>
+
+    <!-- Filters & Search -->
+    <div class="flex flex-col md:flex-row gap-4">
+        <div class="relative flex-1">
+            <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            <input type="text" id="inventorySearch" placeholder="Search by item name or batch..."
+                class="w-full pl-12 pr-4 py-4 bg-white border border-gray-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-[#F59E0B] outline-none transition-all">
+        </div>
+        <div class="flex gap-2">
+            <select id="categoryFilter"
+                class="px-4 py-4 bg-white border border-gray-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-[#F59E0B] outline-none transition-all font-bold text-gray-700">
+                <option value="">All Categories</option>
+                <option value="Medical">Medical Supplies</option>
+                <option value="Office">Office Supplies</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="General">General</option>
+            </select>
         </div>
     </div>
 
@@ -64,10 +83,10 @@
                                     class="px-4 py-2 bg-gray-50 text-[#F59E0B] font-bold text-sm rounded-lg hover:bg-[#F59E0B] hover:text-white transition-all">
                                     Dispense
                                 </button>
-                                <button
+                                <a href="{{ url_for('log1.edit_inventory_item', item_id=item.id) }}"
                                     class="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-all">
                                     <i class="bi bi-pencil-square"></i>
-                                </button>
+                                </a>
                             </div>
                         </td>
                     </tr>
@@ -93,4 +112,110 @@
         </div>
     </div>
 </div>
+
+<!-- Dispense Modal -->
+<div id="dispenseModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all scale-95 opacity-0 duration-300" id="modalContainer">
+        <div class="bg-gradient-to-r from-[#F59E0B] to-amber-800 px-8 py-6 text-white flex justify-between items-center">
+            <h3 class="text-xl font-bold">Dispense Item</h3>
+            <button onclick="closeDispenseModal()" class="hover:bg-white/20 p-2 rounded-full transition-colors">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('log1.dispense_item') }}" method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" id="dispense_item_id" name="item_id">
+            
+            <div class="bg-amber-50 rounded-2xl p-4 border border-amber-100">
+                <div class="text-sm text-amber-600 font-bold uppercase tracking-wider mb-1">Item Selected</div>
+                <div id="dispense_item_name" class="text-lg font-bold text-gray-900 line-clamp-1">Item Name</div>
+                <div class="text-sm text-gray-500 mt-1">Available: <span id="dispense_max_qty" class="font-bold text-[#F59E0B]">0</span></div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700">Quantity to Dispense</label>
+                <input type="number" name="quantity" id="dispense_input_qty" required min="1"
+                    class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#F59E0B] outline-none transition-all font-bold">
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700">Notes / Recipient</label>
+                <textarea name="notes" rows="2" 
+                    class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#F59E0B] outline-none transition-all"
+                    placeholder="e.g. Ward A - Nurse Maria"></textarea>
+            </div>
+
+            <div class="flex gap-4 pt-2">
+                <button type="button" onclick="closeDispenseModal()"
+                    class="flex-1 px-6 py-4 bg-gray-100 text-gray-600 font-bold rounded-2xl hover:bg-gray-200 transition-all">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="flex-1 px-6 py-4 bg-[#F59E0B] text-white font-bold rounded-2xl shadow-lg hover:bg-[#D97706] transition-all transform hover:-translate-y-1">
+                    Confirm
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openDispenseModal(id, name, max) {
+    document.getElementById('dispense_item_id').value = id;
+    document.getElementById('dispense_item_name').innerText = name;
+    document.getElementById('dispense_max_qty').innerText = max;
+    document.getElementById('dispense_input_qty').max = max;
+    
+    const modal = document.getElementById('dispenseModal');
+    const container = document.getElementById('modalContainer');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => {
+        container.classList.remove('scale-95', 'opacity-0');
+        container.classList.add('scale-100', 'opacity-100');
+    }, 10);
+}
+
+function closeDispenseModal() {
+    const modal = document.getElementById('dispenseModal');
+    const container = document.getElementById('modalContainer');
+    container.classList.remove('scale-100', 'opacity-100');
+    container.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }, 300);
+}
+
+// Search and Filter Logic
+const searchInput = document.getElementById('inventorySearch');
+const categoryFilter = document.getElementById('categoryFilter');
+const tableRows = document.querySelectorAll('tbody tr');
+
+function filterTable() {
+    const searchTerm = (searchInput?.value || "").toLowerCase();
+    const selectedCategory = (categoryFilter?.value || "").toLowerCase();
+
+    tableRows.forEach(row => {
+        const itemCell = row.querySelector('td:nth-child(1)');
+        if (itemCell) {
+            const itemName = itemCell.innerText.toLowerCase();
+            const categoryCell = row.querySelector('td:nth-child(2)');
+            const category = categoryCell ? categoryCell.innerText.toLowerCase() : "";
+            
+            const matchesSearch = itemName.includes(searchTerm);
+            const matchesCategory = selectedCategory === "" || category.includes(selectedCategory);
+
+            if (matchesSearch && matchesCategory) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        }
+    });
+}
+
+if (searchInput) searchInput.addEventListener('input', filterTable);
+if (categoryFilter) categoryFilter.addEventListener('change', filterTable);
+</script>
 {% endblock %}
