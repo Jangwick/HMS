@@ -876,5 +876,13 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendor_invoices' AND column_name='description') THEN
         ALTER TABLE vendor_invoices ADD COLUMN description TEXT;
     END IF;
+
+    -- ROBUST RECEIVABLES FIX
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='receivables' AND column_name='billing_id') THEN
+        ALTER TABLE receivables ADD COLUMN billing_id INTEGER REFERENCES billing_records(id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='receivables' AND column_name='amount_due') THEN
+        ALTER TABLE receivables ADD COLUMN amount_due DECIMAL(12, 2) DEFAULT 0.00;
+    END IF;
 END $$;
 ALTER TABLE IF EXISTS fleet_costs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();

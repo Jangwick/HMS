@@ -12,8 +12,8 @@
             <p class="text-gray-500">Manage hospital revenue and patient accounts</p>
         </div>
         <div class="flex space-x-3">
-            <button
-                class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+            <button onclick="window.print()"
+                class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all no-print">
                 <i class="bi bi-printer mr-2"></i> Print All
             </button>
             <a href="{{ url_for('financials.create_bill') }}"
@@ -34,7 +34,7 @@
                         <th class="px-6 py-5">Amount</th>
                         <th class="px-6 py-5">Status</th>
                         <th class="px-6 py-5">Date</th>
-                        <th class="px-8 py-5 text-right">Actions</th>
+                        <th class="px-8 py-5 text-right no-print">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -58,7 +58,7 @@
                             </span>
                         </td>
                         <td class="px-6 py-5 text-gray-500 text-sm">{{ record.created_at[:10] }}</td>
-                        <td class="px-8 py-5 text-right">
+                        <td class="px-8 py-5 text-right no-print">
                             <div class="flex justify-end space-x-2">
                                 {% if record.status == 'Unpaid' %}
                                 <form action="{{ url_for('financials.pay_bill', bill_id=record.id) }}" method="POST" class="inline">
