@@ -275,7 +275,7 @@ def pay_bill(bill_id):
             'amount': amount,
             'payment_method': request.form.get('payment_method', 'Cash'),
             'collection_date': datetime.now().isoformat(),
-            'collected_by': current_user.get_id()
+            'collected_by': current_user.id
         }
         client.table('collections').insert(collection_data).execute()
     else:
@@ -378,7 +378,7 @@ def pay_invoice(invoice_id):
                 'transaction_type': 'WITHDRAWAL',
                 'amount': invoice['amount'],
                 'description': f"Payment for Invoice #INV-{invoice_id}",
-                'performed_by': current_user.get_id()
+                'performed_by': current_user.id
             }).execute()
 
     flash(f'Payment recorded for Invoice #{invoice.get("invoice_number", invoice_id)}', 'success')
@@ -510,7 +510,9 @@ def collect_receivable(receivable_id):
         'amount': amount,
         'collection_date': datetime.now().isoformat(),
         'payment_method': request.form.get('payment_method', 'Cash'),
-        'collected_by': current_user.get_id()
+        'collected_by': current_user.id,
+        'account_id': request.form.get('account_id'),
+        'reference': f"Patient: {rec.get('patient_name', 'N/A')}"
     }
     client.table('collections').insert(collection_data).execute()
     
@@ -528,7 +530,7 @@ def collect_receivable(receivable_id):
                 'transaction_type': 'DEPOSIT',
                 'amount': amount,
                 'description': f"Collection from Receivable #{receivable_id}",
-                'performed_by': current_user.get_id()
+                'performed_by': current_user.id
             }).execute()
 
     flash(f'Collection of ${amount:.2f} recorded successfully.', 'success')
@@ -538,7 +540,11 @@ def collect_receivable(receivable_id):
 @login_required
 def collections():
     client = get_supabase_client()
-    collections = client.table('collections').select('*').order('collection_date', desc=True).execute().data or []
+    # Join with bank_accounts to get the account name
+    collections = client.table('collections').select('*, bank_accounts(bank_name)').order('collection_date', desc=True).execute().data or []
+    for coll in collections:
+        coll['account_name'] = coll.get('bank_accounts', {}).get('bank_name', 'General Account')
+    
     return render_template('subsystems/financials/fin3/collections.html', 
                            collections=collections, 
                            subsystem_name="Accounts Receivable", 

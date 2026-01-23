@@ -884,5 +884,47 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='receivables' AND column_name='amount_due') THEN
         ALTER TABLE receivables ADD COLUMN amount_due DECIMAL(12, 2) DEFAULT 0.00;
     END IF;
+
+    -- ROBUST COLLECTIONS FIX
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='collections' AND column_name='collected_by') THEN
+        ALTER TABLE collections ADD COLUMN collected_by INTEGER REFERENCES users(id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='collections' AND column_name='reference') THEN
+        ALTER TABLE collections ADD COLUMN reference VARCHAR(100);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='collections' AND column_name='account_id') THEN
+        ALTER TABLE collections ADD COLUMN account_id INTEGER REFERENCES bank_accounts(id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='collections' AND column_name='payment_method') THEN
+        ALTER TABLE collections ADD COLUMN payment_method VARCHAR(50);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='collections' AND column_name='collection_date') THEN
+        ALTER TABLE collections ADD COLUMN collection_date TIMESTAMP DEFAULT NOW();
+    END IF;
+
+    -- ROBUST VENDOR PAYMENTS FIX
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendor_payments' AND column_name='account_id') THEN
+        ALTER TABLE vendor_payments ADD COLUMN account_id INTEGER REFERENCES bank_accounts(id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendor_payments' AND column_name='payment_method') THEN
+        ALTER TABLE vendor_payments ADD COLUMN payment_method VARCHAR(50);
+    END IF;
+
+    -- ROBUST CASH_TRANSACTIONS FIX
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='cash_transactions' AND column_name='account_id') THEN
+        ALTER TABLE cash_transactions ADD COLUMN account_id INTEGER REFERENCES bank_accounts(id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='cash_transactions' AND column_name='transaction_type') THEN
+        ALTER TABLE cash_transactions ADD COLUMN transaction_type VARCHAR(20);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='cash_transactions' AND column_name='amount') THEN
+        ALTER TABLE cash_transactions ADD COLUMN amount DECIMAL(12, 2) DEFAULT 0.00;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='cash_transactions' AND column_name='performed_by') THEN
+        ALTER TABLE cash_transactions ADD COLUMN performed_by INTEGER REFERENCES users(id);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='cash_transactions' AND column_name='transaction_date') THEN
+        ALTER TABLE cash_transactions ADD COLUMN transaction_date TIMESTAMP DEFAULT NOW();
+    END IF;
 END $$;
 ALTER TABLE IF EXISTS fleet_costs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();

@@ -299,6 +299,10 @@
                     </a>
 
                     <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Payables & Receivables</div>
+                    <a href="{{ url_for('financials.vendors_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'vendors_list' in request.endpoint }}">
+                        <i class="bi bi-people mr-3"></i>
+                        <span>Vendor Directory</span>
+                    </a>
                     <a href="{{ url_for('financials.vendor_invoices') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'vendor_invoices' in request.endpoint }}">
                         <i class="bi bi-journal-text mr-3"></i>
                         <span>Payables</span>
