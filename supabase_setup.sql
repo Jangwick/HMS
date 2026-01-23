@@ -605,7 +605,11 @@ ALTER TABLE IF EXISTS inventory_transactions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on transactions" ON inventory_transactions;
 CREATE POLICY "Allow all on transactions" ON inventory_transactions FOR ALL USING (true) WITH CHECK (true);
 
+ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS po_number VARCHAR(50);
 ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS supplier_id INTEGER;
+ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS total_amount DECIMAL(12, 2) DEFAULT 0.00;
+ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Draft';
+ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS requested_by INTEGER;
 ALTER TABLE IF EXISTS purchase_orders ADD COLUMN IF NOT EXISTS approved_by INTEGER;
 
