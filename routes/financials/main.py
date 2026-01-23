@@ -144,6 +144,7 @@ def dashboard():
     
     # Combined stats from all modules
     stats = {}
+    recent_activity = []
     try:
         # FIN1 Stats
         total_billing = client.table('billing_records').select('total_amount').execute()
@@ -154,17 +155,47 @@ def dashboard():
         stats['payables'] = sum([r['amount'] for r in response.data]) if response.data else 0
         
         # FIN3 Stats
-        stats['receivables'] = client.table('receivables').select('id', count='exact').eq('status', 'Unpaid').execute().count or 0
+        stats['receivables_count'] = client.table('receivables').select('id', count='exact').eq('status', 'Unpaid').execute().count or 0
+        stats['receivables_amount'] = sum([r['amount_due'] for r in client.table('receivables').select('amount_due').eq('status', 'Unpaid').execute().data or []])
         
         # FIN4 Stats
         bank_resp = client.table('bank_accounts').select('balance').execute()
-        stats['cash_on_hand'] = sum([r['balance'] for r in bank_resp.data]) if bank_resp.data else 0
+        stats['cash_on_hand'] = sum([float(r.get('balance', 0)) for r in bank_resp.data]) if bank_resp.data else 0
+        
+        # Vendor Count
+        stats['vendor_count'] = client.table('vendors').select('id', count='exact').execute().count or 0
+        
+        # Recent Activity (Combined from multiple sources)
+        col_activity = client.table('collections').select('*, receivables(billing_id)').order('collection_date', desc=True).limit(3).execute().data or []
+        for c in col_activity:
+            recent_activity.append({
+                'type': 'Collection',
+                'amount': c['amount'],
+                'date': c['collection_date'],
+                'status': 'Completed',
+                'icon': 'bi-arrow-down-left-circle',
+                'color': 'text-green-600'
+            })
+            
+        pay_activity = client.table('vendor_payments').select('*, vendor_invoices(invoice_number)').order('payment_date', desc=True).limit(3).execute().data or []
+        for p in pay_activity:
+            recent_activity.append({
+                'type': 'Vendor Payment',
+                'amount': p['amount'],
+                'date': p['payment_date'],
+                'status': 'Paid',
+                'icon': 'bi-arrow-up-right-circle',
+                'color': 'text-red-600'
+            })
+            
+        recent_activity = sorted(recent_activity, key=lambda x: x['date'], reverse=True)[:5]
         
     except Exception as e:
         print(f"Error fetching stats: {e}")
 
     return render_template('subsystems/financials/dashboard.html', 
                            stats=stats,
+                           recent_activity=recent_activity,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

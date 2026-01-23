@@ -59,10 +59,10 @@
                 <div class="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600">
                     <i class="bi bi-wallet2 text-xl"></i>
                 </div>
-                <span class="text-xs font-bold text-purple-500 bg-purple-50 px-2 py-1 rounded-lg">{{ stats.receivables }} Items</span>
+                <span class="text-xs font-bold text-purple-500 bg-purple-50 px-2 py-1 rounded-lg">{{ stats.receivables_count }} Items</span>
             </div>
             <p class="text-sm font-medium text-gray-500">Accounts Receivable</p>
-            <h3 class="text-2xl font-bold text-gray-900 mt-1">Active</h3>
+            <h3 class="text-2xl font-bold text-gray-900 mt-1">${{ "%.2f"|format(stats.receivables_amount|default(0)) }}</h3>
         </div>
 
         <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -154,6 +154,59 @@
                 <span class="text-sm font-bold text-[#6D28D9] flex items-center">Open Module <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i></span>
             </div>
         </a>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
+            <h4 class="text-xl font-bold text-gray-900">Recent Financial Activity</h4>
+            <a href="{{ url_for('financials.reports_list') }}" class="text-sm font-bold text-purple-600 hover:text-purple-700">View Reports</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="bg-gray-50/50">
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Activity Type</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Date</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Amount</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if recent_activity %}
+                        {% for activity in recent_activity %}
+                        <tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="px-8 py-5">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center {{ activity.color }} mr-4">
+                                        <i class="bi {{ activity.icon }} text-lg"></i>
+                                    </div>
+                                    <span class="font-bold text-gray-900">{{ activity.type }}</span>
+                                </div>
+                            </td>
+                            <td class="px-8 py-5 text-gray-500 font-medium">
+                                {{ activity.date|datetime if activity.date else 'Today' }}
+                            </td>
+                            <td class="px-8 py-5 text-right font-bold {{ activity.color }}">
+                                {{ '-' if activity.type == 'Vendor Payment' else '+' }}${{ "%.2f"|format(activity.amount) }}
+                            </td>
+                            <td class="px-8 py-5">
+                                <span class="px-3 py-1 bg-green-50 text-green-600 text-xs font-bold rounded-lg border border-green-100">
+                                    {{ activity.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="px-8 py-10 text-center text-gray-400 font-medium italic">
+                                No recent activity found.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}
