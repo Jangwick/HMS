@@ -319,7 +319,12 @@ def bank_accounts():
 @login_required
 def reports_list():
     client = get_supabase_client()
-    reports = client.table('generated_reports').select('*').order('timestamp', desc=True).execute().data or []
+    try:
+        # Fallback to id if created_at is not yet sync'd in the DB
+        reports = client.table('generated_reports').select('*').order('id', desc=True).execute().data or []
+    except Exception:
+        reports = []
+    
     return render_template('subsystems/financials/fin5/reports.html', 
                            reports=reports, 
                            subsystem_name="Financial Intel", 

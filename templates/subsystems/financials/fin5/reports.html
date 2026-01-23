@@ -73,5 +73,67 @@
             <p class="text-gray-500 text-sm mt-2">Expense category analysis</p>
         </div>
     </div>
+
+    <!-- Recent Reports History -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
+            <h4 class="text-lg font-bold text-gray-900">Recent Reports</h4>
+            <div class="flex space-x-2">
+                <span class="px-3 py-1 bg-green-50 text-green-600 text-xs font-bold rounded-lg">{{ reports|length }} Total</span>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left order-collapse">
+                <thead>
+                    <tr class="bg-gray-50/50">
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Report Name</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Type</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Generated At</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50 hover:bg-gray-50/10">
+                    {% if reports %}
+                        {% for report in reports %}
+                        <tr class="group hover:bg-gray-50/50 transition-all duration-200">
+                            <td class="px-8 py-5">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mr-3 text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
+                                        <i class="bi bi-file-earmark-pdf text-xl"></i>
+                                    </div>
+                                    <span class="text-sm font-semibold text-gray-900">{{ report.report_name }}</span>
+                                </div>
+                            </td>
+                            <td class="px-8 py-5">
+                                <span class="text-xs font-bold text-gray-500 uppercase">{{ report.report_type }}</span>
+                            </td>
+                            <td class="px-8 py-5">
+                                <span class="text-sm text-gray-600">{{ report.created_at|datetime if report.created_at else 'N/A' }}</span>
+                            </td>
+                            <td class="px-8 py-5">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span> Ready
+                                </span>
+                            </td>
+                            <td class="px-8 py-5 text-right">
+                                <a href="#" class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-50 text-gray-400 hover:bg-blue-600 hover:text-white transition-all duration-200">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-8 py-12 text-center">
+                            <i class="bi bi-folder2-open text-5xl text-gray-200 mb-4 block"></i>
+                            <p class="text-gray-400 font-medium">No reports generated yet</p>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}

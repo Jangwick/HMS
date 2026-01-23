@@ -478,6 +478,112 @@ CREATE TABLE IF NOT EXISTS general_ledger (
     last_updated TIMESTAMP DEFAULT NOW()
 );
 
+-- Extended Financial Tables
+CREATE TABLE IF NOT EXISTS vendors (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    contact_person VARCHAR(100),
+    email VARCHAR(100),
+    phone VARCHAR(20),
+    status VARCHAR(50) DEFAULT 'Active',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS vendor_invoices (
+    id SERIAL PRIMARY KEY,
+    vendor_id INTEGER REFERENCES vendors(id),
+    invoice_number VARCHAR(50) UNIQUE,
+    invoice_date DATE,
+    due_date DATE,
+    amount DECIMAL(12, 2) NOT NULL,
+    status VARCHAR(50) DEFAULT 'Unpaid',
+    description TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS vendor_payments (
+    id SERIAL PRIMARY KEY,
+    invoice_id INTEGER REFERENCES vendor_invoices(id),
+    payment_date DATE DEFAULT CURRENT_DATE,
+    amount DECIMAL(12, 2) NOT NULL,
+    payment_method VARCHAR(50),
+    reference_number VARCHAR(100),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS receivables (
+    id SERIAL PRIMARY KEY,
+    billing_id INTEGER REFERENCES billing_records(id),
+    amount_due DECIMAL(12, 2) NOT NULL,
+    due_date DATE,
+    status VARCHAR(50) DEFAULT 'Unpaid',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS collections (
+    id SERIAL PRIMARY KEY,
+    receivable_id INTEGER REFERENCES receivables(id),
+    collection_date TIMESTAMP DEFAULT NOW(),
+    amount DECIMAL(12, 2) NOT NULL,
+    payment_method VARCHAR(50),
+    collected_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS bank_accounts (
+    id SERIAL PRIMARY KEY,
+    bank_name VARCHAR(100) NOT NULL,
+    account_number VARCHAR(50) UNIQUE NOT NULL,
+    account_type VARCHAR(50),
+    balance DECIMAL(15, 2) DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cash_transactions (
+    id SERIAL PRIMARY KEY,
+    account_id INTEGER REFERENCES bank_accounts(id),
+    transaction_type VARCHAR(20) NOT NULL, -- DEPOSIT, WITHDRAWAL, TRANSFER
+    amount DECIMAL(12, 2) NOT NULL,
+    description TEXT,
+    transaction_date TIMESTAMP DEFAULT NOW(),
+    performed_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS generated_reports (
+    id SERIAL PRIMARY KEY,
+    report_name VARCHAR(200) NOT NULL,
+    report_type VARCHAR(50),
+    generated_by INTEGER REFERENCES users(id),
+    file_path TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Add RLS for new tables
+ALTER TABLE IF EXISTS vendors ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on vendors" ON vendors FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS vendor_invoices ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on vendor_invoices" ON vendor_invoices FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS vendor_payments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on vendor_payments" ON vendor_payments FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS receivables ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on receivables" ON receivables FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS collections ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on collections" ON collections FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS bank_accounts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on bank_accounts" ON bank_accounts FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS cash_transactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on cash_transactions" ON cash_transactions FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS generated_reports ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on generated_reports" ON generated_reports FOR ALL USING (true) WITH CHECK (true);
+
 -- =====================================================
 -- SAMPLE DATA FOR HR4
 -- =====================================================
@@ -693,6 +799,18 @@ BEGIN
     END IF;
 EXCEPTION WHEN OTHERS THEN 
     RAISE NOTICE 'Constraint might already exist or table missing';
+END $$;
+
+-- Robust column injection for Financials
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='generated_reports' AND column_name='created_at') THEN
+        ALTER TABLE generated_reports ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='receivables' AND column_name='created_at') THEN
+        ALTER TABLE receivables ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
+    END IF;
 END $$;
 
 -- Fleet Module Fixes (Fix for PGRST204)
