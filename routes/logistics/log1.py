@@ -214,10 +214,15 @@ def dashboard():
         po_resp = client.table('purchase_orders').select('id', count='exact').eq('status', 'Pending').execute()
         pending_pos = po_resp.count or 0
 
+        # Document stats
+        doc_resp = client.table('log_documents').select('id', count='exact').execute()
+        total_docs = doc_resp.count or 0
+
     except Exception as e:
         print(f"Error fetching dashboard stats: {e}")
         total_assets = 0
         pending_pos = 0
+        total_docs = 0
 
     # Placeholder values for trend chart
     consumption_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
@@ -233,6 +238,7 @@ def dashboard():
                            low_stock_count=low_stock,
                            total_assets=total_assets,
                            pending_pos=pending_pos,
+                           total_docs=total_docs,
                            cat_labels=cat_labels,
                            cat_values=cat_values,
                            consumption_labels=consumption_labels,
@@ -687,12 +693,62 @@ def list_documents():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    docs = client.table('log_documents').select('*').execute()
+    docs = client.table('log_documents').select('*, users(username)').order('created_at', desc=True).execute()
     return render_template('subsystems/logistics/log1/documents.html',
                            documents=docs.data if docs.data else [],
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+@log1_bp.route('/documents/add', methods=['POST'])
+@login_required
+def add_document():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        doc_data = {
+            'title': request.form.get('title'),
+            'doc_type': request.form.get('doc_type'),
+            'doc_number': request.form.get('doc_number'),
+            'file_url': request.form.get('file_url'),
+            'status': 'Pending',
+            'uploaded_by': current_user.id
+        }
+        client.table('log_documents').insert(doc_data).execute()
+        flash('Document record added successfully!', 'success')
+    except Exception as e:
+        flash(f'Error adding document: {str(e)}', 'danger')
+        
+    return redirect(url_for('log1.list_documents'))
+
+@log1_bp.route('/documents/status/<int:doc_id>/<string:status>')
+@login_required
+def update_doc_status(doc_id, status):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('log_documents').update({'status': status}).eq('id', doc_id).execute()
+        flash(f'Document status updated to {status}.', 'success')
+    except Exception as e:
+        flash(f'Error updating status: {str(e)}', 'danger')
+        
+    return redirect(url_for('log1.list_documents'))
+
+@log1_bp.route('/documents/delete/<int:doc_id>')
+@login_required
+def delete_doc(doc_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('log_documents').delete().eq('id', doc_id).execute()
+        flash('Document removed from archive.', 'success')
+    except Exception as e:
+        flash(f'Error deleting document: {str(e)}', 'danger')
+        
+    return redirect(url_for('log1.list_documents'))
 
 @log1_bp.route('/settings', methods=['GET', 'POST'])
 @login_required

@@ -30,7 +30,7 @@
     </div>
 
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
                 <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Total Items</h4>
@@ -44,15 +44,13 @@
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Low Stock Alerts</h4>
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Low Stock</h4>
                 <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-600">
                     <i class="bi bi-exclamation-octagon"></i>
                 </div>
             </div>
             <p class="text-3xl font-bold text-gray-900">{{ low_stock_count }}</p>
-            <p class="text-red-600 text-sm font-medium mt-2 flex items-center">
-                Requires attention
-            </p>
+            <p class="text-red-600 text-sm font-medium mt-2">Requires attention</p>
         </div>
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -63,7 +61,18 @@
                 </div>
             </div>
             <p class="text-3xl font-bold text-gray-900">{{ total_assets }}</p>
-            <p class="text-gray-400 text-sm font-medium mt-2">Registered equipment</p>
+            <p class="text-gray-400 text-sm font-medium mt-2">Equip. Registered</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Documents</h4>
+                <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                    <i class="bi bi-file-earmark-text"></i>
+                </div>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">{{ total_docs }}</p>
+            <p class="text-gray-400 text-sm font-medium mt-2">In digital archive</p>
         </div>
     </div>
 

@@ -10,26 +10,80 @@
             <h3 class="text-2xl font-bold text-gray-900">Document Archive</h3>
             <p class="text-gray-500">Track invoices, receipts, and compliance certificates</p>
         </div>
-        <button class="px-6 py-2.5 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-colors flex items-center">
+        <button onclick="document.getElementById('addDocModal').classList.remove('hidden')" 
+                class="px-6 py-2.5 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-colors flex items-center">
             <i class="bi bi-upload mr-2"></i>
-            Upload Document
+            Register Document
         </button>
     </div>
 
     <!-- Document List -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {% for doc in documents %}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex items-start gap-4 hover:shadow-md transition-all">
-            <div class="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-[#F59E0B]">
-                <i class="bi bi-file-earmark-pdf text-2xl"></i>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all relative group">
+            <div class="flex justify-between items-start mb-4">
+                <div class="w-12 h-12 {% if doc.status == 'Verified' %}bg-emerald-50 text-emerald-600{% elif doc.status == 'Archived' %}bg-gray-50 text-gray-400{% else %}bg-amber-50 text-[#F59E0B]{% endif %} rounded-xl flex items-center justify-center">
+                    {% if 'invoice' in doc.doc_type.lower() %}
+                    <i class="bi bi-receipt text-2xl"></i>
+                    {% elif 'cert' in doc.doc_type.lower() %}
+                    <i class="bi bi-patch-check text-2xl"></i>
+                    {% else %}
+                    <i class="bi bi-file-earmark-text text-2xl"></i>
+                    {% endif %}
+                </div>
+                <span class="px-2 py-1 {% if doc.status == 'Verified' %}bg-emerald-100 text-emerald-700{% elif doc.status == 'Archived' %}bg-gray-100 text-gray-700{% else %}bg-amber-100 text-amber-700{% endif %} text-[10px] font-bold rounded-full uppercase">
+                    {{ doc.status }}
+                </span>
             </div>
-            <div class="flex-1 min-w-0">
-                <h4 class="font-bold text-gray-900 truncate">{{ doc.title }}</h4>
-                <p class="text-xs text-gray-500">{{ doc.doc_type }} • {{ doc.created_at[:10] }}</p>
-                <div class="mt-4 flex gap-2">
-                    <a href="{{ doc.file_url or '#' }}" class="text-xs font-bold text-[#F59E0B] hover:underline">View</a>
-                    <span class="text-xs text-gray-300">|</span>
-                    <button class="text-xs font-bold text-gray-400 hover:text-gray-600">Archive</button>
+
+            <div class="min-w-0">
+                <h4 class="font-bold text-gray-900 truncate" title="{{ doc.title }}">{{ doc.title }}</h4>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">{{ doc.doc_number or 'NO-REF' }}</p>
+                
+                <div class="mt-4 space-y-2">
+                    <div class="flex items-center text-[11px] text-gray-500">
+                        <i class="bi bi-calendar3 mr-2"></i>
+                        Uploaded: {{ doc.created_at[:10] }}
+                    </div>
+                    <div class="flex items-center text-[11px] text-gray-500">
+                        <i class="bi bi-person mr-2"></i>
+                        By: {{ doc.users.username if doc.users else 'Unknown' }}
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
+                    <div class="flex gap-3">
+                        <a href="{{ doc.file_url or '#' }}" target="_blank" class="text-xs font-bold text-[#F59E0B] hover:text-amber-700 flex items-center">
+                            <i class="bi bi-eye mr-1"></i> View
+                        </a>
+                        {% if doc.status != 'Verified' %}
+                        <a href="{{ url_for('log1.update_doc_status', doc_id=doc.id, status='Verified') }}" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center">
+                            <i class="bi bi-check2-circle mr-1"></i> Verify
+                        </a>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="relative">
+                        <button class="p-1 hover:bg-gray-50 rounded-lg text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <div class="absolute right-0 bottom-full mb-2 w-32 bg-white rounded-xl shadow-xl border border-gray-100 hidden group-hover:block z-10">
+                            {% if doc.status != 'Archived' %}
+                            <a href="{{ url_for('log1.update_doc_status', doc_id=doc.id, status='Archived') }}" class="block px-4 py-2 text-xs font-bold text-gray-500 hover:bg-gray-50 rounded-t-xl transition-colors">
+                                Archive
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('log1.update_doc_status', doc_id=doc.id, status='Pending') }}" class="block px-4 py-2 text-xs font-bold text-amber-600 hover:bg-amber-50 rounded-t-xl transition-colors">
+                                Restore
+                            </a>
+                            {% endif %}
+                            <a href="{{ url_for('log1.delete_doc', doc_id=doc.id) }}" 
+                               onclick="return confirm('Delete this record permanently?')"
+                               class="block px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-b-xl transition-colors border-t border-gray-50">
+                                Delete
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -40,6 +94,63 @@
             <p class="text-gray-500 mt-2">Upload supply chain documents to start tracking.</p>
         </div>
         {% endfor %}
+    </div>
+</div>
+
+<!-- Add Document Modal -->
+<div id="addDocModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+            <h4 class="text-xl font-bold text-gray-900">Register New Document</h4>
+            <button onclick="document.getElementById('addDocModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('log1.add_document') }}" method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Document Title</label>
+                    <input type="text" name="title" required placeholder="e.g. Q4 Pharma Invoice"
+                           class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Type</label>
+                    <select name="doc_type" required class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+                        <option value="Invoice">Invoice</option>
+                        <option value="Delivery Receipt">Delivery Receipt</option>
+                        <option value="Certificate">Certificate</option>
+                        <option value="Contract">Contract</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Reference #</label>
+                    <input type="text" name="doc_number" placeholder="REF-12345"
+                           class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">File URL / Cloud Link</label>
+                <input type="url" name="file_url" placeholder="https://..."
+                       class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+                <p class="text-[10px] text-gray-400 mt-2 font-medium italic">Link to the document in Google Drive, Dropbox, or company server.</p>
+            </div>
+
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="document.getElementById('addDocModal').classList.add('hidden')"
+                        class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 py-3 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-all">
+                    Save Record
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}
