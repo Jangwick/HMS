@@ -470,7 +470,8 @@ def payments():
 @login_required
 def receivables_list():
     client = get_supabase_client()
-    receivables = client.table('receivables').select('*, billing_records(id, total_amount, patients(first_name, last_name))').order('due_date').execute().data or []
+    # Explicitly join using receivables_billing_id_fkey to avoid PGRST201 ambiguity
+    receivables = client.table('receivables').select('*, billing_records:billing_records!receivables_billing_id_fkey(id, total_amount, patients(first_name, last_name))').order('due_date').execute().data or []
     for rec in receivables:
         patient = rec.get('billing_records', {}).get('patients', {})
         rec['patient_name'] = f"{patient.get('first_name', '')} {patient.get('last_name', '')}".strip() or 'Unknown'
