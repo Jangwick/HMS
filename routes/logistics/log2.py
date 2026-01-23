@@ -215,7 +215,8 @@ def dashboard():
 def list_vehicles():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    vehicles = client.table('fleet_vehicles').select('*').order('created_at', desc=True).execute()
+    # Sort by ID descending as a safe alternative to created_at
+    vehicles = client.table('fleet_vehicles').select('*').order('id', desc=True).execute()
     return render_template('subsystems/logistics/log2/vehicles.html',
                            vehicles=vehicles.data if vehicles.data else [],
                            subsystem_name=SUBSYSTEM_NAME,
@@ -246,15 +247,31 @@ def dispatch_board():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     # Active trips
-    active = client.table('fleet_dispatch').select('*, fleet_vehicles(plate_number, model_name), drivers(full_name)').eq('status', 'Active').execute()
+    # Note: Using * for all columns in fleet_dispatch and sub-selects for vehicles/drivers
+    active = client.table('fleet_dispatch').select('*, fleet_vehicles(plate_number, model_name, vehicle_type), drivers(full_name)').neq('status', 'Cancelled').order('departure_time', desc=True).execute()
+    
+    processed_trips = []
+    for trip in (active.data or []):
+        processed_trips.append({
+            'id': trip['id'],
+            'license_plate': trip['fleet_vehicles']['plate_number'] if trip.get('fleet_vehicles') else 'N/A',
+            'make': trip['fleet_vehicles']['vehicle_type'] if trip.get('fleet_vehicles') else 'Fleet',
+            'model': trip['fleet_vehicles']['model_name'] if trip.get('fleet_vehicles') else 'Vehicle',
+            'driver_name': trip['drivers']['full_name'] if trip.get('drivers') else 'Unknown',
+            'destination': trip['destination'],
+            'departure_time': trip['departure_time'],
+            'arrival_time': trip['return_time'],
+            'status': trip['status']
+        })
+    
     # Available resources for new dispatch
     vehicles = client.table('fleet_vehicles').select('*').eq('status', 'Available').execute()
     drivers = client.table('drivers').select('*').eq('status', 'Active').execute()
     
     return render_template('subsystems/logistics/log2/dispatch.html',
-                           active_trips=active.data if active.data else [],
-                           available_vehicles=vehicles.data if vehicles.data else [],
-                           available_drivers=drivers.data if drivers.data else [],
+                           dispatches=processed_trips,
+                           available_vehicles_list=vehicles.data if vehicles.data else [],
+                           available_drivers_list=drivers.data if drivers.data else [],
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -273,7 +290,7 @@ def create_dispatch():
             'driver_id': d_id,
             'destination': request.form.get('destination'),
             'purpose': request.form.get('purpose'),
-            'status': 'Active',
+            'status': 'On Trip',
             'logged_by': current_user.id
         }
         client.table('fleet_dispatch').insert(dispatch_data).execute()
@@ -286,18 +303,19 @@ def create_dispatch():
         flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('log2.dispatch_board'))
 
-@log2_bp.route('/dispatch/complete/<int:dispatch_id>', methods=['POST'])
+@log2_bp.route('/dispatch/complete', methods=['POST'])
 @login_required
-def complete_dispatch(dispatch_id):
+def complete_dispatch():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
+        dispatch_id = request.form.get('dispatch_id')
         # Get trip details to release resources
-        trip = client.table('fleet_dispatch').select('vehicle_id, driver_id').eq('id', dispatch_id).single().execute()
+        trip = client.table('fleet_dispatch').select('vehicle_id, driver_id', count='exact').eq('id', dispatch_id).single().execute()
         if trip.data:
             client.table('fleet_dispatch').update({
                 'status': 'Completed',
-                'return_time': datetime.now().isoformat()
+                'return_time': datetime.utcnow().isoformat()
             }).eq('id', dispatch_id).execute()
             
             client.table('fleet_vehicles').update({'status': 'Available'}).eq('id', trip.data['vehicle_id']).execute()
@@ -371,114 +389,6 @@ def add_driver():
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('log2.list_drivers'))
-        pending_orders = 0
-        approved_orders = 0
-        total_vendors = 0
-    
-    if current_user.should_warn_password_expiry():
-        days_left = current_user.days_until_password_expiry()
-        flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
-    return render_template('subsystems/logistics/log2/dashboard.html', 
-                           now=datetime.utcnow,
-                           pending_orders=pending_orders,
-                           approved_orders=approved_orders,
-                           total_vendors=total_vendors,
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
-
-@log2_bp.route('/orders')
-@login_required
-def purchase_orders():
-    from utils.supabase_client import get_supabase_client
-    client = get_supabase_client()
-    
-    try:
-        # Fetch orders
-        response = client.table('purchase_orders').select('*').order('created_at', desc=True).execute()
-        orders = response.data if response.data else []
-        
-        # Enrich with vendor names (simplified)
-        for order in orders:
-            if order.get('vendor_id'):
-                v_resp = client.table('vendors').select('name').eq('id', order['vendor_id']).single().execute()
-                if v_resp.data:
-                    order['vendor_name'] = v_resp.data['name']
-            else:
-                order['vendor_name'] = 'Unknown'
-                
-    except Exception as e:
-        print(f"Error fetching orders: {e}")
-        orders = []
-        
-    return render_template('subsystems/logistics/log2/purchase_orders.html',
-                           orders=orders,
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
-
-@log2_bp.route('/orders/create', methods=['GET', 'POST'])
-@login_required
-def create_order():
-    from utils.supabase_client import get_supabase_client
-    client = get_supabase_client()
-    
-    if request.method == 'POST':
-        vendor_id = request.form.get('vendor_id')
-        order_date = request.form.get('order_date')
-        expected_delivery = request.form.get('expected_delivery')
-        description = request.form.get('description')
-        amount = request.form.get('amount')
-        
-        try:
-            data = {
-                'vendor_id': int(vendor_id),
-                'order_date': order_date,
-                'expected_delivery_date': expected_delivery,
-                'total_amount': float(amount),
-                'status': 'Pending Approval',
-                'items': [{'description': description}], # Simplified item structure
-                'created_by': current_user.id
-            }
-            
-            client.table('purchase_orders').insert(data).execute()
-            flash('Purchase order created successfully!', 'success')
-            return redirect(url_for('log2.purchase_orders'))
-            
-        except Exception as e:
-            flash(f'Error creating order: {format_db_error(e)}', 'danger')
-    
-    # Fetch vendors for dropdown
-    try:
-        response = client.table('vendors').select('id, name').eq('status', 'Active').order('name').execute()
-        vendors = response.data if response.data else []
-    except:
-        vendors = []
-    
-    return render_template('subsystems/logistics/log2/create_order.html',
-                           vendors=vendors,
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
-
-@log2_bp.route('/vendors')
-@login_required
-def vendors():
-    from utils.supabase_client import get_supabase_client
-    client = get_supabase_client()
-    
-    try:
-        response = client.table('vendors').select('*').order('name').execute()
-        vendors = response.data if response.data else []
-    except Exception as e:
-        print(f"Error fetching vendors: {e}")
-        vendors = []
-        
-    return render_template('subsystems/logistics/log2/vendors.html',
-                           vendors=vendors,
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
 
 @log2_bp.route('/settings', methods=['GET', 'POST'])
 @login_required

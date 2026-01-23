@@ -1,4 +1,4 @@
-{% extends "templates/base/subsystem_base.html" %}
+{% extends "base/subsystem_base.html" %}
 
 {% block header_title %}Dispatch Board{% endblock %}
 
@@ -47,7 +47,7 @@
                         </td>
                         <td class="px-6 py-4 font-medium text-gray-700">{{ trip.driver_name }}</td>
                         <td class="px-6 py-4 text-gray-600">{{ trip.destination }}</td>
-                        <td class="px-6 py-4 font-mono text-gray-500">{{ trip.departure_time[11:16] }}</td>
+                        <td class="px-6 py-4 font-mono text-gray-500">{% if trip.departure_time %}{{ trip.departure_time[11:16] }}{% else %}--:--{% endif %}</td>
                         <td class="px-6 py-4">
                             {% if trip.status == 'On Trip' %}
                             <span class="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold flex items-center w-fit">
@@ -67,7 +67,7 @@
                                 Complete Trip
                             </button>
                             {% else %}
-                            <span class="text-gray-400 text-xs">Arrived {{ trip.arrival_time[11:16] }}</span>
+                            <span class="text-gray-400 text-xs">Arrived {% if trip.arrival_time %}{{ trip.arrival_time[11:16] }}{% else %}N/A{% endif %}</span>
                             {% endif %}
                         </td>
                     </tr>

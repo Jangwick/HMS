@@ -262,19 +262,23 @@
                         <span>Documents</span>
                     </a>
 
-                    <!-- LOG2: Procurement -->
+                    <!-- LOG2: Fleet -->
                     {% elif blueprint_name == 'log2' %}
-                    <a href="{{ url_for('log2.purchase_orders') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log2.purchase_orders' }}">
-                        <i class="bi bi-cart-check mr-3"></i>
-                        <span>Purchase Orders</span>
-                    </a>
-                    <a href="{{ url_for('log2.create_order') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log2.create_order' }}">
-                        <i class="bi bi-cart-plus mr-3"></i>
-                        <span>Create Order</span>
-                    </a>
-                    <a href="{{ url_for('log2.vendors') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log2.vendors' }}">
+                    <a href="{{ url_for('log2.list_vehicles') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log2.list_vehicles' }}">
                         <i class="bi bi-truck mr-3"></i>
-                        <span>Vendors</span>
+                        <span>Vehicles</span>
+                    </a>
+                    <a href="{{ url_for('log2.list_drivers') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log2.list_drivers' }}">
+                        <i class="bi bi-person-badge mr-3"></i>
+                        <span>Drivers</span>
+                    </a>
+                    <a href="{{ url_for('log2.dispatch_board') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log2.dispatch_board' }}">
+                        <i class="bi bi-send mr-3"></i>
+                        <span>Dispatch</span>
+                    </a>
+                    <a href="{{ url_for('log2.cost_analysis') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log2.cost_analysis' }}">
+                        <i class="bi bi-currency-dollar mr-3"></i>
+                        <span>Costs</span>
                     </a>
                     {% endif %}
 
