@@ -1,0 +1,149 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}PO {{ po.po_number }} - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Purchase Order Details{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex items-center justify-between">
+        <a href="{{ url_for('log1.procurement') }}" class="text-gray-500 hover:text-gray-700 font-bold flex items-center">
+            <i class="bi bi-arrow-left mr-2"></i>
+            Back to Procurement
+        </a>
+        <div class="flex space-x-3">
+            {% if po.status == 'Draft' %}
+            <form action="{{ url_for('log1.update_po_status', po_id=po.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="status" value="Sent">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl shadow hover:bg-blue-700 transition-all">
+                    Mark as Sent
+                </button>
+            </form>
+            {% elif po.status == 'Sent' %}
+            <form action="{{ url_for('log1.update_po_status', po_id=po.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="status" value="Received">
+                <button type="submit" class="px-6 py-2 bg-emerald-600 text-white font-bold rounded-xl shadow hover:bg-emerald-700 transition-all">
+                    Register as Received
+                </button>
+            </form>
+            {% endif %}
+            
+            {% if po.status != 'Cancelled' and po.status != 'Received' %}
+            <form action="{{ url_for('log1.update_po_status', po_id=po.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="status" value="Cancelled">
+                <button type="submit" class="px-6 py-2 bg-red-50 text-red-600 font-bold rounded-xl border border-red-100 hover:bg-red-100 transition-all">
+                    Cancel PO
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Main Info -->
+        <div class="lg:col-span-2 space-y-8">
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                <div class="flex justify-between items-start mb-8">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-900 mb-1">{{ po.po_number }}</h2>
+                        <div class="flex items-center space-x-3">
+                            {% if po.status == 'Draft' %}
+                            <span class="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-bold rounded-full uppercase">Draft</span>
+                            {% elif po.status == 'Sent' %}
+                            <span class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full uppercase">Sent</span>
+                            {% elif po.status == 'Received' %}
+                            <span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full uppercase">Received</span>
+                            {% elif po.status == 'Cancelled' %}
+                            <span class="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full uppercase">Cancelled</span>
+                            {% endif %}
+                            <span class="text-gray-400 text-sm">Created on {{ po.created_at[:16].replace('T', ' ') }}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Total Amount</div>
+                        <div class="text-3xl font-bold text-[#F59E0B]">${{ "{:,.2f}".format(po.total_amount) }}</div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                                <th class="pb-4">Item Description</th>
+                                <th class="pb-4 text-center">Qty</th>
+                                <th class="pb-4 text-right">Unit Price</th>
+                                <th class="pb-4 text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            {% for item in items %}
+                            <tr>
+                                <td class="py-4 font-bold text-gray-900">{{ item.item_name }}</td>
+                                <td class="py-4 text-center text-gray-600">{{ item.quantity }}</td>
+                                <td class="py-4 text-right text-gray-600">${{ "{:,.2f}".format(item.unit_price) }}</td>
+                                <td class="py-4 text-right font-bold text-gray-900">${{ "{:,.2f}".format(item.total_price) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if po.notes %}
+                <div class="mt-8 pt-8 border-t border-gray-100">
+                    <h4 class="text-sm font-bold text-gray-900 mb-2">Internal Notes</h4>
+                    <p class="text-gray-600 leading-relaxed">{{ po.notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar Info -->
+        <div class="space-y-6">
+            <div class="bg-gray-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl">
+                <div class="relative z-10">
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Supplier Information</h4>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="text-sm font-bold text-white">{{ po.suppliers.supplier_name }}</div>
+                            <div class="text-xs text-gray-400 mt-1">{{ po.suppliers.category }}</div>
+                        </div>
+                        {% if po.suppliers.contact_person %}
+                        <div class="flex items-center text-sm text-gray-300">
+                            <i class="bi bi-person mr-3 text-emerald-400"></i>
+                            {{ po.suppliers.contact_person }}
+                        </div>
+                        {% endif %}
+                        {% if po.suppliers.phone %}
+                        <div class="flex items-center text-sm text-gray-300">
+                            <i class="bi bi-telephone mr-3 text-emerald-400"></i>
+                            {{ po.suppliers.phone }}
+                        </div>
+                        {% endif %}
+                        {% if po.suppliers.email %}
+                        <div class="flex items-center text-sm text-gray-300">
+                            <i class="bi bi-envelope mr-3 text-emerald-400"></i>
+                            {{ po.suppliers.email }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="absolute -right-8 -bottom-8 opacity-10">
+                    <i class="bi bi-building text-[160px]"></i>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Meta Data</h4>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-400">PO ID</span>
+                        <span class="font-mono text-gray-900">#{{ po.id }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

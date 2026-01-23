@@ -1,118 +1,306 @@
-{% extends "base/subsystem_base.html" %}
+﻿{% extends "base/subsystem_base.html" %}
 
 {% block title %}Procurement - {{ subsystem_name }}{% endblock %}
 {% block header_title %}Procurement & Purchase Orders{% endblock %}
 
 {% block content %}
 <div class="space-y-8">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h3 class="text-2xl font-bold text-gray-900">Purchase Orders</h3>
+            <h3 class="text-2xl font-bold text-gray-900">Procurement Management</h3>
             <p class="text-gray-500">Manage supply requests and vendor relationships</p>
         </div>
-        <button onclick="document.getElementById('addPOModal').classList.remove('hidden')" 
-                class="px-6 py-2.5 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-colors flex items-center">
-            <i class="bi bi-plus-lg mr-2"></i>
-            New Purchase Order
-        </button>
+        <div class="flex space-x-3">
+            <button onclick="document.getElementById('supplierModal').classList.remove('hidden')" 
+                    class="px-5 py-2.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all flex items-center">
+                <i class="bi bi-building mr-2"></i>
+                Suppliers
+            </button>
+            <button onclick="document.getElementById('addPOModal').classList.remove('hidden')" 
+                    class="px-6 py-2.5 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-colors flex items-center">
+                <i class="bi bi-plus-lg mr-2"></i>
+                New Purchase Order
+            </button>
+        </div>
     </div>
 
     <!-- PO List -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table class="w-full text-left border-collapse">
-            <thead>
-                <tr class="bg-gray-50 border-b border-gray-100">
-                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">PO Number</th>
-                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Supplier</th>
-                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Total Amount</th>
-                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Created</th>
-                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-                {% for po in purchase_orders %}
-                <tr class="hover:bg-gray-50/50 transition-colors">
-                    <td class="px-6 py-4">
-                        <span class="font-bold text-gray-900">{{ po.po_number }}</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="text-gray-600">{{ po.suppliers.supplier_name if po.suppliers else 'Unknown' }}</span>
-                    </td>
-                    <td class="px-6 py-4 font-medium text-gray-900">
-                        ${{ "{:,.20f}".format(po.total_amount).split('.')[0] + '.' + "{:,.2f}".format(po.total_amount).split('.')[1] if po.total_amount else '0.00' }}
-                    </td>
-                    <td class="px-6 py-4">
-                        {% if po.status == 'Draft' %}
-                        <span class="px-2.5 py-1 bg-gray-100 text-gray-700 text-[10px] font-bold rounded-full uppercase">Draft</span>
-                        {% elif po.status == 'Sent' %}
-                        <span class="px-2.5 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full uppercase">Sent</span>
-                        {% elif po.status == 'Received' %}
-                        <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Received</span>
-                        {% else %}
-                        <span class="px-2.5 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-full uppercase">{{ po.status }}</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-500">
-                        {{ po.created_at[:10] }}
-                    </td>
-                    <td class="px-6 py-4">
-                        <button class="text-gray-400 hover:text-[#F59E0B] transition-colors">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                        <i class="bi bi-inbox text-4xl mb-2 block text-gray-200"></i>
-                        No purchase orders found.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50/50 border-b border-gray-100">
+                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">PO Details</th>
+                        <th class="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Supplier</th>
+                        <th class="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Total Amount</th>
+                        <th class="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for po in purchase_orders %}
+                    <tr class="hover:bg-gray-50/50 transition-colors group">
+                        <td class="px-8 py-5">
+                            <div class="font-bold text-gray-900 group-hover:text-[#F59E0B] transition-colors">{{ po.po_number }}</div>
+                            <div class="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tighter">Created: {{ po.created_at[:10] }}</div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="text-gray-600 font-medium">{{ po.suppliers.supplier_name if po.suppliers else 'Unknown' }}</span>
+                        </td>
+                        <td class="px-6 py-5 font-bold text-gray-900">
+                            ${{ "{:,.2f}".format(po.total_amount) or '0.00' }}
+                        </td>
+                        <td class="px-6 py-5">
+                            {% if po.status == 'Draft' %}
+                            <span class="px-3 py-1 bg-gray-100 text-gray-700 text-[10px] font-bold rounded-full uppercase">Draft</span>
+                            {% elif po.status == 'Sent' %}
+                            <span class="px-3 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full uppercase">Sent</span>
+                            {% elif po.status == 'Received' %}
+                            <span class="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Received</span>
+                            {% elif po.status == 'Cancelled' %}
+                            <span class="px-3 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-full uppercase">Cancelled</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-8 py-5 text-right">
+                            <a href="{{ url_for('log1.view_po', po_id=po.id) }}" class="p-2 text-gray-400 hover:text-[#F59E0B] transition-colors inline-block">
+                                <i class="bi bi-eye-fill text-lg"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-8 py-20 text-center text-gray-500">
+                            <div class="flex flex-col items-center">
+                                <i class="bi bi-inbox text-5xl mb-4 text-gray-200"></i>
+                                <h4 class="font-bold text-gray-900">No Purchase Orders</h4>
+                                <p class="text-sm mt-1">Start by creating your first supply request.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <!-- Add PO Modal -->
-<div id="addPOModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-            <h4 class="text-xl font-bold text-gray-900">Create Purchase Order</h4>
-            <button onclick="document.getElementById('addPOModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+<div id="addPOModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="px-10 py-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div>
+                <h4 class="text-2xl font-extrabold text-gray-900">New Purchase Order</h4>
+                <p class="text-sm text-gray-500">Enter details and line items for the request</p>
+            </div>
+            <button onclick="document.getElementById('addPOModal').classList.add('hidden')" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white border border-transparent hover:border-gray-200 text-gray-400 hover:text-gray-600 transition-all">
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
-        <form action="{{ url_for('log1.add_purchase_order') }}" method="POST" class="p-8 space-y-6">
+        <form action="{{ url_for('log1.add_purchase_order') }}" method="POST" id="poForm" class="p-10">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Supplier</label>
-                <select name="supplier_id" required class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
-                    {% for supplier in suppliers %}
-                    <option value="{{ supplier.id }}">{{ supplier.supplier_name }}</option>
-                    {% endfor %}
-                </select>
+            <input type="hidden" name="po_items_json" id="po_items_json">
+            <input type="hidden" name="total_amount" id="total_amount_input" value="0">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Supplier</label>
+                    <select name="supplier_id" required class="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-[#F59E0B] focus:bg-white rounded-2xl outline-none transition-all font-medium">
+                        <option value="" disabled selected>Select Vendor</option>
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier.id }}">{{ supplier.supplier_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Notes / Purpose</label>
+                    <input type="text" name="notes" placeholder="e.g. Monthly Medical Restock" class="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-[#F59E0B] focus:bg-white rounded-2xl outline-none transition-all font-medium">
+                </div>
             </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Estimated Amount</label>
-                <input type="number" step="0.01" name="total_amount" required 
-                       class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+
+            <!-- Line Items Area -->
+            <div class="mb-8">
+                <div class="flex items-center justify-between mb-4">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest">Line Items</label>
+                    <button type="button" onclick="addPOItemRow()" class="text-xs font-bold text-[#F59E0B] hover:text-amber-700">
+                        <i class="bi bi-plus-circle mr-1"></i> Add Item
+                    </button>
+                </div>
+                <div id="poItemsContainer" class="space-y-3 max-h-60 overflow-y-auto mb-4 pr-2">
+                    <!-- Rows will be added here -->
+                </div>
+                <div class="flex justify-between items-center p-5 bg-gray-900 rounded-2xl text-white">
+                    <span class="font-bold text-gray-400">Total Calculation</span>
+                    <span id="displayTotal" class="text-2xl font-black text-amber-400">$0.00</span>
+                </div>
             </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Notes</label>
-                <textarea name="notes" rows="3" class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all"></textarea>
-            </div>
-            <div class="pt-4 flex gap-3">
+
+            <div class="flex gap-4 pt-4 border-t border-gray-50">
                 <button type="button" onclick="document.getElementById('addPOModal').classList.add('hidden')"
-                        class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">
-                    Cancel
+                        class="flex-1 py-4 bg-gray-100 text-gray-500 font-bold rounded-2xl hover:bg-gray-200 transition-all">
+                    Discard
                 </button>
-                <button type="submit" class="flex-1 py-3 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-all">
-                    Create PO
+                <button type="submit" onclick="preparePOData(event)" class="flex-1 py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-xl hover:bg-black transition-all transform hover:-translate-y-1">
+                    Create Order
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+<!-- Supplier Management Modal -->
+<div id="supplierModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="flex flex-col md:flex-row h-[70vh]">
+            <!-- List Column -->
+            <div class="w-full md:w-2/3 border-r border-gray-100 flex flex-col">
+                <div class="p-8 border-b border-gray-50 flex justify-between items-center">
+                    <h4 class="text-xl font-black text-gray-900">Registered Suppliers</h4>
+                    <button onclick="document.getElementById('supplierModal').classList.add('hidden')" class="md:hidden text-gray-400">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                    {% for supplier in suppliers %}
+                    <div class="p-5 bg-gray-50 rounded-2xl border border-transparent hover:border-gray-200 transition-all group">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="font-bold text-gray-900">{{ supplier.supplier_name }}</div>
+                                <div class="text-xs text-gray-500 mt-1">{{ supplier.category }}  {{ supplier.phone or 'No Phone' }}</div>
+                            </div>
+                            <span class="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded uppercase">{{ supplier.status }}</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-20 text-gray-400">
+                        No suppliers registered yet.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Registration Form Column -->
+            <div class="w-full md:w-1/3 bg-gray-50/50 p-8">
+                <div class="flex justify-between items-center mb-8">
+                    <h4 class="text-lg font-bold text-gray-900">Add New</h4>
+                    <button onclick="document.getElementById('supplierModal').classList.add('hidden')" class="hidden md:block text-gray-400 hover:text-gray-600">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <form action="{{ url_for('log1.add_supplier') }}" method="POST" class="space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div>
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Supplier Name</label>
+                        <input type="text" name="supplier_name" required class="w-full mt-2 px-4 py-3 bg-white border-2 border-transparent focus:border-[#F59E0B] outline-none rounded-xl transition-all text-sm font-medium">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Category</label>
+                        <select name="category" class="w-full mt-2 px-4 py-3 bg-white border-2 border-transparent focus:border-[#F59E0B] outline-none rounded-xl transition-all text-sm font-medium">
+                            <option>Medical Supplies</option>
+                            <option>Pharmaceuticals</option>
+                            <option>Equipment</option>
+                            <option>Maintenance</option>
+                            <option>General</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Contact Details</label>
+                        <input type="text" name="contact_person" placeholder="Name" class="w-full mt-2 px-4 py-3 bg-white border-2 border-transparent focus:border-[#F59E0B] outline-none rounded-xl transition-all text-sm font-medium">
+                        <input type="email" name="email" placeholder="Email" class="w-full mt-2 px-4 py-3 bg-white border-2 border-transparent focus:border-[#F59E0B] outline-none rounded-xl transition-all text-sm font-medium">
+                        <input type="text" name="phone" placeholder="Phone" class="w-full mt-2 px-4 py-3 bg-white border-2 border-transparent focus:border-[#F59E0B] outline-none rounded-xl transition-all text-sm font-medium">
+                    </div>
+                    <button type="submit" class="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-xl hover:bg-black transition-all flex items-center justify-center">
+                        <i class="bi bi-save mr-2"></i> Register Vendor
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let itemsCount = 0;
+
+function addPOItemRow() {
+    itemsCount++;
+    const container = document.getElementById('poItemsContainer');
+    const row = document.createElement('div');
+    row.className = 'grid grid-cols-12 gap-3 items-center animate-in slide-in-from-left-2 duration-200';
+    row.id = `item-row-${itemsCount}`;
+    row.innerHTML = `
+        <div class="col-span-6">
+            <input type="text" name="item_name" placeholder="Item Name" required 
+                   class="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-[#F59E0B] text-sm">
+        </div>
+        <div class="col-span-2">
+            <input type="number" name="quantity" placeholder="Qty" value="1" min="1" required onchange="calculateRow(this)"
+                   class="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-[#F59E0B] text-sm text-center">
+        </div>
+        <div class="col-span-3">
+            <input type="number" name="unit_price" placeholder="Price" step="0.01" min="0" required onchange="calculateRow(this)"
+                   class="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-[#F59E0B] text-sm text-right">
+        </div>
+        <div class="col-span-1 text-center">
+            <button type="button" onclick="removeRow(${itemsCount})" class="text-gray-300 hover:text-red-500">
+                <i class="bi bi-dash-circle"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(row);
+}
+
+function removeRow(id) {
+    document.getElementById(`item-row-${id}`).remove();
+    calculateTotal();
+}
+
+function calculateRow() {
+    calculateTotal();
+}
+
+function calculateTotal() {
+    let total = 0;
+    const qtys = document.getElementsByName('quantity');
+    const prices = document.getElementsByName('unit_price');
+    
+    for(let i=0; i<qtys.length; i++) {
+        const qty = parseFloat(qtys[i].value) || 0;
+        const price = parseFloat(prices[i].value) || 0;
+        total += qty * price;
+    }
+    
+    document.getElementById('displayTotal').innerText = `$${total.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+    document.getElementById('total_amount_input').value = total.toFixed(2);
+}
+
+function preparePOData(e) {
+    const itemNames = document.getElementsByName('item_name');
+    const qtys = document.getElementsByName('quantity');
+    const prices = document.getElementsByName('unit_price');
+    
+    if (itemNames.length === 0) {
+        alert('Please add at least one item.');
+        e.preventDefault();
+        return;
+    }
+
+    const items = [];
+    for(let i=0; i<itemNames.length; i++) {
+        const q = parseInt(qtys[i].value);
+        const p = parseFloat(prices[i].value);
+        items.push({
+            item_name: itemNames[i].value,
+            quantity: q,
+            unit_price: p,
+            total_price: q * p
+        });
+    }
+    
+    document.getElementById('po_items_json').value = JSON.stringify(items);
+}
+
+// Initialize with one row
+window.onload = () => {
+    addPOItemRow();
+}
+</script>
 {% endblock %}

@@ -447,18 +447,125 @@ def add_purchase_order():
     client = get_supabase_client()
     
     try:
+        po_number = f"PO-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         po_data = {
-            'po_number': f"PO-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+            'po_number': po_number,
             'supplier_id': request.form.get('supplier_id'),
             'total_amount': float(request.form.get('total_amount', 0)),
             'status': 'Draft',
             'requested_by': current_user.id,
             'notes': request.form.get('notes')
         }
-        client.table('purchase_orders').insert(po_data).execute()
-        flash('Purchase Order created successfully!', 'success')
+        
+        # Insert PO record
+        po_resp = client.table('purchase_orders').insert(po_data).execute()
+        if po_resp.data:
+            po_id = po_resp.data[0]['id']
+            # Get items from hidden field (sent as JSON string from JS)
+            items_json = request.form.get('po_items_json')
+            if items_json:
+                import json
+                items = json.loads(items_json)
+                for item in items:
+                    item['po_id'] = po_id
+                    client.table('po_items').insert(item).execute()
+                    
+        flash(f'Purchase Order {po_number} created successfully!', 'success')
     except Exception as e:
         flash(f'Error creating PO: {str(e)}', 'danger')
+        
+    return redirect(url_for('log1.procurement'))
+
+@log1_bp.route('/procurement/po/<int:po_id>')
+@login_required
+def view_po(po_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        po = client.table('purchase_orders').select('*, suppliers(*)').eq('id', po_id).single().execute()
+        items = client.table('po_items').select('*').eq('po_id', po_id).execute()
+        
+        return render_template('subsystems/logistics/log1/po_detail.html',
+                               po=po.data,
+                               items=items.data if items.data else [],
+                               subsystem_name=SUBSYSTEM_NAME,
+                               accent_color=ACCENT_COLOR,
+                               blueprint_name=BLUEPRINT_NAME)
+    except Exception as e:
+        flash(f'Error fetching PO details: {str(e)}', 'danger')
+        return redirect(url_for('log1.procurement'))
+
+@log1_bp.route('/procurement/po/<int:po_id>/status', methods=['POST'])
+@login_required
+def update_po_status(po_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    new_status = request.form.get('status')
+    
+    try:
+        # Get current PO
+        po_resp = client.table('purchase_orders').select('*').eq('id', po_id).single().execute()
+        if not po_resp.data:
+            flash('PO not found.', 'danger')
+            return redirect(url_for('log1.procurement'))
+            
+        old_status = po_resp.data['status']
+        
+        # Update status
+        client.table('purchase_orders').update({'status': new_status}).eq('id', po_id).execute()
+        
+        # If transitioning to "Received", automatically update inventory
+        if new_status == 'Received' and old_status != 'Received':
+            items_resp = client.table('po_items').select('*').eq('po_id', po_id).execute()
+            if items_resp.data:
+                for item in items_resp.data:
+                    # Check if item exists in inventory (by name)
+                    inv_resp = client.table('inventory').select('*').eq('item_name', item['item_name']).execute()
+                    if inv_resp.data:
+                        # Update existing
+                        inv_id = inv_resp.data[0]['id']
+                        new_qty = inv_resp.data[0]['quantity'] + item['quantity']
+                        client.table('inventory').update({'quantity': new_qty}).eq('id', inv_id).execute()
+                    else:
+                        # Insert new
+                        client.table('inventory').insert({
+                            'item_name': item['item_name'],
+                            'quantity': item['quantity'],
+                            'category': 'General',
+                            'unit': 'units',
+                            'location': 'Warehouse'
+                        }).execute()
+                flash('PO status updated to Received. Inventory has been automatically updated.', 'success')
+            else:
+                flash(f'PO status updated to {new_status}.', 'success')
+        else:
+            flash(f'PO status updated to {new_status}.', 'success')
+            
+    except Exception as e:
+        flash(f'Error updating PO status: {str(e)}', 'danger')
+        
+    return redirect(url_for('log1.view_po', po_id=po_id))
+
+@log1_bp.route('/procurement/suppliers/add', methods=['POST'])
+@login_required
+def add_supplier():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        supplier_data = {
+            'supplier_name': request.form.get('supplier_name'),
+            'contact_person': request.form.get('contact_person'),
+            'email': request.form.get('email'),
+            'phone': request.form.get('phone'),
+            'category': request.form.get('category'),
+            'status': 'Active'
+        }
+        client.table('suppliers').insert(supplier_data).execute()
+        flash('Supplier added successfully!', 'success')
+    except Exception as e:
+        flash(f'Error adding supplier: {str(e)}', 'danger')
         
     return redirect(url_for('log1.procurement'))
 
