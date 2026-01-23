@@ -52,8 +52,14 @@
             <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
                 <span>Created: {% if vehicle.created_at %}{{ vehicle.created_at[:10] }}{% else %}N/A{% endif %}</span>
                 <div class="flex space-x-2">
-                    <button class="hover:text-[#F97316]" title="Edit"><i class="bi bi-pencil-square"></i></button>
-                    <button class="hover:text-red-600" title="Delete"><i class="bi bi-trash"></i></button>
+                    <button onclick='openEditModal({{ vehicle | tojson | safe }})' 
+                        class="hover:text-[#F97316] p-1 rounded-md hover:bg-white transition-colors" title="Edit">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button onclick="openDeleteModal('{{ vehicle.id }}', '{{ vehicle.plate_number }}')" 
+                        class="hover:text-red-600 p-1 rounded-md hover:bg-white transition-colors" title="Delete">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -74,7 +80,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2">
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Vehicle Type</label>
-                        <select name="vehicle_type" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none">
+                        <select name="vehicle_type" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
                             <option value="Ambulance">Ambulance</option>
                             <option value="Medical Transport">Medical Transport</option>
                             <option value="Utility Van">Utility Van</option>
@@ -83,11 +89,11 @@
                     </div>
                     <div class="col-span-2">
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Vehicle Model</label>
-                        <input type="text" name="model_name" required placeholder="Toyota Hiace" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none">
+                        <input type="text" name="model_name" required placeholder="Toyota Hiace" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
                     </div>
                     <div class="col-span-2">
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">License Plate (Plate Number)</label>
-                        <input type="text" name="plate_number" required placeholder="ABC-1234" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none">
+                        <input type="text" name="plate_number" required placeholder="ABC-1234" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
                     </div>
                 </div>
                 <button type="submit" class="w-full py-3 bg-[#F97316] text-white font-bold rounded-xl hover:bg-[#EA580C] shadow-lg transition-all mt-4">
@@ -96,5 +102,90 @@
             </form>
         </div>
     </div>
+
+    <!-- Edit Vehicle Modal -->
+    <div id="editVehicleModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-gray-900">Edit Vehicle</h3>
+                <button onclick="document.getElementById('editVehicleModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <form id="editVehicleForm" method="POST" class="p-8 space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Vehicle Type</label>
+                    <select name="vehicle_type" id="edit_vehicle_type" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
+                        <option value="Ambulance">Ambulance</option>
+                        <option value="Medical Transport">Medical Transport</option>
+                        <option value="Utility Van">Utility Van</option>
+                        <option value="Staff Shuttle">Staff Shuttle</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Vehicle Model</label>
+                    <input type="text" name="model_name" id="edit_model_name" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Plate Number</label>
+                    <input type="text" name="plate_number" id="edit_plate_number" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Current Status</label>
+                    <select name="status" id="edit_status" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
+                        <option value="Available">Available</option>
+                        <option value="In Use">In Use (Manual Override)</option>
+                        <option value="Maintenance">Under Maintenance</option>
+                        <option value="Retired">Retired</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full py-3 bg-[#F97316] text-white font-bold rounded-xl hover:bg-[#EA580C] shadow-lg transition-all mt-4">
+                    Update Changes
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Vehicle Modal -->
+    <div id="deleteVehicleModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center">
+            <div class="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center text-red-600 mx-auto mb-6">
+                <i class="bi bi-exclamation-triangle text-4xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Remove Vehicle?</h3>
+            <p class="text-gray-500 mb-8">Are you sure you want to remove vehicle <span id="deleteVehiclePlate" class="font-bold text-gray-800"></span>? This action cannot be undone.</p>
+            
+            <form id="deleteVehicleForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="grid grid-cols-2 gap-4">
+                    <button type="button" onclick="document.getElementById('deleteVehicleModal').classList.add('hidden')"
+                        class="px-4 py-2 border border-gray-200 font-bold text-gray-500 rounded-xl hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 shadow-md transition-all">
+                        Delete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+<script>
+function openEditModal(vehicle) {
+    document.getElementById('editVehicleForm').action = "/logistics/log2/vehicles/edit/" + vehicle.id;
+    document.getElementById('edit_vehicle_type').value = vehicle.vehicle_type;
+    document.getElementById('edit_model_name').value = vehicle.model_name;
+    document.getElementById('edit_plate_number').value = vehicle.plate_number;
+    document.getElementById('edit_status').value = vehicle.status;
+    document.getElementById('editVehicleModal').classList.remove('hidden');
+}
+
+function openDeleteModal(id, plate) {
+    document.getElementById('deleteVehicleForm').action = "/logistics/log2/vehicles/delete/" + id;
+    document.getElementById('deleteVehiclePlate').innerText = plate;
+    document.getElementById('deleteVehicleModal').classList.remove('hidden');
+}
+</script>
 {% endblock %}

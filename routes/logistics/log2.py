@@ -241,6 +241,36 @@ def add_vehicle():
         flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('log2.list_vehicles'))
 
+@log2_bp.route('/vehicles/edit/<int:vehicle_id>', methods=['POST'])
+@login_required
+def edit_vehicle(vehicle_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        v_data = {
+            'plate_number': request.form.get('plate_number'),
+            'model_name': request.form.get('model_name'),
+            'vehicle_type': request.form.get('vehicle_type'),
+            'status': request.form.get('status')
+        }
+        client.table('fleet_vehicles').update(v_data).eq('id', vehicle_id).execute()
+        flash('Vehicle updated successfully.', 'success')
+    except Exception as e:
+        flash(f'Update failed: {str(e)}', 'danger')
+    return redirect(url_for('log2.list_vehicles'))
+
+@log2_bp.route('/vehicles/delete/<int:vehicle_id>', methods=['POST'])
+@login_required
+def delete_vehicle(vehicle_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('fleet_vehicles').delete().eq('id', vehicle_id).execute()
+        flash('Vehicle removed from fleet.', 'info')
+    except Exception as e:
+        flash(f'Delete failed: {str(e)}', 'danger')
+    return redirect(url_for('log2.list_vehicles'))
+
 @log2_bp.route('/dispatch')
 @login_required
 def dispatch_board():
@@ -360,6 +390,18 @@ def add_cost():
         flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('log2.cost_analysis'))
 
+@log2_bp.route('/costs/delete/<int:cost_id>', methods=['POST'])
+@login_required
+def delete_cost(cost_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('fleet_costs').delete().eq('id', cost_id).execute()
+        flash('Transaction voided.', 'info')
+    except Exception as e:
+        flash(f'Delete failed: {str(e)}', 'danger')
+    return redirect(url_for('log2.cost_analysis'))
+
 @log2_bp.route('/drivers')
 @login_required
 def list_drivers():
@@ -388,6 +430,36 @@ def add_driver():
         flash('Driver added successfully.', 'success')
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('log2.list_drivers'))
+
+@log2_bp.route('/drivers/edit/<int:driver_id>', methods=['POST'])
+@login_required
+def edit_driver(driver_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        dr_data = {
+            'full_name': request.form.get('full_name'),
+            'license_number': request.form.get('license_number'),
+            'phone': request.form.get('phone'),
+            'status': request.form.get('status')
+        }
+        client.table('drivers').update(dr_data).eq('id', driver_id).execute()
+        flash('Driver updated.', 'success')
+    except Exception as e:
+        flash(f'Update failed: {str(e)}', 'danger')
+    return redirect(url_for('log2.list_drivers'))
+
+@log2_bp.route('/drivers/delete/<int:driver_id>', methods=['POST'])
+@login_required
+def delete_driver(driver_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('drivers').delete().eq('id', driver_id).execute()
+        flash('Driver removed.', 'info')
+    except Exception as e:
+        flash(f'Delete failed: {str(e)}', 'danger')
     return redirect(url_for('log2.list_drivers'))
 
 @log2_bp.route('/settings', methods=['GET', 'POST'])

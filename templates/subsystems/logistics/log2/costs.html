@@ -44,6 +44,7 @@
                         <th class="px-6 py-4">Category</th>
                         <th class="px-6 py-4 text-right">Amount</th>
                         <th class="px-6 py-4">Notes</th>
+                        <th class="px-6 py-4">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 text-sm">
@@ -63,11 +64,19 @@
                         </td>
                         <td class="px-6 py-4 text-right font-bold text-gray-900">${{ "{:,.2f}".format(cost.amount) }}</td>
                         <td class="px-6 py-4 text-gray-500 text-xs italic">{{ cost.description or 'No details' }}</td>
+                        <td class="px-6 py-4">
+                            <form action="{{ url_for('log2.delete_cost', cost_id=cost.id) }}" method="POST" onsubmit="return confirm('Void this transaction?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="text-red-400 hover:text-red-600 transition-colors">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
                     </tr>
                     {% endfor %}
                     {% if not costs %}
                     <tr>
-                        <td colspan="5" class="px-6 py-12 text-center text-gray-400 italic">
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-400 italic">
                             No expenses logged in this period.
                         </td>
                     </tr>
