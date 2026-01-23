@@ -407,9 +407,20 @@ def delete_cost(cost_id):
 def list_drivers():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    drivers = client.table('drivers').select('*').execute()
+    
+    drivers_resp = client.table('drivers').select('*').order('full_name').execute()
+    drivers = drivers_resp.data if drivers_resp.data else []
+    
+    # Calculate stats
+    total_drivers = len(drivers)
+    available_drivers = len([d for d in drivers if d.get('status') == 'Active'])
+    on_trip_drivers = len([d for d in drivers if d.get('status') == 'On Trip'])
+    
     return render_template('subsystems/logistics/log2/drivers.html',
-                           drivers=drivers.data if drivers.data else [],
+                           drivers=drivers,
+                           total_drivers=total_drivers,
+                           available_drivers=available_drivers,
+                           on_trip_drivers=on_trip_drivers,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -456,6 +467,12 @@ def delete_driver(driver_id):
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
+        # Check if driver is on a trip
+        driver = client.table('drivers').select('status').eq('id', driver_id).single().execute()
+        if driver.data and driver.data.get('status') == 'On Trip':
+            flash('Cannot delete a driver who is currently on a trip.', 'warning')
+            return redirect(url_for('log2.list_drivers'))
+
         client.table('drivers').delete().eq('id', driver_id).execute()
         flash('Driver removed.', 'info')
     except Exception as e:
