@@ -22,6 +22,18 @@
         </div>
     </div>
 
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-blue-50 p-6 rounded-3xl border border-blue-100">
+            <p class="text-blue-600 font-bold text-sm uppercase mb-1">Total Outstanding AR</p>
+            <h2 class="text-3xl font-extrabold text-blue-900">${{ "%.2f"|format(total_ar) }}</h2>
+        </div>
+        <div class="bg-red-50 p-6 rounded-3xl border border-red-100">
+            <p class="text-red-600 font-bold text-sm uppercase mb-1">Total Outstanding AP</p>
+            <h2 class="text-3xl font-extrabold text-red-900">${{ "%.2f"|format(total_ap) }}</h2>
+        </div>
+    </div>
+
     <!-- Receivables Aging -->
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="px-8 py-6 border-b border-gray-100 bg-blue-50/30">
@@ -33,6 +45,7 @@
                     <tr class="bg-gray-50">
                         <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Patient</th>
                         <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Due Date</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Age (Days)</th>
                         <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Amount Due</th>
                     </tr>
                 </thead>
@@ -45,11 +58,16 @@
                             </div>
                         </td>
                         <td class="px-8 py-4 text-sm text-gray-600">{{ rec.due_date }}</td>
+                        <td class="px-8 py-4 text-sm">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold {{ 'bg-red-100 text-red-600' if rec.age > 30 else 'bg-orange-100 text-orange-600' if rec.age > 0 else 'bg-green-100 text-green-600' }}">
+                                {{ rec.age }} days
+                            </span>
+                        </td>
                         <td class="px-8 py-4 text-sm font-bold text-right text-red-600">${{ "%.2f"|format(rec.amount_due) }}</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="3" class="px-8 py-10 text-center text-gray-400 italic">No outstanding receivables</td>
+                        <td colspan="4" class="px-8 py-10 text-center text-gray-400 italic">No outstanding receivables</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -69,6 +87,7 @@
                         <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Vendor</th>
                         <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Invoice #</th>
                         <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Due Date</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Age (Days)</th>
                         <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Amount</th>
                     </tr>
                 </thead>
@@ -80,11 +99,16 @@
                         </td>
                         <td class="px-8 py-4 text-sm text-gray-600">{{ pay.invoice_number }}</td>
                         <td class="px-8 py-4 text-sm text-gray-600">{{ pay.due_date }}</td>
+                        <td class="px-8 py-4 text-sm">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold {{ 'bg-red-100 text-red-600' if pay.age > 30 else 'bg-orange-100 text-orange-600' if pay.age > 0 else 'bg-green-100 text-green-600' }}">
+                                {{ pay.age }} days
+                            </span>
+                        </td>
                         <td class="px-8 py-4 text-sm font-bold text-right text-red-600">${{ "%.2f"|format(pay.amount) }}</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="4" class="px-8 py-10 text-center text-gray-400 italic">No outstanding payables</td>
+                        <td colspan="5" class="px-8 py-10 text-center text-gray-400 italic">No outstanding payables</td>
                     </tr>
                     {% endfor %}
                 </tbody>

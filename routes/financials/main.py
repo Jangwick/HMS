@@ -744,14 +744,35 @@ def balance_sheet():
 @login_required
 def aging_report():
     client = get_supabase_client()
+    today = datetime.now().date()
+    
     # Fetch receivables
-    receivables = client.table('receivables').select('*, billing_records!receivables_billing_id_fkey(patients(first_name, last_name))').eq('status', 'Unpaid').execute().data or []
+    receivables_raw = client.table('receivables').select('*, billing_records!receivables_billing_id_fkey(patients(first_name, last_name))').eq('status', 'Unpaid').execute().data or []
+    receivables = []
+    total_ar = 0
+    for rec in receivables_raw:
+        due_date = datetime.strptime(rec['due_date'], '%Y-%m-%d').date() if rec['due_date'] else today
+        age = (today - due_date).days
+        rec['age'] = max(0, age)
+        receivables.append(rec)
+        total_ar += float(rec['amount_due'] or 0)
+        
     # Fetch payables
-    payables = client.table('vendor_invoices').select('*, vendors(name)').eq('status', 'Unpaid').execute().data or []
+    payables_raw = client.table('vendor_invoices').select('*, vendors(name)').eq('status', 'Unpaid').execute().data or []
+    payables = []
+    total_ap = 0
+    for pay in payables_raw:
+        due_date = datetime.strptime(pay['due_date'], '%Y-%m-%d').date() if pay['due_date'] else today
+        age = (today - due_date).days
+        pay['age'] = max(0, age)
+        payables.append(pay)
+        total_ap += float(pay['amount'] or 0)
     
     return render_template('subsystems/financials/fin5/aging_report.html', 
                            receivables=receivables, 
                            payables=payables,
+                           total_ar=total_ar,
+                           total_ap=total_ap,
                            subsystem_name="Financial Intel", 
                            accent_color="#6D28D9", 
                            blueprint_name=BLUEPRINT_NAME)

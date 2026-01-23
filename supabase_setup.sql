@@ -810,6 +810,18 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='generated_reports' AND column_name='created_at') THEN
         ALTER TABLE generated_reports ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
     END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='generated_reports' AND column_name='file_path') THEN
+        ALTER TABLE generated_reports ADD COLUMN file_path TEXT;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='generated_reports' AND column_name='report_type') THEN
+        ALTER TABLE generated_reports ADD COLUMN report_type VARCHAR(50);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='generated_reports' AND column_name='report_name') THEN
+        ALTER TABLE generated_reports ADD COLUMN report_name VARCHAR(200);
+    END IF;
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='receivables' AND column_name='created_at') THEN
         ALTER TABLE receivables ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
