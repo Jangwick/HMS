@@ -202,6 +202,7 @@ CREATE TABLE IF NOT EXISTS payroll_records (
     pay_period_start DATE NOT NULL,
     pay_period_end DATE NOT NULL,
     base_salary DECIMAL(12, 2) NOT NULL,
+    gross_salary DECIMAL(12, 2) DEFAULT 0.00,
     bonuses DECIMAL(12, 2) DEFAULT 0.00,
     deductions DECIMAL(12, 2) DEFAULT 0.00,
     net_pay DECIMAL(12, 2) NOT NULL,
@@ -810,6 +811,10 @@ BEGIN
     
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='receivables' AND column_name='created_at') THEN
         ALTER TABLE receivables ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='payroll_records' AND column_name='gross_salary') THEN
+        ALTER TABLE payroll_records ADD COLUMN gross_salary DECIMAL(12, 2) DEFAULT 0.00;
     END IF;
 END $$;
 

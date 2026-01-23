@@ -337,7 +337,9 @@ def income_statement():
     client = get_supabase_client()
     revenue = sum([r['amount'] for r in client.table('collections').select('amount').execute().data or []])
     expenses = sum([r['amount'] for r in client.table('vendor_payments').select('amount').execute().data or []])
-    payroll = sum([r['gross_salary'] for r in client.table('payroll_records').select('gross_salary').eq('status', 'Paid').execute().data or []])
+    # Fallback to net_pay as gross_salary might not exist in all environments
+    payroll_data = client.table('payroll_records').select('net_pay').eq('status', 'Paid').execute().data or []
+    payroll = sum([float(r.get('net_pay', 0)) for r in payroll_data])
     total_expenses = expenses + payroll
     net_income = revenue - total_expenses
     return render_template('subsystems/financials/fin5/income_statement.html', 
