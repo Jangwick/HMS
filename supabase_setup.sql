@@ -468,6 +468,8 @@ CREATE TABLE IF NOT EXISTS billing_records (
     total_amount DECIMAL(12, 2) DEFAULT 0.00,
     status VARCHAR(50) DEFAULT 'Unpaid', -- Unpaid, Paid, Partially Paid
     insurance_claim_status VARCHAR(50),
+    billing_date TIMESTAMP DEFAULT NOW(),
+    description TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -861,4 +863,18 @@ ALTER TABLE IF EXISTS fleet_costs ADD COLUMN IF NOT EXISTS amount DECIMAL(12, 2)
 ALTER TABLE IF EXISTS fleet_costs ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE IF EXISTS fleet_costs ADD COLUMN IF NOT EXISTS log_date DATE DEFAULT CURRENT_DATE;
 ALTER TABLE IF EXISTS fleet_costs ADD COLUMN IF NOT EXISTS logged_by INTEGER REFERENCES users(id);
+
+-- ROBUST BILLING_RECORDS FIX
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='billing_records' AND column_name='billing_date') THEN
+        ALTER TABLE billing_records ADD COLUMN billing_date TIMESTAMP DEFAULT NOW();
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='billing_records' AND column_name='description') THEN
+        ALTER TABLE billing_records ADD COLUMN description TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendor_invoices' AND column_name='description') THEN
+        ALTER TABLE vendor_invoices ADD COLUMN description TEXT;
+    END IF;
+END $$;
 ALTER TABLE IF EXISTS fleet_costs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();

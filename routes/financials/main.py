@@ -148,15 +148,15 @@ def dashboard():
     try:
         # FIN1 Stats
         total_billing = client.table('billing_records').select('total_amount').execute()
-        stats['revenue'] = sum([r['total_amount'] for r in total_billing.data]) if total_billing.data else 0
+        stats['revenue'] = sum([float(r.get('total_amount', 0)) for r in total_billing.data]) if total_billing.data else 0
         
         # FIN2 Stats
         response = client.table('vendor_invoices').select('amount').eq('status', 'Unpaid').execute()
-        stats['payables'] = sum([r['amount'] for r in response.data]) if response.data else 0
+        stats['payables'] = sum([float(r.get('amount', 0)) for r in response.data]) if response.data else 0
         
         # FIN3 Stats
         stats['receivables_count'] = client.table('receivables').select('id', count='exact').eq('status', 'Unpaid').execute().count or 0
-        stats['receivables_amount'] = sum([r['amount_due'] for r in client.table('receivables').select('amount_due').eq('status', 'Unpaid').execute().data or []])
+        stats['receivables_amount'] = sum([float(r.get('amount_due', 0)) for r in client.table('receivables').select('amount_due').eq('status', 'Unpaid').execute().data or []])
         
         # FIN4 Stats
         bank_resp = client.table('bank_accounts').select('balance').execute()
@@ -218,11 +218,18 @@ def list_billing():
 def create_bill():
     if request.method == 'POST':
         client = get_supabase_client()
+        total_amount = request.form.get('total_amount', 0)
+        try:
+            total_amount = float(total_amount)
+        except (TypeError, ValueError):
+            total_amount = 0.0
+
         data = {
             'patient_id': request.form.get('patient_id'),
-            'total_amount': float(request.form.get('amount')),
-            'status': 'Unpaid',
-            'billing_date': datetime.now().isoformat()
+            'total_amount': total_amount,
+            'status': request.form.get('status', 'Unpaid'),
+            'billing_date': datetime.now().isoformat(),
+            'description': request.form.get('description', '')
         }
         client.table('billing_records').insert(data).execute()
         flash('Invoice created successfully!', 'success')
@@ -261,12 +268,20 @@ def add_invoice():
     client = get_supabase_client()
     if request.method == 'POST':
         try:
+            vendor_id = request.form.get('vendor_id')
+            amount = request.form.get('amount', 0)
+            
+            try:
+                amount = float(amount)
+            except (TypeError, ValueError):
+                amount = 0.0
+
             data = {
-                'vendor_id': int(request.form.get('vendor_id')),
+                'vendor_id': int(vendor_id) if vendor_id else None,
                 'invoice_number': request.form.get('invoice_number'),
                 'invoice_date': request.form.get('invoice_date'),
                 'due_date': request.form.get('due_date'),
-                'amount': float(request.form.get('amount')),
+                'amount': amount,
                 'status': 'Unpaid',
                 'description': request.form.get('description')
             }
@@ -366,8 +381,8 @@ def reports_list():
 @login_required
 def income_statement():
     client = get_supabase_client()
-    revenue = sum([r['amount'] for r in client.table('collections').select('amount').execute().data or []])
-    expenses = sum([r['amount'] for r in client.table('vendor_payments').select('amount').execute().data or []])
+    revenue = sum([float(r.get('amount', 0)) for r in client.table('collections').select('amount').execute().data or []])
+    expenses = sum([float(r.get('amount', 0)) for r in client.table('vendor_payments').select('amount').execute().data or []])
     # Fallback to net_pay as gross_salary might not exist in all environments
     payroll_data = client.table('payroll_records').select('net_pay').eq('status', 'Paid').execute().data or []
     payroll = sum([float(r.get('net_pay', 0)) for r in payroll_data])
