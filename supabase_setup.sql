@@ -816,6 +816,18 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='payroll_records' AND column_name='gross_salary') THEN
         ALTER TABLE payroll_records ADD COLUMN gross_salary DECIMAL(12, 2) DEFAULT 0.00;
     END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bank_accounts' AND column_name='balance') THEN
+        ALTER TABLE bank_accounts ADD COLUMN balance DECIMAL(15, 2) DEFAULT 0.00;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendor_invoices' AND column_name='status') THEN
+        ALTER TABLE vendor_invoices ADD COLUMN status VARCHAR(50) DEFAULT 'Unpaid';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='receivables' AND column_name='status') THEN
+        ALTER TABLE receivables ADD COLUMN status VARCHAR(50) DEFAULT 'Unpaid';
+    END IF;
 END $$;
 
 -- Fleet Module Fixes (Fix for PGRST204)

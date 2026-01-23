@@ -9,7 +9,7 @@
 </li>
 {% endblock %}
 
-{% block subsystem_content %}
+{% block content %}
 <div class="space-y-8">
     <!-- Welcome Section -->
     <div class="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
@@ -96,7 +96,7 @@
         </a>
 
         <!-- Payables -->
-        <a href="{{ url_for('financials.list_payables') }}" class="group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+        <a href="{{ url_for('financials.vendor_invoices') }}" class="group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
             <div class="h-2 bg-[#A855F7]"></div>
             <div class="p-8">
                 <div class="flex justify-between items-start mb-6">
@@ -126,7 +126,7 @@
         </a>
 
         <!-- Cash Mgmt -->
-        <a href="{{ url_for('financials.cash_transactions') }}" class="group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+        <a href="{{ url_for('financials.transactions') }}" class="group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
             <div class="h-2 bg-[#7C3AED]"></div>
             <div class="p-8">
                 <div class="flex justify-between items-start mb-6">

@@ -352,15 +352,21 @@ def income_statement():
 @login_required
 def balance_sheet():
     client = get_supabase_client()
-    cash = sum([r['balance'] for r in client.table('bank_accounts').select('balance').execute().data or []])
+    try:
+        # Robust fetch: handle missing 'balance' column
+        bank_data = client.table('bank_accounts').select('*').execute().data or []
+        cash = sum([float(r.get('balance', 0)) for r in bank_data])
+    except Exception:
+        cash = 0
+        
     receivables = sum([r['amount_due'] for r in client.table('receivables').select('amount_due').eq('status', 'Open').execute().data or []])
     payables = sum([r['amount'] for r in client.table('vendor_invoices').select('amount').eq('status', 'Unpaid').execute().data or []])
-    assets = cash + receivables
-    liabilities = payables
-    equity = assets - liabilities
+    total_assets = cash + receivables
+    total_liabilities = payables
+    equity = total_assets - total_liabilities
     return render_template('subsystems/financials/fin5/balance_sheet.html', 
                            cash=cash, receivables=receivables, payables=payables,
-                           assets=assets, liabilities=liabilities, equity=equity,
+                           total_assets=total_assets, total_liabilities=total_liabilities, equity=equity,
                            subsystem_name="Financial Intel", accent_color="#6D28D9", 
                            blueprint_name=BLUEPRINT_NAME)
 

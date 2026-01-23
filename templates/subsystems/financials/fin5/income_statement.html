@@ -12,7 +12,7 @@
         </div>
         <div class="flex space-x-3">
             <select
-                class="px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#EF4444] outline-none">
+                class="px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6D28D9] outline-none">
                 <option>January 2026</option>
                 <option>December 2025</option>
                 <option>November 2025</option>
@@ -22,74 +22,49 @@
                 <i class="bi bi-download mr-2"></i> Export PDF
             </button>
         </div>
-        {% extends "base/subsystem_base.html" %}
+    </div>
 
-        {% block title %}Income Statement - {{ subsystem_name }}{% endblock %}
-        {% block header_title %}Income Statement{% endblock %}
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-8">
+            <h4 class="text-lg font-bold text-gray-900 mb-6 pb-4 border-b border-gray-100">Revenue</h4>
 
-        {% block content %}
-        <div class="space-y-8">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h3 class="text-2xl font-bold text-gray-900">Income Statement</h3>
-                    <p class="text-gray-500">Revenue and expense summary for the period</p>
+            <div class="space-y-4">
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Collections (Revenue)</span>
+                    <span class="font-bold text-gray-900">${{ "%.2f"|format(revenue) }}</span>
                 </div>
-                <div class="flex space-x-3">
-                    <select
-                        class="px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#EF4444] outline-none">
-                        <option>January 2026</option>
-                        <option>December 2025</option>
-                        <option>November 2025</option>
-                    </select>
-                    <button
-                        class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
-                        <i class="bi bi-download mr-2"></i> Export PDF
-                    </button>
+                <div class="flex justify-between py-3 border-t border-gray-100 font-bold text-lg">
+                    <span class="text-gray-900">Total Revenue</span>
+                    <span class="text-green-600">${{ "%.2f"|format(revenue) }}</span>
                 </div>
             </div>
 
-            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-8">
-                    <h4 class="text-lg font-bold text-gray-900 mb-6 pb-4 border-b border-gray-100">Revenue</h4>
+            <h4 class="text-lg font-bold text-gray-900 mt-8 mb-6 pb-4 border-b border-gray-100">Expenses</h4>
 
-                    <div class="space-y-4">
-                        <div class="flex justify-between py-2">
-                            <span class="text-gray-600">Collections (Revenue)</span>
-                            <span class="font-bold text-gray-900">${{ "%.2f"|format(data.revenue) }}</span>
-                        </div>
-                        <div class="flex justify-between py-3 border-t border-gray-100 font-bold text-lg">
-                            <span class="text-gray-900">Total Revenue</span>
-                            <span class="text-green-600">${{ "%.2f"|format(data.revenue) }}</span>
-                        </div>
-                    </div>
+            <div class="space-y-4">
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Vendor Payments</span>
+                    <span class="font-bold text-gray-900">${{ "%.2f"|format(expenses) }}</span>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Payroll</span>
+                    <span class="font-bold text-gray-900">${{ "%.2f"|format(payroll) }}</span>
+                </div>
+                <div class="flex justify-between py-3 border-t border-gray-100 font-bold text-lg">
+                    <span class="text-gray-900">Total Expenses</span>
+                    <span class="text-red-600">${{ "%.2f"|format(total_expenses) }}</span>
+                </div>
+            </div>
 
-                    <h4 class="text-lg font-bold text-gray-900 mt-8 mb-6 pb-4 border-b border-gray-100">Expenses</h4>
-
-                    <div class="space-y-4">
-                        <div class="flex justify-between py-2">
-                            <span class="text-gray-600">Vendor Payments</span>
-                            <span class="font-bold text-gray-900">${{ "%.2f"|format(data.expenses.vendor_payments)
-                                }}</span>
-                        </div>
-                        <div class="flex justify-between py-2">
-                            <span class="text-gray-600">Payroll</span>
-                            <span class="font-bold text-gray-900">${{ "%.2f"|format(data.expenses.payroll) }}</span>
-                        </div>
-                        <div class="flex justify-between py-3 border-t border-gray-100 font-bold text-lg">
-                            <span class="text-gray-900">Total Expenses</span>
-                            <span class="text-red-600">${{ "%.2f"|format(data.total_expenses) }}</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-8 p-6 bg-gray-50 rounded-2xl">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xl font-bold text-gray-900">Net Income</span>
-                            <span
-                                class="text-2xl font-bold {{ 'text-green-600' if data.net_income >= 0 else 'text-red-600' }}">${{
-                                "%.2f"|format(data.net_income) }}</span>
-                        </div>
-                    </div>
+            <div class="mt-8 p-6 bg-gray-50 rounded-2xl">
+                <div class="flex justify-between items-center">
+                    <span class="text-xl font-bold text-gray-900">Net Income</span>
+                    <span
+                        class="text-2xl font-bold {{ 'text-green-600' if net_income >= 0 else 'text-red-600' }}">${{
+                        "%.2f"|format(net_income) }}</span>
                 </div>
             </div>
         </div>
-        {% endblock %}
+    </div>
+</div>
+{% endblock %}
