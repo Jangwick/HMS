@@ -599,11 +599,51 @@ def transactions():
     client = get_supabase_client()
     # Explicitly join with bank_accounts using the account_id_fkey to avoid ambiguity
     transactions = client.table('cash_transactions').select('*, bank_accounts:bank_accounts!cash_transactions_account_id_fkey(bank_name, account_number)').order('transaction_date', desc=True).execute().data or []
+    
+    # Also fetch bank accounts for the manual transaction modal
+    bank_accounts = client.table('bank_accounts').select('*').execute().data or []
+    
     return render_template('subsystems/financials/fin4/transactions.html', 
                            transactions=transactions, 
+                           bank_accounts=bank_accounts,
                            subsystem_name="Cash Management", 
                            accent_color="#7C3AED", 
                            blueprint_name=BLUEPRINT_NAME)
+
+@financials_bp.route('/cash/transaction', methods=['POST'])
+@login_required
+def record_transaction():
+    client = get_supabase_client()
+    account_id = request.form.get('account_id')
+    tx_type = request.form.get('transaction_type')
+    amount = float(request.form.get('amount', 0))
+    description = request.form.get('description')
+
+    if not account_id or not tx_type or amount <= 0:
+        flash('Invalid transaction data.', 'danger')
+        return redirect(url_for('financials.transactions'))
+
+    # 1. Update bank balance
+    acc = client.table('bank_accounts').select('balance').eq('id', account_id).single().execute().data
+    if not acc:
+        flash('Bank account not found.', 'danger')
+        return redirect(url_for('financials.transactions'))
+
+    new_balance = float(acc['balance']) + amount if tx_type == 'DEPOSIT' else float(acc['balance']) - amount
+    client.table('bank_accounts').update({'balance': new_balance}).eq('id', account_id).execute()
+
+    # 2. Record transaction
+    tx_data = {
+        'account_id': account_id,
+        'transaction_type': tx_type,
+        'amount': amount,
+        'description': description,
+        'performed_by': current_user.id
+    }
+    client.table('cash_transactions').insert(tx_data).execute()
+
+    flash(f'{tx_type.capitalize()} of ${amount:.2f} processed successfully.', 'success')
+    return redirect(url_for('financials.transactions'))
 
 @financials_bp.route('/cash/accounts')
 @login_required
@@ -628,6 +668,20 @@ def add_bank_account():
     }
     client.table('bank_accounts').insert(data).execute()
     flash('Bank account added successfully!', 'success')
+    return redirect(url_for('financials.bank_accounts'))
+
+@financials_bp.route('/bank-accounts/delete/<int:account_id>', methods=['POST'])
+@login_required
+def delete_bank_account(account_id):
+    client = get_supabase_client()
+    # Check for existing transactions
+    txs = client.table('cash_transactions').select('id').eq('account_id', account_id).limit(1).execute().data
+    if txs:
+        flash('Cannot delete account with existing transaction history.', 'warning')
+        return redirect(url_for('financials.bank_accounts'))
+        
+    client.table('bank_accounts').delete().eq('id', account_id).execute()
+    flash('Bank account removed.', 'info')
     return redirect(url_for('financials.bank_accounts'))
 
 # --- FIN5 MODULE: FINANCIAL REPORTS ---

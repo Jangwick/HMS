@@ -11,25 +11,168 @@
             <p class="text-gray-500">View all cash flow transactions</p>
         </div>
         <div class="flex space-x-3">
-            <button
-                class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
-                <i class="bi bi-filter mr-2"></i> Filter
+            <button onclick="openTransactionModal()"
+                class="px-6 py-2 bg-gray-900 text-white font-bold rounded-xl shadow-lg hover:bg-gray-800 transition-all no-print">
+                <i class="bi bi-plus-lg mr-2"></i> New Transaction
             </button>
-            <button
-                class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
-                <i class="bi bi-download mr-2"></i> Export
+            <button onclick="window.print()"
+                class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all no-print">
+                <i class="bi bi-printer mr-2"></i> Print
             </button>
         </div>
     </div>
 
-    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="p-12 text-center">
-            <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="bi bi-arrow-left-right text-4xl text-gray-300"></i>
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Cash on Hand</div>
+            <div class="text-2xl font-black text-gray-900">
+                ${{ "%.2f"|format(bank_accounts|sum(attribute='balance')) }}
             </div>
-            <h4 class="text-lg font-bold text-gray-900">No transactions</h4>
-            <p class="text-gray-500 mt-2">Cash transactions will appear here.</p>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Recent Deposits (30d)</div>
+            <div class="text-2xl font-black text-green-600">
+                +${{ "%.2f"|format(transactions|selectattr('transaction_type', 'equalto', 'DEPOSIT')|sum(attribute='amount')) }}
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Recent Withdrawals (30d)</div>
+            <div class="text-2xl font-black text-red-600">
+                -${{ "%.2f"|format(transactions|selectattr('transaction_type', 'equalto', 'WITHDRAWAL')|sum(attribute='amount')) }}
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="px-8 py-5 text-xs font-black text-gray-400 uppercase tracking-widest">Date</th>
+                        <th class="px-8 py-5 text-xs font-black text-gray-400 uppercase tracking-widest">Bank Account</th>
+                        <th class="px-8 py-5 text-xs font-black text-gray-400 uppercase tracking-widest">Type</th>
+                        <th class="px-8 py-5 text-xs font-black text-gray-400 uppercase tracking-widest">Description</th>
+                        <th class="px-8 py-5 text-xs font-black text-gray-400 uppercase tracking-widest text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for tx in transactions %}
+                    <tr class="hover:bg-gray-50/50 transition-all group">
+                        <td class="px-8 py-5">
+                            <div class="text-sm font-bold text-gray-900">{{ tx.transaction_date[:10] }}</div>
+                            <div class="text-[10px] text-gray-400 font-bold uppercase">{{ tx.transaction_date[11:16] }}</div>
+                        </td>
+                        <td class="px-8 py-5">
+                            <div class="text-sm font-black text-gray-900">{{ tx.bank_accounts.bank_name }}</div>
+                            <div class="text-[10px] text-gray-400 font-bold tracking-widest">XXXX-{{ tx.bank_accounts.account_number[-4:] }}</div>
+                        </td>
+                        <td class="px-8 py-5">
+                            <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase
+                                {% if tx.transaction_type == 'DEPOSIT' %}
+                                    bg-green-100 text-green-600
+                                {% elif tx.transaction_type == 'WITHDRAWAL' %}
+                                    bg-red-100 text-red-600
+                                {% else %}
+                                    bg-blue-100 text-blue-600
+                                {% endif %}">
+                                {{ tx.transaction_type }}
+                            </span>
+                        </td>
+                        <td class="px-8 py-5 text-sm font-medium text-gray-600">
+                            {{ tx.description or 'No description provided' }}
+                        </td>
+                        <td class="px-8 py-5 text-right font-black
+                            {% if tx.transaction_type == 'DEPOSIT' %}
+                                text-green-600
+                            {% else %}
+                                text-red-600
+                            {% endif %}">
+                            {{ '+' if tx.transaction_type == 'DEPOSIT' else '-' }}${{ "%.2f"|format(tx.amount) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="p-20 text-center">
+                            <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="bi bi-arrow-left-right text-4xl text-gray-300"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-gray-900">No transactions recorded</h4>
+                            <p class="text-gray-500 mt-2">Any bank activity will appear here.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
+
+<!-- Transaction Modal -->
+<div id="transactionModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden">
+        <div class="bg-gray-900 p-8 text-white flex justify-between items-center">
+            <div>
+                <h3 class="text-2xl font-black">Record Transaction</h3>
+                <p class="text-gray-400 text-sm mt-1">Manually record a deposit or withdrawal</p>
+            </div>
+            <button onclick="closeTransactionModal()" class="text-gray-400 hover:text-white transition-colors">
+                <i class="bi bi-x-lg text-xl"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('financials.record_transaction') }}" method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Bank Account</label>
+                <select name="account_id" required
+                    class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none appearance-none">
+                    {% for acc in bank_accounts %}
+                    <option value="{{ acc.id }}">{{ acc.bank_name }} ({{ acc.account_number[-4:] }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Type</label>
+                    <select name="transaction_type" required
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none appearance-none">
+                        <option value="DEPOSIT">Deposit</option>
+                        <option value="WITHDRAWAL">Withdrawal</option>
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Amount</label>
+                    <input type="number" step="0.01" name="amount" required placeholder="0.00"
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none">
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Description</label>
+                <textarea name="description" rows="3" placeholder="Reason for transaction..."
+                    class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-gray-900 outline-none resize-none"></textarea>
+            </div>
+
+            <div class="pt-4">
+                <button type="submit"
+                    class="w-full py-4 bg-gray-900 text-white font-black rounded-2xl shadow-lg hover:bg-gray-800 transition-all transform hover:-translate-y-1">
+                    Process Transaction
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openTransactionModal() {
+    document.getElementById('transactionModal').classList.remove('hidden');
+    document.getElementById('transactionModal').classList.add('flex');
+}
+function closeTransactionModal() {
+    document.getElementById('transactionModal').classList.add('hidden');
+    document.getElementById('transactionModal').classList.remove('flex');
+}
+</script>
 {% endblock %}
