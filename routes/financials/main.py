@@ -231,7 +231,19 @@ def create_bill():
             'billing_date': datetime.now().isoformat(),
             'description': request.form.get('description', '')
         }
-        client.table('billing_records').insert(data).execute()
+        bill_resp = client.table('billing_records').insert(data).execute()
+        
+        # Automatically create a receivable record if not already paid
+        if bill_resp.data and data['status'] != 'Paid':
+            bill_id = bill_resp.data[0]['id']
+            receivable_data = {
+                'billing_id': bill_id,
+                'amount_due': total_amount,
+                'due_date': (datetime.now() + timedelta(days=30)).date().isoformat(),
+                'status': 'Unpaid'
+            }
+            client.table('receivables').insert(receivable_data).execute()
+
         flash('Invoice created successfully!', 'success')
         return redirect(url_for('financials.list_billing'))
     
@@ -239,6 +251,69 @@ def create_bill():
     patients = Patient.get_all()
     return render_template('subsystems/financials/fin1/create_bill.html', 
                            patients=patients, 
+                           subsystem_name="Billing Management", 
+                           accent_color="#8B5CF6", 
+                           blueprint_name=BLUEPRINT_NAME)
+
+@financials_bp.route('/billing/pay/<int:bill_id>', methods=['POST'])
+@login_required
+def pay_bill(bill_id):
+    client = get_supabase_client()
+    # 1. Update billing record status
+    client.table('billing_records').update({'status': 'Paid'}).eq('id', bill_id).execute()
+    
+    # 2. Update receivable if exists
+    rec_resp = client.table('receivables').select('id, amount_due').eq('billing_id', bill_id).execute()
+    if rec_resp.data:
+        rec_id = rec_resp.data[0]['id']
+        amount = rec_resp.data[0]['amount_due']
+        client.table('receivables').update({'status': 'Paid'}).eq('id', rec_id).execute()
+        
+        # 3. Record collection
+        collection_data = {
+            'receivable_id': rec_id,
+            'amount': amount,
+            'payment_method': request.form.get('payment_method', 'Cash'),
+            'collection_date': datetime.now().isoformat(),
+            'collected_by': current_user.get_id()
+        }
+        client.table('collections').insert(collection_data).execute()
+    else:
+        # If no receivable, maybe it was already paid or direct payment
+        # Still record a collection if we want, but usually it goes through receivables
+        pass
+
+    flash(f'Payment processed for Invoice #INV-{bill_id}', 'success')
+    return redirect(url_for('financials.list_billing'))
+
+@financials_bp.route('/billing/void/<int:bill_id>', methods=['POST'])
+@login_required
+def void_bill(bill_id):
+    client = get_supabase_client()
+    client.table('billing_records').update({'status': 'Voided'}).eq('id', bill_id).execute()
+    client.table('receivables').update({'status': 'Voided'}).eq('billing_id', bill_id).execute()
+    flash(f'Invoice #INV-{bill_id} has been voided.', 'info')
+    return redirect(url_for('financials.list_billing'))
+
+@financials_bp.route('/billing/delete/<int:bill_id>', methods=['POST'])
+@login_required
+def delete_bill(bill_id):
+    client = get_supabase_client()
+    client.table('billing_records').delete().eq('id', bill_id).execute()
+    flash(f'Invoice #INV-{bill_id} deleted successfully.', 'warning')
+    return redirect(url_for('financials.list_billing'))
+
+@financials_bp.route('/billing/view/<int:bill_id>')
+@login_required
+def view_bill(bill_id):
+    client = get_supabase_client()
+    bill = client.table('billing_records').select('*, patients(*)').eq('id', bill_id).single().execute().data
+    if not bill:
+        flash('Invoice not found.', 'danger')
+        return redirect(url_for('financials.list_billing'))
+    
+    return render_template('subsystems/financials/fin1/view_bill.html', 
+                           bill=bill,
                            subsystem_name="Billing Management", 
                            accent_color="#8B5CF6", 
                            blueprint_name=BLUEPRINT_NAME)
