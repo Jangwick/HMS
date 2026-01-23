@@ -1,0 +1,71 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Add Vendor - {{ subsystem_name }}{% endblock %}
+{% block header_title %}New Vendor{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+        <div class="bg-gradient-to-r from-[#EF4444] to-red-800 px-8 py-10 text-white">
+            <h3 class="text-3xl font-bold mb-2">Register Vendor</h3>
+            <p class="text-red-100">Add a new supplier or service provider to the system.</p>
+        </div>
+
+        <form method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Vendor/Company Name</label>
+                <div class="relative">
+                    <i class="bi bi-building absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" name="name" required
+                        class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] outline-none"
+                        placeholder="e.g. Medical Supplies Co.">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Contact Person</label>
+                    <div class="relative">
+                        <i class="bi bi-person absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" name="contact_person" required
+                            class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] outline-none"
+                            placeholder="Full Name">
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Phone Number</label>
+                    <div class="relative">
+                        <i class="bi bi-phone absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="tel" name="phone" required
+                            class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] outline-none"
+                            placeholder="+1 (555) 000-0000">
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Email Address</label>
+                <div class="relative">
+                    <i class="bi bi-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="email" name="email" required
+                        class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] outline-none"
+                        placeholder="vendor@example.com">
+                </div>
+            </div>
+
+            <div class="pt-6 flex items-center justify-between">
+                <a href="{{ url_for('financials.vendors_list') }}"
+                    class="text-gray-500 font-bold hover:text-gray-700 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit"
+                    class="px-10 py-4 bg-[#EF4444] text-white font-bold rounded-2xl shadow-lg hover:bg-red-700 transition-all transform hover:-translate-y-1">
+                    Register Vendor
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

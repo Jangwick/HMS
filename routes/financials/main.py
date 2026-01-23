@@ -323,16 +323,95 @@ def view_bill(bill_id):
 @login_required
 def vendor_invoices():
     client = get_supabase_client()
-    try:
-        response = client.table('vendor_invoices').select('*, vendors(name)').order('due_date').execute()
-        invoices = response.data if response.data else []
-        for inv in invoices:
-            inv['vendor_name'] = inv.get('vendors', {}).get('name', 'Unknown')
-    except Exception as e:
-        print(f"Error: {e}")
-        invoices = []
+    vendor_id = request.args.get('vendor_id')
+    
+    query = client.table('vendor_invoices').select('*, vendors(name)')
+    if vendor_id:
+        query = query.eq('vendor_id', vendor_id)
+    
+    invoices = query.order('due_date').execute().data or []
+    for inv in invoices:
+        inv['vendor_name'] = inv.get('vendors', {}).get('name', 'Unknown')
+    
+    bank_accounts = client.table('bank_accounts').select('*').execute().data or []
+    
     return render_template('subsystems/financials/fin2/invoices.html', 
                            invoices=invoices, 
+                           bank_accounts=bank_accounts,
+                           subsystem_name="Accounts Payable", 
+                           accent_color="#A855F7", 
+                           blueprint_name=BLUEPRINT_NAME)
+
+@financials_bp.route('/payables/pay/<int:invoice_id>', methods=['POST'])
+@login_required
+def pay_invoice(invoice_id):
+    client = get_supabase_client()
+    invoice = client.table('vendor_invoices').select('*').eq('id', invoice_id).single().execute().data
+    if not invoice:
+        flash('Invoice not found.', 'danger')
+        return redirect(url_for('financials.vendor_invoices'))
+    
+    # 1. Update invoice status
+    client.table('vendor_invoices').update({'status': 'Paid'}).eq('id', invoice_id).execute()
+    
+    # 2. Record payment
+    payment_data = {
+        'invoice_id': invoice_id,
+        'payment_date': datetime.now().date().isoformat(),
+        'amount': invoice['amount'],
+        'payment_method': request.form.get('payment_method', 'Bank Transfer'),
+        'reference_number': request.form.get('reference_number', '')
+    }
+    client.table('vendor_payments').insert(payment_data).execute()
+    
+    # 3. Update bank account if selected
+    account_id = request.form.get('account_id')
+    if account_id:
+        acc = client.table('bank_accounts').select('balance').eq('id', account_id).single().execute().data
+        if acc:
+            new_balance = float(acc['balance']) - float(invoice['amount'])
+            client.table('bank_accounts').update({'balance': new_balance}).eq('id', account_id).execute()
+            
+            # Record cash transaction
+            client.table('cash_transactions').insert({
+                'account_id': account_id,
+                'transaction_type': 'WITHDRAWAL',
+                'amount': invoice['amount'],
+                'description': f"Payment for Invoice #INV-{invoice_id}",
+                'performed_by': current_user.get_id()
+            }).execute()
+
+    flash(f'Payment recorded for Invoice #{invoice.get("invoice_number", invoice_id)}', 'success')
+    return redirect(url_for('financials.vendor_invoices'))
+
+@financials_bp.route('/vendors')
+@login_required
+def vendors_list():
+    client = get_supabase_client()
+    vendors = client.table('vendors').select('*').order('name').execute().data or []
+    return render_template('subsystems/financials/fin2/vendors.html', 
+                           vendors=vendors, 
+                           subsystem_name="Accounts Payable", 
+                           accent_color="#A855F7", 
+                           blueprint_name=BLUEPRINT_NAME)
+
+@financials_bp.route('/vendors/add', methods=['GET', 'POST'])
+@login_required
+def add_vendor():
+    if request.method == 'POST':
+        client = get_supabase_client()
+        data = {
+            'name': request.form.get('name'),
+            'contact_person': request.form.get('contact_person'),
+            'email': request.form.get('email'),
+            'phone': request.form.get('phone'),
+            'status': 'Active'
+        }
+        client.table('vendors').insert(data).execute()
+        flash('Vendor added successfully!', 'success')
+        return redirect(url_for('financials.vendors_list'))
+    
+    return render_template('subsystems/financials/fin2/add_vendor.html', 
                            subsystem_name="Accounts Payable", 
                            accent_color="#A855F7", 
                            blueprint_name=BLUEPRINT_NAME)
@@ -391,15 +470,68 @@ def payments():
 @login_required
 def receivables_list():
     client = get_supabase_client()
-    receivables = client.table('receivables').select('*, billing_records(patients(first_name, last_name))').order('due_date').execute().data or []
+    receivables = client.table('receivables').select('*, billing_records(id, total_amount, patients(first_name, last_name))').order('due_date').execute().data or []
     for rec in receivables:
         patient = rec.get('billing_records', {}).get('patients', {})
         rec['patient_name'] = f"{patient.get('first_name', '')} {patient.get('last_name', '')}".strip() or 'Unknown'
+        rec['display_id'] = rec.get('billing_records', {}).get('id', 'N/A')
+    
+    bank_accounts = client.table('bank_accounts').select('*').execute().data or []
+
     return render_template('subsystems/financials/fin3/receivables.html', 
                            receivables=receivables, 
+                           bank_accounts=bank_accounts,
                            subsystem_name="Accounts Receivable", 
                            accent_color="#9333EA", 
                            blueprint_name=BLUEPRINT_NAME)
+
+@financials_bp.route('/receivables/collect/<int:receivable_id>', methods=['POST'])
+@login_required
+def collect_receivable(receivable_id):
+    client = get_supabase_client()
+    rec = client.table('receivables').select('*').eq('id', receivable_id).single().execute().data
+    if not rec:
+        flash('Receivable record not found.', 'danger')
+        return redirect(url_for('financials.receivables_list'))
+    
+    amount = float(request.form.get('amount', rec['amount_due']))
+    
+    # 1. Update receivable status
+    client.table('receivables').update({'status': 'Paid'}).eq('id', receivable_id).execute()
+    
+    # 2. Update linked billing if exists
+    if rec.get('billing_id'):
+        client.table('billing_records').update({'status': 'Paid'}).eq('id', rec['billing_id']).execute()
+    
+    # 3. Record collection
+    collection_data = {
+        'receivable_id': receivable_id,
+        'amount': amount,
+        'collection_date': datetime.now().isoformat(),
+        'payment_method': request.form.get('payment_method', 'Cash'),
+        'collected_by': current_user.get_id()
+    }
+    client.table('collections').insert(collection_data).execute()
+    
+    # 4. Update bank balance if selected
+    account_id = request.form.get('account_id')
+    if account_id:
+        acc = client.table('bank_accounts').select('balance').eq('id', account_id).single().execute().data
+        if acc:
+            new_balance = float(acc['balance']) + amount
+            client.table('bank_accounts').update({'balance': new_balance}).eq('id', account_id).execute()
+            
+            # Record cash transaction
+            client.table('cash_transactions').insert({
+                'account_id': account_id,
+                'transaction_type': 'DEPOSIT',
+                'amount': amount,
+                'description': f"Collection from Receivable #{receivable_id}",
+                'performed_by': current_user.get_id()
+            }).execute()
+
+    flash(f'Collection of ${amount:.2f} recorded successfully.', 'success')
+    return redirect(url_for('financials.receivables_list'))
 
 @financials_bp.route('/receivables/collections')
 @login_required
@@ -434,6 +566,20 @@ def bank_accounts():
                            subsystem_name="Cash Management", 
                            accent_color="#7C3AED", 
                            blueprint_name=BLUEPRINT_NAME)
+
+@financials_bp.route('/bank-accounts/add', methods=['POST'])
+@login_required
+def add_bank_account():
+    client = get_supabase_client()
+    data = {
+        'bank_name': request.form.get('bank_name'),
+        'account_number': request.form.get('account_number'),
+        'account_type': request.form.get('account_type'),
+        'balance': float(request.form.get('initial_balance', 0))
+    }
+    client.table('bank_accounts').insert(data).execute()
+    flash('Bank account added successfully!', 'success')
+    return redirect(url_for('financials.bank_accounts'))
 
 # --- FIN5 MODULE: FINANCIAL REPORTS ---
 @financials_bp.route('/reports')

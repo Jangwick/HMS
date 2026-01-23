@@ -1,0 +1,91 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Vendors - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Vendor Directory{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Registered Vendors</h3>
+            <p class="text-gray-500">Manage suppliers and service providers</p>
+        </div>
+        <div class="flex space-x-3">
+            <a href="{{ url_for('financials.vendor_invoices') }}"
+                class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                <i class="bi bi-arrow-left mr-2"></i> Back to Invoices
+            </a>
+            <a href="{{ url_for('financials.add_vendor') }}"
+                class="px-6 py-2 bg-[#EF4444] text-white font-bold rounded-xl shadow-lg hover:bg-red-600 transition-all">
+                <i class="bi bi-plus-lg mr-2"></i> Add Vendor
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-8 py-5">Vendor Name</th>
+                        <th class="px-6 py-5">Contact Person</th>
+                        <th class="px-6 py-5">Email/Phone</th>
+                        <th class="px-6 py-5">Status</th>
+                        <th class="px-8 py-5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for vendor in vendors %}
+                    <tr class="hover:bg-gray-50/50 transition-colors group">
+                        <td class="px-8 py-5">
+                            <span class="font-bold text-gray-900">{{ vendor.name }}</span>
+                        </td>
+                        <td class="px-6 py-5 text-gray-500">{{ vendor.contact_person or 'N/A' }}</td>
+                        <td class="px-6 py-5">
+                            <div class="text-sm font-medium text-gray-900">{{ vendor.email or 'N/A' }}</div>
+                            <div class="text-xs text-gray-400">{{ vendor.phone or '' }}</div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-600">
+                                {{ vendor.status or 'Active' }}
+                            </span>
+                        </td>
+                        <td class="px-8 py-5 text-right">
+                            <div class="flex justify-end space-x-2">
+                                <a href="{{ url_for('financials.vendor_invoices', vendor_id=vendor.id) }}" 
+                                    class="p-2 text-gray-400 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
+                                    title="View Invoices">
+                                    <i class="bi bi-receipt"></i>
+                                </a>
+                                <button class="p-2 text-gray-400 hover:text-[#EF4444] hover:bg-white rounded-lg transition-all">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="p-2 text-gray-400 hover:text-red-600 hover:bg-white rounded-lg transition-all">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-8 py-20 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                    <i class="bi bi-people text-4xl text-gray-300"></i>
+                                </div>
+                                <h4 class="text-lg font-bold text-gray-900">No vendors registered</h4>
+                                <p class="text-gray-500 mt-2">Add your first vendor to start recording invoices.</p>
+                                <a href="{{ url_for('financials.add_vendor') }}"
+                                    class="mt-6 px-6 py-2 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors">
+                                    Add New Vendor
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -7,22 +7,79 @@
 <div class="space-y-8">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h3 class="text-2xl font-bold text-gray-900">Collections</h3>
-            <p class="text-gray-500">Record and manage payment collections</p>
+            <h3 class="text-2xl font-bold text-gray-900">Collections History</h3>
+            <p class="text-gray-500">History of all patient payments received</p>
         </div>
-        <button
-            class="px-6 py-2 bg-[#EF4444] text-white font-bold rounded-xl shadow-lg hover:bg-red-600 transition-all">
-            <i class="bi bi-plus-lg mr-2"></i> Record Payment
-        </button>
+        <div class="flex space-x-3">
+            <a href="{{ url_for('financials.receivables_list') }}"
+                class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                <i class="bi bi-arrow-left mr-2"></i> Back to Receivables
+            </a>
+            <button onclick="window.print()"
+                class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all no-print">
+                <i class="bi bi-printer mr-2"></i> Print Report
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Total Collected</div>
+            <div class="text-3xl font-black text-green-600">
+                ${{ "%.2f"|format(collections | map(attribute='amount') | sum) }}
+            </div>
+        </div>
     </div>
 
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="p-12 text-center">
-            <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="bi bi-cash-coin text-4xl text-gray-300"></i>
-            </div>
-            <h4 class="text-lg font-bold text-gray-900">No collections recorded</h4>
-            <p class="text-gray-500 mt-2">Collections will appear here once payments are received.</p>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-8 py-5">Date</th>
+                        <th class="px-6 py-5">Patient/Reference</th>
+                        <th class="px-6 py-5">Method</th>
+                        <th class="px-6 py-5">Account</th>
+                        <th class="px-6 py-5 text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for coll in collections %}
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-8 py-5 text-sm font-medium text-gray-500">
+                            {{ coll.created_at | datetime }}
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="font-bold text-gray-900">{{ coll.reference or 'Direct Collection' }}</div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold">
+                                {{ coll.payment_method }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5 text-gray-500 text-sm">
+                            {{ coll.account_name or 'Main Business Account' }}
+                        </td>
+                        <td class="px-6 py-5 text-right font-black text-green-600">
+                            +${{ "%.2f"|format(coll.amount) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-8 py-20 text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                    <i class="bi bi-cash-stack text-4xl text-gray-300"></i>
+                                </div>
+                                <h4 class="text-lg font-bold text-gray-900">No collections recorded</h4>
+                                <p class="text-gray-500 mt-2">Patient payments will appear here once collected.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

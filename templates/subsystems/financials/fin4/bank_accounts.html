@@ -8,22 +8,116 @@
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h3 class="text-2xl font-bold text-gray-900">Bank Accounts</h3>
-            <p class="text-gray-500">Manage hospital bank accounts</p>
+            <p class="text-gray-500">Manage hospital treasury and cash flow</p>
         </div>
-        <button
-            class="px-6 py-2 bg-[#EF4444] text-white font-bold rounded-xl shadow-lg hover:bg-red-600 transition-all">
+        <button onclick="openAddAccountModal()"
+            class="px-6 py-2 bg-[#EF4444] text-white font-bold rounded-xl shadow-lg hover:bg-red-600 transition-all no-print">
             <i class="bi bi-plus-lg mr-2"></i> Add Account
         </button>
     </div>
 
-    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="p-12 text-center">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for acc in accounts %}
+        <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full -mr-16 -mt-16 group-hover:bg-red-50 transition-colors"></div>
+            
+            <div class="relative z-10">
+                <div class="w-12 h-12 bg-gray-900 text-white rounded-2xl flex items-center justify-center mb-6">
+                    <i class="bi bi-bank2 text-xl"></i>
+                </div>
+                
+                <h4 class="text-xl font-black text-gray-900 mb-1 uppercase">{{ acc.bank_name }}</h4>
+                <p class="text-gray-400 text-sm font-bold tracking-widest mb-6">XXXX-XXXX-{{ acc.account_number[-4:] if acc.account_number|length > 4 else acc.account_number }}</p>
+                
+                <div class="flex items-end justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-gray-400 uppercase mb-1">Current Balance</div>
+                        <div class="text-3xl font-black text-gray-900">${{ "%.2f"|format(acc.balance) }}</div>
+                    </div>
+                    <span class="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-[10px] font-black uppercase">
+                        {{ acc.account_type }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-span-full bg-white rounded-3xl p-20 text-center border border-dashed border-gray-200">
             <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="bi bi-bank text-4xl text-gray-300"></i>
             </div>
-            <h4 class="text-lg font-bold text-gray-900">No bank accounts</h4>
-            <p class="text-gray-500 mt-2">Add your first bank account to get started.</p>
+            <h4 class="text-lg font-bold text-gray-900">No bank accounts registered</h4>
+            <p class="text-gray-500 mt-2">Registers accounts to start tracking payments and collections.</p>
         </div>
+        {% endfor %}
     </div>
 </div>
+
+<!-- Add Account Modal -->
+<div id="addAccountModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden">
+        <div class="bg-gray-900 p-8 text-white flex justify-between items-center">
+            <div>
+                <h3 class="text-2xl font-black">Register Account</h3>
+                <p class="text-gray-400 text-sm mt-1">Connect a new bank account to the system</p>
+            </div>
+            <button onclick="closeAddAccountModal()" class="text-gray-400 hover:text-white transition-colors">
+                <i class="bi bi-x-lg text-xl"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('financials.add_bank_account') }}" method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Bank Name</label>
+                    <input type="text" name="bank_name" required placeholder="e.g. Chase Bank"
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] outline-none">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Account Number</label>
+                    <input type="text" name="account_number" required placeholder="00000000"
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] outline-none">
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Account Type</label>
+                <select name="account_type" required
+                    class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] outline-none appearance-none">
+                    <option value="Savings">Savings</option>
+                    <option value="Checking">Checking</option>
+                    <option value="Operating">Operating</option>
+                    <option value="Petty Cash">Petty Cash</option>
+                </select>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Initial Balance</label>
+                <div class="relative">
+                    <i class="bi bi-currency-dollar absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="number" step="0.01" name="initial_balance" value="0.00" required
+                        class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#EF4444] outline-none">
+                </div>
+            </div>
+
+            <div class="pt-6">
+                <button type="submit"
+                    class="w-full py-4 bg-[#EF4444] text-white font-black rounded-2xl shadow-lg hover:bg-red-600 transition-all transform hover:-translate-y-1">
+                    Register Bank Account
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAddAccountModal() {
+    document.getElementById('addAccountModal').classList.remove('hidden');
+    document.getElementById('addAccountModal').classList.add('flex');
+}
+function closeAddAccountModal() {
+    document.getElementById('addAccountModal').classList.add('hidden');
+    document.getElementById('addAccountModal').classList.remove('flex');
+}
+</script>
 {% endblock %}
