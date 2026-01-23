@@ -184,20 +184,19 @@ def dashboard():
     client = get_supabase_client()
     
     try:
-        # Get active vehicles
-        v_resp = client.table('fleet_vehicles').select('id', count='exact').eq('status', 'Available').execute()
-        available_vehicles = v_resp.count or 0
+        # Get counts from database
+        v_resp = client.table('fleet_vehicles').select('status').execute()
+        vehicles = v_resp.data if v_resp.data else []
+        available_vehicles = len([v for v in vehicles if v.get('status') == 'Available'])
         
-        # Get active dispatches
-        d_resp = client.table('fleet_dispatch').select('id', count='exact').eq('status', 'Active').execute()
-        active_trips = d_resp.count or 0
+        d_resp = client.table('fleet_dispatch').select('status').eq('status', 'On Trip').execute()
+        active_trips = len(d_resp.data) if d_resp.data else 0
         
-        # Get total drivers
-        dr_resp = client.table('drivers').select('id', count='exact').eq('status', 'Active').execute()
-        total_drivers = dr_resp.count or 0
+        dr_resp = client.table('drivers').select('id').execute()
+        total_drivers = len(dr_resp.data) if dr_resp.data else 0
         
     except Exception as e:
-        print(f"Error fetching stats: {e}")
+        print(f"Dashboard Stats Error: {e}")
         available_vehicles = 0
         active_trips = 0
         total_drivers = 0
@@ -276,32 +275,63 @@ def delete_vehicle(vehicle_id):
 def dispatch_board():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    # Active trips
-    # Note: Using * for all columns in fleet_dispatch and sub-selects for vehicles/drivers
-    active = client.table('fleet_dispatch').select('*, fleet_vehicles(plate_number, model_name, vehicle_type), drivers(full_name)').neq('status', 'Cancelled').order('departure_time', desc=True).execute()
     
-    processed_trips = []
-    for trip in (active.data or []):
-        processed_trips.append({
-            'id': trip['id'],
-            'license_plate': trip['fleet_vehicles']['plate_number'] if trip.get('fleet_vehicles') else 'N/A',
-            'make': trip['fleet_vehicles']['vehicle_type'] if trip.get('fleet_vehicles') else 'Fleet',
-            'model': trip['fleet_vehicles']['model_name'] if trip.get('fleet_vehicles') else 'Vehicle',
-            'driver_name': trip['drivers']['full_name'] if trip.get('drivers') else 'Unknown',
-            'destination': trip['destination'],
-            'departure_time': trip['departure_time'],
-            'arrival_time': trip['return_time'],
-            'status': trip['status']
-        })
-    
-    # Available resources for new dispatch
-    vehicles = client.table('fleet_vehicles').select('*').eq('status', 'Available').execute()
-    drivers = client.table('drivers').select('*').eq('status', 'Active').execute()
+    # Fetch data separately and link in Python for maximum reliability
+    try:
+        # 1. Fetch Dispatches
+        d_resp = client.table('fleet_dispatch').select('*').neq('status', 'Cancelled').order('departure_time', desc=True).execute()
+        raw_dispatches = d_resp.data if d_resp.data else []
+        
+        # 2. Fetch All Vehicles and Drivers for linking
+        v_resp = client.table('fleet_vehicles').select('*').execute()
+        dr_resp = client.table('drivers').select('*').execute()
+        
+        vehicles_all = v_resp.data if v_resp.data else []
+        drivers_all = dr_resp.data if dr_resp.data else []
+        
+        # Create lookup maps
+        v_map = {str(v['id']): v for v in vehicles_all}
+        dr_map = {str(d['id']): d for d in drivers_all}
+        
+        processed_trips = []
+        for trip in raw_dispatches:
+            v_id = str(trip.get('vehicle_id'))
+            d_id = str(trip.get('driver_id'))
+            
+            v_info = v_map.get(v_id, {})
+            d_info = dr_map.get(d_id, {})
+            
+            processed_trips.append({
+                'id': trip['id'],
+                'license_plate': v_info.get('plate_number', 'N/A'),
+                'make': v_info.get('vehicle_type', 'Fleet'),
+                'model': v_info.get('model_name', 'Vehicle'),
+                'driver_name': d_info.get('full_name', 'Unknown'),
+                'destination': trip.get('destination', 'N/A'),
+                'departure_time': trip.get('departure_time'),
+                'arrival_time': trip.get('return_time'),
+                'status': trip.get('status', 'Unknown')
+            })
+            
+        # 3. Filter available resources for the dropdowns
+        # We'll be more lenient with the status check
+        def is_available(status):
+            if not status: return True
+            return status.lower() in ['available', 'active', 'ready']
+            
+        available_vehicles = [v for v in vehicles_all if is_available(v.get('status'))]
+        available_drivers = [d for d in drivers_all if is_available(d.get('status'))]
+        
+    except Exception as e:
+        print(f"Dispatch Board Data Error: {e}")
+        processed_trips = []
+        available_vehicles = []
+        available_drivers = []
     
     return render_template('subsystems/logistics/log2/dispatch.html',
                            dispatches=processed_trips,
-                           available_vehicles_list=vehicles.data if vehicles.data else [],
-                           available_drivers_list=drivers.data if drivers.data else [],
+                           available_vehicles_list=available_vehicles,
+                           available_drivers_list=available_drivers,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -341,7 +371,7 @@ def complete_dispatch():
     try:
         dispatch_id = request.form.get('dispatch_id')
         # Get trip details to release resources
-        trip = client.table('fleet_dispatch').select('vehicle_id, driver_id', count='exact').eq('id', dispatch_id).single().execute()
+        trip = client.table('fleet_dispatch').select('vehicle_id, driver_id').eq('id', dispatch_id).single().execute()
         if trip.data:
             client.table('fleet_dispatch').update({
                 'status': 'Completed',
@@ -354,6 +384,24 @@ def complete_dispatch():
             flash('Trip marked as completed.', 'success')
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('log2.dispatch_board'))
+
+@log2_bp.route('/dispatch/cancel', methods=['POST'])
+@login_required
+def cancel_dispatch():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        dispatch_id = request.form.get('dispatch_id')
+        trip = client.table('fleet_dispatch').select('vehicle_id, driver_id').eq('id', dispatch_id).single().execute()
+        
+        if trip.data:
+            client.table('fleet_dispatch').update({'status': 'Cancelled'}).eq('id', dispatch_id).execute()
+            client.table('fleet_vehicles').update({'status': 'Available'}).eq('id', trip.data['vehicle_id']).execute()
+            client.table('drivers').update({'status': 'Active'}).eq('id', trip.data['driver_id']).execute()
+            flash('Dispatch cancelled.', 'info')
+    except Exception as e:
+        flash(f'Cancel failed: {str(e)}', 'danger')
     return redirect(url_for('log2.dispatch_board'))
 
 @log2_bp.route('/costs')

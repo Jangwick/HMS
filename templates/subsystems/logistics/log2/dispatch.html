@@ -5,22 +5,29 @@
 {% block content %}
 <div class="space-y-6">
     <!-- Header Actions -->
-    <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+    <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100 gap-4">
         <div>
             <h3 class="text-xl font-bold text-gray-900">Active Dispatches</h3>
             <p class="text-gray-500 text-sm">Monitor real-time vehicle movement</p>
         </div>
-        <button onclick="document.getElementById('newDispatchModal').classList.remove('hidden')"
-            class="px-4 py-2 bg-[#F97316] text-white font-bold rounded-xl hover:bg-[#EA580C] transition-colors flex items-center space-x-2">
-            <i class="bi bi-send-plus"></i>
-            <span>New Dispatch</span>
-        </button>
+        <div class="flex items-center space-x-3 w-full md:w-auto">
+            <div class="relative flex-1 md:w-64">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="dispatchSearch" onkeyup="filterDispatches()" placeholder="Search trips..." 
+                    class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
+            </div>
+            <button onclick="document.getElementById('newDispatchModal').classList.remove('hidden')"
+                class="px-4 py-2 bg-[#F97316] text-white font-bold rounded-xl hover:bg-[#EA580C] transition-colors flex items-center space-x-2 whitespace-nowrap">
+                <i class="bi bi-send-plus"></i>
+                <span>New Dispatch</span>
+            </button>
+        </div>
     </div>
 
     <!-- Active Trips Table -->
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="w-full text-left border-collapse" id="dispatchTable">
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-100">
                         <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Vehicle</th>
@@ -33,20 +40,20 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100 text-sm">
                     {% for trip in dispatches %}
-                    <tr class="hover:bg-gray-50/50 transition-colors">
+                    <tr class="hover:bg-gray-50/50 transition-colors dispatch-row">
                         <td class="px-6 py-4">
                             <div class="flex items-center space-x-3">
                                 <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-[#F97316]">
                                     <i class="bi bi-truck"></i>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-900">{{ trip.license_plate }}</p>
+                                    <p class="font-bold text-gray-900 search-target">{{ trip.license_plate }}</p>
                                     <p class="text-xs text-gray-500">{{ trip.make }} {{ trip.model }}</p>
                                 </div>
                             </div>
                         </td>
-                        <td class="px-6 py-4 font-medium text-gray-700">{{ trip.driver_name }}</td>
-                        <td class="px-6 py-4 text-gray-600">{{ trip.destination }}</td>
+                        <td class="px-6 py-4 font-medium text-gray-700 search-target">{{ trip.driver_name }}</td>
+                        <td class="px-6 py-4 text-gray-600 search-target">{{ trip.destination }}</td>
                         <td class="px-6 py-4 font-mono text-gray-500">{% if trip.departure_time %}{{ trip.departure_time[11:16] }}{% else %}--:--{% endif %}</td>
                         <td class="px-6 py-4">
                             {% if trip.status == 'On Trip' %}
@@ -54,18 +61,31 @@
                                 <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse mr-2"></span>
                                 ON TRIP
                             </span>
-                            {% else %}
+                            {% elif trip.status == 'Completed' %}
                             <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold whitespace-nowrap">
                                 COMPLETED
+                            </span>
+                            {% else %}
+                            <span class="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-bold whitespace-nowrap">
+                                {{ trip.status }}
                             </span>
                             {% endif %}
                         </td>
                         <td class="px-6 py-4">
                             {% if trip.status == 'On Trip' %}
-                            <button onclick="openCompleteModal('{{ trip.id }}', '{{ trip.license_plate }}')" 
-                                class="px-3 py-1 text-[#F97316] hover:bg-[#F97316]/10 rounded-lg transition-colors font-bold whitespace-nowrap">
-                                Complete Trip
-                            </button>
+                            <div class="flex space-x-2">
+                                <button onclick="openCompleteModal('{{ trip.id }}', '{{ trip.license_plate }}')" 
+                                    class="px-3 py-1 text-green-600 hover:bg-green-50 rounded-lg transition-colors font-bold whitespace-nowrap">
+                                    Return
+                                </button>
+                                <form action="{{ url_for('log2.cancel_dispatch') }}" method="POST" onsubmit="return confirm('Cancel this dispatch record?')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="dispatch_id" value="{{ trip.id }}">
+                                    <button type="submit" class="p-1 px-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                </form>
+                            </div>
                             {% else %}
                             <span class="text-gray-400 text-xs">Arrived {% if trip.arrival_time %}{{ trip.arrival_time[11:16] }}{% else %}N/A{% endif %}</span>
                             {% endif %}
@@ -99,23 +119,35 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Select Vehicle</label>
-                    <select name="vehicle_id" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none">
+                    <select name="vehicle_id" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
+                        <option value="" disabled selected>Choose a vehicle...</option>
                         {% for vehicle in available_vehicles_list %}
-                        <option value="{{ vehicle.id }}">{{ vehicle.make }} {{ vehicle.model }} ({{ vehicle.license_plate }})</option>
+                        <option value="{{ vehicle.id }}">{{ vehicle.vehicle_type }} - {{ vehicle.model_name }} ({{ vehicle.plate_number }})</option>
                         {% endfor %}
                     </select>
+                    {% if not available_vehicles_list %}
+                    <p class="text-[10px] text-red-500 mt-1 uppercase font-bold">No available vehicles in fleet</p>
+                    {% endif %}
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Select Driver</label>
-                    <select name="driver_id" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none">
+                    <select name="driver_id" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
+                        <option value="" disabled selected>Assign a driver...</option>
                         {% for driver in available_drivers_list %}
-                        <option value="{{ driver.id }}">{{ driver.full_name }}</option>
+                        <option value="{{ driver.id }}">{{ driver.full_name }} ({{ driver.license_number }})</option>
                         {% endfor %}
                     </select>
+                    {% if not available_drivers_list %}
+                    <p class="text-[10px] text-red-500 mt-1 uppercase font-bold">No drivers available for duty</p>
+                    {% endif %}
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Destination & Purpose</label>
-                    <input type="text" name="destination" required placeholder="General Hospital - Blood Delivery" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Destination</label>
+                    <input type="text" name="destination" required placeholder="General Hospital" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Purpose/Remarks</label>
+                    <input type="text" name="purpose" placeholder="Blood Delivery" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none">
                 </div>
                 <button type="submit" class="w-full py-3 bg-[#F97316] text-white font-bold rounded-xl hover:bg-[#EA580C] shadow-lg transition-all mt-4">
                     Send Vehicle
@@ -151,6 +183,23 @@
 </div>
 
 <script>
+function filterDispatches() {
+    const query = document.getElementById('dispatchSearch').value.toLowerCase();
+    const rows = document.querySelectorAll('.dispatch-row');
+    
+    rows.forEach(row => {
+        const text = Array.from(row.querySelectorAll('.search-target'))
+            .map(el => el.textContent.toLowerCase())
+            .join(' ');
+        
+        if (text.includes(query)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
 function openCompleteModal(id, plate) {
     document.getElementById('modal_dispatch_id').value = id;
     document.getElementById('completeText').innerText = `Marking vehicle ${plate} as returned and available.`;
