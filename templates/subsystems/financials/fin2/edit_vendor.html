@@ -1,0 +1,80 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Edit Vendor - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Edit Vendor Profile{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-800 px-8 py-10 text-white">
+            <h3 class="text-3xl font-bold mb-2">Update Vendor</h3>
+            <p class="text-blue-100">Modify the registration details for {{ vendor.name }}.</p>
+        </div>
+
+        <form method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="space-y-2">
+                <label class="text-sm font-bold text-gray-700 ml-1">Vendor/Company Name</label>
+                <div class="relative">
+                    <i class="bi bi-building absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" name="name" required value="{{ vendor.name }}"
+                        class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="e.g. Medical Supplies Co.">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Contact Person</label>
+                    <div class="relative">
+                        <i class="bi bi-person absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" name="contact_person" required value="{{ vendor.contact_person }}"
+                            class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="Full Name">
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Phone Number</label>
+                    <div class="relative">
+                        <i class="bi bi-phone absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="tel" name="phone" required value="{{ vendor.phone }}"
+                            class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="+1 (555) 000-0000">
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Email Address</label>
+                    <div class="relative">
+                        <i class="bi bi-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="email" name="email" required value="{{ vendor.email }}"
+                            class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="vendor@example.com">
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700 ml-1">Status</label>
+                    <select name="status" class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="Active" {% if vendor.status == 'Active' %}selected{% endif %}>Active</option>
+                        <option value="Inactive" {% if vendor.status == 'Inactive' %}selected{% endif %}>Inactive</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="pt-6 flex items-center justify-between">
+                <a href="{{ url_for('financials.vendors_list') }}"
+                    class="text-gray-500 font-bold hover:text-gray-700 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit"
+                    class="px-10 py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg hover:bg-blue-700 transition-all transform hover:-translate-y-1">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

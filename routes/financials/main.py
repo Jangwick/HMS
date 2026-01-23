@@ -416,6 +416,47 @@ def add_vendor():
                            accent_color="#A855F7", 
                            blueprint_name=BLUEPRINT_NAME)
 
+@financials_bp.route('/vendors/edit/<int:vendor_id>', methods=['GET', 'POST'])
+@login_required
+def edit_vendor(vendor_id):
+    client = get_supabase_client()
+    if request.method == 'POST':
+        data = {
+            'name': request.form.get('name'),
+            'contact_person': request.form.get('contact_person'),
+            'email': request.form.get('email'),
+            'phone': request.form.get('phone'),
+            'status': request.form.get('status', 'Active')
+        }
+        client.table('vendors').update(data).eq('id', vendor_id).execute()
+        flash('Vendor updated successfully!', 'success')
+        return redirect(url_for('financials.vendors_list'))
+    
+    vendor = client.table('vendors').select('*').eq('id', vendor_id).single().execute().data
+    if not vendor:
+        flash('Vendor not found.', 'danger')
+        return redirect(url_for('financials.vendors_list'))
+        
+    return render_template('subsystems/financials/fin2/edit_vendor.html', 
+                           vendor=vendor,
+                           subsystem_name="Accounts Payable", 
+                           accent_color="#A855F7", 
+                           blueprint_name=BLUEPRINT_NAME)
+
+@financials_bp.route('/vendors/delete/<int:vendor_id>', methods=['POST'])
+@login_required
+def delete_vendor(vendor_id):
+    client = get_supabase_client()
+    # Check for linked invoices first
+    invoices = client.table('vendor_invoices').select('id').eq('vendor_id', vendor_id).execute().data
+    if invoices:
+        flash('Cannot delete vendor with existing invoices.', 'warning')
+        return redirect(url_for('financials.vendors_list'))
+        
+    client.table('vendors').delete().eq('id', vendor_id).execute()
+    flash('Vendor deleted successfully.', 'info')
+    return redirect(url_for('financials.vendors_list'))
+
 @financials_bp.route('/payables/add', methods=['GET', 'POST'])
 @login_required
 def add_invoice():
