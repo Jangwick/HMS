@@ -87,6 +87,7 @@
                 </button>
             </div>
             <form action="{{ url_for('log2.add_cost') }}" method="POST" class="p-8 space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Select Vehicle</label>
                     <select name="vehicle_id" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">

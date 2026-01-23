@@ -70,6 +70,7 @@
                 </button>
             </div>
             <form action="{{ url_for('log2.add_vehicle') }}" method="POST" class="p-8 space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2">
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Vehicle Type</label>
