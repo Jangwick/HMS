@@ -409,12 +409,45 @@ def cancel_dispatch():
 def cost_analysis():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    costs = client.table('fleet_costs').select('*, fleet_vehicles(plate_number)').order('log_date', desc=True).execute()
-    vehicles = client.table('fleet_vehicles').select('id', 'plate_number').execute()
+    
+    # Fetch costs with vehicle info
+    costs_resp = client.table('fleet_costs').select('*, fleet_vehicles(plate_number)').order('log_date', desc=True).execute()
+    raw_costs = costs_resp.data if costs_resp.data else []
+    
+    # Process costs for table
+    processed_costs = []
+    total_costs = 0
+    fuel_costs = 0
+    maint_costs = 0
+    
+    for c in raw_costs:
+        amount = float(c.get('amount') or 0)
+        total_costs += amount
+        
+        if c.get('cost_type') == 'Fuel':
+            fuel_costs += amount
+        elif c.get('cost_type') in ['Maintenance', 'Repair']:
+            maint_costs += amount
+            
+        processed_costs.append({
+            'id': c['id'],
+            'log_date': c.get('log_date'),
+            'license_plate': c['fleet_vehicles']['plate_number'] if c.get('fleet_vehicles') else 'N/A',
+            'cost_type': c.get('cost_type'),
+            'amount': amount,
+            'description': c.get('description')
+        })
+    
+    # Fetch vehicles for the dropdown
+    v_resp = client.table('fleet_vehicles').select('id, plate_number, model_name, vehicle_type').execute()
+    vehicles = v_resp.data if v_resp.data else []
     
     return render_template('subsystems/logistics/log2/costs.html',
-                           costs=costs.data if costs.data else [],
-                           vehicles=vehicles.data if vehicles.data else [],
+                           costs=processed_costs,
+                           total_costs=total_costs,
+                           fuel_costs=fuel_costs,
+                           maint_costs=maint_costs,
+                           vehicles=vehicles,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -449,6 +482,38 @@ def delete_cost(cost_id):
     except Exception as e:
         flash(f'Delete failed: {str(e)}', 'danger')
     return redirect(url_for('log2.cost_analysis'))
+
+@log2_bp.route('/costs/export')
+@login_required
+def export_costs():
+    from utils.supabase_client import get_supabase_client
+    import csv
+    import io
+    from flask import Response
+    
+    client = get_supabase_client()
+    costs_resp = client.table('fleet_costs').select('*, fleet_vehicles(plate_number)').execute()
+    costs = costs_resp.data if costs_resp.data else []
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Date', 'Vehicle', 'Category', 'Amount', 'Description'])
+    
+    for c in costs:
+        writer.writerow([
+            c.get('log_date'),
+            c['fleet_vehicles']['plate_number'] if c.get('fleet_vehicles') else 'N/A',
+            c.get('cost_type'),
+            c.get('amount'),
+            c.get('description')
+        ])
+    
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-disposition": "attachment; filename=fleet_costs.csv"}
+    )
 
 @log2_bp.route('/drivers')
 @login_required
