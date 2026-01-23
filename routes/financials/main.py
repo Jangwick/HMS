@@ -23,9 +23,9 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        # Try to find user in any financial subsystem for backward compatibility
+        # Try to find user in the unified financial subsystem
         user = User.get_by_username(username)
-        if user and (user.subsystem == BLUEPRINT_NAME or user.subsystem.startswith('fin')):
+        if user and user.subsystem == BLUEPRINT_NAME:
             now_utc = datetime.utcnow()
             
             if user.check_password(password):

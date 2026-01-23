@@ -339,9 +339,5 @@ SUBSYSTEM_CONFIG = {
     'ct3': {'department': 'CORE_TRANSACTION', 'name': 'Medical Records'},
     'log1': {'department': 'LOGISTICS', 'name': 'Inventory Management'},
     'log2': {'department': 'LOGISTICS', 'name': 'Procurement'},
-    'fin1': {'department': 'FINANCIALS', 'name': 'Billing'},
-    'fin2': {'department': 'FINANCIALS', 'name': 'Accounts Payable'},
-    'fin3': {'department': 'FINANCIALS', 'name': 'Accounts Receivable'},
-    'fin4': {'department': 'FINANCIALS', 'name': 'Cash Management'},
-    'fin5': {'department': 'FINANCIALS', 'name': 'Financial Reports'},
+    'financials': {'department': 'FINANCIALS', 'name': 'Financial Management System'},
 }
