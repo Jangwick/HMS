@@ -581,8 +581,8 @@ def collect_receivable(receivable_id):
 @login_required
 def collections():
     client = get_supabase_client()
-    # Join with bank_accounts to get the account name
-    collections = client.table('collections').select('*, bank_accounts(bank_name)').order('collection_date', desc=True).execute().data or []
+    # Join with bank_accounts to get the account name - Use explicit join if ambiguity exists
+    collections = client.table('collections').select('*, bank_accounts:bank_accounts(bank_name)').order('collection_date', desc=True).execute().data or []
     for coll in collections:
         coll['account_name'] = coll.get('bank_accounts', {}).get('bank_name', 'General Account')
     
@@ -597,7 +597,8 @@ def collections():
 @login_required
 def transactions():
     client = get_supabase_client()
-    transactions = client.table('cash_transactions').select('*, bank_accounts(bank_name, account_number)').order('transaction_date', desc=True).execute().data or []
+    # Explicitly join with bank_accounts using the account_id_fkey to avoid ambiguity
+    transactions = client.table('cash_transactions').select('*, bank_accounts:bank_accounts!cash_transactions_account_id_fkey(bank_name, account_number)').order('transaction_date', desc=True).execute().data or []
     return render_template('subsystems/financials/fin4/transactions.html', 
                            transactions=transactions, 
                            subsystem_name="Cash Management", 
