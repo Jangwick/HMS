@@ -1,29 +1,29 @@
 {% extends "base/subsystem_base.html" %}
 
 {% block title %}Dashboard - {{ subsystem_name }}{% endblock %}
-{% block header_title %}Procurement Management{% endblock %}
+{% block header_title %}Fleet Operations{% endblock %}
 
 {% block content %}
 <div class="space-y-8">
     <!-- Welcome Card -->
     <div class="rounded-3xl shadow-xl p-8 text-white relative overflow-hidden"
-         style="background: linear-gradient(to right, {{ accent_color or '#F59E0B' }}, #1F2937);">
+         style="background: linear-gradient(to right, {{ accent_color or '#F97316' }}, #1F2937);">
         <div class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
         <div class="absolute bottom-0 left-0 w-48 h-48 bg-black opacity-10 rounded-full transform -translate-x-1/2 translate-y-1/2 blur-2xl"></div>
 
         <div class="relative z-10">
             <h3 class="text-3xl font-bold mb-2">Welcome back, {{ current_user.username }}!</h3>
-            <p class="text-white/80 text-lg max-w-2xl">Manage purchase orders and vendor relationships.</p>
+            <p class="text-white/80 text-lg max-w-2xl">Vehicle management, dispatch, driver monitoring, and cost analysis.</p>
 
             <div class="mt-8 flex space-x-4">
-                <a href="{{ url_for('log2.purchase_orders') }}"
+                <a href="{{ url_for('log2.dispatch_board') }}"
                     class="px-6 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors"
-                    style="color: {{ accent_color or '#F59E0B' }};">
-                    View Orders
+                    style="color: {{ accent_color or '#F97316' }};">
+                    Dispatch Board
                 </a>
-                <a href="{{ url_for('log2.create_order') }}"
+                <a href="{{ url_for('log2.list_vehicles') }}"
                     class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
-                    New Order
+                    Manage Fleet
                 </a>
             </div>
         </div>
@@ -33,63 +33,65 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Pending Orders</h4>
-                <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
-                    <i class="bi bi-clock"></i>
-                </div>
-            </div>
-            <p class="text-3xl font-bold text-gray-900">{{ pending_orders }}</p>
-            <p class="text-amber-500 text-sm font-medium mt-2">Awaiting approval</p>
-        </div>
-
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-            <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Approved Orders</h4>
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Available Vehicles</h4>
                 <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                    <i class="bi bi-check-circle"></i>
+                    <i class="bi bi-truck"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">{{ approved_orders }}</p>
-            <p class="text-green-500 text-sm font-medium mt-2">This month</p>
+            <p class="text-3xl font-bold text-gray-900">{{ available_vehicles }}</p>
+            <p class="text-green-500 text-sm font-medium mt-2">Ready for dispatch</p>
         </div>
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Active Vendors</h4>
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Active Trips</h4>
                 <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                    <i class="bi bi-building"></i>
+                    <i class="bi bi-geo-alt"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">{{ total_vendors }}</p>
-            <p class="text-blue-500 text-sm font-medium mt-2">Registered</p>
+            <p class="text-3xl font-bold text-gray-900">{{ active_trips }}</p>
+            <p class="text-blue-500 text-sm font-medium mt-2">On the road</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Active Drivers</h4>
+                <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">{{ total_drivers }}</p>
+            <p class="text-amber-500 text-sm font-medium mt-2">On duty</p>
         </div>
     </div>
 
     <!-- Quick Actions -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h4 class="text-xl font-bold text-gray-900 mb-6">Procurement Actions</h4>
+        <h4 class="text-xl font-bold text-gray-900 mb-6">Fleet Management</h4>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <a href="{{ url_for('log2.create_order') }}"
+            <a href="{{ url_for('log2.list_vehicles') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
-                    class="bi bi-cart-plus text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">New PO</span>
+                    class="bi bi-truck text-2xl text-[#F97316] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Vehicles</span>
             </a>
-            <a href="{{ url_for('log2.vendors') }}"
+            <a href="{{ url_for('log2.list_drivers') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
-                    class="bi bi-building text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Vendors</span>
+                    class="bi bi-person-video2 text-2xl text-[#F97316] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Drivers</span>
             </a>
-            <a href="#" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
+            <a href="{{ url_for('log2.dispatch_board') }}"
+                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
-                    class="bi bi-truck text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Track Orders</span>
+                    class="bi bi-calendar-check text-2xl text-[#F97316] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Dispatch</span>
             </a>
-            <a href="#" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
+            <a href="{{ url_for('log2.cost_analysis') }}"
+                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
-                    class="bi bi-file-earmark-bar-graph text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Reports</span>
+                    class="bi bi-currency-dollar text-2xl text-[#F97316] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Costs</span>
             </a>
         </div>
     </div>

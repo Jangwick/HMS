@@ -337,11 +337,63 @@ CREATE TABLE IF NOT EXISTS assets (
 );
 
 CREATE TABLE IF NOT EXISTS fleet_vehicles (
+    id SERIAL PRIMARY KEY,
     plate_number VARCHAR(20) UNIQUE,
-    vehicle_type VARCHAR(50), -- Ambulance, Service
-    status VARCHAR(50) DEFAULT 'Available',
-    last_service DATE
+    model_name VARCHAR(100),
+    vehicle_type VARCHAR(50), -- Ambulance, Service, Logistics
+    status VARCHAR(50) DEFAULT 'Available', -- Available, In Use, Maintenance
+    last_service DATE,
+    mileage INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS drivers (
+    id SERIAL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    license_number VARCHAR(50) UNIQUE,
+    phone VARCHAR(20),
+    status VARCHAR(50) DEFAULT 'Active', -- Active, On Trip, Leave
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS fleet_dispatch (
+    id SERIAL PRIMARY KEY,
+    vehicle_id INTEGER REFERENCES fleet_vehicles(id),
+    driver_id INTEGER REFERENCES drivers(id),
+    destination TEXT,
+    purpose TEXT,
+    departure_time TIMESTAMP DEFAULT NOW(),
+    return_time TIMESTAMP,
+    status VARCHAR(50) DEFAULT 'Active', -- Active, Completed, Cancelled
+    logged_by INTEGER REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS fleet_costs (
+    id SERIAL PRIMARY KEY,
+    vehicle_id INTEGER REFERENCES fleet_vehicles(id),
+    cost_type VARCHAR(50), -- Fuel, Maintenance, Insurance, Repair
+    amount DECIMAL(12, 2) NOT NULL,
+    description TEXT,
+    log_date DATE DEFAULT CURRENT_DATE,
+    logged_by INTEGER REFERENCES users(id)
+);
+
+-- RLS for Fleet
+ALTER TABLE IF EXISTS fleet_vehicles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on fleet_vehicles" ON fleet_vehicles;
+CREATE POLICY "Allow all on fleet_vehicles" ON fleet_vehicles FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS drivers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on drivers" ON drivers;
+CREATE POLICY "Allow all on drivers" ON drivers FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS fleet_dispatch ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on fleet_dispatch" ON fleet_dispatch;
+CREATE POLICY "Allow all on fleet_dispatch" ON fleet_dispatch FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS fleet_costs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on fleet_costs" ON fleet_costs;
+CREATE POLICY "Allow all on fleet_costs" ON fleet_costs FOR ALL USING (true) WITH CHECK (true);
 
 -- Asset Maintenance Logging
 CREATE TABLE IF NOT EXISTS asset_maintenance_logs (

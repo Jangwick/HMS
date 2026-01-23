@@ -1,0 +1,127 @@
+{% extends "templates/base/subsystem_base.html" %}
+
+{% block header_title %}Fleet Cost Analysis{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header/Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <p class="text-xs font-bold text-gray-500 uppercase mb-2">Total Fleet Spend</p>
+            <p class="text-2xl font-black text-gray-900">${{ "{:,.2f}".format(total_costs or 0) }}</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <p class="text-xs font-bold text-gray-500 uppercase mb-2">Fuel Costs</p>
+            <p class="text-2xl font-black text-blue-600">${{ "{:,.2f}".format(fuel_costs or 0) }}</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <p class="text-xs font-bold text-gray-500 uppercase mb-2">Maintenance</p>
+            <p class="text-2xl font-black text-amber-600">${{ "{:,.2f}".format(maint_costs or 0) }}</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center">
+            <button onclick="document.getElementById('logCostModal').classList.remove('hidden')"
+                class="w-full py-3 bg-black text-white font-bold rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center space-x-2">
+                <i class="bi bi-plus-circle"></i>
+                <span>Log Expense</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Cost Table -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <h4 class="font-bold text-gray-700">Recent Expenditures</h4>
+            <div class="flex space-x-2">
+                <button class="px-3 py-1 bg-white border border-gray-200 rounded-lg text-xs font-bold hover:bg-gray-50 transition-colors">Export CSV</button>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                        <th class="px-6 py-4">Date</th>
+                        <th class="px-6 py-4">Vehicle</th>
+                        <th class="px-6 py-4">Category</th>
+                        <th class="px-6 py-4 text-right">Amount</th>
+                        <th class="px-6 py-4">Notes</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-sm">
+                    {% for cost in costs %}
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-6 py-4 font-mono text-gray-500">{{ cost.log_date }}</td>
+                        <td class="px-6 py-4">
+                            <span class="font-bold text-gray-700">{{ cost.license_plate }}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase
+                                {% if cost.cost_type == 'Fuel' %}bg-blue-100 text-blue-700
+                                {% elif cost.cost_type == 'Maintenance' %}bg-amber-100 text-amber-700
+                                {% else %}bg-gray-100 text-gray-700{% endif %}">
+                                {{ cost.cost_type }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right font-bold text-gray-900">${{ "{:,.2f}".format(cost.amount) }}</td>
+                        <td class="px-6 py-4 text-gray-500 text-xs italic">{{ cost.description or 'No details' }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% if not costs %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-400 italic">
+                            No expenses logged in this period.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Log Cost Modal -->
+    <div id="logCostModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-gray-900">Log Fleet Expense</h3>
+                <button onclick="document.getElementById('logCostModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <form action="{{ url_for('log2.add_cost') }}" method="POST" class="p-8 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Select Vehicle</label>
+                    <select name="vehicle_id" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
+                        {% for vehicle in vehicles %}
+                        <option value="{{ vehicle.id }}">{{ vehicle.make }} {{ vehicle.model }} ({{ vehicle.license_plate }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Category</label>
+                        <select name="cost_type" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
+                            <option value="Fuel">Fuel</option>
+                            <option value="Maintenance">Maintenance</option>
+                            <option value="Repair">Repair</option>
+                            <option value="Insurance">Insurance</option>
+                            <option value="Toll">Toll/Fees</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Amount ($)</label>
+                        <input type="number" name="amount" step="0.01" required placeholder="0.00" 
+                            class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Description / Notes</label>
+                    <textarea name="description" rows="3" placeholder="Full tank premium, oil change, etc." 
+                        class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm"></textarea>
+                </div>
+                <button type="submit" class="w-full py-3 bg-[#F97316] text-white font-bold rounded-xl hover:bg-[#EA580C] shadow-lg transition-all mt-4">
+                    Record Transaction
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

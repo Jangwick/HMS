@@ -8,7 +8,7 @@ from datetime import datetime
 log2_bp = Blueprint('log2', __name__, template_folder='templates')
 
 # Subsystem configuration
-SUBSYSTEM_NAME = 'LOG2 - Procurement'
+SUBSYSTEM_NAME = 'LOG2 - Fleet Operations'
 ACCENT_COLOR = '#F97316'
 BLUEPRINT_NAME = 'log2'
 
@@ -184,20 +184,193 @@ def dashboard():
     client = get_supabase_client()
     
     try:
-        # Get pending orders (Draft or Pending Approval)
-        response = client.table('purchase_orders').select('id', count='exact').in_('status', ['Draft', 'Pending Approval']).execute()
-        pending_orders = response.count if response.count is not None else 0
+        # Get active vehicles
+        v_resp = client.table('fleet_vehicles').select('id', count='exact').eq('status', 'Available').execute()
+        available_vehicles = v_resp.count or 0
         
-        # Get approved orders
-        response = client.table('purchase_orders').select('id', count='exact').eq('status', 'Approved').execute()
-        approved_orders = response.count if response.count is not None else 0
+        # Get active dispatches
+        d_resp = client.table('fleet_dispatch').select('id', count='exact').eq('status', 'Active').execute()
+        active_trips = d_resp.count or 0
         
-        # Get total vendors
-        response = client.table('vendors').select('id', count='exact').eq('status', 'Active').execute()
-        total_vendors = response.count if response.count is not None else 0
+        # Get total drivers
+        dr_resp = client.table('drivers').select('id', count='exact').eq('status', 'Active').execute()
+        total_drivers = dr_resp.count or 0
         
     except Exception as e:
         print(f"Error fetching stats: {e}")
+        available_vehicles = 0
+        active_trips = 0
+        total_drivers = 0
+        
+    return render_template('subsystems/logistics/log2/dashboard.html',
+                           available_vehicles=available_vehicles,
+                           active_trips=active_trips,
+                           total_drivers=total_drivers,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log2_bp.route('/vehicles')
+@login_required
+def list_vehicles():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    vehicles = client.table('fleet_vehicles').select('*').order('created_at', desc=True).execute()
+    return render_template('subsystems/logistics/log2/vehicles.html',
+                           vehicles=vehicles.data if vehicles.data else [],
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log2_bp.route('/vehicles/add', methods=['POST'])
+@login_required
+def add_vehicle():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        v_data = {
+            'plate_number': request.form.get('plate_number'),
+            'model_name': request.form.get('model_name'),
+            'vehicle_type': request.form.get('vehicle_type'),
+            'status': 'Available'
+        }
+        client.table('fleet_vehicles').insert(v_data).execute()
+        flash('Vehicle added to fleet.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('log2.list_vehicles'))
+
+@log2_bp.route('/dispatch')
+@login_required
+def dispatch_board():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    # Active trips
+    active = client.table('fleet_dispatch').select('*, fleet_vehicles(plate_number, model_name), drivers(full_name)').eq('status', 'Active').execute()
+    # Available resources for new dispatch
+    vehicles = client.table('fleet_vehicles').select('*').eq('status', 'Available').execute()
+    drivers = client.table('drivers').select('*').eq('status', 'Active').execute()
+    
+    return render_template('subsystems/logistics/log2/dispatch.html',
+                           active_trips=active.data if active.data else [],
+                           available_vehicles=vehicles.data if vehicles.data else [],
+                           available_drivers=drivers.data if drivers.data else [],
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log2_bp.route('/dispatch/create', methods=['POST'])
+@login_required
+def create_dispatch():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        v_id = request.form.get('vehicle_id')
+        d_id = request.form.get('driver_id')
+        
+        dispatch_data = {
+            'vehicle_id': v_id,
+            'driver_id': d_id,
+            'destination': request.form.get('destination'),
+            'purpose': request.form.get('purpose'),
+            'status': 'Active',
+            'logged_by': current_user.id
+        }
+        client.table('fleet_dispatch').insert(dispatch_data).execute()
+        # Update statuses
+        client.table('fleet_vehicles').update({'status': 'In Use'}).eq('id', v_id).execute()
+        client.table('drivers').update({'status': 'On Trip'}).eq('id', d_id).execute()
+        
+        flash('Vehicle dispatched successfully.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('log2.dispatch_board'))
+
+@log2_bp.route('/dispatch/complete/<int:dispatch_id>', methods=['POST'])
+@login_required
+def complete_dispatch(dispatch_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        # Get trip details to release resources
+        trip = client.table('fleet_dispatch').select('vehicle_id, driver_id').eq('id', dispatch_id).single().execute()
+        if trip.data:
+            client.table('fleet_dispatch').update({
+                'status': 'Completed',
+                'return_time': datetime.now().isoformat()
+            }).eq('id', dispatch_id).execute()
+            
+            client.table('fleet_vehicles').update({'status': 'Available'}).eq('id', trip.data['vehicle_id']).execute()
+            client.table('drivers').update({'status': 'Active'}).eq('id', trip.data['driver_id']).execute()
+            
+            flash('Trip marked as completed.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('log2.dispatch_board'))
+
+@log2_bp.route('/costs')
+@login_required
+def cost_analysis():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    costs = client.table('fleet_costs').select('*, fleet_vehicles(plate_number)').order('log_date', desc=True).execute()
+    vehicles = client.table('fleet_vehicles').select('id', 'plate_number').execute()
+    
+    return render_template('subsystems/logistics/log2/costs.html',
+                           costs=costs.data if costs.data else [],
+                           vehicles=vehicles.data if vehicles.data else [],
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log2_bp.route('/costs/add', methods=['POST'])
+@login_required
+def add_cost():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        cost_data = {
+            'vehicle_id': request.form.get('vehicle_id'),
+            'cost_type': request.form.get('cost_type'),
+            'amount': request.form.get('amount'),
+            'description': request.form.get('description'),
+            'logged_by': current_user.id
+        }
+        client.table('fleet_costs').insert(cost_data).execute()
+        flash('Expense logged successfully.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('log2.cost_analysis'))
+
+@log2_bp.route('/drivers')
+@login_required
+def list_drivers():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    drivers = client.table('drivers').select('*').execute()
+    return render_template('subsystems/logistics/log2/drivers.html',
+                           drivers=drivers.data if drivers.data else [],
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log2_bp.route('/drivers/add', methods=['POST'])
+@login_required
+def add_driver():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        dr_data = {
+            'full_name': request.form.get('full_name'),
+            'license_number': request.form.get('license_number'),
+            'phone': request.form.get('phone'),
+            'status': 'Active'
+        }
+        client.table('drivers').insert(dr_data).execute()
+        flash('Driver added successfully.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('log2.list_drivers'))
         pending_orders = 0
         approved_orders = 0
         total_vendors = 0
