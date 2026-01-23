@@ -1,14 +1,136 @@
 /* Global Styles */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --text-base: 1rem;
+    --h1: 2.5rem;
+    --h2: 2rem;
+    --h3: 1.75rem;
+    --transition-speed: 0.3s;
+}
 
 body {
     font-family: 'Inter', sans-serif;
+    font-size: var(--text-base);
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+/* Responsive Typography and Layout */
+/* Phones (up to 480px) */
+@media (max-width: 480px) {
+    :root {
+        --text-base: 0.875rem;
+        --h1: 2rem;
+    }
+    .px-mobile { padding-left: 1rem; padding-right: 1rem; }
+}
+
+/* Tablets (481px to 768px) */
+@media (min-width: 481px) and (max-width: 768px) {
+    :root {
+        --text-base: 1rem;
+        --h1: 2.5rem;
+    }
+}
+
+/* Laptops (769px to 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    :root {
+        --text-base: 1.0625rem;
+        --h1: 3.5rem;
+    }
+}
+
+/* Desktops (1025px and up) */
+@media (min-width: 1025px) {
+    :root {
+        --h1: 4.5rem;
+    }
+}
+
+/* Touch-friendly interactive elements */
+button, 
+a, 
+input, 
+select, 
+textarea {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+    min-height: 20px;
+    min-width: 20px;
+}
+
+/* Layout Utilities */
+.responsive-container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+@media (min-width: 640px) { .responsive-container { max-width: 640px; } }
+@media (min-width: 768px) { .responsive-container { max-width: 768px; } }
+@media (min-width: 1024px) { .responsive-container { max-width: 1024px; } }
+@media (min-width: 1280px) { .responsive-container { max-width: 1280px; } }
+
+/* Mobile Menu Transitions */
+.mobile-sidebar-transition {
+    transition: transform var(--transition-speed) ease-in-out;
+}
+
+.mobile-sidebar-hidden {
+    transform: translateX(-100%);
+}
+
+.mobile-sidebar-visible {
+    transform: translateX(0);
+}
+
+/* Welcome Card Button Container */
+.welcome-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+@media (min-width: 640px) {
+    .welcome-card-actions {
+        flex-direction: row;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+}
+
+/* Responsive Table Wrapper */
+.responsive-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure images don't overflow */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Fix for long strings in cards */
+.break-words {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+@media (min-width: 768px) {
+    .responsive-h3 {
+        font-size: 1.875rem;
+    }
 }
 
 ::-webkit-scrollbar-track {
@@ -22,4 +144,25 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8; 
+}
+
+/* Grid for forms */
+.responsive-form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+    .responsive-form-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Card Hover Effects - Touch optimized */
+@media (hover: hover) {
+    .hover-lift:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    }
 }

@@ -17,17 +17,17 @@
         </div>
 
         <div class="relative z-10">
-            <h3 class="text-3xl font-bold mb-2">Welcome back, {{ current_user.username }}!</h3>
-            <p class="text-white/80 text-lg max-w-2xl">Manage patient registrations and appointments efficiently.</p>
+            <h3 class="responsive-h3 mb-2">Welcome back, {{ current_user.username }}!</h3>
+            <p class="text-white/80 text-base md:text-lg max-w-2xl">Manage patient registrations and appointments efficiently.</p>
 
-            <div class="mt-8 flex space-x-4">
+            <div class="welcome-card-actions">
                 <a href="{{ url_for('ct1.register_patient') }}"
-                    class="px-6 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors"
+                    class="bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors text-center sm:text-left"
                     style="color: {{ accent_color or '#10B981' }};">
                     New Registration
                 </a>
                 <a href="{{ url_for('ct1.search_patients') }}"
-                    class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
+                    class="bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm text-center sm:text-left">
                     Search Patient
                 </a>
             </div>

@@ -12,17 +12,17 @@
         <div class="absolute bottom-0 left-0 w-48 h-48 bg-black opacity-10 rounded-full transform -translate-x-1/2 translate-y-1/2 blur-2xl"></div>
 
         <div class="relative z-10">
-            <h3 class="text-3xl font-bold mb-2">Welcome back, {{ current_user.username }}!</h3>
-            <p class="text-white/80 text-lg max-w-2xl">Track patient receivables and payment collections.</p>
+            <h3 class="responsive-h3 mb-2">Welcome back, {{ current_user.username }}!</h3>
+            <p class="text-white/80 text-base md:text-lg max-w-2xl">Track patient receivables and payment collections.</p>
 
-            <div class="mt-8 flex space-x-4">
+            <div class="welcome-card-actions">
                 <a href="{{ url_for('financials.receivables_list') }}"
-                    class="px-6 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors"
+                    class="bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors text-center sm:text-left"
                     style="color: {{ accent_color or '#EF4444' }};">
                     View Receivables
                 </a>
                 <a href="{{ url_for('financials.collections') }}"
-                    class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
+                    class="bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm text-center sm:text-left">
                     Collections
                 </a>
             </div>
