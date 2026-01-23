@@ -43,12 +43,41 @@
             </div>
 
             <div class="flex gap-2">
-                <button class="flex-1 py-2 bg-gray-50 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-100 transition-colors">
+                <a href="{{ url_for('log1.view_asset_history', asset_id=asset.id) }}" 
+                   class="flex-1 py-2 bg-gray-50 text-center text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-100 transition-colors">
                     History
-                </button>
-                <button class="flex-1 py-2 bg-[#F59E0B]/10 text-[#F59E0B] text-xs font-bold rounded-lg hover:bg-[#F59E0B]/20 transition-colors">
+                </a>
+                <button onclick="openMaintainModal({{ asset.id }}, '{{ asset.asset_name }}')"
+                        class="flex-1 py-2 bg-[#F59E0B]/10 text-[#F59E0B] text-xs font-bold rounded-lg hover:bg-[#F59E0B]/20 transition-colors">
                     Maintain
                 </button>
+                <div class="relative group">
+                    <button class="p-2 bg-gray-50 text-gray-400 rounded-lg hover:bg-gray-100 transition-colors">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <div class="absolute right-0 bottom-full mb-2 w-32 bg-white rounded-xl shadow-xl border border-gray-100 hidden group-hover:block z-10">
+                        {% if asset.status == 'Active' %}
+                        <a href="{{ url_for('log1.update_asset_status', asset_id=asset.id, status='Maintenance') }}" 
+                           class="block px-4 py-2 text-xs font-bold text-amber-600 hover:bg-amber-50 rounded-t-xl transition-colors">
+                            Set Maintenance
+                        </a>
+                        <a href="{{ url_for('log1.update_asset_status', asset_id=asset.id, status='Retired') }}" 
+                           class="block px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors">
+                            Retire Asset
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('log1.update_asset_status', asset_id=asset.id, status='Active') }}" 
+                           class="block px-4 py-2 text-xs font-bold text-emerald-600 hover:bg-emerald-50 rounded-t-xl transition-colors">
+                            Set Active
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('log1.delete_asset', asset_id=asset.id) }}" 
+                           onclick="return confirm('Are you sure you want to delete this asset forever?')"
+                           class="block px-4 py-2 text-xs font-bold text-gray-400 hover:bg-gray-50 rounded-b-xl transition-colors border-t border-gray-50">
+                            Delete
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
         {% else %}
@@ -82,6 +111,11 @@
                 <input type="text" name="tag_number" required placeholder="HOSP-ASSET-001"
                        class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
             </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Warranty Expiry</label>
+                <input type="date" name="warranty_expiry"
+                       class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+            </div>
             <div class="pt-4 flex gap-3">
                 <button type="button" onclick="document.getElementById('addAssetModal').classList.add('hidden')"
                         class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">
@@ -94,4 +128,57 @@
         </form>
     </div>
 </div>
+
+<!-- Maintain Asset Modal -->
+<div id="maintainAssetModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+            <h4 class="text-xl font-bold text-gray-900">Record Maintenance</h4>
+            <button onclick="document.getElementById('maintainAssetModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="maintainForm" action="" method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <h5 id="maintainAssetName" class="text-sm font-bold text-gray-500 bg-gray-50 py-2 px-4 rounded-lg"></h5>
+            
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Service Notes</label>
+                <textarea name="notes" rows="3" required placeholder="Describe the maintenance performed..."
+                          class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all"></textarea>
+            </div>
+            
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Cost (if applicable)</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                    <input type="number" step="0.01" name="cost" value="0"
+                           class="w-full pl-10 pr-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+                </div>
+            </div>
+
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="document.getElementById('maintainAssetModal').classList.add('hidden')"
+                        class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 py-3 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-all">
+                    Register Maintenance
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openMaintainModal(assetId, assetName) {
+    const modal = document.getElementById('maintainAssetModal');
+    const form = document.getElementById('maintainForm');
+    const nameDisplay = document.getElementById('maintainAssetName');
+    
+    nameDisplay.innerText = "Asset: " + assetName;
+    form.action = `/log1/assets/maintain/${assetId}`;
+    modal.classList.remove('hidden');
+}
+</script>
 {% endblock %}

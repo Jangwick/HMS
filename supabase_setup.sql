@@ -337,12 +337,26 @@ CREATE TABLE IF NOT EXISTS assets (
 );
 
 CREATE TABLE IF NOT EXISTS fleet_vehicles (
-    id SERIAL PRIMARY KEY,
     plate_number VARCHAR(20) UNIQUE,
     vehicle_type VARCHAR(50), -- Ambulance, Service
     status VARCHAR(50) DEFAULT 'Available',
     last_service DATE
 );
+
+-- Asset Maintenance Logging
+CREATE TABLE IF NOT EXISTS asset_maintenance_logs (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER REFERENCES assets(id) ON DELETE CASCADE,
+    maintenance_date DATE DEFAULT CURRENT_DATE,
+    performed_by INTEGER REFERENCES users(id),
+    notes TEXT,
+    cost DECIMAL(12, 2) DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE IF EXISTS asset_maintenance_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on asset_maintenance_logs" ON asset_maintenance_logs;
+CREATE POLICY "Allow all on asset_maintenance_logs" ON asset_maintenance_logs FOR ALL USING (true) WITH CHECK (true);
 
 -- =====================================================
 -- LOGISTICS PROCUREMENT & DOCUMENTS

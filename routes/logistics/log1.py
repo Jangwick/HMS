@@ -592,8 +592,9 @@ def add_asset():
         asset_data = {
             'asset_name': request.form.get('asset_name'),
             'tag_number': request.form.get('tag_number'),
-            'status': 'Active',
-            'last_maintenance': datetime.now().date().isoformat()
+            'status': request.form.get('status', 'Active'),
+            'warranty_expiry': request.form.get('warranty_expiry') or None,
+            'last_maintenance': request.form.get('last_maintenance') or datetime.now().date().isoformat()
         }
         client.table('assets').insert(asset_data).execute()
         flash('Asset registered successfully!', 'success')
@@ -601,6 +602,84 @@ def add_asset():
         flash(f'Error adding asset: {str(e)}', 'danger')
         
     return redirect(url_for('log1.list_assets'))
+
+@log1_bp.route('/assets/maintain/<int:asset_id>', methods=['POST'])
+@login_required
+def record_maintenance(asset_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        notes = request.form.get('notes')
+        cost = request.form.get('cost', 0)
+        m_date = datetime.now().date().isoformat()
+        
+        # Log maintenance record
+        log_data = {
+            'asset_id': asset_id,
+            'maintenance_date': m_date,
+            'performed_by': current_user.id,
+            'notes': notes,
+            'cost': cost
+        }
+        client.table('asset_maintenance_logs').insert(log_data).execute()
+        
+        # Update asset last_maintenance date
+        client.table('assets').update({'last_maintenance': m_date}).eq('id', asset_id).execute()
+        
+        flash('Maintenance record added successfully!', 'success')
+    except Exception as e:
+        flash(f'Error recording maintenance: {str(e)}', 'danger')
+        
+    return redirect(url_for('log1.list_assets'))
+
+@log1_bp.route('/assets/update-status/<int:asset_id>/<string:status>')
+@login_required
+def update_asset_status(asset_id, status):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('assets').update({'status': status}).eq('id', asset_id).execute()
+        flash(f'Asset status updated to {status}.', 'success')
+    except Exception as e:
+        flash(f'Error updating status: {str(e)}', 'danger')
+        
+    return redirect(url_for('log1.list_assets'))
+
+@log1_bp.route('/assets/delete/<int:asset_id>')
+@login_required
+def delete_asset(asset_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('assets').delete().eq('id', asset_id).execute()
+        flash('Asset removed from registry.', 'success')
+    except Exception as e:
+        flash(f'Error deleting asset: {str(e)}', 'danger')
+        
+    return redirect(url_for('log1.list_assets'))
+
+@log1_bp.route('/assets/history/<int:asset_id>')
+@login_required
+def view_asset_history(asset_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        asset = client.table('assets').select('*').eq('id', asset_id).single().execute()
+        logs = client.table('asset_maintenance_logs').select('*, users(username)').eq('asset_id', asset_id).order('maintenance_date', desc=True).execute()
+        
+        return render_template('subsystems/logistics/log1/asset_history.html',
+                               asset=asset.data,
+                               logs=logs.data if logs.data else [],
+                               subsystem_name=SUBSYSTEM_NAME,
+                               accent_color=ACCENT_COLOR,
+                               blueprint_name=BLUEPRINT_NAME)
+    except Exception as e:
+        flash(f'Error fetching history: {str(e)}', 'danger')
+        return redirect(url_for('log1.list_assets'))
 
 @log1_bp.route('/documents')
 @login_required
