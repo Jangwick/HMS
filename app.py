@@ -61,17 +61,9 @@ def create_app(config_class=Config):
     from routes.logistics.log2 import log2_bp
     app.register_blueprint(log2_bp, url_prefix='/logistics/log2')
 
-    # Financials
-    from routes.financials.fin1 import fin1_bp
-    app.register_blueprint(fin1_bp, url_prefix='/financials/fin1')
-    from routes.financials.fin2 import fin2_bp
-    app.register_blueprint(fin2_bp, url_prefix='/financials/fin2')
-    from routes.financials.fin3 import fin3_bp
-    app.register_blueprint(fin3_bp, url_prefix='/financials/fin3')
-    from routes.financials.fin4 import fin4_bp
-    app.register_blueprint(fin4_bp, url_prefix='/financials/fin4')
-    from routes.financials.fin5 import fin5_bp
-    app.register_blueprint(fin5_bp, url_prefix='/financials/fin5')
+    # Financials (Unified)
+    from routes.financials.main import financials_bp
+    app.register_blueprint(financials_bp, url_prefix='/financials')
 
     # User Loader for Flask-Login using Supabase
     @login_manager.user_loader

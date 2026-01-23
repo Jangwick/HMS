@@ -16,12 +16,12 @@
             <p class="text-white/80 text-lg max-w-2xl">Manage patient billing and hospital financial records.</p>
 
             <div class="mt-8 flex space-x-4">
-                <a href="{{ url_for('fin1.list_billing') }}"
+                <a href="{{ url_for('financials.list_billing') }}"
                     class="px-6 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors"
                     style="color: {{ accent_color or '#EF4444' }};">
                     View Billing
                 </a>
-                <a href="{{ url_for('fin1.create_bill') }}"
+                <a href="{{ url_for('financials.create_bill') }}"
                     class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
                     Create Invoice
                 </a>
@@ -71,7 +71,7 @@
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h4 class="text-xl font-bold text-gray-900 mb-6">Financial Actions</h4>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <a href="{{ url_for('fin1.create_bill') }}"
+            <a href="{{ url_for('financials.create_bill') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-file-earmark-plus text-2xl text-[#EF4444] mb-2 block group-hover:scale-110 transition-transform"></i>

@@ -282,71 +282,47 @@
                     </a>
                     {% endif %}
 
-                <!-- Financial Subsystems -->
-                {% elif blueprint_name.startswith('fin') %}
-                    <!-- FIN1: Billing -->
-                    {% if blueprint_name == 'fin1' %}
-                    <a href="{{ url_for('fin1.list_billing') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin1.list_billing' }}">
+                <!-- Financial Subsystems (Unified) -->
+                {% elif blueprint_name == 'financials' %}
+                    <div class="px-6 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Billing</div>
+                    <a href="{{ url_for('financials.list_billing') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'financials.list_billing' }}">
                         <i class="bi bi-receipt mr-3"></i>
-                        <span>Billing</span>
-                    </a>
-                    <a href="{{ url_for('fin1.create_bill') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin1.create_bill' }}">
-                        <i class="bi bi-plus-square mr-3"></i>
-                        <span>New Bill</span>
+                        <span>Billing Management</span>
                     </a>
 
-                    <!-- FIN2: Payables -->
-                    {% elif blueprint_name == 'fin2' %}
-                    <a href="{{ url_for('fin2.vendor_invoices') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin2.vendor_invoices' }}">
+                    <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Payables & Receivables</div>
+                    <a href="{{ url_for('financials.vendor_invoices') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'vendor_invoices' in request.endpoint }}">
                         <i class="bi bi-journal-text mr-3"></i>
-                        <span>Vendor Invoices</span>
+                        <span>Payables</span>
                     </a>
-                    <a href="{{ url_for('fin2.add_invoice') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin2.add_invoice' }}">
-                        <i class="bi bi-plus-circle mr-3"></i>
-                        <span>Record Invoice</span>
-                    </a>
-                    <a href="{{ url_for('fin2.payments') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin2.payments' }}">
-                        <i class="bi bi-credit-card mr-3"></i>
-                        <span>Payments</span>
-                    </a>
-
-                    <!-- FIN3: Receivables -->
-                    {% elif blueprint_name == 'fin3' %}
-                    <a href="{{ url_for('fin3.receivables_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin3.receivables_list' }}">
+                    <a href="{{ url_for('financials.receivables_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'receivables_list' in request.endpoint }}">
                         <i class="bi bi-arrow-down-left-circle mr-3"></i>
                         <span>Receivables</span>
                     </a>
-                    <a href="{{ url_for('fin3.collections') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin3.collections' }}">
-                        <i class="bi bi-piggy-bank mr-3"></i>
-                        <span>Collections</span>
-                    </a>
 
-                    <!-- FIN4: Cash Management -->
-                    {% elif blueprint_name == 'fin4' %}
-                    <a href="{{ url_for('fin4.transactions') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin4.transactions' }}">
+                    <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Cash & Treasury</div>
+                    <a href="{{ url_for('financials.transactions') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'transactions' in request.endpoint }}">
                         <i class="bi bi-bank mr-3"></i>
-                        <span>Transactions</span>
+                        <span>Cash Transactions</span>
                     </a>
-                    <a href="{{ url_for('fin4.bank_accounts') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin4.bank_accounts' }}">
+                    <a href="{{ url_for('financials.bank_accounts') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'bank_accounts' in request.endpoint }}">
                         <i class="bi bi-credit-card-2-back mr-3"></i>
-                        <span>Accounts</span>
+                        <span>Bank Accounts</span>
                     </a>
 
-                    <!-- FIN5: General Ledger -->
-                    {% elif blueprint_name == 'fin5' %}
-                    <a href="{{ url_for('fin5.reports_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint.startswith('fin5.reports') or request.endpoint == 'fin5.reports_list' }}">
+                    <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Financial Intelligence</div>
+                    <a href="{{ url_for('financials.reports_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'reports_list' in request.endpoint }}">
                         <i class="bi bi-file-earmark-bar-graph mr-3"></i>
-                        <span>Reports</span>
+                        <span>All Reports</span>
                     </a>
-                    <a href="{{ url_for('fin5.income_statement') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin5.income_statement' }}">
+                    <a href="{{ url_for('financials.income_statement') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'income_statement' in request.endpoint }}">
                         <i class="bi bi-file-earmark-text mr-3"></i>
                         <span>Income Statement</span>
                     </a>
-                    <a href="{{ url_for('fin5.balance_sheet') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'fin5.balance_sheet' }}">
+                    <a href="{{ url_for('financials.balance_sheet') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'balance_sheet' in request.endpoint }}">
                         <i class="bi bi-file-earmark-medical mr-3"></i>
                         <span>Balance Sheet</span>
                     </a>
-                    {% endif %}
                 {% endif %}
 
                 <!-- Shared System Links -->

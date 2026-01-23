@@ -16,12 +16,12 @@
             <p class="text-white/80 text-lg max-w-2xl">Generate and manage financial statements and reports.</p>
 
             <div class="mt-8 flex space-x-4">
-                <a href="{{ url_for('fin5.reports_list') }}"
+                <a href="{{ url_for('financials.reports_list') }}"
                     class="px-6 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors"
                     style="color: {{ accent_color or '#EF4444' }};">
                     View Reports
                 </a>
-                <a href="{{ url_for('fin5.income_statement') }}"
+                <a href="{{ url_for('financials.income_statement') }}"
                     class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
                     Income Statement
                 </a>
@@ -69,13 +69,13 @@
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h4 class="text-xl font-bold text-gray-900 mb-6">Generate Reports</h4>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <a href="{{ url_for('fin5.income_statement') }}"
+            <a href="{{ url_for('financials.income_statement') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-graph-up text-2xl text-[#EF4444] mb-2 block group-hover:scale-110 transition-transform"></i>
                 <span class="text-sm font-bold text-gray-700">Income Statement</span>
             </a>
-            <a href="{{ url_for('fin5.balance_sheet') }}"
+            <a href="{{ url_for('financials.balance_sheet') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-journal-text text-2xl text-[#EF4444] mb-2 block group-hover:scale-110 transition-transform"></i>

@@ -16,12 +16,12 @@
             <p class="text-white/80 text-lg max-w-2xl">Manage vendor invoices and payment processing.</p>
 
             <div class="mt-8 flex space-x-4">
-                <a href="{{ url_for('fin2.vendor_invoices') }}"
+                <a href="{{ url_for('financials.vendor_invoices') }}"
                     class="px-6 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors"
                     style="color: {{ accent_color or '#EF4444' }};">
                     View Invoices
                 </a>
-                <a href="{{ url_for('fin2.add_invoice') }}"
+                <a href="{{ url_for('financials.add_invoice') }}"
                     class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
                     Add Invoice
                 </a>
@@ -69,13 +69,13 @@
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h4 class="text-xl font-bold text-gray-900 mb-6">Payables Actions</h4>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <a href="{{ url_for('fin2.add_invoice') }}"
+            <a href="{{ url_for('financials.add_invoice') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-file-plus text-2xl text-[#EF4444] mb-2 block group-hover:scale-110 transition-transform"></i>
                 <span class="text-sm font-bold text-gray-700">New Invoice</span>
             </a>
-            <a href="{{ url_for('fin2.payments') }}"
+            <a href="{{ url_for('financials.payments') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-cash-stack text-2xl text-[#EF4444] mb-2 block group-hover:scale-110 transition-transform"></i>

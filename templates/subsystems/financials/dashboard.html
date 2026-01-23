@@ -1,0 +1,159 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Dashboard - Financials HMS{% endblock %}
+
+{% block breadcrumbs %}
+<li class="flex items-center">
+    <i class="bi bi-chevron-right text-gray-400 text-xs mx-2"></i>
+    <span class="text-gray-600 font-medium">Dashboard</span>
+</li>
+{% endblock %}
+
+{% block subsystem_content %}
+<div class="space-y-8">
+    <!-- Welcome Section -->
+    <div class="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-900">Welcome back, {{ current_user.username }}!</h2>
+                <p class="text-gray-500 mt-1">Unified Financial Management System Overview</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-right hidden md:block">
+                    <p class="text-sm font-bold text-gray-900">{{ now().strftime('%B %d, %Y') }}</p>
+                    <p class="text-xs text-gray-500">System Status: <span class="text-green-500 font-bold">Online</span></p>
+                </div>
+                <div class="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 shadow-inner">
+                    <i class="bi bi-calendar-check text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
+                    <i class="bi bi-currency-dollar text-xl"></i>
+                </div>
+                <span class="text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-lg">+12%</span>
+            </div>
+            <p class="text-sm font-medium text-gray-500">Total Revenue</p>
+            <h3 class="text-2xl font-bold text-gray-900 mt-1">${{ "%.2f"|format(stats.revenue|default(0)) }}</h3>
+        </div>
+
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-600">
+                    <i class="bi bi-receipt text-xl"></i>
+                </div>
+                <span class="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-lg">Pending</span>
+            </div>
+            <p class="text-sm font-medium text-gray-500">Accounts Payable</p>
+            <h3 class="text-2xl font-bold text-gray-900 mt-1">${{ "%.2f"|format(stats.payables|default(0)) }}</h3>
+        </div>
+
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600">
+                    <i class="bi bi-wallet2 text-xl"></i>
+                </div>
+                <span class="text-xs font-bold text-purple-500 bg-purple-50 px-2 py-1 rounded-lg">{{ stats.receivables }} Items</span>
+            </div>
+            <p class="text-sm font-medium text-gray-500">Accounts Receivable</p>
+            <h3 class="text-2xl font-bold text-gray-900 mt-1">Active</h3>
+        </div>
+
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-600">
+                    <i class="bi bi-bank text-xl"></i>
+                </div>
+                <span class="text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-lg">Unified</span>
+            </div>
+            <p class="text-sm font-medium text-gray-500">Cash on Hand</p>
+            <h3 class="text-2xl font-bold text-gray-900 mt-1">${{ "%.2f"|format(stats.cash_on_hand|default(0)) }}</h3>
+        </div>
+    </div>
+
+    <!-- System Modules -->
+    <h3 class="text-xl font-bold text-gray-900 mb-4">System Modules</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Billing -->
+        <a href="{{ url_for('financials.list_billing') }}" class="group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div class="h-2 bg-[#8B5CF6]"></div>
+            <div class="p-8">
+                <div class="flex justify-between items-start mb-6">
+                    <h4 class="text-xl font-bold text-gray-900 group-hover:text-[#8B5CF6] transition-colors">Billing Mgmt</h4>
+                    <div class="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-[#8B5CF6] group-hover:scale-110 transition-transform">
+                        <i class="bi bi-pie-chart text-2xl"></i>
+                    </div>
+                </div>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">Invoices, patient billing, and revenue tracking.</p>
+                <span class="text-sm font-bold text-[#8B5CF6] flex items-center">Open Module <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i></span>
+            </div>
+        </a>
+
+        <!-- Payables -->
+        <a href="{{ url_for('financials.list_payables') }}" class="group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div class="h-2 bg-[#A855F7]"></div>
+            <div class="p-8">
+                <div class="flex justify-between items-start mb-6">
+                    <h4 class="text-xl font-bold text-gray-900 group-hover:text-[#A855F7] transition-colors">Payables</h4>
+                    <div class="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-[#A855F7] group-hover:scale-110 transition-transform">
+                        <i class="bi bi-wallet2 text-2xl"></i>
+                    </div>
+                </div>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">Vendor management and accounts payable tracking.</p>
+                <span class="text-sm font-bold text-[#A855F7] flex items-center">Open Module <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i></span>
+            </div>
+        </a>
+
+        <!-- Receivables -->
+        <a href="{{ url_for('financials.receivables_list') }}" class="group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div class="h-2 bg-[#9333EA]"></div>
+            <div class="p-8">
+                <div class="flex justify-between items-start mb-6">
+                    <h4 class="text-xl font-bold text-gray-900 group-hover:text-[#9333EA] transition-colors">Receivables</h4>
+                    <div class="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-[#9333EA] group-hover:scale-110 transition-transform">
+                        <i class="bi bi-cash-stack text-2xl"></i>
+                    </div>
+                </div>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">Collectibles, patient payments and revenue tracking.</p>
+                <span class="text-sm font-bold text-[#9333EA] flex items-center">Open Module <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i></span>
+            </div>
+        </a>
+
+        <!-- Cash Mgmt -->
+        <a href="{{ url_for('financials.cash_transactions') }}" class="group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div class="h-2 bg-[#7C3AED]"></div>
+            <div class="p-8">
+                <div class="flex justify-between items-start mb-6">
+                    <h4 class="text-xl font-bold text-gray-900 group-hover:text-[#7C3AED] transition-colors">Cash Mgmt</h4>
+                    <div class="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-[#7C3AED] group-hover:scale-110 transition-transform">
+                        <i class="bi bi-bank text-2xl"></i>
+                    </div>
+                </div>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">Bank accounts, cash flow, and treasury operations.</p>
+                <span class="text-sm font-bold text-[#7C3AED] flex items-center">Open Module <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i></span>
+            </div>
+        </a>
+
+        <!-- Financial Intel -->
+        <a href="{{ url_for('financials.reports_list') }}" class="group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div class="h-2 bg-[#6D28D9]"></div>
+            <div class="p-8">
+                <div class="flex justify-between items-start mb-6">
+                    <h4 class="text-xl font-bold text-gray-900 group-hover:text-[#6D28D9] transition-colors">Financial Intel</h4>
+                    <div class="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-[#6D28D9] group-hover:scale-110 transition-transform">
+                        <i class="bi bi-graph-up-arrow text-2xl"></i>
+                    </div>
+                </div>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">Income statements, balance sheets and analytics.</p>
+                <span class="text-sm font-bold text-[#6D28D9] flex items-center">Open Module <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i></span>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}
