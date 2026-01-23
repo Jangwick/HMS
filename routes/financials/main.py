@@ -740,6 +740,40 @@ def balance_sheet():
                            subsystem_name="Financial Intel", accent_color="#6D28D9", 
                            blueprint_name=BLUEPRINT_NAME)
 
+@financials_bp.route('/reports/aging')
+@login_required
+def aging_report():
+    client = get_supabase_client()
+    # Fetch receivables
+    receivables = client.table('receivables').select('*, billing_records!receivables_billing_id_fkey(patients(first_name, last_name))').eq('status', 'Unpaid').execute().data or []
+    # Fetch payables
+    payables = client.table('vendor_invoices').select('*, vendors(name)').eq('status', 'Unpaid').execute().data or []
+    
+    return render_template('subsystems/financials/fin5/aging_report.html', 
+                           receivables=receivables, 
+                           payables=payables,
+                           subsystem_name="Financial Intel", 
+                           accent_color="#6D28D9", 
+                           blueprint_name=BLUEPRINT_NAME)
+
+@financials_bp.route('/reports/generate', methods=['POST'])
+@login_required
+def generate_report():
+    client = get_supabase_client()
+    report_type = request.form.get('report_type')
+    report_name = request.form.get('report_name', f"New {report_type} Report")
+    
+    data = {
+        'report_name': report_name,
+        'report_type': report_type,
+        'generated_by': current_user.id,
+        'file_path': '#', # Placeholder for real file generation logic
+        'created_at': datetime.now().isoformat()
+    }
+    client.table('generated_reports').insert(data).execute()
+    flash(f'{report_name} has been generated and added to your archive.', 'success')
+    return redirect(url_for('financials.reports_list'))
+
 @financials_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():

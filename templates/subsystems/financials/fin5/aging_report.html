@@ -1,0 +1,95 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Aging Report - {{ subsystem_name }}{% endblock %}
+{% block header_title %}AR/AP Aging Analysis{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Aging Report</h3>
+            <p class="text-gray-500">Unpaid receivables and payables sorted by age</p>
+        </div>
+        <div class="flex space-x-3">
+             <form action="{{ url_for('financials.generate_report') }}" method="POST" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="report_type" value="Aging">
+                <input type="hidden" name="report_name" value="Aging Analysis - {{ now().strftime('%Y-%m-%d') }}">
+                <button type="submit" class="px-6 py-2 bg-[#6D28D9] text-white font-bold rounded-xl shadow-lg hover:bg-purple-700 transition-all">
+                    <i class="bi bi-file-earmark-pdf mr-2"></i> Archive Report
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Receivables Aging -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 bg-blue-50/30">
+            <h4 class="text-lg font-bold text-blue-900">Accounts Receivable (AR) Aging</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Patient</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Due Date</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Amount Due</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for rec in receivables %}
+                    <tr>
+                        <td class="px-8 py-4">
+                            <div class="text-sm font-bold text-gray-900">
+                                {{ rec.billing_records.patients.first_name }} {{ rec.billing_records.patients.last_name }}
+                            </div>
+                        </td>
+                        <td class="px-8 py-4 text-sm text-gray-600">{{ rec.due_date }}</td>
+                        <td class="px-8 py-4 text-sm font-bold text-right text-red-600">${{ "%.2f"|format(rec.amount_due) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="px-8 py-10 text-center text-gray-400 italic">No outstanding receivables</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Payables Aging -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 bg-red-50/30">
+            <h4 class="text-lg font-bold text-red-900">Accounts Payable (AP) Aging Report</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Vendor</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Invoice #</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Due Date</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for pay in payables %}
+                    <tr>
+                        <td class="px-8 py-4">
+                            <div class="text-sm font-bold text-gray-900">{{ pay.vendors.name }}</div>
+                        </td>
+                        <td class="px-8 py-4 text-sm text-gray-600">{{ pay.invoice_number }}</td>
+                        <td class="px-8 py-4 text-sm text-gray-600">{{ pay.due_date }}</td>
+                        <td class="px-8 py-4 text-sm font-bold text-right text-red-600">${{ "%.2f"|format(pay.amount) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="px-8 py-10 text-center text-gray-400 italic">No outstanding payables</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

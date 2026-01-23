@@ -33,35 +33,15 @@
             <p class="text-gray-500 text-sm mt-2">Assets, liabilities, and equity</p>
         </a>
 
-        <div
-            class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow group cursor-pointer">
-            <div
-                class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 mb-4 group-hover:scale-110 transition-transform">
-                <i class="bi bi-cash-stack text-2xl"></i>
-            </div>
-            <h4 class="text-lg font-bold text-gray-900">Cash Flow Statement</h4>
-            <p class="text-gray-500 text-sm mt-2">Cash inflows and outflows</p>
-        </div>
-
-        <div
-            class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow group cursor-pointer">
-            <div
-                class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 mb-4 group-hover:scale-110 transition-transform">
-                <i class="bi bi-bar-chart-line text-2xl"></i>
-            </div>
-            <h4 class="text-lg font-bold text-gray-900">Budget vs Actual</h4>
-            <p class="text-gray-500 text-sm mt-2">Budget comparison analysis</p>
-        </div>
-
-        <div
-            class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow group cursor-pointer">
+        <a href="{{ url_for('financials.aging_report') }}"
+            class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow group">
             <div
                 class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-red-600 mb-4 group-hover:scale-110 transition-transform">
                 <i class="bi bi-graph-down text-2xl"></i>
             </div>
             <h4 class="text-lg font-bold text-gray-900">Aging Report</h4>
             <p class="text-gray-500 text-sm mt-2">Receivables and payables aging</p>
-        </div>
+        </a>
 
         <div
             class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow group cursor-pointer">

@@ -17,9 +17,17 @@
                 <option>December 2025</option>
                 <option>November 2025</option>
             </select>
-            <button
+            <form action="{{ url_for('financials.generate_report') }}" method="POST" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="report_type" value="Income Statement">
+                <input type="hidden" name="report_name" value="Income Statement - {{ now().strftime('%Y-%m-%d') }}">
+                <button type="submit" class="px-6 py-2 bg-[#6D28D9] text-white font-bold rounded-xl shadow-lg hover:bg-purple-700 transition-all">
+                    <i class="bi bi-file-earmark-pdf mr-2"></i> Archive Report
+                </button>
+            </form>
+            <button onclick="window.print()"
                 class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
-                <i class="bi bi-download mr-2"></i> Export PDF
+                <i class="bi bi-printer mr-2"></i> Print
             </button>
         </div>
     </div>
