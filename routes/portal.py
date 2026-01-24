@@ -33,3 +33,7 @@ def privacy():
 @portal_bp.route('/support')
 def support():
     return render_template('portal/support.html')
+
+@portal_bp.route('/about')
+def about():
+    return render_template('portal/about.html')
