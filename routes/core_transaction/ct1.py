@@ -513,6 +513,10 @@ def bed_management():
 @ct1_bp.route('/beds/update/<int:bed_id>', methods=['POST'])
 @login_required
 def update_bed(bed_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can modify bed configurations.', 'error')
+        return redirect(url_for('ct1.bed_management'))
+    
     client = get_supabase_client()
     
     new_status = request.form.get('status')

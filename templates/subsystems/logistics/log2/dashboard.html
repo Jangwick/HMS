@@ -67,32 +67,43 @@
 
     <!-- Quick Actions -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h4 class="text-xl font-bold text-gray-900 mb-6">Fleet Management</h4>
+        <h4 class="text-xl font-bold text-gray-900 mb-6">Operations Hub</h4>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <a href="{{ url_for('log2.list_vehicles') }}"
-                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-truck text-2xl text-[#F97316] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Vehicles</span>
-            </a>
-            <a href="{{ url_for('log2.list_drivers') }}"
-                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-person-video2 text-2xl text-[#F97316] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Drivers</span>
-            </a>
             <a href="{{ url_for('log2.dispatch_board') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-calendar-check text-2xl text-[#F97316] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Dispatch</span>
+                <span class="text-sm font-bold text-gray-700">Dispatch Board</span>
+            </a>
+            <a href="{{ url_for('log2.list_vehicles') }}"
+                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
+                <i
+                    class="bi bi-truck text-2xl text-[#F97316] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Vehicle Status</span>
+            </a>
+            {% if current_user.is_admin() %}
+            <a href="{{ url_for('log2.list_drivers') }}"
+                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
+                <i
+                    class="bi bi-person-video2 text-2xl text-[#F97316] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Personnel Roster</span>
             </a>
             <a href="{{ url_for('log2.cost_analysis') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-currency-dollar text-2xl text-[#F97316] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Costs</span>
+                <span class="text-sm font-bold text-gray-700">Cost Analysis</span>
             </a>
+            {% else %}
+            <div class="p-4 bg-gray-50 rounded-xl text-center opacity-50">
+                <i class="bi bi-clock-history text-2xl text-gray-400 mb-2 block"></i>
+                <span class="text-sm font-bold text-gray-400">Past Dispatch Logs</span>
+            </div>
+            <div class="p-4 bg-gray-50 rounded-xl text-center opacity-50">
+                <i class="bi bi-geo-alt text-2xl text-gray-400 mb-2 block"></i>
+                <span class="text-sm font-bold text-gray-400">Resource Map</span>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

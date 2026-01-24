@@ -79,6 +79,7 @@
                         <p class="text-sm text-gray-400 mt-1">Doctor: {{ record.doctor_name }}</p>
                     </div>
                     <div class="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {% if current_user.is_admin() %}
                         <button onclick="openEditModal('{{ record.id }}', '{{ record.diagnosis }}', '{{ record.treatment }}', '{{ record.notes | replace('\n', '\\n') | replace('\r', '') }}', '{{ record.vitals.temp or '' }}', '{{ record.vitals.bp or '' }}', '{{ record.vitals.weight or '' }}')" 
                                 class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Edit Record">
                             <i class="bi bi-pencil-square"></i>
@@ -89,6 +90,9 @@
                                 <i class="bi bi-trash"></i>
                             </button>
                         </form>
+                        {% else %}
+                        <span class="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded">Locked</span>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">

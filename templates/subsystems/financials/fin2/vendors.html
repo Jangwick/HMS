@@ -15,10 +15,12 @@
                 class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
                 <i class="bi bi-arrow-left mr-2"></i> Back to Invoices
             </a>
+            {% if current_user.is_admin() %}
             <a href="{{ url_for('financials.add_vendor') }}"
                 class="px-6 py-2 bg-[#EF4444] text-white font-bold rounded-xl shadow-lg hover:bg-red-600 transition-all">
                 <i class="bi bi-plus-lg mr-2"></i> Add Vendor
             </a>
+            {% endif %}
         </div>
     </div>
 
@@ -57,6 +59,7 @@
                                     title="View Invoices">
                                     <i class="bi bi-file-earmark-rich"></i>
                                 </a>
+                                {% if current_user.is_admin() %}
                                 <a href="{{ url_for('financials.edit_vendor', vendor_id=vendor.id) }}" 
                                     class="p-2 text-gray-400 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
                                     title="Edit Vendor">
@@ -70,6 +73,7 @@
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>

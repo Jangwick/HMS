@@ -266,6 +266,10 @@ def list_inventory():
 @log1_bp.route('/inventory/add', methods=['GET', 'POST'])
 @login_required
 def add_inventory_item():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_inventory'))
+        
     if request.method == 'POST':
         try:
             from utils.supabase_client import get_supabase_client
@@ -304,6 +308,10 @@ def add_inventory_item():
 @log1_bp.route('/inventory/edit/<int:item_id>', methods=['GET', 'POST'])
 @login_required
 def edit_inventory_item(item_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_inventory'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -344,6 +352,10 @@ def edit_inventory_item(item_id):
 @log1_bp.route('/inventory/delete/<int:item_id>', methods=['POST'])
 @login_required
 def delete_inventory_item(item_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_inventory'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -452,6 +464,10 @@ def procurement():
 @log1_bp.route('/procurement/po/add', methods=['POST'])
 @login_required
 def add_purchase_order():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.procurement'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -508,6 +524,10 @@ def view_po(po_id):
 @log1_bp.route('/procurement/po/<int:po_id>/status', methods=['POST'])
 @login_required
 def update_po_status(po_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.procurement'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     new_status = request.form.get('status')
@@ -595,6 +615,10 @@ def update_po_status(po_id):
 @log1_bp.route('/procurement/suppliers/add', methods=['POST'])
 @login_required
 def add_supplier():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.procurement'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -630,6 +654,10 @@ def list_assets():
 @log1_bp.route('/assets/add', methods=['POST'])
 @login_required
 def add_asset():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_assets'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -651,6 +679,10 @@ def add_asset():
 @log1_bp.route('/assets/maintain/<int:asset_id>', methods=['POST'])
 @login_required
 def record_maintenance(asset_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_assets'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -681,6 +713,10 @@ def record_maintenance(asset_id):
 @log1_bp.route('/assets/update-status/<int:asset_id>/<string:status>')
 @login_required
 def update_asset_status(asset_id, status):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_assets'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     

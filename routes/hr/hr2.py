@@ -243,6 +243,10 @@ def onboarding_pipeline():
 @hr2_bp.route('/onboarding/start/<int:id>', methods=['POST'])
 @login_required
 def start_onboarding(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.onboarding_pipeline'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -255,6 +259,10 @@ def start_onboarding(id):
 @hr2_bp.route('/onboarding/complete', methods=['POST'])
 @login_required
 def complete_onboarding():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.onboarding_pipeline'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -322,6 +330,10 @@ def list_trainings():
 @hr2_bp.route('/trainings/add', methods=['GET', 'POST'])
 @login_required
 def add_training():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_trainings'))
+        
     if request.method == 'POST':
         from utils.supabase_client import get_supabase_client
         client = get_supabase_client()
@@ -352,6 +364,10 @@ def add_training():
 @hr2_bp.route('/trainings/edit/<int:id>', methods=['POST'])
 @login_required
 def edit_training(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_trainings'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -378,6 +394,10 @@ def edit_training(id):
 @hr2_bp.route('/trainings/delete/<int:id>', methods=['POST'])
 @login_required
 def delete_training(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_trainings'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -392,6 +412,10 @@ def delete_training(id):
 @hr2_bp.route('/trainings/complete/<int:id>', methods=['POST'])
 @login_required
 def complete_training(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_trainings'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -492,6 +516,10 @@ def list_competencies():
 @hr2_bp.route('/competencies/add', methods=['POST'])
 @login_required
 def add_competency():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_competencies'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -512,6 +540,10 @@ def add_competency():
 @hr2_bp.route('/competencies/edit/<int:id>', methods=['POST'])
 @login_required
 def edit_competency(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_competencies'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -532,6 +564,10 @@ def edit_competency(id):
 @hr2_bp.route('/competencies/delete/<int:id>', methods=['POST'])
 @login_required
 def delete_competency(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_competencies'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     

@@ -11,10 +11,12 @@
             <p class="text-gray-500">View all cash flow transactions</p>
         </div>
         <div class="flex space-x-3">
+            {% if current_user.is_admin() %}
             <button onclick="openTransactionModal()"
                 class="px-6 py-2 bg-gray-900 text-white font-bold rounded-xl shadow-lg hover:bg-gray-800 transition-all no-print">
                 <i class="bi bi-plus-lg mr-2"></i> New Transaction
             </button>
+            {% endif %}
             <button onclick="window.print()"
                 class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all no-print">
                 <i class="bi bi-printer mr-2"></i> Print

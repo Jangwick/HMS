@@ -248,6 +248,10 @@ def compensation():
 @hr4_bp.route('/compensation/add', methods=['POST'])
 @login_required
 def add_compensation():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr4.compensation'))
+        
     client = get_supabase_client()
     try:
         data = {
@@ -268,6 +272,10 @@ def add_compensation():
 @hr4_bp.route('/compensation/edit/<int:record_id>', methods=['POST'])
 @login_required
 def edit_compensation(record_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr4.compensation'))
+        
     client = get_supabase_client()
     try:
         data = {
@@ -286,6 +294,10 @@ def edit_compensation(record_id):
 @hr4_bp.route('/compensation/delete/<int:record_id>', methods=['POST'])
 @login_required
 def delete_compensation(record_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr4.compensation'))
+        
     client = get_supabase_client()
     try:
         client.table('compensation_records').delete().eq('id', record_id).execute()
@@ -314,6 +326,10 @@ def salary_grades():
 @hr4_bp.route('/salary-grades/add', methods=['POST'])
 @login_required
 def add_salary_grade():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr4.salary_grades'))
+        
     client = get_supabase_client()
     try:
         min_salary = float(request.form.get('min_salary') or 0)
@@ -337,6 +353,10 @@ def add_salary_grade():
 @hr4_bp.route('/salary-grades/edit/<int:grade_id>', methods=['POST'])
 @login_required
 def edit_salary_grade(grade_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr4.salary_grades'))
+        
     client = get_supabase_client()
     try:
         min_salary = float(request.form.get('min_salary') or 0)
@@ -360,6 +380,10 @@ def edit_salary_grade(grade_id):
 @hr4_bp.route('/salary-grades/delete/<int:grade_id>', methods=['POST'])
 @login_required
 def delete_salary_grade(grade_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr4.salary_grades'))
+        
     client = get_supabase_client()
     try:
         client.table('salary_grades').delete().eq('id', grade_id).execute()
@@ -401,6 +425,10 @@ def payroll():
 @hr4_bp.route('/payroll/process', methods=['POST'])
 @login_required
 def process_payroll():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr4.payroll'))
+        
     client = get_supabase_client()
     try:
         # 1. Get all active compensation records
@@ -444,6 +472,10 @@ def process_payroll():
 @hr4_bp.route('/analytics')
 @login_required
 def analytics():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr4.dashboard'))
+        
     client = get_supabase_client()
     try:
         # Get all active compensation records joined with users
@@ -523,6 +555,10 @@ def analytics():
 @hr4_bp.route('/reports')
 @login_required
 def reports():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr4.dashboard'))
+        
     return render_template('subsystems/hr/hr4/reports.html',
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,

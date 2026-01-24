@@ -367,7 +367,7 @@ def request_leave():
 @hr3_bp.route('/admin/users')
 @login_required
 def user_list():
-    if not current_user.is_admin() or current_user.subsystem != 'hr3':
+    if not current_user.is_admin():
         flash('Access denied.', 'danger')
         return redirect(url_for('hr3.dashboard'))
     
@@ -382,7 +382,7 @@ def user_list():
 @hr3_bp.route('/admin/users/add', methods=['GET', 'POST'])
 @login_required
 def add_user():
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+    if not current_user.is_admin():
         flash('Access denied.', 'danger')
         return redirect(url_for('hr3.dashboard'))
     
@@ -514,7 +514,7 @@ def edit_user(user_id):
 @hr3_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
 @login_required
 def delete_user(user_id):
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+    if not current_user.is_admin():
         flash('Access denied.', 'danger')
         return redirect(url_for('hr3.dashboard'))
     
@@ -537,7 +537,7 @@ def delete_user(user_id):
 @hr3_bp.route('/admin/approvals')
 @login_required
 def pending_approvals():
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+    if not current_user.is_admin():
         flash('Access denied.', 'danger')
         return redirect(url_for('hr3.dashboard'))
     
@@ -565,7 +565,7 @@ def pending_approvals():
 @hr3_bp.route('/admin/approvals/<int:user_id>/<action>')
 @login_required
 def process_approval(user_id, action):
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+    if not current_user.is_admin():
         flash('Access denied.', 'danger')
         return redirect(url_for('hr3.dashboard'))
     
@@ -589,7 +589,7 @@ def process_approval(user_id, action):
 @hr3_bp.route('/admin/users/<int:user_id>/toggle')
 @login_required
 def toggle_user_status(user_id):
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+    if not current_user.is_admin():
         flash('Access denied.', 'danger')
         return redirect(url_for('hr3.dashboard'))
     
@@ -614,7 +614,7 @@ def toggle_user_status(user_id):
 @hr3_bp.route('/admin/users/<int:user_id>/reset-password')
 @login_required
 def reset_user_password(user_id):
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+    if not current_user.is_admin():
         flash('Access denied.', 'danger')
         return redirect(url_for('hr3.dashboard'))
     
@@ -635,7 +635,7 @@ def reset_user_password(user_id):
 @hr3_bp.route('/admin/users/<int:user_id>/change-password', methods=['POST'])
 @login_required
 def admin_change_password(user_id):
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+    if not current_user.is_admin():
         flash('Access denied.', 'danger')
         return redirect(url_for('hr3.dashboard'))
     
@@ -666,7 +666,7 @@ def admin_change_password(user_id):
 @hr3_bp.route('/analytics')
 @login_required
 def analytics():
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+    if not current_user.is_admin():
         flash('Access denied.', 'danger')
         return redirect(url_for('hr3.dashboard'))
     

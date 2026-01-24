@@ -290,6 +290,10 @@ def billing():
 @ct3_bp.route('/billing/create', methods=['POST'])
 @login_required
 def create_bill():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can generate new invoices.', 'error')
+        return redirect(url_for('ct3.billing'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -312,6 +316,10 @@ def create_bill():
 @ct3_bp.route('/billing/pay/<int:bill_id>', methods=['POST'])
 @login_required
 def pay_bill(bill_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can record payments.', 'error')
+        return redirect(url_for('ct3.billing'))
+
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -331,6 +339,10 @@ def pay_bill(bill_id):
 @ct3_bp.route('/admin/logs')
 @login_required
 def security_logs():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can view security logs.', 'error')
+        return redirect(url_for('ct3.dashboard'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -472,6 +484,10 @@ def edit_medical_record(patient_id, record_id):
 @ct3_bp.route('/records/<int:patient_id>/delete/<int:record_id>', methods=['POST'])
 @login_required
 def delete_medical_record(patient_id, record_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can delete records.', 'error')
+        return redirect(url_for('ct3.view_record', patient_id=patient_id))
+
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -486,6 +502,10 @@ def delete_medical_record(patient_id, record_id):
 @ct3_bp.route('/analytics')
 @login_required
 def analytics():
+    if not current_user.is_admin():
+        flash('Unauthorized: Access restricted to administrators.', 'error')
+        return redirect(url_for('ct3.dashboard'))
+
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -580,6 +600,10 @@ def discharge():
 @ct3_bp.route('/discharge/<int:patient_id>/clear', methods=['POST'])
 @login_required
 def clear_for_discharge(patient_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can finalize discharge clearance.', 'error')
+        return redirect(url_for('ct3.discharge'))
+
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     

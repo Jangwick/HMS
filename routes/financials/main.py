@@ -260,6 +260,9 @@ def create_bill():
 @financials_bp.route('/billing/pay/<int:bill_id>', methods=['POST'])
 @login_required
 def pay_bill(bill_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can process billing payments.', 'danger')
+        return redirect(url_for('financials.list_billing'))
     client = get_supabase_client()
     # 1. Update billing record status
     client.table('billing_records').update({'status': 'Paid'}).eq('id', bill_id).execute()
@@ -291,6 +294,9 @@ def pay_bill(bill_id):
 @financials_bp.route('/billing/void/<int:bill_id>', methods=['POST'])
 @login_required
 def void_bill(bill_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can void invoices.', 'danger')
+        return redirect(url_for('financials.list_billing'))
     client = get_supabase_client()
     client.table('billing_records').update({'status': 'Voided'}).eq('id', bill_id).execute()
     client.table('receivables').update({'status': 'Voided'}).eq('billing_id', bill_id).execute()
@@ -300,6 +306,9 @@ def void_bill(bill_id):
 @financials_bp.route('/billing/delete/<int:bill_id>', methods=['POST'])
 @login_required
 def delete_bill(bill_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can delete billing records.', 'danger')
+        return redirect(url_for('financials.list_billing'))
     client = get_supabase_client()
     client.table('billing_records').delete().eq('id', bill_id).execute()
     flash(f'Invoice #INV-{bill_id} deleted successfully.', 'warning')
@@ -347,6 +356,9 @@ def vendor_invoices():
 @financials_bp.route('/payables/pay/<int:invoice_id>', methods=['POST'])
 @login_required
 def pay_invoice(invoice_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can authorize vendor payments.', 'danger')
+        return redirect(url_for('financials.vendor_invoices'))
     client = get_supabase_client()
     invoice = client.table('vendor_invoices').select('*').eq('id', invoice_id).single().execute().data
     if not invoice:
@@ -405,6 +417,9 @@ def vendors_list():
 @financials_bp.route('/vendors/add', methods=['GET', 'POST'])
 @login_required
 def add_vendor():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can manage vendors.', 'danger')
+        return redirect(url_for('financials.vendors_list'))
     if request.method == 'POST':
         client = get_supabase_client()
         data = {
@@ -426,6 +441,9 @@ def add_vendor():
 @financials_bp.route('/vendors/edit/<int:vendor_id>', methods=['GET', 'POST'])
 @login_required
 def edit_vendor(vendor_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can modify vendor details.', 'danger')
+        return redirect(url_for('financials.vendors_list'))
     client = get_supabase_client()
     if request.method == 'POST':
         data = {
@@ -453,6 +471,9 @@ def edit_vendor(vendor_id):
 @financials_bp.route('/vendors/delete/<int:vendor_id>', methods=['POST'])
 @login_required
 def delete_vendor(vendor_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can remove vendors.', 'danger')
+        return redirect(url_for('financials.vendors_list'))
     client = get_supabase_client()
     # Check for linked invoices first
     invoices = client.table('vendor_invoices').select('id').eq('vendor_id', vendor_id).execute().data
@@ -537,6 +558,9 @@ def receivables_list():
 @financials_bp.route('/receivables/collect/<int:receivable_id>', methods=['POST'])
 @login_required
 def collect_receivable(receivable_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can process collections.', 'danger')
+        return redirect(url_for('financials.receivables_list'))
     client = get_supabase_client()
     rec = client.table('receivables').select('*').eq('id', receivable_id).single().execute().data
     if not rec:
@@ -603,6 +627,9 @@ def collections():
 @financials_bp.route('/cash')
 @login_required
 def transactions():
+    if not current_user.is_admin():
+        flash('Unauthorized: Cash management is restricted to administrators.', 'danger')
+        return redirect(url_for('financials.dashboard'))
     client = get_supabase_client()
     # Explicitly join with bank_accounts using the account_id_fkey to avoid ambiguity
     transactions = client.table('cash_transactions').select('*, bank_accounts:bank_accounts!cash_transactions_account_id_fkey(bank_name, account_number)').order('transaction_date', desc=True).execute().data or []
@@ -620,6 +647,9 @@ def transactions():
 @financials_bp.route('/cash/transaction', methods=['POST'])
 @login_required
 def record_transaction():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can record manual cash transactions.', 'danger')
+        return redirect(url_for('financials.dashboard'))
     client = get_supabase_client()
     account_id = request.form.get('account_id')
     tx_type = request.form.get('transaction_type')
@@ -655,6 +685,9 @@ def record_transaction():
 @financials_bp.route('/cash/accounts')
 @login_required
 def bank_accounts():
+    if not current_user.is_admin():
+        flash('Unauthorized: Bank account management is restricted to administrators.', 'danger')
+        return redirect(url_for('financials.dashboard'))
     client = get_supabase_client()
     accounts = client.table('bank_accounts').select('*').execute().data or []
     return render_template('subsystems/financials/fin4/bank_accounts.html', 
@@ -666,6 +699,9 @@ def bank_accounts():
 @financials_bp.route('/bank-accounts/add', methods=['POST'])
 @login_required
 def add_bank_account():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can add bank accounts.', 'danger')
+        return redirect(url_for('financials.dashboard'))
     client = get_supabase_client()
     data = {
         'bank_name': request.form.get('bank_name'),
@@ -680,6 +716,9 @@ def add_bank_account():
 @financials_bp.route('/bank-accounts/delete/<int:account_id>', methods=['POST'])
 @login_required
 def delete_bank_account(account_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can remove bank accounts.', 'danger')
+        return redirect(url_for('financials.dashboard'))
     client = get_supabase_client()
     # Check for existing transactions
     txs = client.table('cash_transactions').select('id').eq('account_id', account_id).limit(1).execute().data
@@ -695,6 +734,9 @@ def delete_bank_account(account_id):
 @financials_bp.route('/reports')
 @login_required
 def reports_list():
+    if not current_user.is_admin():
+        flash('Unauthorized: Financial intelligence reports are restricted to administrators.', 'danger')
+        return redirect(url_for('financials.dashboard'))
     client = get_supabase_client()
     try:
         # Fallback to id if created_at is not yet sync'd in the DB
@@ -711,6 +753,9 @@ def reports_list():
 @financials_bp.route('/reports/income-statement')
 @login_required
 def income_statement():
+    if not current_user.is_admin():
+        flash('Unauthorized: Income statements are restricted to administrators.', 'danger')
+        return redirect(url_for('financials.dashboard'))
     client = get_supabase_client()
     revenue = sum([float(r.get('amount', 0)) for r in client.table('collections').select('amount').execute().data or []])
     expenses = sum([float(r.get('amount', 0)) for r in client.table('vendor_payments').select('amount').execute().data or []])
@@ -728,6 +773,9 @@ def income_statement():
 @financials_bp.route('/reports/balance-sheet')
 @login_required
 def balance_sheet():
+    if not current_user.is_admin():
+        flash('Unauthorized: Balance sheets are restricted to administrators.', 'danger')
+        return redirect(url_for('financials.dashboard'))
     client = get_supabase_client()
     try:
         # Robust fetch: handle missing 'balance' column
@@ -750,6 +798,9 @@ def balance_sheet():
 @financials_bp.route('/reports/aging')
 @login_required
 def aging_report():
+    if not current_user.is_admin():
+        flash('Unauthorized: aging reports are restricted to administrators.', 'danger')
+        return redirect(url_for('financials.dashboard'))
     client = get_supabase_client()
     today = datetime.now().date()
     
@@ -787,6 +838,9 @@ def aging_report():
 @financials_bp.route('/reports/generate', methods=['POST'])
 @login_required
 def generate_report():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can generate new reports.', 'danger')
+        return redirect(url_for('financials.dashboard'))
     client = get_supabase_client()
     report_type = request.form.get('report_type')
     report_name = request.form.get('report_name', f"New {report_type} Report")

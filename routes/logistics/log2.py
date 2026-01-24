@@ -227,6 +227,9 @@ def list_vehicles():
 @log2_bp.route('/vehicles/add', methods=['POST'])
 @login_required
 def add_vehicle():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can add vehicles to the fleet.', 'danger')
+        return redirect(url_for('log2.list_vehicles'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -245,6 +248,9 @@ def add_vehicle():
 @log2_bp.route('/vehicles/edit/<int:vehicle_id>', methods=['POST'])
 @login_required
 def edit_vehicle(vehicle_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can modify vehicle details.', 'danger')
+        return redirect(url_for('log2.list_vehicles'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -263,6 +269,9 @@ def edit_vehicle(vehicle_id):
 @log2_bp.route('/vehicles/delete/<int:vehicle_id>', methods=['POST'])
 @login_required
 def delete_vehicle(vehicle_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can remove vehicles.', 'danger')
+        return redirect(url_for('log2.list_vehicles'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -341,6 +350,9 @@ def dispatch_board():
 @log2_bp.route('/dispatch/create', methods=['POST'])
 @login_required
 def create_dispatch():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can authorize vehicle dispatch.', 'danger')
+        return redirect(url_for('log2.dispatch_board'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -368,6 +380,9 @@ def create_dispatch():
 @log2_bp.route('/dispatch/complete', methods=['POST'])
 @login_required
 def complete_dispatch():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can finalize dispatch records.', 'danger')
+        return redirect(url_for('log2.dispatch_board'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -391,6 +406,9 @@ def complete_dispatch():
 @log2_bp.route('/dispatch/cancel', methods=['POST'])
 @login_required
 def cancel_dispatch():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can cancel dispatch orders.', 'danger')
+        return redirect(url_for('log2.dispatch_board'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -409,6 +427,9 @@ def cancel_dispatch():
 @log2_bp.route('/costs')
 @login_required
 def cost_analysis():
+    if not current_user.is_admin():
+        flash('Unauthorized: Cost analysis is restricted to administrators.', 'danger')
+        return redirect(url_for('log2.dashboard'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -457,6 +478,9 @@ def cost_analysis():
 @log2_bp.route('/costs/add', methods=['POST'])
 @login_required
 def add_cost():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can log fleet expenses.', 'danger')
+        return redirect(url_for('log2.dashboard'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -476,6 +500,9 @@ def add_cost():
 @log2_bp.route('/costs/delete/<int:cost_id>', methods=['POST'])
 @login_required
 def delete_cost(cost_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can void cost records.', 'danger')
+        return redirect(url_for('log2.dashboard'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -488,6 +515,9 @@ def delete_cost(cost_id):
 @log2_bp.route('/costs/export')
 @login_required
 def export_costs():
+    if not current_user.is_admin():
+        flash('Unauthorized: Data export is restricted to administrators.', 'danger')
+        return redirect(url_for('log2.dashboard'))
     from utils.supabase_client import get_supabase_client
     import csv
     import io
@@ -520,6 +550,9 @@ def export_costs():
 @log2_bp.route('/drivers')
 @login_required
 def list_drivers():
+    if not current_user.is_admin():
+        flash('Unauthorized: Personnel roster is restricted to administrators.', 'danger')
+        return redirect(url_for('log2.dashboard'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -543,6 +576,9 @@ def list_drivers():
 @log2_bp.route('/drivers/add', methods=['POST'])
 @login_required
 def add_driver():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can add new drivers.', 'danger')
+        return redirect(url_for('log2.dashboard'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -561,6 +597,9 @@ def add_driver():
 @log2_bp.route('/drivers/edit/<int:driver_id>', methods=['POST'])
 @login_required
 def edit_driver(driver_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can modify driver details.', 'danger')
+        return redirect(url_for('log2.dashboard'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -579,6 +618,9 @@ def edit_driver(driver_id):
 @log2_bp.route('/drivers/delete/<int:driver_id>', methods=['POST'])
 @login_required
 def delete_driver(driver_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can remove drivers.', 'danger')
+        return redirect(url_for('log2.dashboard'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:

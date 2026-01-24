@@ -126,6 +126,7 @@
         </a>
 
         <!-- Cash Mgmt -->
+        {% if current_user.is_admin() %}
         <a href="{{ url_for('financials.transactions') }}" class="group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
             <div class="h-2 bg-[#7C3AED]"></div>
             <div class="p-8">
@@ -139,8 +140,10 @@
                 <span class="text-sm font-bold text-[#7C3AED] flex items-center">Open Module <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i></span>
             </div>
         </a>
+        {% endif %}
 
         <!-- Financial Intel -->
+        {% if current_user.is_admin() %}
         <a href="{{ url_for('financials.reports_list') }}" class="group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
             <div class="h-2 bg-[#6D28D9]"></div>
             <div class="p-8">
@@ -154,13 +157,24 @@
                 <span class="text-sm font-bold text-[#6D28D9] flex items-center">Open Module <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i></span>
             </div>
         </a>
+        {% else %}
+        <div class="bg-gray-50 rounded-3xl border border-dashed border-gray-200 p-8 flex flex-col justify-center items-center text-center opacity-70">
+            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-4">
+                <i class="bi bi-lock-fill text-2xl"></i>
+            </div>
+            <h4 class="text-lg font-bold text-gray-600">Treasury & Reporting</h4>
+            <p class="text-xs text-gray-400 mt-2 max-w-[200px]">Access to cash management and financial intelligence is restricted to administrative roles.</p>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Recent Activity -->
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
             <h4 class="text-xl font-bold text-gray-900">Recent Financial Activity</h4>
+            {% if current_user.is_admin() %}
             <a href="{{ url_for('financials.reports_list') }}" class="text-sm font-bold text-purple-600 hover:text-purple-700">View Reports</a>
+            {% endif %}
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left">

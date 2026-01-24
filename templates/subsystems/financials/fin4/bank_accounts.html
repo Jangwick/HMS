@@ -10,10 +10,12 @@
             <h3 class="text-2xl font-bold text-gray-900">Bank Accounts</h3>
             <p class="text-gray-500">Manage hospital treasury and cash flow</p>
         </div>
+        {% if current_user.is_admin() %}
         <button onclick="openAddAccountModal()"
             class="px-6 py-2 bg-[#EF4444] text-white font-bold rounded-xl shadow-lg hover:bg-red-600 transition-all no-print">
             <i class="bi bi-plus-lg mr-2"></i> Add Account
         </button>
+        {% endif %}
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -22,6 +24,7 @@
             <div class="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full -mr-16 -mt-16 group-hover:bg-red-50 transition-colors"></div>
             
             <!-- Actions -->
+            {% if current_user.is_admin() %}
             <div class="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
                 <form action="{{ url_for('financials.delete_bank_account', account_id=acc.id) }}" method="POST" onsubmit="return confirm('Archive this bank account?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -30,6 +33,7 @@
                     </button>
                 </form>
             </div>
+            {% endif %}
 
             <div class="relative z-10">
                 <div class="w-12 h-12 bg-gray-900 text-white rounded-2xl flex items-center justify-center mb-6">

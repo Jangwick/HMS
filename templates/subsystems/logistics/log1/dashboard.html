@@ -100,36 +100,44 @@
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-boxes text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Inventory</span>
+                <span class="text-sm font-bold text-gray-700">Inventory Directory</span>
             </a>
             <a href="{{ url_for('log1.procurement') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-cart-check text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Procurement</span>
+                <span class="text-sm font-bold text-gray-700">Procurement Center</span>
             </a>
             <a href="{{ url_for('log1.list_assets') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-truck text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Assets</span>
+                <span class="text-sm font-bold text-gray-700">Asset Management</span>
+            </a>
+            {% if current_user.is_admin() %}
+            <a href="{{ url_for('log1.add_inventory_item') }}"
+                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
+                <i
+                    class="bi bi-plus-circle text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Add Stock Item</span>
             </a>
             <a href="{{ url_for('log1.list_documents') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-file-earmark-text text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Documents</span>
+                <span class="text-sm font-bold text-gray-700">Digital Archive</span>
             </a>
-            <a href="#" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
-                <i
-                    class="bi bi-arrow-up-right-circle text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Stock Out</span>
-            </a>
-            <a href="#" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
+            <a href="#" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group border border-amber-100">
                 <i
                     class="bi bi-file-earmark-bar-graph text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
-                <span class="text-sm font-bold text-gray-700">Inventory Report</span>
+                <span class="text-sm font-bold text-gray-700">Master Audit</span>
             </a>
+            {% else %}
+            <div class="p-4 bg-gray-50 rounded-xl text-center opacity-50">
+                <i class="bi bi-shield-lock text-2xl text-gray-400 mb-2 block"></i>
+                <span class="text-sm font-bold text-gray-400">Restricted Admin Area</span>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

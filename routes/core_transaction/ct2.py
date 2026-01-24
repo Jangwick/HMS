@@ -386,6 +386,10 @@ def pharmacy_inventory():
 @ct2_bp.route('/pharmacy/item/add', methods=['POST'])
 @login_required
 def add_pharmacy_item():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can add inventory items.', 'error')
+        return redirect(url_for('ct2.pharmacy_inventory'))
+
     from utils.hms_models import InventoryItem
     try:
         data = {
@@ -405,6 +409,10 @@ def add_pharmacy_item():
 @ct2_bp.route('/pharmacy/item/<int:item_id>/update', methods=['POST'])
 @login_required
 def update_pharmacy_item(item_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can update stock levels.', 'error')
+        return redirect(url_for('ct2.pharmacy_inventory'))
+        
     from utils.hms_models import InventoryItem
     try:
         data = {
@@ -421,6 +429,10 @@ def update_pharmacy_item(item_id):
 @ct2_bp.route('/pharmacy/item/<int:item_id>/delete', methods=['POST'])
 @login_required
 def delete_pharmacy_item(item_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can delete records.', 'error')
+        return redirect(url_for('ct2.pharmacy_inventory'))
+        
     from utils.hms_models import InventoryItem
     try:
         InventoryItem.delete(item_id)

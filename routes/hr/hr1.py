@@ -349,6 +349,10 @@ def list_applicants():
 @hr1_bp.route('/applicants/add', methods=['GET', 'POST'])
 @login_required
 def add_applicant():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr1.list_applicants'))
+        
     if request.method == 'POST':
         from utils.supabase_client import get_supabase_client
         client = get_supabase_client()
@@ -371,6 +375,10 @@ def add_applicant():
 @hr1_bp.route('/vacancies/add', methods=['GET', 'POST'])
 @login_required
 def add_vacancy():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr1.list_vacancies'))
+        
     if request.method == 'POST':
         from utils.supabase_client import get_supabase_client
         client = get_supabase_client()
@@ -397,6 +405,10 @@ def add_vacancy():
 @hr1_bp.route('/vacancies/edit/<int:id>', methods=['POST'])
 @login_required
 def edit_vacancy(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr1.list_vacancies'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -522,6 +534,10 @@ def schedule_interview():
 @hr1_bp.route('/applicants/<int:id>/status/<string:status>', methods=['POST'])
 @login_required
 def update_applicant_status_quick(id, status):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr1.list_applicants'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -536,6 +552,10 @@ def update_applicant_status_quick(id, status):
 @hr1_bp.route('/applicants/<int:id>/handoff', methods=['POST'])
 @login_required
 def handoff_hr2(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr1.list_applicants'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -568,6 +588,10 @@ def handoff_hr2(id):
 @hr1_bp.route('/applicants/<int:id>/schedule', methods=['POST'])
 @login_required
 def schedule_interview_quick(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr1.list_applicants'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -642,6 +666,10 @@ def update_applicant_status(id):
 @hr1_bp.route('/applicants/<int:id>/delete', methods=['POST'])
 @login_required
 def delete_applicant(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr1.list_applicants'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -656,6 +684,10 @@ def delete_applicant(id):
 @hr1_bp.route('/vacancies/<int:id>/delete', methods=['POST'])
 @login_required
 def delete_vacancy(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr1.list_vacancies'))
+        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     

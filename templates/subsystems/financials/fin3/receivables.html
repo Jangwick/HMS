@@ -73,10 +73,14 @@
                         <td class="px-8 py-5 text-right no-print">
                             <div class="flex justify-end space-x-2">
                                 {% if rec.status == 'Unpaid' %}
-                                <button onclick="openCollectionModal({{ rec.id }}, '{{ rec.patient_name }}', {{ rec.amount_due }})"
-                                    class="px-4 py-2 bg-gray-900 text-white font-bold text-sm rounded-lg hover:bg-gray-800 transition-all">
-                                    Collect
-                                </button>
+                                    {% if current_user.is_admin() %}
+                                    <button onclick="openCollectionModal({{ rec.id }}, '{{ rec.patient_name }}', {{ rec.amount_due }})"
+                                        class="px-4 py-2 bg-gray-900 text-white font-bold text-sm rounded-lg hover:bg-gray-800 transition-all">
+                                        Collect
+                                    </button>
+                                    {% else %}
+                                    <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">Awaiting Coll.</span>
+                                    {% endif %}
                                 {% endif %}
                                 <a href="{{ url_for('financials.view_bill', bill_id=rec.billing_id or 0) }}"
                                     class="p-2 text-gray-400 hover:text-[#EF4444] hover:bg-white rounded-lg transition-all">

@@ -102,20 +102,35 @@
             <div class="grid grid-cols-2 gap-4">
                 <a href="{{ url_for('hr2.onboarding_pipeline') }}" class="p-6 bg-cyan-50 rounded-2xl hover:bg-cyan-100 transition-colors group">
                     <i class="bi bi-person-check text-2xl text-cyan-600 mb-2 block"></i>
-                    <span class="font-bold text-cyan-900">Finalize Onboarding</span>
+                    <span class="font-bold text-cyan-900">Onboarding Queue</span>
                 </a>
                 <a href="{{ url_for('hr2.list_trainings') }}" class="p-6 bg-amber-50 rounded-2xl hover:bg-amber-100 transition-colors group">
                     <i class="bi bi-calendar-event text-2xl text-amber-600 mb-2 block"></i>
-                    <span class="font-bold text-amber-900">Schedule training</span>
+                    <span class="font-bold text-amber-900">Training Sessions</span>
                 </a>
+                {% if current_user.is_admin() %}
                 <a href="{{ url_for('hr2.list_competencies') }}" class="p-6 bg-indigo-50 rounded-2xl hover:bg-indigo-100 transition-colors group">
                     <i class="bi bi-list-check text-2xl text-indigo-600 mb-2 block"></i>
                     <span class="font-bold text-indigo-900">Manage Skills</span>
                 </a>
-                <a href="#" class="p-6 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors group opacity-50 cursor-not-allowed">
-                    <i class="bi bi-graph-up text-2xl text-gray-400 mb-2 block"></i>
-                    <span class="font-bold text-gray-400">Analytics</span>
+                {% else %}
+                <a href="{{ url_for('hr2.list_competencies') }}" class="p-6 bg-indigo-50 rounded-2xl hover:bg-indigo-100 transition-colors group">
+                    <i class="bi bi-award text-2xl text-indigo-600 mb-2 block"></i>
+                    <span class="font-bold text-indigo-900">Skill Profiles</span>
                 </a>
+                {% endif %}
+                
+                {% if current_user.is_admin() %}
+                <a href="#" class="p-6 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors group">
+                    <i class="bi bi-graph-up text-2xl text-cyan-600 mb-2 block"></i>
+                    <span class="font-bold text-gray-700">Analytics</span>
+                </a>
+                {% else %}
+                <div class="p-6 bg-gray-50 rounded-2xl opacity-50 cursor-not-allowed">
+                    <i class="bi bi-shield-lock text-2xl text-gray-400 mb-2 block"></i>
+                    <span class="font-bold text-gray-400">Restricted</span>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

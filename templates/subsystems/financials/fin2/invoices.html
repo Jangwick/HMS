@@ -15,10 +15,12 @@
                 class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
                 <i class="bi bi-people mr-2"></i> Manage Vendors
             </a>
+            {% if current_user.is_admin() %}
             <a href="{{ url_for('financials.add_invoice') }}"
                 class="px-6 py-2 bg-[#EF4444] text-white font-bold rounded-xl shadow-lg hover:bg-red-600 transition-all">
                 <i class="bi bi-plus-lg mr-2"></i> Add Invoice
             </a>
+            {% endif %}
         </div>
     </div>
 
@@ -72,10 +74,14 @@
                         <td class="px-8 py-5 text-right">
                             <div class="flex justify-end space-x-2">
                                 {% if inv.status != 'Paid' %}
-                                <button onclick="openPaymentModal({{ inv.id }}, '{{ inv.vendor_name }}', {{ inv.amount }})"
-                                    class="px-4 py-2 bg-gray-900 text-white font-bold text-sm rounded-lg hover:bg-gray-800 transition-all">
-                                    Pay Now
-                                </button>
+                                    {% if current_user.is_admin() %}
+                                    <button onclick="openPaymentModal({{ inv.id }}, '{{ inv.vendor_name }}', {{ inv.amount }})"
+                                        class="px-4 py-2 bg-gray-900 text-white font-bold text-sm rounded-lg hover:bg-gray-800 transition-all">
+                                        Pay Now
+                                    </button>
+                                    {% else %}
+                                    <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">Awaiting Pmt</span>
+                                    {% endif %}
                                 {% endif %}
                                 <button class="p-2 text-gray-400 hover:text-[#EF4444] hover:bg-white rounded-lg transition-all">
                                     <i class="bi bi-eye"></i>

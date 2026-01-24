@@ -104,11 +104,15 @@
                                 </td>
                                 <td class="text-end px-4">
                                     {% if record.fully_cleared %}
+                                        {% if current_user.is_admin() %}
                                         <form action="{{ url_for('ct3.clear_for_discharge', patient_id=record.patient_id) }}" method="POST" class="d-inline">
                                             <button type="submit" class="btn btn-sm btn-outline-success">
                                                 Complete Discharge
                                             </button>
                                         </form>
+                                        {% else %}
+                                        <span class="badge bg-info-soft text-info">Awaiting Admin Discharge</span>
+                                        {% endif %}
                                     {% else %}
                                         <button class="btn btn-sm btn-secondary disabled" title="All departments must clear first">
                                             Locked
