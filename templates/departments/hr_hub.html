@@ -151,9 +151,9 @@
             </div>
             
             <div class="flex items-center space-x-8 h-8">
-                <a href="#" class="inline-flex items-center hover:text-blue-600 transition-colors font-medium">Terms</a>
-                <a href="#" class="inline-flex items-center hover:text-blue-600 transition-colors font-medium">Privacy</a>
-                <a href="#" class="inline-flex items-center text-gray-900 font-bold hover:text-blue-600 transition-colors group">
+                <a href="{{ url_for('portal.terms') }}" class="inline-flex items-center hover:text-blue-600 transition-colors font-medium">Terms</a>
+                <a href="{{ url_for('portal.privacy') }}" class="inline-flex items-center hover:text-blue-600 transition-colors font-medium">Privacy</a>
+                <a href="{{ url_for('portal.support') }}" class="inline-flex items-center text-gray-900 font-bold hover:text-blue-600 transition-colors group">
                     <i class="bi bi-headset mr-2 text-blue-600 text-lg"></i>
                     <span>Support</span>
                 </a>

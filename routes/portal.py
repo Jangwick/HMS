@@ -21,3 +21,15 @@ def logistics_hub():
 @portal_bp.route('/financials')
 def financials_hub():
     return render_template('departments/financials_hub.html')
+
+@portal_bp.route('/terms')
+def terms():
+    return render_template('portal/terms.html')
+
+@portal_bp.route('/privacy')
+def privacy():
+    return render_template('portal/privacy.html')
+
+@portal_bp.route('/support')
+def support():
+    return render_template('portal/support.html')

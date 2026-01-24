@@ -1,0 +1,81 @@
+{% extends "base/base.html" %}
+
+{% block title %}Privacy Policy - HMS{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 font-sans flex flex-col">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center mr-4 shadow-lg text-white">
+                    <i class="bi bi-shield-lock text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Privacy Policy</h1>
+                    <p class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Data Protection</p>
+                </div>
+            </div>
+            <a href="{{ url_for('portal.index') }}" class="group flex items-center px-4 py-2 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all duration-200 font-medium">
+                <i class="bi bi-grid-3x3-gap-fill mr-2 text-gray-400 group-hover:text-gray-600 transition-colors"></i>
+                Back to Portal
+            </a>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 md:p-12">
+            <div class="prose prose-indigo max-w-none text-gray-600 leading-relaxed">
+                <p class="text-sm font-bold text-gray-400 mb-8 uppercase tracking-widest">Effective Date: January 24, 2026</p>
+                
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">1. Data Collection Scope</h2>
+                <p class="mb-6">HMS collects and processes personal and professional information necessary for hospital operations. This includes employee records, patient information, financial transactions, and system audit logs.</p>
+
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">2. Use of Information</h2>
+                <p class="mb-6">Information collected within HMS is used exclusively for:</p>
+                <ul class="list-disc pl-6 mb-8 space-y-2">
+                    <li>Healthcare delivery and patient management.</li>
+                    <li>Human resources and payroll administration.</li>
+                    <li>Logistics and supply chain optimization.</li>
+                    <li>Financial reporting and auditing.</li>
+                    <li>System security and access control monitoring.</li>
+                </ul>
+
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">3. Data Security Measures</h2>
+                <p class="mb-6">We implement robust security protocols, including encryption at rest and in transit, multi-factor authentication requirements, and subsystem isolation policies (HMS Fundamentals Policy) to prevent unauthorized access.</p>
+
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">4. Roles and Access</h2>
+                <p class="mb-6">Access is strictly granted on a "least privilege" basis. Employee data is only accessible to authorized HR personnel, and patient records are restricted to active clinical staff.</p>
+
+                <h2 class="text-20 text-2xl font-bold text-gray-900 mb-4">5. Auditing</h2>
+                <p class="mb-12">Every action taken within the system is logged. These logs are used for security auditing and ensuring compliance with healthcare data regulations.</p>
+
+                <div class="pt-8 border-t border-gray-100 text-center">
+                    <p class="text-sm text-gray-400">For privacy concerns or data access requests, please contact the Data Protection Officer.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Standardized Footer -->
+    <footer class="mt-auto max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-12 border-t border-gray-100 no-print">
+        <div class="flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0 text-sm text-gray-500">
+            <div class="flex items-center">
+                <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center mr-3 text-white shadow-md">
+                    <i class="bi bi-hospital text-sm"></i>
+                </div>
+                <span>© 2025 <span class="font-bold text-gray-900 tracking-tight">HMS ENTERPRISE</span>. All rights reserved.</span>
+            </div>
+            
+            <div class="flex items-center space-x-8 h-8">
+                <a href="{{ url_for('portal.terms') }}" class="inline-flex items-center hover:text-blue-600 transition-colors font-medium">System Terms</a>
+                <a href="{{ url_for('portal.privacy') }}" class="inline-flex items-center hover:text-blue-600 transition-colors font-medium">Privacy Policy</a>
+                <a href="{{ url_for('portal.support') }}" class="inline-flex items-center text-gray-900 font-bold hover:text-blue-600 transition-colors group">
+                    <i class="bi bi-headset mr-2 text-blue-600 text-lg"></i>
+                    <span>Technical Support</span>
+                </a>
+            </div>
+        </div>
+    </footer>
+</div>
+{% endblock %}
