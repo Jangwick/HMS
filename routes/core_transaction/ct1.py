@@ -293,6 +293,10 @@ def list_patients():
 @ct1_bp.route('/register-patient', methods=['GET', 'POST'])
 @login_required
 def register_patient():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can register patients.', 'error')
+        return redirect(url_for('ct1.list_patients'))
+
     from datetime import datetime
     if request.method == 'POST':
         from utils.hms_models import Patient
@@ -375,6 +379,10 @@ def view_patient(patient_id):
 @ct1_bp.route('/view-patient/edit/<patient_id>', methods=['POST'])
 @login_required
 def update_patient(patient_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can update patient records.', 'error')
+        return redirect(url_for('ct1.view_patient', patient_id=patient_id))
+    
     client = get_supabase_client()
     try:
         updated_data = {
@@ -399,6 +407,10 @@ def update_patient(patient_id):
 @ct1_bp.route('/patients/delete/<patient_id>', methods=['POST'])
 @login_required
 def delete_patient(patient_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can delete patient records.', 'error')
+        return redirect(url_for('ct1.view_patient', patient_id=patient_id))
+    
     client = get_supabase_client()
     try:
         # Check if patient has appointments
@@ -510,6 +522,48 @@ def update_bed(bed_id):
     except Exception as e:
         flash(f'Error updating bed: {str(e)}', 'danger')
         
+    return redirect(url_for('ct1.bed_management'))
+
+@ct1_bp.route('/beds/add', methods=['POST'])
+@login_required
+def add_bed():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can add beds.', 'error')
+        return redirect(url_for('ct1.bed_management'))
+    
+    client = get_supabase_client()
+    try:
+        bed_data = {
+            'room_number': request.form.get('room_number'),
+            'ward_name': request.form.get('ward_name'),
+            'type': request.form.get('type'),
+            'status': 'Available'
+        }
+        client.table('beds').insert(bed_data).execute()
+        flash('Bed added successfully!', 'success')
+    except Exception as e:
+        flash(f'Error adding bed: {str(e)}', 'danger')
+    return redirect(url_for('ct1.bed_management'))
+
+@ct1_bp.route('/beds/delete/<int:bed_id>', methods=['POST'])
+@login_required
+def delete_bed(bed_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can delete beds.', 'error')
+        return redirect(url_for('ct1.bed_management'))
+        
+    client = get_supabase_client()
+    try:
+        # Check if occupied
+        res = client.table('beds').select('status').eq('id', bed_id).execute()
+        if res.data and res.data[0]['status'] == 'Occupied':
+            flash('Cannot delete an occupied bed.', 'warning')
+            return redirect(url_for('ct1.bed_management'))
+            
+        client.table('beds').delete().eq('id', bed_id).execute()
+        flash('Bed deleted successfully.', 'success')
+    except Exception as e:
+        flash(f'Error deleting bed: {str(e)}', 'danger')
     return redirect(url_for('ct1.bed_management'))
 
 @ct1_bp.route('/logout')

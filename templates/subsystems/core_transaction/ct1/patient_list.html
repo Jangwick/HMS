@@ -11,12 +11,14 @@
             <h3 class="text-2xl font-bold text-gray-900">Patient Registry</h3>
             <p class="text-gray-500">View and manage all registered patients</p>
         </div>
-        <div class="flex flex-wrap gap-3">
+        <div class="flex wrap gap-3">
+            {% if current_user.is_admin() %}
             <a href="{{ url_for('ct1.register_patient') }}" 
                class="px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-600 transition-all flex items-center">
                 <i class="bi bi-person-plus-fill mr-2"></i>
                 Register Patient
             </a>
+            {% endif %}
         </div>
     </div>
 
@@ -102,6 +104,14 @@
                                    title="Book Appointment">
                                     <i class="bi bi-calendar-plus text-lg"></i>
                                 </a>
+                                {% if current_user.is_admin() %}
+                                <form action="{{ url_for('ct1.delete_patient', patient_id=patient.id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this patient record?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete Patient">
+                                        <i class="bi bi-trash text-lg"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>

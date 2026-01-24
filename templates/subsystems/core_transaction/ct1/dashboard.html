@@ -21,11 +21,13 @@
             <p class="text-white/80 text-base md:text-lg max-w-2xl">Manage patient registrations and appointments efficiently.</p>
 
             <div class="welcome-card-actions">
+                {% if current_user.is_admin() %}
                 <a href="{{ url_for('ct1.register_patient') }}"
                     class="px-6 py-3 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors text-center inline-flex items-center justify-center"
                     style="color: {{ accent_color or '#10B981' }};">
                     New Registration
                 </a>
+                {% endif %}
                 <a href="{{ url_for('ct1.search_patients') }}"
                     class="px-6 py-3 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center">
                     Search Patient
