@@ -17,12 +17,12 @@
 
             <div class="welcome-card-actions">
                 <a href="{{ url_for('log2.dispatch_board') }}"
-                    class="bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors text-center sm:text-left"
+                    class="px-6 py-3 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors text-center inline-flex items-center justify-center"
                     style="color: {{ accent_color or '#F97316' }};">
                     Dispatch Board
                 </a>
                 <a href="{{ url_for('log2.list_vehicles') }}"
-                    class="bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm text-center sm:text-left">
+                    class="px-6 py-3 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center">
                     Manage Fleet
                 </a>
             </div>

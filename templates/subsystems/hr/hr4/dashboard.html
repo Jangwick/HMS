@@ -20,14 +20,14 @@
             <h3 class="text-3xl font-bold mb-2">Welcome back, {{ current_user.username }}!</h3>
             <p class="text-white/80 text-lg max-w-2xl">Manage compensation structures and analyze workforce intelligence.</p>
 
-            <div class="mt-8 flex space-x-4">
+            <div class="welcome-card-actions">
                 <a href="{{ url_for('hr4.compensation') }}"
-                    class="px-6 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors"
+                    class="px-6 py-3 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors text-center inline-flex items-center justify-center"
                     style="color: {{ accent_color or '#6366F1' }};">
                     Manage Compensation
                 </a>
                 <a href="{{ url_for('hr4.salary_grades') }}"
-                    class="px-6 py-2.5 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm">
+                    class="px-6 py-3 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center">
                     Salary Grades
                 </a>
             </div>
