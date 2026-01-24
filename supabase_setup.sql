@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS users (
     is_active BOOLEAN DEFAULT TRUE,
     status VARCHAR(20) DEFAULT 'Pending', -- Pending, Active, Rejected
     
-    CONSTRAINT unique_username_per_subsystem UNIQUE (username, subsystem),
-    CONSTRAINT unique_email_per_subsystem UNIQUE (email, subsystem)
+    CONSTRAINT unique_username UNIQUE (username),
+    CONSTRAINT unique_email UNIQUE (email)
 );
 
 -- =====================================================

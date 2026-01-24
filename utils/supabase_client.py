@@ -53,11 +53,11 @@ def format_db_error(e: Exception) -> str:
     error_msg = str(e)
     # Check for unique constraint violation (PostgreSQL error code 23505)
     if '23505' in error_msg or 'duplicate key' in error_msg.lower():
-        if 'unique_email_per_subsystem' in error_msg or 'email' in error_msg.lower():
-            return 'This email address is already registered in this subsystem.'
-        if 'username' in error_msg.lower():
-            return 'This username is already taken in this subsystem.'
-        return 'A record with this information already exists in this subsystem.'
+        if 'unique_email' in error_msg or 'email' in error_msg.lower():
+            return 'This email address is already registered in the system.'
+        if 'unique_username' in error_msg or 'username' in error_msg.lower():
+            return 'This username is already taken. Please choose another.'
+        return 'A record with this information already exists.'
     
     return f'An error occurred: {error_msg}'
 
@@ -200,6 +200,18 @@ class User(UserMixin):
             return []
     
     @staticmethod
+    def get_by_email(email: str) -> 'User':
+        """Fetch user by email (case-insensitive)."""
+        try:
+            client = get_supabase_client()
+            response = client.table('users').select('*').ilike('email', email).execute()
+            if response.data:
+                return User(response.data[0])
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
     def create(username: str, email: str, password: str, subsystem: str, 
                department: str, role: str = 'Staff', status: str = 'Pending', 
                skip_validation: bool = False) -> 'User':
@@ -219,6 +231,15 @@ class User(UserMixin):
             from utils.password_validator import validate_password
             validate_password(password=password)
         
+        # Check for global uniqueness
+        if User.get_by_username(username):
+            raise ValueError(f"Username '{username}' is already taken in another department or subsystem.")
+        
+        # We need a way to check email without creating a circular dependency if possible
+        # but get_by_email is already a static method in this class.
+        if User.get_by_email(email):
+            raise ValueError(f"Email '{email}' is already used in another department or subsystem.")
+
         now = datetime.utcnow()
         password_hash = generate_password_hash(password)
         
