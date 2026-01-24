@@ -26,10 +26,17 @@
                     style="color: {{ accent_color or '#3B82F6' }};">
                     View Vacancies
                 </a>
+                {% if current_user.is_admin() %}
                 <a href="{{ url_for('hr1.list_applicants', action='add') }}"
                     class="px-6 py-3 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center">
                     Add Applicant
                 </a>
+                {% else %}
+                <a href="{{ url_for('hr1.list_applicants') }}"
+                    class="px-6 py-3 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center">
+                    My Applicants
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -83,12 +90,14 @@
                     style="color: {{ accent_color or '#3B82F6' }};"></i>
                 <span class="text-sm font-bold text-gray-700">New Applicant</span>
             </a>
+            {% if current_user.is_admin() %}
             <a href="{{ url_for('hr1.list_vacancies') }}" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-file-earmark-plus text-2xl mb-2 block group-hover:scale-110 transition-transform"
                     style="color: {{ accent_color or '#3B82F6' }};"></i>
                 <span class="text-sm font-bold text-gray-700">Manage Vacancies</span>
             </a>
+            {% endif %}
             <a href="{{ url_for('hr1.list_interviews') }}" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
                 <i
                     class="bi bi-calendar-event text-2xl mb-2 block group-hover:scale-110 transition-transform"

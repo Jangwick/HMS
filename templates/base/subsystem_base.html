@@ -167,10 +167,12 @@
 
                     <!-- HR3: Workforce Operations -->
                     {% elif blueprint_name == 'hr3' %}
+                    {% if current_user.is_admin() %}
                     <a href="{{ url_for('hr3.user_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.user_list' }}">
                         <i class="bi bi-people mr-3"></i>
                         <span>System Directory</span>
                     </a>
+                    {% endif %}
                     <a href="{{ url_for('hr3.list_attendance') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.list_attendance' }}">
                         <i class="bi bi-clock-history mr-3"></i>
                         <span>Attendance</span>
@@ -179,6 +181,7 @@
                         <i class="bi bi-calendar-minus mr-3"></i>
                         <span>Leave Requests</span>
                     </a>
+                    {% if current_user.is_admin() %}
                     <a href="{{ url_for('hr3.pending_approvals') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.pending_approvals' }}">
                         <i class="bi bi-person-check mr-3"></i>
                         <span>Approvals</span>
@@ -193,6 +196,7 @@
                         <i class="bi bi-graph-up-arrow mr-3"></i>
                         <span>Analytics</span>
                     </a>
+                    {% endif %}
 
                     <!-- HR4: Compensation & Analytics -->
                     {% elif blueprint_name == 'hr4' %}
@@ -262,6 +266,7 @@
                         <i class="bi bi-wallet2 mr-3"></i>
                         <span>Transactional Billing</span>
                     </a>
+                    {% if current_user.is_admin() %}
                     <a href="{{ url_for('ct3.security_logs') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.security_logs' }}">
                         <i class="bi bi-shield-check mr-3"></i>
                         <span>Security Admin</span>
@@ -272,6 +277,7 @@
                         <i class="bi bi-search mr-3"></i>
                         <span>Search Patient</span>
                     </a>
+                    {% endif %}
                     {% endif %}
 
                 <!-- Logistics Subsystems -->

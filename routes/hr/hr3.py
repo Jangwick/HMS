@@ -367,7 +367,7 @@ def request_leave():
 @hr3_bp.route('/admin/users')
 @login_required
 def user_list():
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+    if not current_user.is_admin() or current_user.subsystem != 'hr3':
         flash('Access denied.', 'danger')
         return redirect(url_for('hr3.dashboard'))
     

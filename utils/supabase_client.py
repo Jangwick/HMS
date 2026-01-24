@@ -107,7 +107,27 @@ class User(UserMixin):
     def get_id(self):
         """Return composite ID for Flask-Login: subsystem-id"""
         return f"{self.subsystem}-{self.id}"
-    
+
+    @property
+    def role_level(self):
+        """Get numerical level for role hierarchy."""
+        levels = {
+            'Staff': 1,
+            'Manager': 2,
+            'Admin': 3,
+            'Administrator': 3
+        }
+        return levels.get(self.role, 1)
+
+    def is_staff(self):
+        return self.role_level >= 1
+
+    def is_manager(self):
+        return self.role_level >= 2
+
+    def is_admin(self):
+        return self.role_level >= 3
+
     def check_password(self, password: str) -> bool:
         """Verify password against stored hash."""
         if not self.password_hash:

@@ -34,6 +34,7 @@
         </div>
     </div>
 
+    {% if current_user.is_manager() %}
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">

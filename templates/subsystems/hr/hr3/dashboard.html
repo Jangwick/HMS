@@ -16,6 +16,7 @@
             <p class="text-white/80 text-base md:text-lg max-w-2xl">Manage workforce attendance, leave requests, and system-wide user coordination.</p>
 
             <div class="welcome-card-actions">
+                {% if current_user.is_admin() %}
                 <a href="{{ url_for('hr3.pending_approvals') }}"
                     class="px-6 py-3 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors text-center inline-flex items-center justify-center"
                     style="color: {{ accent_color or '#4F46E5' }};">
@@ -25,6 +26,19 @@
                     class="px-6 py-3 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center">
                     System Analytics
                 </a>
+                {% else %}
+                <a href="{{ url_for('hr3.list_leaves') }}"
+                    class="px-6 py-3 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors text-center inline-flex items-center justify-center"
+                    style="color: {{ accent_color or '#4F46E5' }};">
+                    <i class="bi bi-calendar-plus mr-2"></i>
+                    Request Leave
+                </a>
+                <a href="{{ url_for('hr3.list_attendance') }}"
+                    class="px-6 py-3 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center">
+                    <i class="bi bi-person-badge mr-2"></i>
+                    Attendance Log
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -42,6 +56,7 @@
             <p class="text-indigo-500 text-sm font-medium mt-2">Active accounts</p>
         </div>
 
+        {% if current_user.is_admin() %}
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
                 <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Awaiting Approval</h4>
@@ -52,6 +67,7 @@
             <p class="text-3xl font-bold text-gray-900">{{ pending_count }}</p>
             <p class="text-amber-500 text-sm font-medium mt-2">Review required</p>
         </div>
+        {% endif %}
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
@@ -107,6 +123,7 @@
             </div>
         </div>
 
+        {% if current_user.is_admin() %}
         <!-- Admin Actions -->
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
             <h4 class="text-xl font-bold text-gray-900 mb-6">Workforce Actions</h4>
@@ -129,6 +146,22 @@
                 </a>
             </div>
         </div>
+        {% else %}
+        <!-- Staff View: Quick Links -->
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            <h4 class="text-xl font-bold text-gray-900 mb-6">Quick Links</h4>
+            <div class="grid grid-cols-2 gap-4">
+                <a href="{{ url_for('hr3.list_attendance') }}" class="p-6 bg-indigo-50 rounded-2xl hover:bg-indigo-100 transition-colors group">
+                    <i class="bi bi-clock-history text-2xl text-indigo-600 mb-2 block"></i>
+                    <span class="font-bold text-indigo-900">My Attendance</span>
+                </a>
+                <a href="{{ url_for('hr3.list_leaves') }}" class="p-6 bg-blue-50 rounded-2xl hover:bg-blue-100 transition-colors group">
+                    <i class="bi bi-calendar-minus text-2xl text-blue-600 mb-2 block"></i>
+                    <span class="font-bold text-blue-900">My Leaves</span>
+                </a>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Quick Tasks Section -->
