@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from utils.supabase_client import User, format_db_error
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
+from utils.policy import policy_required
 from datetime import datetime
 
 ct3_bp = Blueprint('ct3', __name__, template_folder='templates')
@@ -179,6 +180,7 @@ def change_password():
 
 @ct3_bp.route('/dashboard')
 @login_required
+@policy_required(BLUEPRINT_NAME)
 def dashboard():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()

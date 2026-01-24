@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from utils.supabase_client import User, format_db_error, get_supabase_client
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
+from utils.policy import policy_required
 from datetime import datetime, timedelta
 
 ct2_bp = Blueprint('ct2', __name__, template_folder='templates')
@@ -213,6 +214,7 @@ def change_password():
 
 @ct2_bp.route('/dashboard')
 @login_required
+@policy_required(BLUEPRINT_NAME)
 def dashboard():
     from utils.hms_models import LabOrder
     if current_user.should_warn_password_expiry():
