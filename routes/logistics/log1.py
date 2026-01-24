@@ -3,7 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from utils.supabase_client import User, format_db_error
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
-from datetime import datetime
+from datetime import datetime, timedelta
 
 log1_bp = Blueprint('log1', __name__, template_folder='templates')
 
@@ -521,6 +521,42 @@ def update_po_status(po_id):
         # Update status
         client.table('purchase_orders').update({'status': new_status}).eq('id', po_id).execute()
         
+        # INTEGRATION: Generate Vendor Invoice in Financials
+        # Trigger on 'Sent' or 'Approved' (Sent is used in the current UI workflow)
+        if new_status in ['Sent', 'Approved'] and old_status not in ['Sent', 'Approved']:
+            # 1. Ensure supplier exists as a vendor in Financials
+            supplier_resp = client.table('suppliers').select('*').eq('id', po_resp.data['supplier_id']).single().execute()
+            supplier = supplier_resp.data
+            if supplier:
+                # Find or create vendor in 'vendors' table
+                vendor_resp = client.table('vendors').select('*').eq('name', supplier['supplier_name']).execute()
+                if vendor_resp.data:
+                    vendor_id = vendor_resp.data[0]['id']
+                else:
+                    new_v = client.table('vendors').insert({
+                        'name': supplier['supplier_name'],
+                        'email': supplier['email'],
+                        'phone': supplier['phone']
+                    }).execute()
+                    vendor_id = new_v.data[0]['id']
+                
+                # 2. Create Vendor Invoice
+                client.table('vendor_invoices').insert({
+                    'vendor_id': vendor_id,
+                    'invoice_number': f"INV-{po_resp.data['po_number']}",
+                    'invoice_date': datetime.now().date().isoformat(),
+                    'due_date': (datetime.now() + timedelta(days=30)).date().isoformat(),
+                    'amount': po_resp.data['total_amount'],
+                    'status': 'Unpaid',
+                    'description': f"Auto-generated from PO #{po_resp.data['po_number']}"
+                }).execute()
+                flash('Vendor Invoice automatically generated in Financials.', 'info')
+
+        # AUDIT LOG
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Update PO Status", BLUEPRINT_NAME, 
+                     {"po_id": po_id, "new_status": new_status, "old_status": old_status})
+
         # If transitioning to "Received", automatically update inventory
         if new_status == 'Received' and old_status != 'Received':
             items_resp = client.table('po_items').select('*').eq('po_id', po_id).execute()

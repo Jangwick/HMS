@@ -234,3 +234,76 @@ class LabOrder:
         client = get_supabase_client()
         response = client.table('lab_orders').update(data).eq('id', order_id).execute()
         return response.data
+
+class Billing:
+    @staticmethod
+    def post_charge(patient_id, amount, description, source_subsystem):
+        from datetime import datetime, timedelta
+        client = get_supabase_client()
+        
+        # Look for an existing unpaid bill for this patient
+        try:
+            # Get the most recent unpaid bill for this patient
+            res = client.table('billing_records').select('*').eq('patient_id', patient_id).eq('status', 'Unpaid').order('created_at', desc=True).limit(1).execute()
+            
+            if res.data:
+                bill = res.data[0]
+                new_total = float(bill.get('total_amount', 0)) + float(amount)
+                new_desc = bill.get('description', '')
+                if new_desc:
+                    new_desc += f" | {description} ({source_subsystem})"
+                else:
+                    new_desc = f"{description} ({source_subsystem})"
+                    
+                client.table('billing_records').update({
+                    'total_amount': new_total,
+                    'description': new_desc
+                }).eq('id', bill['id']).execute()
+                
+                # Update receivables if it exists
+                client.table('receivables').update({
+                    'amount_due': new_total
+                }).eq('billing_id', bill['id']).execute()
+                
+                return bill['id']
+            else:
+                # Create a new bill
+                bill_data = {
+                    'patient_id': patient_id,
+                    'total_amount': amount,
+                    'status': 'Unpaid',
+                    'description': f"{description} ({source_subsystem})",
+                    'billing_date': datetime.now().isoformat()
+                }
+                new_bill = client.table('billing_records').insert(bill_data).execute()
+                if new_bill.data:
+                    bill_id = new_bill.data[0]['id']
+                    # Create receivable
+                    rec_data = {
+                        'billing_id': bill_id,
+                        'amount_due': amount,
+                        'due_date': (datetime.now() + timedelta(days=30)).date().isoformat(),
+                        'status': 'Unpaid'
+                    }
+                    client.table('receivables').insert(rec_data).execute()
+                    return bill_id
+        except Exception as e:
+            print(f"Error in post_charge: {e}")
+            return None
+
+class AuditLog:
+    @staticmethod
+    def log(user_id, action, subsystem, details=None):
+        client = get_supabase_client()
+        data = {
+            'user_id': user_id,
+            'action': action,
+            'subsystem': subsystem,
+            'details': details or {},
+            'created_at': datetime.now().isoformat()
+        }
+        try:
+            client.table('audit_logs').insert(data).execute()
+        except Exception as e:
+            print(f"Failed to write audit log: {e}")
+            # Silently fail to not block the main transaction

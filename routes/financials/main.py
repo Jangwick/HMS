@@ -354,6 +354,11 @@ def pay_invoice(invoice_id):
     # 1. Update invoice status
     client.table('vendor_invoices').update({'status': 'Paid'}).eq('id', invoice_id).execute()
     
+    # AUDIT LOG
+    from utils.hms_models import AuditLog
+    AuditLog.log(current_user.id, "Pay Vendor Invoice", BLUEPRINT_NAME, 
+                 {"invoice_id": invoice_id, "amount": invoice.get('amount')})
+    
     # 2. Record payment
     payment_data = {
         'invoice_id': invoice_id,

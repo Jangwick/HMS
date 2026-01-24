@@ -1,0 +1,163 @@
+{% extends "templates/base/subsystem_base.html" %}
+
+{% block subsystem_content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-0">Discharge Clearance Checklist</h1>
+            <p class="text-muted">Real-time integration with Billing, Lab, and Pharmacy</p>
+        </div>
+        <div class="text-end">
+            <span class="badge bg-success p-2">Integration Points Active</span>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="text-primary h1 mb-1">{{ admitted|length }}</div>
+                <div class="text-muted small text-uppercase">Currently Admitted</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm text-center p-3">
+                {% set ready_count = admitted|rejectattr('fully_cleared', 'false')|list|length %}
+                <div class="text-success h1 mb-1">{{ ready_count }}</div>
+                <div class="text-muted small text-uppercase">Ready for Discharge</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm text-center p-3">
+                {% set blocked_count = admitted|selectattr('fully_cleared', 'false')|list|length %}
+                <div class="text-danger h1 mb-1">{{ blocked_count }}</div>
+                <div class="text-muted small text-uppercase">Clearance Pending</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checklist Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="card-title mb-0">Patient Clearance Status</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light text-muted small text-uppercase">
+                        <tr>
+                            <th class="px-4">Patient / Ward</th>
+                            <th class="text-center">Billing (FIN)</th>
+                            <th class="text-center">Lab Status (CT2)</th>
+                            <th class="text-center">Medications (CT2)</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-end px-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if admitted %}
+                            {% for record in admitted %}
+                            <tr>
+                                <td class="px-4">
+                                    <div class="fw-bold">{{ record.patients.first_name }} {{ record.patients.last_name }}</div>
+                                    <div class="small text-muted">{{ record.ward_name }} - Case #{{ record.patients.patient_id_alt }}</div>
+                                </td>
+                                <td class="text-center">
+                                    {% if record.billing_cleared %}
+                                        <span class="badge rounded-pill bg-success-soft text-success px-3">
+                                            <i class="fas fa-check-circle me-1"></i> PAID
+                                        </span>
+                                    {% else %}
+                                        <span class="badge rounded-pill bg-danger-soft text-danger px-3">
+                                            <i class="fas fa-exclamation-circle me-1"></i> UNPAID
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if record.labs_cleared %}
+                                        <span class="badge rounded-pill bg-success-soft text-success px-3">
+                                            <i class="fas fa-check-circle me-1"></i> CLEAR
+                                        </span>
+                                    {% else %}
+                                        <span class="badge rounded-pill bg-warning-soft text-warning px-3">
+                                            <i class="fas fa-hourglass-half me-1"></i> PENDING
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if record.pharm_cleared %}
+                                        <span class="badge rounded-pill bg-success-soft text-success px-3">
+                                            <i class="fas fa-check-circle me-1"></i> CLEAR
+                                        </span>
+                                    {% else %}
+                                        <span class="badge rounded-pill bg-warning-soft text-warning px-3">
+                                            <i class="fas fa-hourglass-half me-1"></i> PENDING
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if record.fully_cleared %}
+                                        <span class="badge bg-success">READY</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">BLOCKED</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end px-4">
+                                    {% if record.fully_cleared %}
+                                        <form action="{{ url_for('ct3.clear_for_discharge', patient_id=record.patient_id) }}" method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-success">
+                                                Complete Discharge
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-secondary disabled" title="All departments must clear first">
+                                            Locked
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="fas fa-bed-pulse fa-3x mb-3 opacity-25"></i>
+                                    <p>No patients currently admitted in the wards.</p>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Integration Logic Legend -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card border-0 bg-light p-3 h-100">
+                <h6 class="fw-bold"><i class="fas fa-network-wired me-2"></i>Automation Rules</h6>
+                <ul class="small mb-0 text-muted">
+                    <li><strong>Finance:</strong> Patient balance MUST be 0.00 (all records marked 'Paid') to clear.</li>
+                    <li><strong>Clinical:</strong> All Lab Orders must be in 'Resulted' status.</li>
+                    <li><strong>Pharmacy:</strong> All Prescriptions must be in 'Dispensed' status.</li>
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 bg-light p-3 h-100">
+                <h6 class="fw-bold"><i class="fas fa-info-circle me-2"></i>Staff Guidance</h6>
+                <p class="small text-muted mb-0">
+                    If a patient is blocked, please contact the respective department (Pharmacy x102, Lab x105, or Billing x200). 
+                    Manual override requires HR3 Admin credentials.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-success-soft { background-color: #d1fae5; }
+    .bg-danger-soft { background-color: #fee2e2; }
+    .bg-warning-soft { background-color: #fef3c7; }
+</style>
+{% endblock %}

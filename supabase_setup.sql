@@ -940,3 +940,19 @@ BEGIN
     END IF;
 END $$;
 ALTER TABLE IF EXISTS fleet_costs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+
+-- =====================================================
+-- AUDIT LOGGING
+-- =====================================================
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    action VARCHAR(255) NOT NULL,
+    subsystem VARCHAR(50) NOT NULL,
+    details JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE IF EXISTS audit_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on audit_logs" ON audit_logs;
+CREATE POLICY "Allow all on audit_logs" ON audit_logs FOR ALL USING (true) WITH CHECK (true);

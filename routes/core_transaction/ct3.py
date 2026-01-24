@@ -315,6 +315,11 @@ def pay_bill(bill_id):
     
     try:
         client.table('billing_records').update({'status': 'Paid'}).eq('id', bill_id).execute()
+        
+        # AUDIT LOG
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Record Payment", BLUEPRINT_NAME, {"bill_id": bill_id})
+        
         flash('Payment recorded successfully.', 'success')
     except Exception as e:
         flash(f'Error recording payment: {str(e)}', 'danger')
@@ -526,6 +531,71 @@ def settings():
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+@ct3_bp.route('/discharge')
+@login_required
+def discharge():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Get all patients who are currently admitted (using beds as a proxy for admission)
+        beds_resp = client.table('beds').select('*, patients(*)').eq('status', 'Occupied').execute()
+        admitted = beds_resp.data if beds_resp.data else []
+        
+        # For each admitted patient, check clearance status
+        for record in admitted:
+            p_id = record.get('patient_id')
+            if not p_id: continue
+            
+            # 1. Check Billing Status (Integration Point: Finance)
+            bills_resp = client.table('billing_records').select('status').eq('patient_id', p_id).execute()
+            unpaid_bills = [b for b in bills_resp.data if b['status'] != 'Paid']
+            record['billing_cleared'] = (len(bills_resp.data) > 0 and len(unpaid_bills) == 0)
+            
+            # 2. Check Lab Status (Integration Point: Clinical Lab)
+            labs_resp = client.table('lab_orders').select('status').eq('patient_id', p_id).execute()
+            pending_labs = [l for l in labs_resp.data if l['status'] != 'Resulted']
+            record['labs_cleared'] = (len(labs_resp.data) == 0 or len(pending_labs) == 0)
+            
+            # 3. Check Pharmacy Status (Integration Point: Clinical Pharmacy)
+            pharm_resp = client.table('prescriptions').select('status').eq('patient_id', p_id).execute()
+            pending_meds = [p for p in pharm_resp.data if p['status'] != 'Dispensed']
+            record['pharm_cleared'] = (len(pharm_resp.data) == 0 or len(pending_meds) == 0)
+            
+            record['fully_cleared'] = record['billing_cleared'] and record['labs_cleared'] and record['pharm_cleared']
+            
+    except Exception as e:
+        flash(f'Error fetching discharge data: {str(e)}', 'danger')
+        admitted = []
+        
+    return render_template('subsystems/core_transaction/ct3/discharge.html',
+                           admitted=admitted,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct3_bp.route('/discharge/<int:patient_id>/clear', methods=['POST'])
+@login_required
+def clear_for_discharge(patient_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Final safety check before discharge
+        bills_resp = client.table('billing_records').select('status').eq('patient_id', patient_id).execute()
+        if not bills_resp.data or any(b['status'] != 'Paid' for b in bills_resp.data):
+             flash('Cannot discharge: Outstanding balance exists or no bill record found.', 'danger')
+             return redirect(url_for('ct3.discharge'))
+             
+        # Free up the bed
+        client.table('beds').update({'status': 'Available', 'patient_id': None}).eq('patient_id', patient_id).execute()
+        
+        flash('Patient discharged and bed cleared successfully.', 'success')
+    except Exception as e:
+        flash(f'Error during discharge: {str(e)}', 'danger')
+        
+    return redirect(url_for('ct3.discharge'))
 
 @ct3_bp.route('/logout')
 @login_required

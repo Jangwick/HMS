@@ -323,6 +323,12 @@ def new_lab_order():
             'critical_alert': 'critical_alert' in request.form
         }
         LabOrder.create(data)
+        
+        # Auto-Charge for Lab Order (INTEGRATION)
+        from utils.hms_models import Billing
+        lab_fee = 2500.0
+        Billing.post_charge(data['patient_id'], lab_fee, f"Lab Order: {data['test_name']}", "Laboratory (CT2)")
+        
         flash('Lab order created successfully!', 'success')
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
@@ -346,6 +352,12 @@ def update_lab_order(order_id):
             update_data['results'] = {'finding': results, 'updated_by': current_user.username}
             
         LabOrder.update(order_id, update_data)
+        
+        # AUDIT LOG
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Update Lab Order", BLUEPRINT_NAME, 
+                     {"order_id": order_id, "status": status, "is_critical": critical})
+                     
         flash('Lab order updated.', 'success')
     except Exception as e:
         flash(f'Update failed: {str(e)}', 'danger')
@@ -478,6 +490,19 @@ def dispense_meds():
                 }
                 client.table('prescriptions').insert(prescription_data).execute()
                 flash(f'Successfully dispensed {qty} of {med_name}.', 'success')
+            
+            # 3. Auto-Charge to Billing (INTEGRATION)
+            from utils.hms_models import Billing
+            # Assume a unit price for meds since it's not in DB yet
+            unit_price = 150.0 
+            total_charge = qty * unit_price
+            charge_desc = f"Medication Dispensed: {med_name} (x{qty})"
+            Billing.post_charge(patient_id, total_charge, charge_desc, "Pharmacy (CT2)")
+            
+            # AUDIT LOG
+            from utils.hms_models import AuditLog
+            AuditLog.log(current_user.id, "Dispense Medication", BLUEPRINT_NAME, 
+                         {"medication": med_name, "quantity": qty, "patient_id": patient_id})
             
             return redirect(url_for('ct2.pharmacy_inventory'))
             
