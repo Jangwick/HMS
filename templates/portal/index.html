@@ -3,7 +3,7 @@
 {% block title %}HMS - Main Portal{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 font-sans selection:bg-blue-100 selection:text-blue-900">
+<div class="min-h-screen bg-gray-50 font-sans selection:bg-blue-100 selection:text-blue-900 flex flex-col">
     <!-- Hero Section -->
     <div class="relative bg-white overflow-hidden">
         <div class="absolute inset-0">
@@ -134,10 +134,31 @@
         </div>
     </div>
 
-    <footer class="py-12 text-center">
-        <p class="text-gray-400 text-sm font-medium">
-            &copy; 2025 Hospital Management System ERP. All rights reserved.
-        </p>
+    <!-- Standardized Footer -->
+    <footer class="mt-auto max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-12 border-t border-gray-100 no-print">
+        <div class="flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0 text-sm text-gray-500">
+            <div class="flex items-center">
+                <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center mr-3 text-white shadow-md">
+                    <i class="bi bi-hospital text-sm"></i>
+                </div>
+                <span>© 2025 <span class="font-bold text-gray-900 tracking-tight">HMS ENTERPRISE</span>. All rights reserved.</span>
+            </div>
+            
+            <div class="flex items-center space-x-8 h-8">
+                <a href="#" class="inline-flex items-center hover:text-blue-600 transition-colors font-medium">System Terms</a>
+                <a href="#" class="inline-flex items-center hover:text-blue-600 transition-colors font-medium">Privacy Policy</a>
+                <a href="#" class="inline-flex items-center text-gray-900 font-bold hover:text-blue-600 transition-colors group">
+                    <i class="bi bi-headset mr-2 text-blue-600 text-lg"></i>
+                    <span>Technical Support</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="mt-8 pt-8 border-t border-gray-50 text-center">
+            <p class="text-[11px] text-gray-400 uppercase tracking-widest font-bold">
+                Secured by HMS Core Authentication & Access Control
+            </p>
+        </div>
     </footer>
 </div>
 {% endblock %}
