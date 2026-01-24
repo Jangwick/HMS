@@ -298,7 +298,8 @@ CREATE TABLE IF NOT EXISTS beds (
     room_number VARCHAR(20),
     ward_name VARCHAR(50),
     type VARCHAR(50), -- ICU, Regular, Isolation
-    status VARCHAR(50) DEFAULT 'Available' -- Available, Occupied, Cleaning
+    status VARCHAR(50) DEFAULT 'Available', -- Available, Occupied, Cleaning
+    patient_id INTEGER REFERENCES patients(id) ON DELETE SET NULL
 );
 
 -- =====================================================

@@ -21,7 +21,7 @@ def login():
     locked, remaining_seconds, unlock_time_str = is_ip_locked()
     if locked:
         flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
-        return render_template('shared/login.html', 
+        return render_template('subsystems/hr/hr3/login.html', 
                                remaining_seconds=remaining_seconds,
                                subsystem_name=SUBSYSTEM_NAME,
                                accent_color=ACCENT_COLOR,
@@ -45,7 +45,7 @@ def login():
                         flash('Your account is awaiting approval from HR3 Admin.', 'info')
                     else:
                         flash('Your account has been rejected or deactivated.', 'danger')
-                    return render_template('shared/login.html',
+                    return render_template('subsystems/hr/hr3/login.html',
                                            subsystem_name=SUBSYSTEM_NAME,
                                            accent_color=ACCENT_COLOR,
                                            subsystem_icon=SUBSYSTEM_ICON,
@@ -70,7 +70,7 @@ def login():
                     return redirect(url_for('hr3.dashboard'))
                 else:
                     flash('Login failed. Your account may be deactivated.', 'danger')
-                    return render_template('shared/login.html',
+                    return render_template('subsystems/hr/hr3/login.html',
                                            subsystem_name=SUBSYSTEM_NAME,
                                            accent_color=ACCENT_COLOR,
                                            subsystem_icon=SUBSYSTEM_ICON,
@@ -82,7 +82,7 @@ def login():
                 
                 if is_now_locked:
                     flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
-                    return render_template('shared/login.html', 
+                    return render_template('subsystems/hr/hr3/login.html', 
                                            remaining_seconds=remaining_seconds,
                                            subsystem_name=SUBSYSTEM_NAME,
                                            accent_color=ACCENT_COLOR,
@@ -107,7 +107,7 @@ def login():
             is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
             
             if is_now_locked:
-                return render_template('shared/login.html', 
+                return render_template('subsystems/hr/hr3/login.html', 
                                        remaining_seconds=remaining_seconds,
                                        subsystem_name=SUBSYSTEM_NAME,
                                        accent_color=ACCENT_COLOR,
@@ -115,7 +115,7 @@ def login():
                                        blueprint_name=BLUEPRINT_NAME,
                                        hub_route='portal.hr_hub')
             
-    return render_template('shared/login.html',
+    return render_template('subsystems/hr/hr3/login.html',
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            subsystem_icon=SUBSYSTEM_ICON,

@@ -74,6 +74,24 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #cbd5e1;
         }
+
+        /* Page Animations */
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.4s ease-out forwards;
+        }
+
+        /* Stabilize Layout */
+        html {
+            scrollbar-gutter: stable;
+        }
+
+        main {
+            overscroll-behavior-y: contain;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -373,7 +391,7 @@
         </aside>
 
         <!-- Main Content -->
-        <div class="flex-1 flex flex-col overflow-hidden relative">
+        <div class="flex-1 flex flex-col min-h-0 overflow-hidden relative">
             <!-- Top Header -->
             <header
                 class="bg-white/80 backdrop-blur-md shadow-sm h-20 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 border-b border-gray-100 no-print">
@@ -398,42 +416,45 @@
             </header>
 
             <!-- Content Scroll Area -->
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-8 flex flex-col">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                <div class="mb-6 space-y-2">
-                    {% for category, message in messages %}
-                    <div
-                        class="p-4 rounded-xl {% if category == 'success' %}bg-green-50 text-green-700 border border-green-100{% elif category == 'danger' %}bg-red-50 text-red-700 border border-red-100{% else %}bg-blue-50 text-blue-700 border border-blue-100{% endif %} flex items-center shadow-sm animate-fade-in">
-                        <i
-                            class="bi {% if category == 'success' %}bi-check-circle-fill{% elif category == 'danger' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %} mr-3"></i>
-                        <span class="font-medium">{{ message }}</span>
+            <main class="flex-1 min-h-0 overflow-x-hidden overflow-y-auto bg-gray-50 relative animate-fade-in shadow-inner">
+                <div class="p-4 md:p-8 flex flex-col min-h-full">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    <div class="mb-6 space-y-2">
+                        {% for category, message in messages %}
+                        <div
+                            class="p-4 rounded-xl {% if category == 'success' %}bg-green-50 text-green-700 border border-green-100{% elif category == 'danger' %}bg-red-50 text-red-700 border border-red-100{% else %}bg-blue-50 text-blue-700 border border-blue-100{% endif %} flex items-center shadow-sm">
+                            <i
+                                class="bi {% if category == 'success' %}bi-check-circle-fill{% elif category == 'danger' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %} mr-3"></i>
+                            <span class="font-medium">{{ message }}</span>
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    {% block content %}{% endblock %}
+
+                    <!-- Standardized Footer -->
+                    <footer class="mt-auto pt-12 pb-8 border-t border-gray-100 no-print">
+                        <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-sm text-gray-500">
+                            <div class="flex items-center">
+                                <i class="bi bi-hospital text-accent mr-2"></i>
+                                <span>© 2025 <span class="font-semibold text-gray-900">Hospital Management System</span>. All rights reserved.</span>
+                            </div>
+                            <div class="flex items-center space-x-6 h-8">
+                                <a href="{{ url_for('portal.terms') }}" class="inline-flex items-center hover:text-accent transition-colors font-medium">Terms</a>
+                                <a href="{{ url_for('portal.privacy') }}" class="inline-flex items-center hover:text-accent transition-colors font-medium">Privacy</a>
+                                <a href="#" class="inline-flex items-center hover:text-accent transition-colors font-medium">Legal</a>
+                                <a href="{{ url_for('portal.support') }}" class="inline-flex items-center hover:text-accent transition-colors group">
+                                    <i class="bi bi-headset mr-2 text-accent text-lg"></i>
+                                    <span>Support</span>
+                                </a>
+                            </div>
+                        </div>
+                    </footer>
                 </div>
-                {% endif %}
-                {% endwith %}
-
-                {% block content %}{% endblock %}
-
-                <!-- Standardized Footer -->
-                <footer class="mt-auto pt-12 pb-8 border-t border-gray-100 no-print">
-                    <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-sm text-gray-500">
-                        <div class="flex items-center">
-                            <i class="bi bi-hospital text-accent mr-2"></i>
-                            <span>© 2025 <span class="font-semibold text-gray-900">Hospital Management System</span>. All rights reserved.</span>
-                        </div>
-                        <div class="flex items-center space-x-6 h-8">
-                            <a href="{{ url_for('portal.terms') }}" class="inline-flex items-center hover:text-accent transition-colors font-medium">Terms</a>
-                            <a href="{{ url_for('portal.privacy') }}" class="inline-flex items-center hover:text-accent transition-colors font-medium">Privacy</a>
-                            <a href="#" class="inline-flex items-center hover:text-accent transition-colors font-medium">Legal</a>
-                            <a href="{{ url_for('portal.support') }}" class="inline-flex items-center hover:text-accent transition-colors group">
-                                <i class="bi bi-headset mr-2 text-accent text-lg"></i>
-                                <span>Support</span>
-                            </a>
-                        </div>
-                    </div>
-                </footer>
+            </main>
             </main>
         </div>
     </div>

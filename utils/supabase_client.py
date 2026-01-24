@@ -351,9 +351,9 @@ class User(UserMixin):
 
 # Subsystem configuration mapping
 SUBSYSTEM_CONFIG = {
-    'hr1': {'department': 'HR', 'name': 'Recruitment'},
-    'hr2': {'department': 'HR', 'name': 'Payroll Management'},
-    'hr3': {'department': 'HR', 'name': 'Benefits Administration'},
+    'hr1': {'department': 'HR', 'name': 'Talent Acquisition'},
+    'hr2': {'department': 'HR', 'name': 'Talent Development'},
+    'hr3': {'department': 'HR', 'name': 'Workforce Operations'},
     'hr4': {'department': 'HR', 'name': 'Compensation & Analytics'},
     'ct1': {'department': 'CORE_TRANSACTION', 'name': 'Patient Registration'},
     'ct2': {'department': 'CORE_TRANSACTION', 'name': 'Pharmacy & Labs'},

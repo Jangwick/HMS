@@ -386,13 +386,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function openInterviewModal(applicant) {
     document.getElementById('interviewApplicantName').innerText = `Candidate: ${applicant.first_name} ${applicant.last_name}`;
-    document.getElementById('scheduleInterviewForm').action = `/hr1/applicants/${applicant.id}/schedule`;
+    document.getElementById('scheduleInterviewForm').action = `/hr/hr1/applicants/${applicant.id}/schedule`;
     openModal('scheduleInterviewModal');
 }
 
 function openOfferModal(applicant) {
     document.getElementById('offerApplicantName').innerText = `Candidate: ${applicant.first_name} ${applicant.last_name}`;
-    document.getElementById('offerForm').action = `/hr1/applicants/${applicant.id}/status/Offer`;
+    document.getElementById('offerForm').action = `/hr/hr1/applicants/${applicant.id}/status/Offer`;
     openModal('offerModal');
 }
 </script>
