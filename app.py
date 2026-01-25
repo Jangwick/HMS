@@ -115,6 +115,19 @@ def create_app(config_class=Config):
             'unread_notifications_count': 0
         }
 
+    @app.context_processor
+    def inject_attendance():
+        from flask_login import current_user
+        from utils.supabase_client import get_supabase_client
+        if current_user.is_authenticated:
+            try:
+                client = get_supabase_client()
+                active_log = client.table('attendance_logs').select('*').eq('user_id', current_user.id).is_('clock_out', 'null').execute()
+                return {'active_attendance': active_log.data[0] if active_log.data else None}
+            except Exception:
+                pass
+        return {'active_attendance': None}
+
     @app.after_request
     def add_header(response):
         """

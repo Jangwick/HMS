@@ -10,6 +10,7 @@
         {% if not is_clocked_in %}
         <form action="{{ url_for('hr3.clock_in') }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
             <button type="submit" class="bg-accent hover:opacity-90 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-accent/20 transition-all flex items-center">
                 <i class="bi bi-fingerprint mr-2"></i> Clock In
             </button>
@@ -55,6 +56,7 @@
                             {% if not log.clock_out and log.user_id == current_user.id %}
                             <form action="{{ url_for('hr3.clock_out') }}" method="POST">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="next" value="{{ request.path }}">
                                 <button type="submit" class="text-rose-600 hover:text-rose-700 font-bold text-xs uppercase tracking-widest">
                                     Clock Out
                                 </button>

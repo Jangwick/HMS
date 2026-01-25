@@ -191,6 +191,7 @@
                 </div>
                 <form action="{{ url_for('hr3.clock_out') }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="next" value="{{ request.path }}">
                     <button type="submit" class="w-full py-4 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-2xl shadow-lg shadow-rose-200 transition-all flex items-center justify-center">
                         <i class="bi bi-box-arrow-right mr-2"></i> Clock Out Now
                     </button>
@@ -207,6 +208,7 @@
                 </div>
                 <form action="{{ url_for('hr3.clock_in') }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="next" value="{{ request.path }}">
                     <button type="submit" class="w-full py-4 bg-accent hover:opacity-90 text-white font-bold rounded-2xl shadow-lg shadow-accent/20 transition-all flex items-center justify-center">
                         <i class="bi bi-fingerprint mr-2"></i> Clock In Now
                     </button>

@@ -77,19 +77,33 @@
                             <span class="text-sm font-medium text-gray-600">{{ training.target_department }}</span>
                         </td>
                         <td class="px-6 py-4">
+                            {% set is_full = training.participant_count >= training.max_participants if training.max_participants > 0 else false %}
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-bold text-gray-900">{{ training.participant_count }}<span class="text-gray-400 font-normal">/{{ training.max_participants }}</span></span>
                                 <div class="w-12 h-1 bg-gray-100 rounded-full overflow-hidden">
                                     {% set percent = (training.participant_count / training.max_participants * 100) if training.max_participants > 0 else 0 %}
-                                    <div class="h-full bg-[#0891B2]" style="width: {{ percent }}%"></div>
+                                    <div class="h-full {% if is_full %}bg-red-500{% else %}bg-[#0891B2]{% endif %}" style="width: {{ percent }}%"></div>
                                 </div>
+                                {% if is_full %}
+                                <span class="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-black rounded-lg border border-red-100 uppercase tracking-tighter">
+                                    FULL
+                                </span>
+                                {% endif %}
                             </div>
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex justify-end gap-1">
+                                {% set is_full = training.participant_count >= training.max_participants if training.max_participants > 0 else false %}
+                                {% set is_completed = training.status == 'Completed' %}
                                 <button onclick='openEnrollModal({{ training | tojson | safe }})' 
-                                        class="p-2 text-[#0891B2] hover:bg-cyan-50 rounded-xl transition-all"
-                                        title="Enroll Staff">
+                                        class="p-2 rounded-xl transition-all 
+                                        {% if is_full or is_completed %}text-gray-200 cursor-not-allowed{% else %}text-[#0891B2] hover:bg-cyan-50{% endif %}"
+                                        {% if is_full or is_completed %}
+                                            disabled 
+                                            title="{% if is_completed %}Training Completed{% else %}Capacity Reached{% endif %}"
+                                        {% else %}
+                                            title="Enroll Staff"
+                                        {% endif %}>
                                     <i class="bi bi-person-plus-fill"></i>
                                 </button>
                                 <button onclick='openViewTrainingModal({{ training | tojson | safe }}, {{ participants | selectattr("training_id", "equalto", training.id) | list | tojson | safe }})' 
@@ -365,7 +379,12 @@
         document.getElementById('viewDate').textContent = training.schedule_date;
         document.getElementById('viewLocation').textContent = training.location;
         document.getElementById('viewDept').textContent = training.target_department;
-        document.getElementById('viewParticipantCount').textContent = training.participant_count + ' / ' + training.max_participants;
+        
+        const countEl = document.getElementById('viewParticipantCount');
+        countEl.textContent = training.participant_count + ' / ' + training.max_participants;
+        if (training.max_participants > 0 && training.participant_count >= training.max_participants) {
+            countEl.innerHTML += ' <span class="ml-2 px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-black rounded border border-red-100 uppercase tracking-tighter">Capacity Full</span>';
+        }
 
         const badge = document.getElementById('viewStatusBadge');
         badge.textContent = training.status;
@@ -420,6 +439,14 @@
     }
 
     function openEnrollModal(training) {
+        if (training.max_participants > 0 && training.participant_count >= training.max_participants) {
+            alert('Capacity Reached: This training session is already full.');
+            return;
+        }
+        if (training.status === 'Completed') {
+            alert('Training Completed: You cannot enroll in a completed session.');
+            return;
+        }
         document.getElementById('enrollTrainingId').value = training.id;
         document.getElementById('enrollProgramTitle').textContent = training.title;
         document.getElementById('enrollModal').classList.remove('hidden');

@@ -438,6 +438,24 @@ def enroll_staff():
     user_id = request.form.get('user_id')
     
     try:
+        # Check capacity
+        training = client.table('trainings').select('max_participants, status').eq('id', training_id).single().execute().data
+        if not training:
+            flash('Training session not found.', 'danger')
+            return redirect(url_for('hr2.list_trainings'))
+            
+        if training['status'] == 'Completed':
+            flash('Cannot enroll in a completed training session.', 'warning')
+            return redirect(url_for('hr2.list_trainings'))
+
+        count_resp = client.table('training_participants').select('id', count='exact').eq('training_id', training_id).execute()
+        current_count = count_resp.count or 0
+        max_p = int(training.get('max_participants') or 0)
+        
+        if max_p > 0 and current_count >= max_p:
+            flash('Enrollment failed: This session has reached its maximum capacity.', 'danger')
+            return redirect(url_for('hr2.list_trainings'))
+
         # Check if already enrolled
         client.table('training_participants').insert({
             'training_id': training_id,

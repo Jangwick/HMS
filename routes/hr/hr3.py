@@ -287,6 +287,12 @@ def clock_in():
     active_log = client.table('attendance_logs').select('*').eq('user_id', current_user.id).is_('clock_out', 'null').execute()
     if active_log.data:
         flash('You are already clocked in.', 'warning')
+        next_page = request.form.get('next') or request.args.get('next') or request.referrer
+        if next_page and 'hr3/attendance' not in next_page and 'clock-in' not in next_page:
+            return redirect(next_page)
+        if current_user.subsystem and current_user.subsystem != 'hr3':
+            try: return redirect(url_for(f'{current_user.subsystem}.dashboard'))
+            except: pass
         return redirect(url_for('hr3.dashboard'))
     
     now = datetime.now()
@@ -306,7 +312,20 @@ def clock_in():
         flash(f'Clocked in successfully at {now.strftime("%H:%M")}. Status: {status}', 'success')
     except Exception as e:
         flash(f'Error during clock-in: {str(e)}', 'danger')
+    
+    # Return to previous page if available
+    next_page = request.form.get('next') or request.args.get('next') or request.referrer
+    
+    if next_page and 'hr3/attendance' not in next_page and 'clock-in' not in next_page:
+        return redirect(next_page)
         
+    # Default fallback: redirect to their own subsystem dashboard
+    if current_user.subsystem and current_user.subsystem != 'hr3':
+        try:
+            return redirect(url_for(f'{current_user.subsystem}.dashboard'))
+        except:
+            pass
+            
     return redirect(url_for('hr3.dashboard'))
 
 @hr3_bp.route('/attendance/clock-out', methods=['POST'])
@@ -318,6 +337,12 @@ def clock_out():
     active_log = client.table('attendance_logs').select('*').eq('user_id', current_user.id).is_('clock_out', 'null').execute()
     if not active_log.data:
         flash('No active clock-in found.', 'warning')
+        next_page = request.form.get('next') or request.args.get('next') or request.referrer
+        if next_page and 'hr3/attendance' not in next_page and 'clock-out' not in next_page:
+            return redirect(next_page)
+        if current_user.subsystem and current_user.subsystem != 'hr3':
+            try: return redirect(url_for(f'{current_user.subsystem}.dashboard'))
+            except: pass
         return redirect(url_for('hr3.dashboard'))
     
     try:
@@ -329,6 +354,19 @@ def clock_out():
     except Exception as e:
         flash(f'Error during clock-out: {str(e)}', 'danger')
         
+    # Return to previous page if available
+    next_page = request.form.get('next') or request.args.get('next') or request.referrer
+    
+    if next_page and 'hr3/attendance' not in next_page and 'clock-out' not in next_page:
+        return redirect(next_page)
+
+    # Default fallback: redirect to their own subsystem dashboard
+    if current_user.subsystem and current_user.subsystem != 'hr3':
+        try:
+            return redirect(url_for(f'{current_user.subsystem}.dashboard'))
+        except:
+            pass
+            
     return redirect(url_for('hr3.dashboard'))
 
 @hr3_bp.route('/leaves/request', methods=['GET', 'POST'])
