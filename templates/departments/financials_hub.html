@@ -17,6 +17,18 @@
                 </div>
             </div>
             <div class="flex items-center space-x-3 md:space-x-4">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('portal.profile') }}" class="flex items-center space-x-2 md:space-x-3 p-1.5 pr-3 md:pr-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-purple-200 transition-all">
+                    {% if current_user.avatar_url %}
+                    <img src="{{ current_user.avatar_url }}" alt="" class="w-8 h-8 rounded-lg border border-white shadow-sm">
+                    {% else %}
+                    <div class="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                        {{ current_user.username[0] | upper }}
+                    </div>
+                    {% endif %}
+                    <p class="text-xs font-bold text-gray-700 leading-tight">{{ current_user.username }}</p>
+                </a>
+                {% endif %}
                 <a href="{{ url_for('portal.index') }}"
                     class="group flex items-center px-3 md:px-4 py-2 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all duration-200 font-medium whitespace-nowrap">
                     <i class="bi bi-grid-3x3-gap-fill md:mr-2 text-gray-400 group-hover:text-gray-600 transition-colors"></i>
