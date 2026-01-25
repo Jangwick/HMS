@@ -1,10 +1,16 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, redirect, url_for, flash
+from flask_login import login_required, current_user
 
 portal_bp = Blueprint('portal', __name__)
 
 @portal_bp.route('/')
 def index():
     return render_template('portal/index.html')
+
+@portal_bp.route('/profile')
+@login_required
+def profile():
+    return render_template('portal/profile.html', user=current_user)
 
 @portal_bp.route('/hr')
 def hr_hub():

@@ -4,6 +4,37 @@
 
 {% block content %}
 <div class="min-h-screen bg-gray-50 font-sans selection:bg-blue-100 selection:text-blue-900 flex flex-col">
+    <!-- Portal Header -->
+    <nav class="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center mr-3 text-white shadow-md">
+                    <i class="bi bi-hospital text-sm"></i>
+                </div>
+                <span class="font-bold text-gray-900 tracking-tight">HMS ENTERPRISE</span>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('portal.profile') }}" class="flex items-center space-x-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all duration-200 border border-gray-100 group">
+                    <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold shadow-sm group-hover:bg-blue-700 transition-colors">
+                        {{ current_user.username[0] | upper }}
+                    </div>
+                    <div class="text-left hidden sm:block">
+                        <p class="text-xs font-bold text-gray-900 leading-none">{{ current_user.username }}</p>
+                        <p class="text-[10px] font-bold text-blue-600 uppercase tracking-tighter mt-0.5">My Profile</p>
+                    </div>
+                </a>
+                {% else %}
+                <div class="flex items-center space-x-2">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-2">Core Auth Required</span>
+                    <i class="bi bi-shield-lock text-gray-300"></i>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
     <!-- Hero Section -->
     <div class="relative bg-white overflow-hidden">
         <div class="absolute inset-0">
