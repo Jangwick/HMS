@@ -16,6 +16,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(80) NOT NULL,
+    full_name VARCHAR(100),
     email VARCHAR(120) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     subsystem VARCHAR(20) NOT NULL,  -- hr1, hr2, ct1, ct2, log1, fin1, etc.
@@ -177,6 +178,7 @@ CREATE TABLE IF NOT EXISTS staff_schedules (
     end_time TIME NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
     CONSTRAINT unique_user_day UNIQUE (user_id, day_of_week)
 );
 

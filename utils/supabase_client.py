@@ -72,6 +72,7 @@ class User(UserMixin):
         if data:
             self.id = data.get('id')
             self.username = data.get('username')
+            self.full_name = data.get('full_name') or data.get('username')
             self.email = data.get('email')
             self.password_hash = data.get('password_hash')
             self.subsystem = data.get('subsystem')
@@ -235,7 +236,7 @@ class User(UserMixin):
     @staticmethod
     def create(username: str, email: str, password: str, subsystem: str, 
                department: str, role: str = 'Staff', status: str = 'Pending', 
-               skip_validation: bool = False) -> 'User':
+               full_name: str = None, skip_validation: bool = False) -> 'User':
         """
         Create a new user in the database.
         
@@ -246,6 +247,7 @@ class User(UserMixin):
             subsystem: Subsystem code (hr1, hr2, ct1, etc.)
             department: Department name
             role: User role (default: Staff)
+            full_name: User's full name (optional)
             skip_validation: Skip password validation (for initial setup)
         """
         if not skip_validation:
@@ -266,6 +268,7 @@ class User(UserMixin):
         
         data = {
             'username': username,
+            'full_name': full_name or username,
             'email': email,
             'password_hash': password_hash,
             'subsystem': subsystem,

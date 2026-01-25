@@ -253,7 +253,7 @@ def dashboard():
         pending_leaves = leave_resp.count if leave_resp.count is not None else 0
         
         # Recent activity - Mix of new users and leave requests with avatars
-        recent_leaves = client.table('leave_requests').select('*, users:users!leave_requests_user_id_fkey(username, full_name, avatar_url)').order('created_at', desc=True).limit(3).execute().data or []
+        recent_leaves = client.table('leave_requests').select('*, users:users!leave_requests_user_id_fkey(username, avatar_url)').order('created_at', desc=True).limit(3).execute().data or []
         
         # Get Current user's schedule for today
         day_name = datetime.now().strftime('%A')
@@ -842,7 +842,7 @@ def list_attendance():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    query = client.table('attendance_logs').select('*, users(full_name, username, avatar_url)')
+    query = client.table('attendance_logs').select('*, users(username, avatar_url)')
     
     # Non-admins only see their own logs
     if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
@@ -860,7 +860,7 @@ def list_attendance():
             
             # Get everyone's schedules for today
             sched_query = client.table('staff_schedules')\
-                .select('*, users(full_name, username, avatar_url)')\
+                .select('*, users(username, avatar_url)')\
                 .eq('is_active', True)\
                 .or_(f"day_of_week.eq.{day_name},day_of_week.eq.Daily")\
                 .execute()
@@ -872,9 +872,9 @@ def list_attendance():
             for s in (sched_query.data or []):
                 if s['user_id'] not in clocked_in_ids:
                     missing_staff.append({
-                        'full_name': s['users']['full_name'],
-                        'username': s['users']['username'],
-                        'avatar_url': s['users']['avatar_url'],
+                        'full_name': s['users'].get('full_name') or s['users'].get('username'),
+                        'username': s['users'].get('username'),
+                        'avatar_url': s['users'].get('avatar_url'),
                         'start_time': s['start_time']
                     })
         except Exception as e:
@@ -914,8 +914,7 @@ def manage_schedules():
                 'day_of_week': day_of_week,
                 'start_time': start_time,
                 'end_time': end_time,
-                'is_active': is_active,
-                'updated_at': datetime.now().isoformat()
+                'is_active': is_active
             }
             
             if exists.data:

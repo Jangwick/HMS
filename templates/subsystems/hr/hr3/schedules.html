@@ -121,7 +121,7 @@
                                         </form>
                                     </div>
                                     {% endfor %}
-                                    <button onclick='openScheduleModal("{{ user.id }}", "{{ user.full_name }}", {{ user_scheds|tojson }})'
+                                    <button onclick='openScheduleModal({{ user.id|tojson }}, {{ user.full_name|tojson }}, {{ user_scheds|tojson }})'
                                             class="w-8 h-8 rounded-xl bg-gray-50 text-gray-400 hover:bg-accent hover:text-white flex items-center justify-center transition-all">
                                         <i class="bi bi-plus"></i>
                                     </button>
@@ -138,7 +138,7 @@
                             </div>
                         </td>
                         <td class="px-8 py-6 text-right">
-                            <button onclick='openScheduleModal("{{ user.id }}", "{{ user.full_name }}", {{ user_scheds|tojson }})'
+                            <button onclick='openScheduleModal({{ user.id|tojson }}, {{ user.full_name|tojson }}, {{ user_scheds|tojson }})'
                                     class="h-12 px-6 bg-accent hover:opacity-90 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-accent/25 inline-flex items-center gap-2">
                                 <i class="bi bi-calendar-plus"></i>
                                 Configure
@@ -162,15 +162,14 @@
 </div>
 
 <!-- Scheduling Modal -->
-<div id="scheduleModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true" onclick="closeModal()">
-            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-md"></div>
-        </div>
-        
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        
-        <div class="inline-block align-bottom bg-white rounded-[2.5rem] text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-white/20">
+<div id="scheduleModal" class="fixed inset-0 z-[100] hidden" role="dialog" aria-modal="true">
+    <!-- Backdrop with enhanced blur -->
+    <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-md transition-opacity" onclick="closeModal()"></div>
+    
+    <!-- Modal Container -->
+    <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
+            <div class="relative inline-block bg-white rounded-[2.5rem] text-left shadow-2xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full border border-white/20">
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="user_id" id="modalUserId">
@@ -259,6 +258,7 @@
             </form>
         </div>
     </div>
+</div>
 </div>
 
 <script>

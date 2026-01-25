@@ -103,7 +103,7 @@
                                 </div>
                                 {% endif %}
                                 <div>
-                                    <div class="font-black text-gray-900 leading-tight">{{ log.users.full_name if log.users else 'System Employee' }}</div>
+                                    <div class="font-black text-gray-900 leading-tight">{{ (log.users.full_name or log.users.username) if log.users else 'System Employee' }}</div>
                                     <div class="text-[10px] text-gray-400 font-medium">@{{ log.users.username or 'system' }}</div>
                                 </div>
                             </div>
