@@ -4,76 +4,112 @@
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Header Actions -->
-    <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100 gap-4">
-        <div>
-            <h3 class="text-xl font-bold text-gray-900">Historical Records</h3>
-            <p class="text-gray-500 text-sm">Review completed and cancelled trip history</p>
-        </div>
-        <div class="relative flex-1 md:w-64">
-            <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-            <input type="text" id="logSearch" onkeyup="filterLogs()" placeholder="Search logs..." 
-                class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
-        </div>
+    <!-- Filters & Search -->
+    <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+        <form method="GET" action="{{ url_for('log2.dispatch_logs') }}" class="flex flex-col md:flex-row gap-4">
+            <div class="flex-1 relative">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="logSearch" onkeyup="filterLogs()" placeholder="Search drivers or vehicles..." 
+                    class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm transition-all">
+            </div>
+            <div class="flex gap-3">
+                <input type="date" name="date" value="{{ current_date or '' }}"
+                    class="px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
+                <select name="status" class="px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm min-w-[140px]">
+                    <option value="">All Statuses</option>
+                    <option value="Completed" {{ 'selected' if current_status == 'Completed' }}>Completed</option>
+                    <option value="Cancelled" {{ 'selected' if current_status == 'Cancelled' }}>Cancelled</option>
+                    <option value="On Trip" {{ 'selected' if current_status == 'On Trip' }}>On Trip</option>
+                </select>
+                <button type="submit" class="p-3 bg-gray-900 text-white rounded-2xl hover:bg-black transition-colors shadow-sm">
+                    <i class="bi bi-filter"></i>
+                </button>
+                <a href="{{ url_for('log2.dispatch_logs') }}" class="p-3 bg-gray-100 text-gray-500 rounded-2xl hover:bg-gray-200 transition-colors">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </a>
+            </div>
+        </form>
     </div>
 
     <!-- Logs Table -->
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-50 flex items-center justify-between">
+            <h4 class="font-black text-gray-900 uppercase tracking-widest text-xs">Dispatch History Audit</h4>
+            <span class="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-md">{{ logs|length }} RECORDS FOUND</span>
+        </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse" id="logTable">
                 <thead>
-                    <tr class="bg-gray-50 border-b border-gray-100">
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Vehicle</th>
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Driver</th>
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Destination</th>
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Duration</th>
+                    <tr class="bg-gray-50 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+                        <th class="px-8 py-4">Departure</th>
+                        <th class="px-6 py-4">Vehicle Identity</th>
+                        <th class="px-6 py-4">Assigned Personnel</th>
+                        <th class="px-6 py-4">Destination / Purpose</th>
+                        <th class="px-6 py-4 text-center">Protocol Status</th>
+                        <th class="px-8 py-4 text-right">Duration</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100 text-sm">
+                <tbody class="divide-y divide-gray-50 text-sm">
                     {% for log in logs %}
                     <tr class="hover:bg-gray-50/50 transition-colors log-row">
-                        <td class="px-6 py-4 whitespace-nowrap text-gray-700">
-                            {{ log.departure_time[:10] if log.departure_time else 'N/A' }}
+                        <td class="px-8 py-5 whitespace-nowrap">
+                            <p class="font-bold text-gray-900">{{ log.departure_time[11:16] if log.departure_time else 'N/A' }}</p>
+                            <p class="text-[10px] text-gray-400 font-medium">{{ log.departure_time[:10] if log.departure_time else 'N/A' }}</p>
                         </td>
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-5">
                             <div class="flex items-center space-x-3">
-                                <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-[#F97316]">
-                                    <i class="bi bi-truck"></i>
+                                <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 group-hover:text-[#F97316] transition-colors">
+                                    <i class="bi bi-truck-front-fill text-lg"></i>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-900 search-target">{{ log.fleet_vehicles.plate_number if log.fleet_vehicles else 'Unknown' }}</p>
-                                    <p class="text-xs text-gray-500">{{ log.fleet_vehicles.model_name if log.fleet_vehicles else 'Fleet Vehicle' }}</p>
+                                    <p class="font-bold text-gray-800 search-target">{{ log.fleet_vehicles.plate_number if log.fleet_vehicles else 'UNKNOWN-VP' }}</p>
+                                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{{ log.fleet_vehicles.model_name if log.fleet_vehicles else 'FLEET UNIT' }}</p>
                                 </div>
                             </div>
                         </td>
-                        <td class="px-6 py-4 font-medium text-gray-700 search-target">{{ log.drivers.full_name if log.drivers else 'Unknown Driver' }}</td>
-                        <td class="px-6 py-4 text-gray-600 search-target">{{ log.destination }}</td>
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-5">
+                            <p class="font-bold text-gray-700 search-target">{{ log.drivers.full_name if log.drivers else 'UNSIGNED_DRV' }}</p>
+                            <p class="text-[10px] text-gray-400 font-medium tracking-tight">Operator ID: #{{ log.driver_id }}</p>
+                        </td>
+                        <td class="px-6 py-5">
+                            <p class="text-xs font-bold text-gray-800 search-target">{{ log.destination }}</p>
+                            <p class="text-[10px] text-gray-400 italic truncate max-w-[180px]">{{ log.purpose or 'No mission remarks' }}</p>
+                        </td>
+                        <td class="px-6 py-5 text-center">
                             {% if log.status == 'Completed' %}
-                            <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
-                                COMPLETED
+                            <span class="inline-flex items-center px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-wider border border-emerald-100">
+                                <i class="bi bi-check2-circle mr-1.5 shadow-sm"></i>
+                                ARRIVED
+                            </span>
+                            {% elif log.status == 'Cancelled' %}
+                            <span class="inline-flex items-center px-3 py-1 bg-red-50 text-red-600 rounded-lg text-[10px] font-black uppercase tracking-wider border border-red-100">
+                                <i class="bi bi-x-circle mr-1.5 shadow-sm"></i>
+                                ABORTED
                             </span>
                             {% else %}
-                            <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">
+                            <span class="inline-flex items-center px-3 py-1 bg-amber-50 text-amber-600 rounded-lg text-[10px] font-black uppercase tracking-wider border border-amber-100">
+                                <i class="bi bi-clock-history mr-1.5 animate-pulse"></i>
                                 {{ log.status | upper }}
                             </span>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 text-gray-500 italic">
+                        <td class="px-8 py-5 text-right whitespace-nowrap">
                             {% if log.departure_time and log.return_time %}
-                                Trip Ended {{ log.return_time[11:16] }}
+                                <p class="text-xs font-bold text-gray-700">{{ log.return_time[11:16] }}</p>
+                                <p class="text-[10px] text-gray-400 font-medium tracking-tight">Return Established</p>
                             {% else %}
-                                --
+                                <span class="text-gray-300 font-black">---</span>
                             {% endif %}
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center text-gray-400">
-                            <i class="bi bi-clock-history text-4xl mb-3 block"></i>
-                            <p>No past dispatch logs found</p>
+                        <td colspan="6" class="px-6 py-16 text-center">
+                            <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100 shadow-inner">
+                                <i class="bi bi-archive text-2xl text-gray-300"></i>
+                            </div>
+                            <h5 class="text-gray-900 font-bold">No Records Found</h5>
+                            <p class="text-gray-400 text-xs w-64 mx-auto mt-2">Adjust your filters or search query to find specific dispatch history.</p>
                         </td>
                     </tr>
                     {% endfor %}
@@ -85,23 +121,15 @@
 
 <script>
 function filterLogs() {
-    const input = document.getElementById('logSearch');
-    const filter = input.value.toLowerCase();
-    const rows = document.getElementsByClassName('log-row');
-
-    for (let row of rows) {
-        let text = "";
-        const targets = row.getElementsByClassName('search-target');
-        for (let target of targets) {
-            text += target.textContent.toLowerCase() + " ";
-        }
-        
-        if (text.includes(filter)) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
-        }
-    }
+    const query = document.getElementById('logSearch').value.toLowerCase();
+    const rows = document.querySelectorAll('.log-row');
+    
+    rows.forEach(row => {
+        const text = Array.from(row.querySelectorAll('.search-target'))
+            .map(el => el.textContent.toLowerCase())
+            .join(' ');
+        row.style.display = text.includes(query) ? '' : 'none';
+    });
 }
 </script>
 {% endblock %}

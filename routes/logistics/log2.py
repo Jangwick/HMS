@@ -240,6 +240,10 @@ def add_vehicle():
             'status': 'Available'
         }
         client.table('fleet_vehicles').insert(v_data).execute()
+        
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, f"Add Vehicle: {v_data['plate_number']}", BLUEPRINT_NAME, v_data)
+        
         flash('Vehicle added to fleet.', 'success')
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
@@ -261,6 +265,10 @@ def edit_vehicle(vehicle_id):
             'status': request.form.get('status')
         }
         client.table('fleet_vehicles').update(v_data).eq('id', vehicle_id).execute()
+        
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, f"Update Vehicle: {v_data['plate_number']}", BLUEPRINT_NAME, v_data)
+        
         flash('Vehicle updated successfully.', 'success')
     except Exception as e:
         flash(f'Update failed: {str(e)}', 'danger')
@@ -275,7 +283,15 @@ def delete_vehicle(vehicle_id):
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
+        # Get plate for log before deleting
+        v = client.table('fleet_vehicles').select('plate_number').eq('id', vehicle_id).single().execute()
+        plate = v.data['plate_number'] if v.data else "Unknown"
+
         client.table('fleet_vehicles').delete().eq('id', vehicle_id).execute()
+        
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, f"Delete Vehicle: {plate}", BLUEPRINT_NAME, {"id": vehicle_id})
+        
         flash('Vehicle removed from fleet.', 'info')
     except Exception as e:
         flash(f'Delete failed: {str(e)}', 'danger')
@@ -287,10 +303,10 @@ def dispatch_board():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    # Fetch data separately and link in Python for maximum reliability
     try:
-        # 1. Fetch Dispatches
-        d_resp = client.table('fleet_dispatch').select('*').neq('status', 'Cancelled').order('departure_time', desc=True).execute()
+        # Fetch active and recently completed dispatches (last 24h)
+        # We fetch all currently 'On Trip' and then some recent ones
+        d_resp = client.table('fleet_dispatch').select('*').neq('status', 'Cancelled').order('departure_time', desc=True).limit(50).execute()
         raw_dispatches = d_resp.data if d_resp.data else []
         
         # 2. Fetch All Vehicles and Drivers for linking
@@ -299,6 +315,18 @@ def dispatch_board():
         
         vehicles_all = v_resp.data if v_resp.data else []
         drivers_all = dr_resp.data if dr_resp.data else []
+        
+        # Calculate Board Metrics
+        active_trips = sum(1 for d in raw_dispatches if d.get('status') == 'On Trip')
+        total_fleet = len(vehicles_all)
+        available_v = sum(1 for v in vehicles_all if v.get('status', '').lower() in ['available', 'active', 'ready'])
+        
+        metrics = {
+            'active_trips': active_trips,
+            'available_fleet': available_v,
+            'total_fleet': total_fleet,
+            'utilization': round((active_trips / total_fleet * 100), 1) if total_fleet > 0 else 0
+        }
         
         # Create lookup maps
         v_map = {str(v['id']): v for v in vehicles_all}
@@ -321,28 +349,25 @@ def dispatch_board():
                 'destination': trip.get('destination', 'N/A'),
                 'departure_time': trip.get('departure_time'),
                 'arrival_time': trip.get('return_time'),
-                'status': trip.get('status', 'Unknown')
+                'status': trip.get('status', 'Unknown'),
+                'purpose': trip.get('purpose', 'N/A')
             })
             
-        # 3. Filter available resources for the dropdowns
-        # We'll be more lenient with the status check
-        def is_available(status):
-            if not status: return True
-            return status.lower() in ['available', 'active', 'ready']
-            
-        available_vehicles = [v for v in vehicles_all if is_available(v.get('status'))]
-        available_drivers = [d for d in drivers_all if is_available(d.get('status'))]
+        available_vehicles = [v for v in vehicles_all if v.get('status', '').lower() in ['available', 'active', 'ready']]
+        available_drivers = [d for d in drivers_all if d.get('status', '').lower() in ['available', 'active', 'ready']]
         
     except Exception as e:
         print(f"Dispatch Board Data Error: {e}")
         processed_trips = []
         available_vehicles = []
         available_drivers = []
+        metrics = {'active_trips': 0, 'available_fleet': 0, 'total_fleet': 0, 'utilization': 0}
     
     return render_template('subsystems/logistics/log2/dispatch.html',
                            dispatches=processed_trips,
                            available_vehicles_list=available_vehicles,
                            available_drivers_list=available_drivers,
+                           metrics=metrics,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -498,6 +523,10 @@ def add_cost():
             'logged_by': current_user.id
         }
         client.table('fleet_costs').insert(cost_data).execute()
+        
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, f"Log Expense: {cost_data['cost_type']} - ${cost_data['amount']}", BLUEPRINT_NAME, cost_data)
+        
         flash('Expense logged successfully.', 'success')
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
@@ -512,7 +541,14 @@ def delete_cost(cost_id):
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
+        # Get details for audit log
+        c = client.table('fleet_costs').select('cost_type, amount').eq('id', cost_id).single().execute()
+        
         client.table('fleet_costs').delete().eq('id', cost_id).execute()
+        
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Void Expense", BLUEPRINT_NAME, c.data if c.data else {"id": cost_id})
+        
         flash('Transaction voided.', 'info')
     except Exception as e:
         flash(f'Delete failed: {str(e)}', 'danger')
@@ -598,6 +634,10 @@ def add_driver():
             'status': 'Active'
         }
         client.table('drivers').insert(dr_data).execute()
+        
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, f"Add Driver: {dr_data['full_name']}", BLUEPRINT_NAME, dr_data)
+        
         flash('Driver added successfully.', 'success')
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
@@ -619,6 +659,10 @@ def edit_driver(driver_id):
             'status': request.form.get('status')
         }
         client.table('drivers').update(dr_data).eq('id', driver_id).execute()
+        
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, f"Update Driver: {dr_data['full_name']}", BLUEPRINT_NAME, dr_data)
+        
         flash('Driver updated.', 'success')
     except Exception as e:
         flash(f'Update failed: {str(e)}', 'danger')
@@ -634,12 +678,16 @@ def delete_driver(driver_id):
     client = get_supabase_client()
     try:
         # Check if driver is on a trip
-        driver = client.table('drivers').select('status').eq('id', driver_id).single().execute()
+        driver = client.table('drivers').select('full_name, status').eq('id', driver_id).single().execute()
         if driver.data and driver.data.get('status') == 'On Trip':
             flash('Cannot delete a driver who is currently on a trip.', 'warning')
             return redirect(url_for('log2.list_drivers'))
 
         client.table('drivers').delete().eq('id', driver_id).execute()
+        
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, f"Delete Driver: {driver.data['full_name'] if driver.data else 'Unknown'}", BLUEPRINT_NAME, {"id": driver_id})
+        
         flash('Driver removed.', 'info')
     except Exception as e:
         flash(f'Delete failed: {str(e)}', 'danger')
@@ -669,17 +717,34 @@ def dispatch_logs():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
+    date_filter = request.args.get('date')
+    status_filter = request.args.get('status')
+    
     try:
-        # Fetch completed/cancelled dispatches
-        # Correctly joining with fleet_vehicles and drivers
-        d_resp = client.table('fleet_dispatch').select('*, fleet_vehicles(plate_number, model_name), drivers(full_name)').in_('status', ['Completed', 'Cancelled']).order('departure_time', desc=True).execute()
+        # Fetch dispatches with vehicle and driver info
+        query = client.table('fleet_dispatch').select('*, fleet_vehicles(plate_number, model_name), drivers(full_name)')
+        
+        if date_filter:
+            query = query.gte('departure_time', f"{date_filter}T00:00:00")\
+                         .lte('departure_time', f"{date_filter}T23:59:59")
+        
+        if status_filter:
+            query = query.eq('status', status_filter)
+        else:
+            # Default to historical (not on trip) or just all
+            pass
+            
+        d_resp = query.order('departure_time', desc=True).limit(200).execute()
         logs = d_resp.data if d_resp.data else []
+        
     except Exception as e:
         print(f"Dispatch Logs Error: {e}")
         logs = []
         
     return render_template('subsystems/logistics/log2/dispatch_logs.html',
                            logs=logs,
+                           current_date=date_filter,
+                           current_status=status_filter,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

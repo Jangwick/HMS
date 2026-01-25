@@ -1,9 +1,45 @@
 {% extends "base/subsystem_base.html" %}
 
-{% block header_title %}Dispatch Board{% endblock %}
+{% block header_title %}Fleet Dispatch Board{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
+    <!-- Status Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-2">
+                <span class="p-2 bg-amber-50 text-amber-600 rounded-xl"><i class="bi bi-send-fill"></i></span>
+                <span class="text-xs font-bold text-amber-500 uppercase tracking-widest">Ongoing</span>
+            </div>
+            <p class="text-2xl font-black text-gray-900">{{ metrics.active_trips }}</p>
+            <p class="text-xs font-medium text-gray-400 mt-1">Active Trips Now</p>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-2">
+                <span class="p-2 bg-green-50 text-green-600 rounded-xl"><i class="bi bi-truck"></i></span>
+                <span class="text-xs font-bold text-green-500 uppercase tracking-widest">Available</span>
+            </div>
+            <p class="text-2xl font-black text-gray-900">{{ metrics.available_fleet }}</p>
+            <p class="text-xs font-medium text-gray-400 mt-1">Ready for Dispatch</p>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-2">
+                <span class="p-2 bg-blue-50 text-blue-600 rounded-xl"><i class="bi bi-speedometer2"></i></span>
+                <span class="text-xs font-bold text-blue-500 uppercase tracking-widest">Utilization</span>
+            </div>
+            <p class="text-2xl font-black text-gray-900">{{ metrics.utilization }}%</p>
+            <p class="text-xs font-medium text-gray-400 mt-1">Fleet Operational</p>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-2">
+                <span class="p-2 bg-purple-50 text-purple-600 rounded-xl"><i class="bi bi-layers-fill"></i></span>
+                <span class="text-xs font-bold text-purple-500 uppercase tracking-widest">Fleet Size</span>
+            </div>
+            <p class="text-2xl font-black text-gray-900">{{ metrics.total_fleet }}</p>
+            <p class="text-xs font-medium text-gray-400 mt-1">Total Registered</p>
+        </div>
+    </div>
+
     <!-- Header Actions -->
     <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100 gap-4">
         <div>
@@ -74,11 +110,15 @@
                             {% endif %}
                         </td>
                         <td class="px-6 py-4">
-                            {% if trip.status == 'On Trip' %}
                             <div class="flex space-x-2">
+                                <button onclick="openInfoModal('{{ trip.id }}', '{{ trip.license_plate }}', '{{ trip.driver_name }}', '{{ trip.destination }}', '{{ trip.purpose }}')"
+                                    class="p-1 px-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                    <i class="bi bi-info-circle"></i>
+                                </button>
+                                {% if trip.status == 'On Trip' %}
                                 {% if current_user.is_admin() %}
                                 <button onclick="openCompleteModal('{{ trip.id }}', '{{ trip.license_plate }}')" 
-                                    class="px-3 py-1 text-green-600 hover:bg-green-50 rounded-lg transition-colors font-bold whitespace-nowrap">
+                                    class="px-3 py-1 text-green-600 hover:bg-green-50 rounded-lg transition-colors font-bold whitespace-nowrap text-xs">
                                     Return
                                 </button>
                                 <form action="{{ url_for('log2.cancel_dispatch') }}" method="POST" onsubmit="return confirm('Cancel this dispatch record?')">
@@ -89,12 +129,12 @@
                                     </button>
                                 </form>
                                 {% else %}
-                                <span class="text-amber-500 italic text-xs">In Progress</span>
+                                <span class="text-amber-500 italic text-[10px] font-bold">IN PROGRESS</span>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-gray-400 text-xs">Arrived {% if trip.arrival_time %}{{ trip.arrival_time[11:16] }}{% else %}N/A{% endif %}</span>
                                 {% endif %}
                             </div>
-                            {% else %}
-                            <span class="text-gray-400 text-xs">Arrived {% if trip.arrival_time %}{{ trip.arrival_time[11:16] }}{% else %}N/A{% endif %}</span>
-                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -186,6 +226,38 @@
             </form>
         </div>
     </div>
+
+    <!-- Trip Info Modal -->
+    <div id="tripInfoModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onclick="if(event.target == this) this.classList.add('hidden')">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8">
+            <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                <i class="bi bi-info-circle text-blue-500 mr-2"></i>
+                Mission Details
+            </h3>
+            <div class="space-y-4">
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Target Vehicle</p>
+                    <p class="font-bold text-gray-800" id="info_plate"></p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Assigned Driver</p>
+                    <p class="font-bold text-gray-800" id="info_driver"></p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Destination</p>
+                    <p class="font-bold text-gray-800" id="info_dest"></p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Purpose/Remarks</p>
+                    <p class="text-xs text-gray-600 leading-relaxed" id="info_purpose"></p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('tripInfoModal').classList.add('hidden')"
+                class="w-full py-3 bg-gray-900 text-white font-bold rounded-xl mt-8 hover:bg-black transition-colors">
+                Back to Board
+            </button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -204,6 +276,14 @@ function filterDispatches() {
             row.style.display = 'none';
         }
     });
+}
+
+function openInfoModal(id, plate, driver, dest, purpose) {
+    document.getElementById('info_plate').textContent = plate;
+    document.getElementById('info_driver').textContent = driver;
+    document.getElementById('info_dest').textContent = dest;
+    document.getElementById('info_purpose').textContent = purpose || 'No remarks provided';
+    document.getElementById('tripInfoModal').classList.remove('hidden');
 }
 
 function openCompleteModal(id, plate) {
