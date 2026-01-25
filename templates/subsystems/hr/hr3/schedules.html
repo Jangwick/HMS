@@ -1,0 +1,384 @@
+﻿{% extends "base/subsystem_base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header with Stats -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+            <h3 class="text-3xl font-black text-gray-900 tracking-tight">Staff Scheduling</h3>
+            <p class="text-gray-500 mt-1">Configure attendance benchmarks and shift timings across the hospital.</p>
+        </div>
+        
+        <div class="flex gap-4">
+            <div class="bg-blue-50 px-6 py-4 rounded-3xl border border-blue-100 flex items-center gap-4">
+                <div class="w-10 h-10 rounded-2xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-200">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <div>
+                    <div class="text-[10px] font-black text-blue-400 uppercase tracking-widest leading-none">Total Staff</div>
+                    <div class="text-2xl font-black text-blue-900 mt-1">{{ users|length }}</div>
+                </div>
+            </div>
+            <div class="bg-emerald-50 px-6 py-4 rounded-3xl border border-emerald-100 flex items-center gap-4">
+                <div class="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200">
+                    <i class="bi bi-calendar-check"></i>
+                </div>
+                <div>
+                    <div class="text-[10px] font-black text-emerald-400 uppercase tracking-widest leading-none">Scheduled</div>
+                    <div class="text-2xl font-black text-emerald-900 mt-1">{{ schedules|length }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search & Filters -->
+    <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center">
+        <div class="relative flex-1 group">
+            <i class="bi bi-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-accent transition-colors"></i>
+            <input type="text" id="staffSearch" placeholder="Search staff by name or username..." 
+                   class="w-full pl-12 pr-6 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-accent transition-all">
+        </div>
+        <div class="flex gap-2">
+            <select id="subsystemFilter" class="px-6 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-accent transition-all cursor-pointer">
+                <option value="">All Subsystems</option>
+                <option value="hr">HR</option>
+                <option value="ct">Core Transaction</option>
+                <option value="log">Logistics</option>
+                <option value="fin">Financials</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left" id="staffTable">
+                <thead class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest">
+                    <tr>
+                        <th class="px-8 py-6">Staff Member</th>
+                        <th class="px-6 py-6">Department Info</th>
+                        <th class="px-6 py-6">Weekly Benchmarks</th>
+                        <th class="px-8 py-6 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for user in users %}
+                    <tr class="hover:bg-gray-50/50 transition-colors group staff-row" data-name="{{ user.full_name|lower }} {{ user.username|lower }}" data-subsystem="{{ user.subsystem|lower }}">
+                        <td class="px-8 py-6">
+                            <div class="flex items-center gap-4">
+                                <div class="relative">
+                                    {% if user.avatar_url %}
+                                    <img src="{{ user.avatar_url }}" alt="" class="w-12 h-12 rounded-2xl object-cover shadow-inner group-hover:scale-110 transition-transform">
+                                    {% else %}
+                                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-400 shadow-inner group-hover:scale-110 transition-transform">
+                                        <i class="bi bi-person-fill text-xl"></i>
+                                    </div>
+                                    {% endif %}
+                                    <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white bg-green-500"></span>
+                                </div>
+                                <div>
+                                    <div class="font-black text-gray-900 leading-tight">{{ user.full_name }}</div>
+                                    <div class="text-xs text-gray-400 font-medium">@{{ user.username }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-6">
+                            <div class="flex flex-col gap-1.5">
+                                <span class="inline-flex items-center px-3 py-1 rounded-lg text-[10px] font-black bg-accent/10 text-accent uppercase tracking-widest w-fit">
+                                    {{ user.role }}
+                                </span>
+                                <div class="flex items-center gap-1.5">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+                                    <span class="text-xs font-bold text-gray-500 uppercase tracking-tighter">
+                                        {{ user.subsystem }}  {{ user.department }}
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-6 font-bold">
+                            {% set user_scheds = schedules.get(user.id, []) %}
+                            <div class="flex flex-wrap gap-2">
+                                {% if user_scheds %}
+                                    {% for s in user_scheds %}
+                                    <div class="flex flex-col bg-white p-2 rounded-xl border border-gray-100 shadow-sm group/sched relative overflow-hidden">
+                                        <div class="text-[9px] font-black text-gray-400 uppercase mb-1 flex justify-between">
+                                            <span>{{ s.day_of_week[:3] }}</span>
+                                            {% if not s.is_active %}<span class="text-red-500">OFF</span>{% endif %}
+                                        </div>
+                                        <div class="text-xs text-gray-700 font-black flex items-center gap-1">
+                                            {{ s.start_time[:5] }}
+                                            <i class="bi bi-arrow-right text-[10px] text-gray-300"></i>
+                                            {{ s.end_time[:5] }}
+                                        </div>
+                                        
+                                        <!-- Delete Hover Button -->
+                                        <form action="{{ url_for('hr3.delete_schedule', schedule_id=s.id) }}" method="POST" 
+                                              class="absolute inset-0 bg-red-600 opacity-0 group-hover/sched:opacity-100 transition-opacity flex items-center justify-center">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="text-white text-xs font-black uppercase tracking-widest flex items-center gap-1">
+                                                <i class="bi bi-trash-fill text-sm"></i> Remove
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                    <button onclick='openScheduleModal("{{ user.id }}", "{{ user.full_name }}", {{ user_scheds|tojson }})'
+                                            class="w-8 h-8 rounded-xl bg-gray-50 text-gray-400 hover:bg-accent hover:text-white flex items-center justify-center transition-all">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                {% else %}
+                                    <div class="flex items-center gap-3 py-1">
+                                        <div class="flex gap-1">
+                                            {% for day in ['M', 'T', 'W', 'T', 'F', 'S', 'S'] %}
+                                            <span class="w-6 h-6 rounded-lg bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center text-[9px] font-black text-gray-300">{{ day }}</span>
+                                            {% endfor %}
+                                        </div>
+                                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">Default 09:00</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-8 py-6 text-right">
+                            <button onclick='openScheduleModal("{{ user.id }}", "{{ user.full_name }}", {{ user_scheds|tojson }})'
+                                    class="h-12 px-6 bg-accent hover:opacity-90 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-accent/25 inline-flex items-center gap-2">
+                                <i class="bi bi-calendar-plus"></i>
+                                Configure
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden py-20 text-center">
+                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-gray-200">
+                    <i class="bi bi-search text-3xl text-gray-300"></i>
+                </div>
+                <h4 class="text-lg font-black text-gray-900">No staff members found</h4>
+                <p class="text-gray-400 text-sm max-w-xs mx-auto mt-2">Try adjusting your search or filters to find the employee you are looking for.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scheduling Modal -->
+<div id="scheduleModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true" onclick="closeModal()">
+            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-md"></div>
+        </div>
+        
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        
+        <div class="inline-block align-bottom bg-white rounded-[2.5rem] text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-white/20">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_id" id="modalUserId">
+                
+                <div class="bg-white p-10">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <span class="bg-accent/10 text-accent text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full">Attendance Benchmark</span>
+                            <h3 class="text-2xl font-black text-gray-900 mt-3" id="modalStaffName">Shift Configuration</h3>
+                        </div>
+                        <button type="button" onclick="closeModal()" class="w-12 h-12 flex items-center justify-center rounded-2xl bg-gray-50 text-gray-400 hover:bg-rose-50 hover:text-rose-500 transition-all">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-6">
+                        <!-- Mode Selector -->
+                        <div class="bg-gray-50 p-2 rounded-2xl flex gap-1">
+                            <button type="button" onclick="setSchedMode('Daily')" 
+                                    class="mode-btn flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all bg-white text-gray-900 shadow-sm border border-gray-100" data-mode="Daily">
+                                Daily
+                            </button>
+                            <button type="button" onclick="setSchedMode('Specific')" 
+                                    class="mode-btn flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all text-gray-400 hover:text-gray-600" data-mode="Specific">
+                                Specific Day
+                            </button>
+                        </div>
+
+                        <!-- Day Select (Conditional) -->
+                        <div id="daySelectContainer" class="hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Target Day</label>
+                            <div class="grid grid-cols-4 gap-2">
+                                {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                                <label class="cursor-pointer group">
+                                    <input type="radio" name="day_of_week" value="{{ day }}" class="hidden peer">
+                                    <div class="py-3 text-center rounded-xl bg-gray-50 border-2 border-transparent peer-checked:border-accent peer-checked:bg-accent/5 peer-checked:text-accent font-black text-xs transition-all group-hover:bg-gray-100">
+                                        {{ day[:3] }}
+                                    </div>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="final_day" id="finalDay" value="Daily">
+                        </div>
+
+                        <!-- Time Config -->
+                        <div class="grid grid-cols-2 gap-6 p-6 bg-accent/5 rounded-[2rem] border border-accent/10">
+                            <div>
+                                <label class="block text-[10px] font-black text-accent uppercase tracking-widest mb-3">Shift Start</label>
+                                <input type="time" name="start_time" required
+                                       class="w-full bg-white rounded-2xl border-none font-black text-lg p-4 focus:ring-accent shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-accent uppercase tracking-widest mb-3">Shift End</label>
+                                <input type="time" name="end_time" required
+                                       class="w-full bg-white rounded-2xl border-none font-black text-lg p-4 focus:ring-accent shadow-sm">
+                            </div>
+                        </div>
+
+                        <!-- Switch -->
+                        <div class="flex items-center justify-between p-6 bg-gray-50 rounded-[2rem] border border-gray-100">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-gray-400 shadow-sm border border-gray-100">
+                                    <i class="bi bi-shield-check"></i>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-black text-gray-900 tracking-tight">Enforce Schedule</div>
+                                    <div class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-1">Status: <span id="switchStatus" class="text-green-500">Active</span></div>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="is_active" id="isActiveSwitch" class="sr-only peer" checked onchange="document.getElementById('switchStatus').innerText = this.checked ? 'Active' : 'Disabled'; document.getElementById('switchStatus').className = this.checked ? 'text-green-500' : 'text-red-500'">
+                                <div class="w-14 h-8 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-accent shadow-inner"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50/80 backdrop-blur-sm px-10 py-8 flex items-center justify-between">
+                    <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-gray-600 font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                        <i class="bi bi-arrow-left"></i> Discard
+                    </button>
+                    <button type="submit" class="bg-accent hover:opacity-90 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-accent/25 flex items-center gap-3">
+                        Save Configuration <i class="bi bi-check2-circle text-lg"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentMode = 'Daily';
+
+function setSchedMode(mode) {
+    currentMode = mode;
+    const btns = document.querySelectorAll('.mode-btn');
+    btns.forEach(btn => {
+        if (btn.dataset.mode === mode) {
+            btn.classList.add('bg-white', 'text-gray-900', 'shadow-sm', 'border', 'border-gray-100');
+            btn.classList.remove('text-gray-400');
+        } else {
+            btn.classList.remove('bg-white', 'text-gray-900', 'shadow-sm', 'border', 'border-gray-100');
+            btn.classList.add('text-gray-400');
+        }
+    });
+
+    const container = document.getElementById('daySelectContainer');
+    const finalDayInput = document.getElementById('finalDay');
+    
+    if (mode === 'Specific') {
+        container.classList.remove('hidden');
+        finalDayInput.value = document.querySelector('input[name="day_of_week"]:checked')?.value || 'Monday';
+    } else {
+        container.classList.add('hidden');
+        finalDayInput.value = 'Daily';
+    }
+}
+
+// Update final day when radio changes
+document.querySelectorAll('input[name="day_of_week"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        if (currentMode === 'Specific') {
+            document.getElementById('finalDay').value = this.value;
+        }
+    });
+});
+
+function openScheduleModal(userId, fullName, existingScheds) {
+    document.getElementById('modalUserId').value = userId;
+    document.getElementById('modalStaffName').innerText = fullName;
+    
+    const form = document.querySelector('#scheduleModal form');
+    
+    // Initial UI resets
+    setSchedMode('Daily');
+    form.querySelector('[name="start_time"]').value = '09:00';
+    form.querySelector('[name="end_time"]').value = '17:00';
+    document.getElementById('isActiveSwitch').checked = true;
+    document.getElementById('switchStatus').innerText = 'Active';
+    document.getElementById('switchStatus').className = 'text-green-500';
+
+    if (existingScheds && existingScheds.length > 0) {
+        const daily = existingScheds.find(s => s.day_of_week === 'Daily');
+        if (daily) {
+            form.querySelector('[name="start_time"]').value = daily.start_time.substring(0, 5);
+            form.querySelector('[name="end_time"]').value = daily.end_time.substring(0, 5);
+            document.getElementById('isActiveSwitch').checked = daily.is_active;
+            document.getElementById('switchStatus').innerText = daily.is_active ? 'Active' : 'Disabled';
+            document.getElementById('switchStatus').className = daily.is_active ? 'text-green-500' : 'text-red-500';
+        }
+    }
+
+    document.getElementById('scheduleModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    document.getElementById('scheduleModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+// Search & Filter Logic
+const searchInput = document.getElementById('staffSearch');
+const filterSelect = document.getElementById('subsystemFilter');
+const tableRows = document.querySelectorAll('.staff-row');
+const emptyState = document.getElementById('emptyState');
+const staffTable = document.getElementById('staffTable');
+
+function performFilter() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const filterTerm = filterSelect.value.toLowerCase();
+    let visibleCount = 0;
+
+    tableRows.forEach(row => {
+        const nameData = row.dataset.name;
+        const subsystemData = row.dataset.subsystem;
+        
+        const matchesSearch = nameData.includes(searchTerm);
+        const matchesFilter = filterTerm === '' || subsystemData.includes(filterTerm);
+
+        if (matchesSearch && matchesFilter) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    if (visibleCount === 0) {
+        staffTable.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+    } else {
+        staffTable.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+    }
+}
+
+searchInput.addEventListener('input', performFilter);
+filterSelect.addEventListener('change', performFilter);
+</script>
+
+<style>
+@keyframes in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-in {
+    animation: in 0.3s ease-out forwards;
+}
+</style>
+{% endblock %}

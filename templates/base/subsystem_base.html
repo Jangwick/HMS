@@ -182,6 +182,12 @@
                         <span>Leave Requests</span>
                     </a>
                     {% if current_user.is_admin() %}
+                    <a href="{{ url_for('hr3.manage_schedules') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.manage_schedules' }}">
+                        <i class="bi bi-calendar-week mr-3"></i>
+                        <span>Staff Scheduling</span>
+                    </a>
+                    {% endif %}
+                    {% if current_user.is_admin() %}
                     <a href="{{ url_for('hr3.pending_approvals') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.pending_approvals' }}">
                         <i class="bi bi-person-check mr-3"></i>
                         <span>Approvals</span>

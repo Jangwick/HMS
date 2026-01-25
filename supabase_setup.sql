@@ -168,6 +168,21 @@ CREATE TABLE IF NOT EXISTS leave_requests (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- HR3: Staff Scheduling
+CREATE TABLE IF NOT EXISTS staff_schedules (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    day_of_week VARCHAR(20), -- Monday, Tuesday, etc. or 'Daily'
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT unique_user_day UNIQUE (user_id, day_of_week)
+);
+
+ALTER TABLE IF EXISTS staff_schedules ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on staff_schedules" ON staff_schedules FOR ALL USING (true) WITH CHECK (true);
+
 -- Ensure remarks column exists in leave_requests
 DO $$ 
 BEGIN

@@ -1,75 +1,171 @@
-{% extends "base/subsystem_base.html" %}
+﻿{% extends "base/subsystem_base.html" %}
 
 {% block content %}
-<div class="space-y-6">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-            <h3 class="text-2xl font-bold text-gray-900">Attendance Monitoring</h3>
-            <p class="text-gray-500">{% if current_user.role in ['Admin', 'Administrator'] %}Track clock-in and clock-out times across all departments{% else %}Your personal attendance record{% endif %}</p>
+            <h3 class="text-3xl font-black text-gray-900 tracking-tight">Attendance Monitoring</h3>
+            <p class="text-gray-500 mt-1">
+                {% if current_user.role in ['Admin', 'Administrator'] %}
+                Track live clock-in status, benchmark deviations, and workforce availability.
+                {% else %}
+                View your personal attendance history and shift status.
+                {% endif %}
+            </p>
         </div>
-        {% if not is_clocked_in %}
-        <form action="{{ url_for('hr3.clock_in') }}" method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="next" value="{{ request.path }}">
-            <button type="submit" class="bg-accent hover:opacity-90 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-accent/20 transition-all flex items-center">
-                <i class="bi bi-fingerprint mr-2"></i> Clock In
-            </button>
-        </form>
-        {% endif %}
+        
+        <div class="flex gap-4">
+            <div class="bg-white px-6 py-4 rounded-3xl border border-gray-100 flex items-center gap-4 shadow-sm">
+                <div class="w-10 h-10 rounded-2xl bg-green-500 text-white flex items-center justify-center shadow-lg shadow-green-100">
+                    <i class="bi bi-person-check-fill"></i>
+                </div>
+                <div>
+                    <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">On-Duty</div>
+                    <div class="text-2xl font-black text-gray-900 mt-1">
+                        {{ logs|selectattr('clock_out', 'none')|list|length }}
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+    {% if missing_staff %}
+    <!-- Alerts Section -->
+    <div class="relative overflow-hidden bg-rose-50 border border-rose-100 rounded-[2rem] p-8">
+        <div class="absolute top-0 right-0 p-8 opacity-10">
+            <i class="bi bi-exclamation-triangle-fill text-8xl text-rose-500"></i>
+        </div>
+        
+        <div class="relative z-10">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-200">
+                    <i class="bi bi-megaphone-fill"></i>
+                </div>
+                <h4 class="text-xl font-black text-rose-900">Scheduled but Missing</h4>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {% for staff in missing_staff %}
+                <div class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-rose-100 shadow-sm group hover:scale-[1.02] transition-transform cursor-default">
+                    <div class="flex items-center gap-3">
+                        {% if staff.avatar_url %}
+                        <img src="{{ staff.avatar_url }}" alt="" class="w-10 h-10 rounded-xl object-cover shadow-sm bg-gray-50">
+                        {% else %}
+                        <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-rose-100 group-hover:text-rose-500 transition-colors">
+                            <i class="bi bi-person-x-fill text-lg"></i>
+                        </div>
+                        {% endif %}
+                        <div class="flex-1 min-w-0">
+                            <div class="font-black text-gray-900 text-sm truncate">{{ staff.full_name }}</div>
+                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Shift: {{ staff.start_time[:5] }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Data Table -->
+    <div class="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+            <h4 class="font-black text-gray-900 uppercase tracking-widest text-xs">Activity Log</h4>
+            <div class="flex gap-2">
+                <button class="w-10 h-10 rounded-xl bg-white border border-gray-100 text-gray-400 hover:text-accent flex items-center justify-center shadow-sm transition-all">
+                    <i class="bi bi-filter"></i>
+                </button>
+            </div>
+        </div>
+        
         <div class="overflow-x-auto">
             <table class="w-full text-left">
-                <thead class="bg-gray-50/50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                <thead class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
                     <tr>
-                        <th class="px-8 py-5">Employee</th>
-                        <th class="px-6 py-5">Clock In</th>
-                        <th class="px-6 py-5">Clock Out</th>
-                        <th class="px-6 py-5">Remarks</th>
-                        <th class="px-6 py-5">Status</th>
-                        <th class="px-8 py-5 text-right">Actions</th>
+                        <th class="px-8 py-6">Staff Member</th>
+                        <th class="px-6 py-6">Clock In</th>
+                        <th class="px-6 py-6">Clock Out</th>
+                        <th class="px-6 py-6">Status & Deviation</th>
+                        <th class="px-8 py-6 text-right">Activity</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     {% for log in logs %}
-                    <tr class="hover:bg-gray-50/50 transition-colors">
-                        <td class="px-8 py-5 font-bold text-gray-900">{{ log.users.username if log.users else 'System' }}</td>
-                        <td class="px-6 py-5 text-gray-600 font-medium">{{ log.clock_in|datetime }}</td>
-                        <td class="px-6 py-5 text-gray-400 text-sm">
+                    <tr class="hover:bg-gray-50/50 transition-colors group">
+                        <td class="px-8 py-6">
+                            <div class="flex items-center gap-4">
+                                {% if log.users and log.users.avatar_url %}
+                                <img src="{{ log.users.avatar_url }}" alt="" class="w-10 h-10 rounded-xl object-cover shadow-sm bg-gray-100">
+                                {% else %}
+                                <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xs">
+                                    {{ log.users.username[0]|upper if log.users else 'S' }}
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <div class="font-black text-gray-900 leading-tight">{{ log.users.full_name if log.users else 'System Employee' }}</div>
+                                    <div class="text-[10px] text-gray-400 font-medium">@{{ log.users.username or 'system' }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-6">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-900">{{ log.clock_in|datetime }}</span>
+                                <span class="text-[10px] text-gray-400 font-medium font-mono">ID: {{ log.id[:8] }}...</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-6 font-bold">
                             {% if log.clock_out %}
-                                {{ log.clock_out|datetime }}
+                                <span class="text-sm text-gray-900">{{ log.clock_out|datetime }}</span>
                             {% else %}
-                                <span class="bg-green-50 text-green-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">Active Now</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
+                                    <span class="bg-green-500 font-black text-white text-[9px] px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg shadow-green-100">
+                                        Active Duty
+                                    </span>
+                                </div>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-5 text-gray-500 text-xs italic">{{ log.remarks or '-' }}</td>
-                        <td class="px-6 py-5">
-                            <span class="px-3 py-1 rounded-full text-xs font-bold 
-                                {% if log.status == 'On-time' %}bg-green-50 text-green-600
-                                {% elif log.status == 'Late' %}bg-amber-50 text-amber-600
-                                {% else %}bg-rose-50 text-rose-600{% endif %}">
-                                {{ log.status }}
-                            </span>
+                        <td class="px-6 py-6 text-gray-500">
+                            <div class="flex flex-col gap-2">
+                                <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest w-fit
+                                    {% if log.status == 'On-time' %}bg-emerald-50 text-emerald-600
+                                    {% elif log.status == 'Late' %}bg-amber-50 text-amber-600
+                                    {% else %}bg-rose-50 text-rose-600{% endif %}">
+                                    {{ log.status }}
+                                </span>
+                                {% if log.remarks %}
+                                <div class="text-[10px] font-medium italic text-gray-400 flex items-center gap-1">
+                                    <i class="bi bi-info-circle"></i> {{ log.remarks }}
+                                </div>
+                                {% endif %}
+                            </div>
                         </td>
-                        <td class="px-8 py-5 text-right">
+                        <td class="px-8 py-6 text-right">
                             {% if not log.clock_out and log.user_id == current_user.id %}
                             <form action="{{ url_for('hr3.clock_out') }}" method="POST">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="next" value="{{ request.path }}">
-                                <button type="submit" class="text-rose-600 hover:text-rose-700 font-bold text-xs uppercase tracking-widest">
+                                <button type="submit" class="h-10 px-4 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-rose-100 flex items-center gap-2 ml-auto">
+                                    <i class="bi bi-box-arrow-right"></i>
                                     Clock Out
                                 </button>
                             </form>
+                            {% else %}
+                            <button class="w-10 h-10 rounded-xl bg-gray-50 text-gray-300 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="bi bi-eye-fill"></i>
+                            </button>
                             {% endif %}
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" class="px-8 py-20 text-center">
-                            <i class="bi bi-clock-history text-4xl text-gray-300 mb-4 block"></i>
-                            <h4 class="text-lg font-bold text-gray-900">No attendance records found</h4>
-                            <p class="text-gray-500">Logs will appear here once shift activity begins.</p>
+                        <td colspan="5" class="px-8 py-24 text-center">
+                            <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-dashed border-gray-200">
+                                <i class="bi bi-clock-history text-3xl text-gray-300"></i>
+                            </div>
+                            <h4 class="text-xl font-black text-gray-900">No attendance history</h4>
+                            <p class="text-gray-400 text-sm max-w-xs mx-auto mt-2">Activity will appear here once shift logs are recorded in the system.</p>
                         </td>
                     </tr>
                     {% endfor %}

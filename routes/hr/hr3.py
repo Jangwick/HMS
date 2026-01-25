@@ -252,8 +252,17 @@ def dashboard():
         leave_resp = client.table('leave_requests').select('id', count='exact').eq('status', 'Pending').execute()
         pending_leaves = leave_resp.count if leave_resp.count is not None else 0
         
-        # Recent activity - Mix of new users and leave requests
-        recent_leaves = client.table('leave_requests').select('*, users:users!leave_requests_user_id_fkey(username)').order('created_at', desc=True).limit(3).execute().data or []
+        # Recent activity - Mix of new users and leave requests with avatars
+        recent_leaves = client.table('leave_requests').select('*, users:users!leave_requests_user_id_fkey(username, full_name, avatar_url)').order('created_at', desc=True).limit(3).execute().data or []
+        
+        # Get Current user's schedule for today
+        day_name = datetime.now().strftime('%A')
+        user_schedule = client.table('staff_schedules')\
+            .select('*')\
+            .eq('user_id', current_user.id)\
+            .eq('is_active', True)\
+            .or_(f"day_of_week.eq.{day_name},day_of_week.eq.Daily")\
+            .execute().data
         
     except Exception as e:
         print(f"Error fetching HR3 stats: {e}")
@@ -262,6 +271,7 @@ def dashboard():
         today_attendance = 0
         pending_leaves = 0
         recent_leaves = []
+        user_schedule = []
     
     return render_template('subsystems/hr/hr3/dashboard.html', 
                           now=datetime.utcnow, 
@@ -270,6 +280,7 @@ def dashboard():
                           today_attendance=today_attendance,
                           pending_leaves=pending_leaves,
                           recent_leaves=recent_leaves,
+                          user_schedule=user_schedule[0] if user_schedule else None,
                           is_clocked_in=is_clocked_in,
                           current_log=current_log,
                           subsystem_name=SUBSYSTEM_NAME,
@@ -303,17 +314,59 @@ def clock_in():
         return hr3_redirect_fallback()
     
     now = datetime.now()
-    # Logic for Late status (assuming 9 AM start)
+    day_name = now.strftime('%A')
+    
+    # Default status
     status = 'On-time'
-    if now.hour >= 9 and now.minute > 0:
-        status = 'Late'
+    
+    # Check for assigned schedule
+    try:
+        schedule_resp = client.table('staff_schedules')\
+            .select('*')\
+            .eq('user_id', current_user.id)\
+            .eq('is_active', True)\
+            .execute()
+        
+        if schedule_resp.data:
+            # Find schedule for today or 'Daily'
+            schedule = next((s for s in schedule_resp.data if s['day_of_week'] == day_name or s['day_of_week'] == 'Daily'), None)
+            
+            if schedule:
+                start_time_str = schedule['start_time']
+                schedule_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} {start_time_str}", "%Y-%m-%d %H:%M:%S")
+                
+                if now > (schedule_start + timedelta(minutes=5)):
+                    status = 'Late'
+                    # Calculate minutes late
+                    diff = now - schedule_start
+                    minutes_late = int(diff.total_seconds() / 60)
+                    remarks = f"Late by {minutes_late} minutes. " + (request.form.get('remarks') or "")
+            else:
+                if now.hour >= 9 and now.minute > 5:
+                    status = 'Late'
+                    schedule_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} 09:00:00", "%Y-%m-%d %H:%M:%S")
+                    diff = now - schedule_start
+                    minutes_late = int(diff.total_seconds() / 60)
+                    remarks = f"Late by {minutes_late} minutes (Default). " + (request.form.get('remarks') or "")
+        else:
+            if now.hour >= 9 and now.minute > 5:
+                status = 'Late'
+                schedule_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} 09:00:00", "%Y-%m-%d %H:%M:%S")
+                diff = now - schedule_start
+                minutes_late = int(diff.total_seconds() / 60)
+                remarks = f"Late by {minutes_late} minutes (Default). " + (request.form.get('remarks') or "")
+    except Exception as e:
+        print(f"Schedule check error: {e}")
+        if now.hour >= 9 and now.minute > 5:
+            status = 'Late'
+            remarks = "Late (Default check error). " + (request.form.get('remarks') or "")
         
     try:
         data = {
             'user_id': current_user.id,
             'clock_in': now.isoformat(),
             'status': status,
-            'remarks': request.form.get('remarks')
+            'remarks': remarks or request.form.get('remarks')
         }
         client.table('attendance_logs').insert(data).execute()
         flash(f'Clocked in successfully at {now.strftime("%H:%M")}. Status: {status}', 'success')
@@ -789,7 +842,7 @@ def list_attendance():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    query = client.table('attendance_logs').select('*, users(username)')
+    query = client.table('attendance_logs').select('*, users(full_name, username, avatar_url)')
     
     # Non-admins only see their own logs
     if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
@@ -798,11 +851,118 @@ def list_attendance():
     response = query.order('clock_in', desc=True).execute()
     logs = response.data if response.data else []
     
+    # If admin, also find who hasn't clocked in today
+    missing_staff = []
+    if current_user.is_admin() and current_user.subsystem == 'hr3':
+        try:
+            today = datetime.now().strftime('%Y-%m-%d')
+            day_name = datetime.now().strftime('%A')
+            
+            # Get everyone's schedules for today
+            sched_query = client.table('staff_schedules')\
+                .select('*, users(full_name, username, avatar_url)')\
+                .eq('is_active', True)\
+                .or_(f"day_of_week.eq.{day_name},day_of_week.eq.Daily")\
+                .execute()
+            
+            # Get everyone who DID clock in today
+            clocked_in_today = client.table('attendance_logs').select('user_id').gte('clock_in', today).execute()
+            clocked_in_ids = [log['user_id'] for log in clocked_in_today.data]
+            
+            for s in (sched_query.data or []):
+                if s['user_id'] not in clocked_in_ids:
+                    missing_staff.append({
+                        'full_name': s['users']['full_name'],
+                        'username': s['users']['username'],
+                        'avatar_url': s['users']['avatar_url'],
+                        'start_time': s['start_time']
+                    })
+        except Exception as e:
+            print(f"Error checking missing staff: {e}")
+            
     return render_template('subsystems/hr/hr3/attendance.html',
                            logs=logs,
+                           missing_staff=missing_staff,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+@hr3_bp.route('/schedules', methods=['GET', 'POST'])
+@login_required
+@policy_required('hr3')
+def manage_schedules():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    if request.method == 'POST':
+        user_id = request.form.get('user_id')
+        day_of_week = request.form.get('day_of_week', 'Daily')
+        start_time = request.form.get('start_time')
+        end_time = request.form.get('end_time')
+        is_active = request.form.get('is_active') == 'on'
+        
+        try:
+            # Check if exists
+            exists = client.table('staff_schedules')\
+                .select('*')\
+                .eq('user_id', user_id)\
+                .eq('day_of_week', day_of_week)\
+                .execute()
+            
+            data = {
+                'user_id': user_id,
+                'day_of_week': day_of_week,
+                'start_time': start_time,
+                'end_time': end_time,
+                'is_active': is_active,
+                'updated_at': datetime.now().isoformat()
+            }
+            
+            if exists.data:
+                client.table('staff_schedules').update(data).eq('id', exists.data[0]['id']).execute()
+            else:
+                client.table('staff_schedules').insert(data).execute()
+                
+            flash('Schedule updated successfully.', 'success')
+        except Exception as e:
+            flash(f'Error updating schedule: {str(e)}', 'danger')
+        return redirect(url_for('hr3.manage_schedules'))
+
+    # Fetch all users and their schedules
+    try:
+        users_list = User.get_all()
+        schedules_resp = client.table('staff_schedules').select('*').execute()
+        
+        # Organize schedules into a dict for easy lookup
+        sched_map = {}
+        for s in (schedules_resp.data or []):
+            u_id = s['user_id']
+            if u_id not in sched_map:
+                sched_map[u_id] = []
+            sched_map[u_id].append(s)
+            
+        return render_template('subsystems/hr/hr3/schedules.html', 
+                             users=users_list, 
+                             schedules=sched_map,
+                             subsystem_name=SUBSYSTEM_NAME,
+                             accent_color=ACCENT_COLOR,
+                             blueprint_name=BLUEPRINT_NAME)
+    except Exception as e:
+        flash(f'Error fetching data: {str(e)}', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+
+@hr3_bp.route('/schedules/delete/<int:schedule_id>', methods=['POST'])
+@login_required
+@policy_required('hr3')
+def delete_schedule(schedule_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('staff_schedules').delete().eq('id', schedule_id).execute()
+        flash('Schedule removed successfully.', 'success')
+    except Exception as e:
+        flash(f'Error removing schedule: {str(e)}', 'danger')
+    return redirect(url_for('hr3.manage_schedules'))
 
 @hr3_bp.route('/leaves')
 @login_required
