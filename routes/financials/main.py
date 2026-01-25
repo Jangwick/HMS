@@ -246,6 +246,9 @@ def create_bill():
             }
             client.table('receivables').insert(receivable_data).execute()
 
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Create Invoice", BLUEPRINT_NAME, {"total_amount": total_amount, "patient_id": data['patient_id']})
+
         flash('Invoice created successfully!', 'success')
         return redirect(url_for('financials.list_billing'))
     
@@ -288,6 +291,9 @@ def pay_bill(bill_id):
         # Still record a collection if we want, but usually it goes through receivables
         pass
 
+    from utils.hms_models import AuditLog
+    AuditLog.log(current_user.id, "Process Bill Payment", BLUEPRINT_NAME, {"bill_id": bill_id})
+
     flash(f'Payment processed for Invoice #INV-{bill_id}', 'success')
     return redirect(url_for('financials.list_billing'))
 
@@ -300,6 +306,10 @@ def void_bill(bill_id):
     client = get_supabase_client()
     client.table('billing_records').update({'status': 'Voided'}).eq('id', bill_id).execute()
     client.table('receivables').update({'status': 'Voided'}).eq('billing_id', bill_id).execute()
+    
+    from utils.hms_models import AuditLog
+    AuditLog.log(current_user.id, "Void Invoice", BLUEPRINT_NAME, {"bill_id": bill_id})
+    
     flash(f'Invoice #INV-{bill_id} has been voided.', 'info')
     return redirect(url_for('financials.list_billing'))
 
@@ -311,6 +321,10 @@ def delete_bill(bill_id):
         return redirect(url_for('financials.list_billing'))
     client = get_supabase_client()
     client.table('billing_records').delete().eq('id', bill_id).execute()
+    
+    from utils.hms_models import AuditLog
+    AuditLog.log(current_user.id, "Delete Invoice", BLUEPRINT_NAME, {"bill_id": bill_id})
+    
     flash(f'Invoice #INV-{bill_id} deleted successfully.', 'warning')
     return redirect(url_for('financials.list_billing'))
 

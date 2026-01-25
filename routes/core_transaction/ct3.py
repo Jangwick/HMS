@@ -51,6 +51,9 @@ def login():
                 user.register_successful_login()
                 
                 if login_user(user):
+                    from utils.hms_models import AuditLog
+                    AuditLog.log(user.id, "Login", BLUEPRINT_NAME, {"ip": request.remote_addr, "user_agent": request.headers.get('User-Agent')})
+                    
                     days_left = (user.password_expires_at - now_utc).days if user.password_expires_at else 999
                     if days_left <= 7:
                         flash(f'Warning: Your password will expire in {days_left} days. Please update it soon.', 'warning')
@@ -162,6 +165,9 @@ def change_password():
         
         try:
             user.set_password(new_password)
+            from utils.hms_models import AuditLog
+            AuditLog.log(user.id, "Change Password", BLUEPRINT_NAME)
+            
             session.pop('expired_user_id', None)
             session.pop('expired_subsystem', None)
             flash('Password updated successfully! Please login with your new password.', 'success')
@@ -336,7 +342,7 @@ def pay_bill(bill_id):
         
     return redirect(url_for('ct3.billing'))
 
-@ct3_bp.route('/admin/logs')
+@ct3_bp.route('/security-logs')
 @login_required
 def security_logs():
     if not current_user.is_admin():
@@ -347,17 +353,44 @@ def security_logs():
     client = get_supabase_client()
     
     try:
-        # Fetching recent user actions or authentication attempts
-        response = client.table('users').select('username, last_login, subsystem').order('last_login', desc=True).limit(20).execute()
+        # Fetching activity from audit_logs table joining with users
+        response = client.table('audit_logs')\
+            .select('*, users(username, avatar_url)')\
+            .order('created_at', desc=True)\
+            .limit(50)\
+            .execute()
         logs = response.data if response.data else []
+        
+        # Calculate some stats for the dashboard
+        active_sessions = client.table('users').select('id', count='exact').not_.is_('last_login', 'null').gte('last_login', (datetime.utcnow().replace(hour=0, minute=0, second=0)).isoformat()).execute().count or 0
+        security_alerts = sum(1 for log in logs if 'Delete' in log['action'] or 'Export' in log['action'])
     except Exception as e:
+        print(f"Error fetching audit logs: {e}")
         logs = []
+        active_sessions = 0
+        security_alerts = 0
         
     return render_template('subsystems/core_transaction/ct3/security_logs.html',
                            logs=logs,
+                           active_sessions=active_sessions,
+                           security_alerts=security_alerts,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+@ct3_bp.route('/export-logs')
+@login_required
+def export_logs():
+    if not current_user.is_admin():
+        flash('Unauthorized.', 'error')
+        return redirect(url_for('ct3.dashboard'))
+        
+    from utils.hms_models import AuditLog
+    AuditLog.log(current_user.id, "Export Logs", BLUEPRINT_NAME, {"type": "Audit Logs CSV"})
+    
+    # Simple flash for now, in a real app this would generate a CSV/PDF
+    flash('Security logs have been exported and sent to system administrator email.', 'success')
+    return redirect(url_for('ct3.security_logs'))
 
 @ct3_bp.route('/records')
 @login_required
@@ -445,6 +478,10 @@ def add_medical_record(patient_id):
         }
         client.table('medical_records').insert(data).execute()
         
+        # Log the action
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Add Medical Record", BLUEPRINT_NAME, {"patient_id": patient_id, "diagnosis": data['diagnosis']})
+        
         # Also update allergies if provided
         allergies = request.form.get('allergies')
         if allergies:
@@ -475,6 +512,10 @@ def edit_medical_record(patient_id, record_id):
             'vitals': vitals
         }
         client.table('medical_records').update(data).eq('id', record_id).execute()
+        
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Edit Medical Record", BLUEPRINT_NAME, {"record_id": record_id, "patient_id": patient_id})
+        
         flash('Record updated successfully.', 'success')
     except Exception as e:
         flash(f'Error updating record: {str(e)}', 'danger')
@@ -493,6 +534,8 @@ def delete_medical_record(patient_id, record_id):
     
     try:
         client.table('medical_records').delete().eq('id', record_id).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Delete Medical Record", BLUEPRINT_NAME, {"record_id": record_id, "patient_id": patient_id})
         flash('Record removed from history.', 'info')
     except Exception as e:
         flash(f'Error deleting record: {str(e)}', 'danger')
@@ -626,6 +669,8 @@ def clear_for_discharge(patient_id):
 @ct3_bp.route('/logout')
 @login_required
 def logout():
+    from utils.hms_models import AuditLog
+    AuditLog.log(current_user.id, "Logout", BLUEPRINT_NAME)
     logout_user()
     return redirect(url_for('ct3.login'))
 

@@ -16,40 +16,69 @@
             <p class="text-2xl font-bold text-emerald-900">Operational</p>
         </div>
         <div class="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-            <h4 class="text-blue-700 text-xs font-bold uppercase tracking-wider mb-2">Active Sessions</h4>
-            <p class="text-2xl font-bold text-blue-900">{{ logs|length }}</p>
+            <h4 class="text-blue-700 text-xs font-bold uppercase tracking-wider mb-2">Recent Logins</h4>
+            <p class="text-2xl font-bold text-blue-900">{{ active_sessions }}</p>
         </div>
         <div class="bg-amber-50 p-6 rounded-2xl border border-amber-100">
-            <h4 class="text-amber-700 text-xs font-bold uppercase tracking-wider mb-2">Security Alerts</h4>
-            <p class="text-2xl font-bold text-amber-900">0</p>
+            <h4 class="text-amber-700 text-xs font-bold uppercase tracking-wider mb-2">Audit Alerts</h4>
+            <p class="text-2xl font-bold text-amber-900">{{ security_alerts }}</p>
         </div>
     </div>
 
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="p-6 border-b border-gray-50 flex items-center justify-between">
-            <h4 class="font-bold text-gray-900">Recent Authentication Activity</h4>
-            <button class="text-xs font-bold text-blue-600 hover:underline">Export Logs</button>
+            <h4 class="font-bold text-gray-900">Recent System Activity</h4>
+            <a href="{{ url_for('ct3.export_logs') }}" class="text-xs font-bold text-blue-600 hover:underline">Export Logs</a>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left">
                 <thead class="bg-gray-50 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
                     <tr>
                         <th class="px-8 py-4">User</th>
+                        <th class="px-6 py-4">Action</th>
                         <th class="px-6 py-4">Subsystem</th>
-                        <th class="px-6 py-4">Last Login</th>
-                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4">Date & Time</th>
+                        <th class="px-6 py-4">Details</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
                     {% for log in logs %}
-                    <tr>
-                        <td class="px-8 py-4 font-bold text-gray-700">{{ log.username }}</td>
-                        <td class="px-6 py-4"><span class="px-2 py-1 bg-gray-100 rounded text-xs uppercase">{{ log.subsystem }}</span></td>
-                        <td class="px-6 py-4 text-sm text-gray-500">{{ log.last_login }}</td>
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-8 py-4">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs mr-3">
+                                    {{ log.users.username[0]|upper if log.users else '?' }}
+                                </div>
+                                <div class="font-bold text-gray-700">{{ log.users.username if log.users else 'Unknown' }}</div>
+                            </div>
+                        </td>
                         <td class="px-6 py-4">
-                            <span class="flex items-center text-xs font-medium text-green-600">
-                                <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-2"></span> Success
+                            <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider 
+                                {% if 'Login' in log.action %}bg-green-100 text-green-700
+                                {% elif 'Logout' in log.action %}bg-amber-100 text-amber-700
+                                {% elif 'Delete' in log.action or 'Cancel' in log.action %}bg-red-100 text-red-700
+                                {% elif 'Export' in log.action %}bg-blue-100 text-blue-700
+                                {% else %}bg-gray-100 text-gray-700{% endif %}">
+                                {{ log.action }}
                             </span>
+                        </td>
+                        <td class="px-6 py-4"><span class="px-2 py-1 bg-gray-100 rounded text-[10px] font-bold uppercase text-gray-500 tracking-tight">{{ log.subsystem }}</span></td>
+                        <td class="px-6 py-4 text-xs text-gray-500">{{ log.created_at | datetime("%b %d, %H:%M") }}</td>
+                        <td class="px-6 py-4">
+                            {% if log.details %}
+                            <div class="text-[10px] text-gray-400 truncate max-w-[150px]" title="{{ log.details }}">
+                                {{ log.details | string | truncate(50) }}
+                            </div>
+                            {% else %}
+                            <span class="text-gray-300">--</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-8 py-12 text-center text-gray-400">
+                            <i class="bi bi-shield-check text-4xl mb-2 block text-gray-200"></i>
+                            No activity logs found.
                         </td>
                     </tr>
                     {% endfor %}

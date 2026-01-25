@@ -291,6 +291,8 @@ def add_inventory_item():
             }
             
             client.table('inventory').insert(data).execute()
+            from utils.hms_models import AuditLog
+            AuditLog.log(current_user.id, "Add Inventory Item", BLUEPRINT_NAME, {"item": data['item_name']})
             flash('Item added to inventory!', 'success')
             return redirect(url_for('log1.list_inventory'))
         except Exception as e:
@@ -332,6 +334,8 @@ def edit_inventory_item(item_id):
             }
             
             client.table('inventory').update(data).eq('id', item_id).execute()
+            from utils.hms_models import AuditLog
+            AuditLog.log(current_user.id, "Edit Inventory Item", BLUEPRINT_NAME, {"item_id": item_id, "item": data['item_name']})
             flash('Item updated successfully!', 'success')
             return redirect(url_for('log1.list_inventory'))
         except Exception as e:
@@ -360,6 +364,8 @@ def delete_inventory_item(item_id):
     client = get_supabase_client()
     try:
         client.table('inventory').delete().eq('id', item_id).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Delete Inventory Item", BLUEPRINT_NAME, {"item_id": item_id})
         flash('Item removed from inventory.', 'success')
     except Exception as e:
         flash(f'Error deleting item: {str(e)}', 'danger')

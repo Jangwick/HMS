@@ -415,6 +415,8 @@ def add_user():
             )
             
             if new_user:
+                from utils.hms_models import AuditLog
+                AuditLog.log(current_user.id, "Register User", BLUEPRINT_NAME, {"username": username, "subsystem": subsystem})
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return jsonify({'status': 'success', 'message': f'User {username} created successfully.'})
                 flash(f'User {username} created successfully.', 'success')
@@ -482,6 +484,8 @@ def edit_user(user_id):
                 flash('Password updated.', 'info')
             
             if user.update(**update_data):
+                from utils.hms_models import AuditLog
+                AuditLog.log(current_user.id, "Update User", BLUEPRINT_NAME, {"target_user_id": user_id, "username": username})
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return jsonify({'status': 'success', 'message': f'User {username} updated successfully.'})
                 flash(f'User {username} updated successfully.', 'success')

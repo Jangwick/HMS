@@ -122,6 +122,9 @@ def about():
 def logout_switch():
     from flask_login import logout_user
     from flask import request, redirect, url_for
+    from utils.hms_models import AuditLog
+    if current_user.is_authenticated:
+        AuditLog.log(current_user.id, "Logout (Switch)", "PORTAL")
     logout_user()
     target = request.args.get('target', url_for('portal.index'))
     return redirect(target)

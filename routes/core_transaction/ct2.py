@@ -421,6 +421,8 @@ def update_pharmacy_item(item_id):
             'expiry_date': request.form.get('expiry_date')
         }
         InventoryItem.update(item_id, data)
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Update Pharmacy Stock", BLUEPRINT_NAME, {"item_id": item_id, "new_quantity": data.get('quantity')})
         flash('Inventory updated.', 'success')
     except Exception as e:
         flash(f'Update failed: {str(e)}', 'danger')
@@ -436,6 +438,8 @@ def delete_pharmacy_item(item_id):
     from utils.hms_models import InventoryItem
     try:
         InventoryItem.delete(item_id)
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Delete Pharmacy Item", BLUEPRINT_NAME, {"item_id": item_id})
         flash('Medication record removed.', 'info')
     except Exception as e:
         flash(f'Deletion failed: {str(e)}', 'danger')

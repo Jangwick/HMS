@@ -366,6 +366,8 @@ def add_applicant():
             'status': 'Screening'
         }
         client.table('applicants').insert(data).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Add Applicant", BLUEPRINT_NAME, {"name": f"{data['first_name']} {data['last_name']}"})
         flash('Applicant added successfully!', 'success')
         return redirect(url_for('hr1.list_applicants'))
     
@@ -394,6 +396,8 @@ def add_vacancy():
         
         try:
             client.table('vacancies').insert(data).execute()
+            from utils.hms_models import AuditLog
+            AuditLog.log(current_user.id, "Post Vacancy", BLUEPRINT_NAME, {"position": data['position_name']})
             flash('New role has been posted to the recruitment board.', 'success')
         except Exception as e:
             flash(f'Failed to post vacancy: {str(e)}', 'danger')

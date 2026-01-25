@@ -15,21 +15,7 @@
             </div>
             
             <div class="flex items-center space-x-4">
-                {% if current_user.is_authenticated %}
-                <a href="{{ url_for('portal.profile') }}" class="flex items-center space-x-3 px-4 py-2 bg-gray-50 hover:bg-white hover:shadow-md rounded-2xl transition-all duration-300 border border-gray-100 group">
-                    {% if current_user.avatar_url %}
-                    <img src="{{ current_user.avatar_url }}" alt="" class="w-10 h-10 rounded-full object-cover shadow-sm group-hover:ring-2 group-hover:ring-{{ subsystem_color }}-600 transition-all duration-300">
-                    {% else %}
-                    <div class="w-10 h-10 rounded-full bg-{{ subsystem_color }}-600 flex items-center justify-center text-white text-sm font-bold shadow-sm group-hover:bg-{{ subsystem_color }}-700 transition-colors">
-                        {{ current_user.username[0] | upper }}
-                    </div>
-                    {% endif %}
-                    <div class="text-left hidden sm:block">
-                        <p class="text-xs font-bold text-gray-900 leading-none group-hover:text-{{ subsystem_color }}-600 transition-colors">{{ current_user.username }}</p>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter mt-1 group-hover:text-{{ subsystem_color }}-500 transition-colors">Account Settings</p>
-                    </div>
-                </a>
-                {% else %}
+                {% if not current_user.is_authenticated %}
                 <div class="flex items-center space-x-2">
                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-2">Core Auth Required</span>
                     <i class="bi bi-shield-lock text-gray-300"></i>
@@ -49,12 +35,6 @@
         </div>
 
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 text-center">
-            <div
-                class="inline-flex items-center px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-sm font-bold mb-8 animate-fade-in-up">
-                <span class="flex h-2 w-2 rounded-full bg-blue-600 mr-2 animate-pulse"></span>
-                Enterprise Resource Planning v2.0
-            </div>
-
             <h1
                 class="text-4xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 tracking-tight mb-6 animate-fade-in-up delay-100 px-4">
                 Hospital Management <span

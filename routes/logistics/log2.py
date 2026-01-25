@@ -372,6 +372,9 @@ def create_dispatch():
         client.table('fleet_vehicles').update({'status': 'In Use'}).eq('id', v_id).execute()
         client.table('drivers').update({'status': 'On Trip'}).eq('id', d_id).execute()
         
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Dispatch Vehicle", BLUEPRINT_NAME, {"vehicle_id": v_id, "driver_id": d_id})
+        
         flash('Vehicle dispatched successfully.', 'success')
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
@@ -397,6 +400,9 @@ def complete_dispatch():
             
             client.table('fleet_vehicles').update({'status': 'Available'}).eq('id', trip.data['vehicle_id']).execute()
             client.table('drivers').update({'status': 'Active'}).eq('id', trip.data['driver_id']).execute()
+            
+            from utils.hms_models import AuditLog
+            AuditLog.log(current_user.id, "Complete Trip", BLUEPRINT_NAME, {"dispatch_id": dispatch_id})
             
             flash('Trip marked as completed.', 'success')
     except Exception as e:
@@ -526,6 +532,9 @@ def export_costs():
     client = get_supabase_client()
     costs_resp = client.table('fleet_costs').select('*, fleet_vehicles(plate_number)').execute()
     costs = costs_resp.data if costs_resp.data else []
+    
+    from utils.hms_models import AuditLog
+    AuditLog.log(current_user.id, "Export Costs Data", BLUEPRINT_NAME, {"count": len(costs)})
     
     output = io.StringIO()
     writer = csv.writer(output)

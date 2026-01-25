@@ -63,6 +63,9 @@ def login():
                 user.register_successful_login()
                 
                 if login_user(user):
+                    from utils.hms_models import AuditLog
+                    AuditLog.log(user.id, "Login", BLUEPRINT_NAME, {"ip": request.remote_addr})
+                    
                     days_left = (user.password_expires_at - now_utc).days if user.password_expires_at else 999
                     if days_left <= 7:
                         flash(f'Warning: Your password will expire in {days_left} days. Please update it soon.', 'warning')
@@ -196,6 +199,9 @@ def change_password():
         
         try:
             user.set_password(new_password)
+            from utils.hms_models import AuditLog
+            AuditLog.log(user.id, "Change Password", BLUEPRINT_NAME)
+            
             session.pop('expired_user_id', None)
             session.pop('expired_subsystem', None)
             flash('Password updated successfully! Please login with your new password.', 'success')
@@ -322,6 +328,8 @@ def register_patient():
             }
             patient = Patient.create(patient_data)
             if patient:
+                from utils.hms_models import AuditLog
+                AuditLog.log(current_user.id, "Register Patient", BLUEPRINT_NAME, {"patient_id": patient.id, "name": f"{patient.first_name} {patient.last_name}"})
                 flash(f'Patient {patient.first_name} {patient.last_name} registered successfully! ID: {patient.patient_id_alt}', 'success')
                 return redirect(url_for('ct1.view_patient', patient_id=patient.id))
             else:
@@ -405,6 +413,8 @@ def update_patient(patient_id):
             }
         }
         client.table('patients').update(updated_data).eq('id', patient_id).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Update Patient", BLUEPRINT_NAME, {"patient_id": patient_id})
         flash('Patient record updated successfully!', 'success')
     except Exception as e:
         flash(f'Update failed: {str(e)}', 'danger')
@@ -426,6 +436,8 @@ def delete_patient(patient_id):
             return redirect(url_for('ct1.view_patient', patient_id=patient_id))
             
         client.table('patients').delete().eq('id', patient_id).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Delete Patient", BLUEPRINT_NAME, {"patient_id": patient_id})
         flash('Patient record deleted successfully.', 'success')
         return redirect(url_for('ct1.list_patients'))
     except Exception as e:
@@ -449,6 +461,8 @@ def book_appointment():
             }
             appointment = Appointment.create(appointment_data)
             if appointment:
+                from utils.hms_models import AuditLog
+                AuditLog.log(current_user.id, "Book Appointment", BLUEPRINT_NAME, {"appointment_id": appointment.id, "patient_id": appointment.patient_id})
                 flash('Appointment booked successfully!', 'success')
                 return redirect(url_for('ct1.dashboard'))
             else:
@@ -571,6 +585,8 @@ def delete_bed(bed_id):
             return redirect(url_for('ct1.bed_management'))
             
         client.table('beds').delete().eq('id', bed_id).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Delete Bed", BLUEPRINT_NAME, {"bed_id": bed_id})
         flash('Bed deleted successfully.', 'success')
     except Exception as e:
         flash(f'Error deleting bed: {str(e)}', 'danger')
@@ -579,6 +595,8 @@ def delete_bed(bed_id):
 @ct1_bp.route('/logout')
 @login_required
 def logout():
+    from utils.hms_models import AuditLog
+    AuditLog.log(current_user.id, "Logout", BLUEPRINT_NAME)
     logout_user()
     return redirect(url_for('ct1.login'))
 

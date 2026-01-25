@@ -657,6 +657,9 @@ def export_report(report_type):
     export_format = request.args.get('format', 'csv').lower()
     client = get_supabase_client()
     
+    from utils.hms_models import AuditLog
+    AuditLog.log(current_user.id, "Export HR Report", BLUEPRINT_NAME, {"report_type": report_type, "format": export_format})
+    
     data = []
     headers = []
     
