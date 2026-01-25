@@ -1,0 +1,129 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Resource Map - Fleet Operations{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    #map { height: 600px; width: 100%; border-radius: 1.5rem; z-index: 10; }
+    .custom-marker {
+        background: white;
+        border: 2px solid #F97316;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block header_title %}Resource Map{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100 gap-4">
+        <div>
+            <h3 class="text-xl font-bold text-gray-900">Live Vehicle Positions</h3>
+            <p class="text-gray-500 text-sm">Real-time simulation of active fleet resources</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2">
+                <span class="w-3 h-3 bg-amber-500 rounded-full"></span>
+                <span class="text-xs font-bold text-gray-500 uppercase">On Trip</span>
+            </div>
+            <div class="text-sm font-bold text-gray-900 px-4 py-2 bg-gray-50 rounded-xl border border-gray-100">
+                {{ active_vehicles | length }} Active Units
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-4 rounded-3xl shadow-xl border border-gray-100 relative overflow-hidden">
+        <div id="map"></div>
+        
+        <!-- Legend Overlay -->
+        <div class="absolute bottom-8 left-8 z-[1000] bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-white/20">
+            <h4 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Map Legend</h4>
+            <div class="space-y-2">
+                <div class="flex items-center space-x-3 text-sm">
+                    <div class="w-6 h-6 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600 border border-amber-100">
+                        <i class="bi bi-truck"></i>
+                    </div>
+                    <span class="font-bold text-gray-700">Active Ambulance</span>
+                </div>
+                <div class="flex items-center space-x-3 text-sm">
+                    <div class="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 border border-blue-100">
+                        <i class="bi bi-hospital"></i>
+                    </div>
+                    <span class="font-bold text-gray-700">Medical Center</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize map centered at hospital coords (Manila area as default)
+        const map = L.map('map').setView([14.5995, 120.9842], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Add Medical Center marker
+        const hospitalIcon = L.divIcon({
+            html: '<div class="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg border-2 border-white"><i class="bi bi-hospital-fill text-xl"></i></div>',
+            className: '',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
+        });
+        L.marker([14.5995, 120.9842], {icon: hospitalIcon}).addTo(map)
+            .bindPopup('<div class="p-2"><b>HMS Central Terminal</b><br>Operations Base</div>')
+            .openPopup();
+
+        // Add Active Vehicle markers
+        const vehicles = {{ active_vehicles | tojson }};
+        const vehicleIcon = L.divIcon({
+            html: '<div class="w-8 h-8 bg-amber-500 rounded-xl flex items-center justify-center text-white shadow-md border-2 border-white animate-pulse"><i class="bi bi-truck text-lg"></i></div>',
+            className: '',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+
+        vehicles.forEach(v => {
+            if (v.lat && v.lng) {
+                L.marker([v.lat, v.lng], {icon: vehicleIcon}).addTo(map)
+                    .bindPopup(`
+                        <div class="p-1">
+                            <p class="font-black text-gray-900 border-b pb-1 mb-2 uppercase text-xs">${v.plate_number}</p>
+                            <p class="text-xs text-gray-500 font-bold mb-1">UNIT: <span class="text-gray-700 uppercase">${v.model_name}</span></p>
+                            <p class="text-xs text-gray-500 font-bold">STATUS: <span class="text-amber-500 uppercase">EN ROUTE</span></p>
+                        </div>
+                    `);
+            }
+        });
+
+        // Add some random "Ready" markers for scale if active count is low
+        if (vehicles.length < 3) {
+            for (let i = 0; i < 2; i++) {
+                const lat = 14.5995 + (Math.random() - 0.5) * 0.05;
+                const lng = 120.9842 + (Math.random() - 0.5) * 0.05;
+                L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        html: '<div class="w-6 h-6 bg-slate-400 rounded-lg flex items-center justify-center text-white shadow-sm border-2 border-white"><i class="bi bi-truck text-sm"></i></div>',
+                        className: '',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    })
+                }).addTo(map).bindPopup('Simulation: Service Unit (IDLE)');
+            }
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

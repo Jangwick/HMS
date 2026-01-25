@@ -1,0 +1,107 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block header_title %}Past Dispatch Logs{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header Actions -->
+    <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100 gap-4">
+        <div>
+            <h3 class="text-xl font-bold text-gray-900">Historical Records</h3>
+            <p class="text-gray-500 text-sm">Review completed and cancelled trip history</p>
+        </div>
+        <div class="relative flex-1 md:w-64">
+            <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            <input type="text" id="logSearch" onkeyup="filterLogs()" placeholder="Search logs..." 
+                class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
+        </div>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse" id="logTable">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-100">
+                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Vehicle</th>
+                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Driver</th>
+                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Destination</th>
+                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Duration</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-sm">
+                    {% for log in logs %}
+                    <tr class="hover:bg-gray-50/50 transition-colors log-row">
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-700">
+                            {{ log.departure_time[:10] if log.departure_time else 'N/A' }}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-[#F97316]">
+                                    <i class="bi bi-truck"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-900 search-target">{{ log.fleet_vehicles.plate_number if log.fleet_vehicles else 'Unknown' }}</p>
+                                    <p class="text-xs text-gray-500">{{ log.fleet_vehicles.model_name if log.fleet_vehicles else 'Fleet Vehicle' }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 font-medium text-gray-700 search-target">{{ log.drivers.full_name if log.drivers else 'Unknown Driver' }}</td>
+                        <td class="px-6 py-4 text-gray-600 search-target">{{ log.destination }}</td>
+                        <td class="px-6 py-4">
+                            {% if log.status == 'Completed' %}
+                            <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                                COMPLETED
+                            </span>
+                            {% else %}
+                            <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">
+                                {{ log.status | upper }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-gray-500 italic">
+                            {% if log.departure_time and log.return_time %}
+                                Trip Ended {{ log.return_time[11:16] }}
+                            {% else %}
+                                --
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-400">
+                            <i class="bi bi-clock-history text-4xl mb-3 block"></i>
+                            <p>No past dispatch logs found</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function filterLogs() {
+    const input = document.getElementById('logSearch');
+    const filter = input.value.toLowerCase();
+    const rows = document.getElementsByClassName('log-row');
+
+    for (let row of rows) {
+        let text = "";
+        const targets = row.getElementsByClassName('search-target');
+        for (let target of targets) {
+            text += target.textContent.toLowerCase() + " ";
+        }
+        
+        if (text.includes(filter)) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    }
+}
+</script>
+{% endblock %}

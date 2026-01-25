@@ -654,6 +654,54 @@ def settings():
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
+@log2_bp.route('/dispatch-logs')
+@login_required
+def dispatch_logs():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetch completed/cancelled dispatches
+        # Correctly joining with fleet_vehicles and drivers
+        d_resp = client.table('fleet_dispatch').select('*, fleet_vehicles(plate_number, model_name), drivers(full_name)').in_('status', ['Completed', 'Cancelled']).order('departure_time', desc=True).execute()
+        logs = d_resp.data if d_resp.data else []
+    except Exception as e:
+        print(f"Dispatch Logs Error: {e}")
+        logs = []
+        
+    return render_template('subsystems/logistics/log2/dispatch_logs.html',
+                           logs=logs,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log2_bp.route('/resource-map')
+@login_required
+def resource_map():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Fetch vehicles that are "In Use"
+        v_resp = client.table('fleet_vehicles').select('*').eq('status', 'In Use').execute()
+        active_vehicles = v_resp.data if v_resp.data else []
+        
+        # Since we don't have real coordinates, we'll assign random dummy ones for simulation
+        import random
+        for v in active_vehicles:
+            v['lat'] = 14.5995 + (random.random() - 0.5) * 0.1
+            v['lng'] = 120.9842 + (random.random() - 0.5) * 0.1
+            
+    except Exception as e:
+        print(f"Resource Map Error: {e}")
+        active_vehicles = []
+        
+    return render_template('subsystems/logistics/log2/resource_map.html',
+                           active_vehicles=active_vehicles,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
 @log2_bp.route('/logout')
 @login_required
 def logout():
