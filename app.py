@@ -96,4 +96,15 @@ def create_app(config_class=Config):
         from datetime import datetime
         return {'now': datetime.now}
 
+    @app.after_request
+    def add_header(response):
+        """
+        Add headers to both force latest IE rendering engine or Chrome Frame,
+        and also to cache results for as little time as possible.
+        """
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+
     return app

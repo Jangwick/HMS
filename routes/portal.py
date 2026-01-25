@@ -37,3 +37,11 @@ def support():
 @portal_bp.route('/about')
 def about():
     return render_template('portal/about.html')
+
+@portal_bp.route('/logout-switch')
+def logout_switch():
+    from flask_login import logout_user
+    from flask import request, redirect, url_for
+    logout_user()
+    target = request.args.get('target', url_for('portal.index'))
+    return redirect(target)
