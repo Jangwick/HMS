@@ -276,6 +276,19 @@ def dashboard():
                           accent_color=ACCENT_COLOR,
                           blueprint_name=BLUEPRINT_NAME)
 
+def hr3_redirect_fallback(next_page=None):
+    """Smart fallback redirect for HR3 routes."""
+    target = next_page or request.form.get('next') or request.args.get('next') or request.referrer
+    
+    # Avoid redirect loops or invalid referrers
+    if not target or any(p in target for p in ['/clock-in', '/clock-out', '/login']):
+        if current_user.is_authenticated and current_user.subsystem and current_user.subsystem != 'hr3':
+            try: return redirect(url_for(f'{current_user.subsystem}.dashboard'))
+            except: pass
+        return redirect(url_for('hr3.dashboard'))
+    
+    return redirect(target)
+
 # Attendance & Leave for Current User
 @hr3_bp.route('/attendance/clock-in', methods=['POST'])
 @login_required
@@ -287,13 +300,7 @@ def clock_in():
     active_log = client.table('attendance_logs').select('*').eq('user_id', current_user.id).is_('clock_out', 'null').execute()
     if active_log.data:
         flash('You are already clocked in.', 'warning')
-        next_page = request.form.get('next') or request.args.get('next') or request.referrer
-        if next_page and 'hr3/attendance' not in next_page and 'clock-in' not in next_page:
-            return redirect(next_page)
-        if current_user.subsystem and current_user.subsystem != 'hr3':
-            try: return redirect(url_for(f'{current_user.subsystem}.dashboard'))
-            except: pass
-        return redirect(url_for('hr3.dashboard'))
+        return hr3_redirect_fallback()
     
     now = datetime.now()
     # Logic for Late status (assuming 9 AM start)
@@ -313,20 +320,7 @@ def clock_in():
     except Exception as e:
         flash(f'Error during clock-in: {str(e)}', 'danger')
     
-    # Return to previous page if available
-    next_page = request.form.get('next') or request.args.get('next') or request.referrer
-    
-    if next_page and 'hr3/attendance' not in next_page and 'clock-in' not in next_page:
-        return redirect(next_page)
-        
-    # Default fallback: redirect to their own subsystem dashboard
-    if current_user.subsystem and current_user.subsystem != 'hr3':
-        try:
-            return redirect(url_for(f'{current_user.subsystem}.dashboard'))
-        except:
-            pass
-            
-    return redirect(url_for('hr3.dashboard'))
+    return hr3_redirect_fallback()
 
 @hr3_bp.route('/attendance/clock-out', methods=['POST'])
 @login_required
@@ -337,13 +331,7 @@ def clock_out():
     active_log = client.table('attendance_logs').select('*').eq('user_id', current_user.id).is_('clock_out', 'null').execute()
     if not active_log.data:
         flash('No active clock-in found.', 'warning')
-        next_page = request.form.get('next') or request.args.get('next') or request.referrer
-        if next_page and 'hr3/attendance' not in next_page and 'clock-out' not in next_page:
-            return redirect(next_page)
-        if current_user.subsystem and current_user.subsystem != 'hr3':
-            try: return redirect(url_for(f'{current_user.subsystem}.dashboard'))
-            except: pass
-        return redirect(url_for('hr3.dashboard'))
+        return hr3_redirect_fallback()
     
     try:
         log_id = active_log.data[0]['id']
@@ -354,20 +342,7 @@ def clock_out():
     except Exception as e:
         flash(f'Error during clock-out: {str(e)}', 'danger')
         
-    # Return to previous page if available
-    next_page = request.form.get('next') or request.args.get('next') or request.referrer
-    
-    if next_page and 'hr3/attendance' not in next_page and 'clock-out' not in next_page:
-        return redirect(next_page)
-
-    # Default fallback: redirect to their own subsystem dashboard
-    if current_user.subsystem and current_user.subsystem != 'hr3':
-        try:
-            return redirect(url_for(f'{current_user.subsystem}.dashboard'))
-        except:
-            pass
-            
-    return redirect(url_for('hr3.dashboard'))
+    return hr3_redirect_fallback()
 
 @hr3_bp.route('/leaves/request', methods=['GET', 'POST'])
 @login_required
@@ -392,7 +367,7 @@ def request_leave():
             }
             client.table('leave_requests').insert(data).execute()
             flash('Leave request submitted successfully!', 'success')
-            return redirect(url_for('hr3.dashboard'))
+            return hr3_redirect_fallback()
         except Exception as e:
             flash(f'Error submitting leave request: {str(e)}', 'danger')
             

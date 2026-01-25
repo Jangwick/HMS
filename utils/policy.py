@@ -60,6 +60,12 @@ def policy_required(subsystem_code):
             authorized, message = HMSFundamentalsPolicy.check_access(subsystem_code)
             if not authorized:
                 flash(message, 'danger')
+                # Smart redirect: if user belongs to another subsystem, send them to their own dashboard
+                if current_user.is_authenticated and current_user.subsystem and current_user.subsystem != subsystem_code:
+                    try:
+                        return redirect(url_for(f'{current_user.subsystem}.dashboard'))
+                    except:
+                        pass
                 return redirect(url_for('portal.index'))
             return f(*args, **kwargs)
         return decorated_function
