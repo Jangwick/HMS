@@ -25,6 +25,7 @@ class BaseUser(UserMixin, db.Model):
     last_login = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
+    avatar_url = db.Column(db.Text, nullable=True)
 
     def set_password(self, password, skip_validation=False):
         """

@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT NOW(),
     is_active BOOLEAN DEFAULT TRUE,
     status VARCHAR(20) DEFAULT 'Pending', -- Pending, Active, Rejected
+    avatar_url TEXT,
     
     CONSTRAINT unique_username UNIQUE (username),
     CONSTRAINT unique_email UNIQUE (email)
@@ -957,3 +958,24 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 ALTER TABLE IF EXISTS audit_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on audit_logs" ON audit_logs;
 CREATE POLICY "Allow all on audit_logs" ON audit_logs FOR ALL USING (true) WITH CHECK (true);
+
+-- =====================================================
+-- STORAGE SETUP (Run in SQL Editor)
+-- =====================================================
+
+-- 1. Create the bucket
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('profiles', 'profiles', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 2. Enable public access to the bucket
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'profiles');
+
+-- 3. Allow authenticated uploads
+DROP POLICY IF EXISTS "Allow Uploads" ON storage.objects;
+CREATE POLICY "Allow Uploads" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'profiles');
+
+-- 4. Allow users to update their own avatars
+DROP POLICY IF EXISTS "Allow Updates" ON storage.objects;
+CREATE POLICY "Allow Updates" ON storage.objects FOR UPDATE USING (bucket_id = 'profiles');

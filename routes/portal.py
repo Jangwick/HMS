@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
+import os
 
 portal_bp = Blueprint('portal', __name__)
 
@@ -10,7 +11,71 @@ def index():
 @portal_bp.route('/profile')
 @login_required
 def profile():
-    return render_template('portal/profile.html', user=current_user)
+    from utils.supabase_client import SUBSYSTEM_CONFIG
+    subsystem_info = SUBSYSTEM_CONFIG.get(current_user.subsystem, {})
+    subsystem_name = subsystem_info.get('name', current_user.subsystem.upper())
+    return render_template('portal/profile.html', user=current_user, subsystem_full_name=subsystem_name)
+
+@portal_bp.route('/profile/upload-avatar', methods=['POST'])
+@login_required
+def upload_avatar():
+    if 'avatar' not in request.files:
+        flash('No file part', 'danger')
+        return redirect(url_for('portal.profile'))
+    
+    file = request.files['avatar']
+    if file.filename == '':
+        flash('No selected file', 'danger')
+        return redirect(url_for('portal.profile'))
+    
+    if file:
+        try:
+            from utils.supabase_client import get_supabase_client
+            client = get_supabase_client()
+            
+            # File extension
+            ext = os.path.splitext(file.filename)[1].lower()
+            if ext not in ['.jpg', '.jpeg', '.png', '.gif']:
+                flash('Invalid file type. Please upload an image.', 'danger')
+                return redirect(url_for('portal.profile'))
+
+            # Read file content
+            file_content = file.read()
+            file_path = f"avatars/{current_user.id}_{int(os.path.getmtime(os.path.dirname(__file__)) or 0)}{ext}"
+            
+            # Upload to Supabase Storage (bucket named 'profiles')
+            # Assuming 'profiles' bucket exists and is public or has appropriate policies
+            try:
+                # Try to upload file
+                bucket_name = 'profiles'
+                
+                # Check if bucket exists, if not this might fail but we'll try to upload anyway
+                # Supabase Python client storage API: storage.from_('bucket').upload('path', file)
+                res = client.storage.from_(bucket_name).upload(
+                    path=file_path,
+                    file=file_content,
+                    file_options={"content-type": file.content_type, "x-upsert": "true"}
+                )
+                
+                # Get public URL
+                avatar_url = client.storage.from_(bucket_name).get_public_url(file_path)
+                
+                # Update user in database
+                current_user.update(avatar_url=avatar_url)
+                
+                flash('Profile picture updated successfully!', 'success')
+            except Exception as e:
+                # If upload fails, it might be because the bucket doesn't exist
+                error_msg = str(e)
+                if 'Bucket not found' in error_msg:
+                    flash('Storage Error: The "profiles" bucket was not found. Please run the Storage Setup section in supabase_setup.sql in your Supabase SQL Editor.', 'danger')
+                else:
+                    flash(f'Error uploading to storage: {error_msg}', 'danger')
+                
+        except Exception as e:
+            flash(f'An error occurred: {str(e)}', 'danger')
+            
+    return redirect(url_for('portal.profile'))
 
 @portal_bp.route('/hr')
 def hr_hub():
