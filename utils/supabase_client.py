@@ -372,14 +372,14 @@ class User(UserMixin):
 
 # Subsystem configuration mapping
 SUBSYSTEM_CONFIG = {
-    'hr1': {'department': 'HR', 'name': 'Talent Acquisition'},
-    'hr2': {'department': 'HR', 'name': 'Talent Development'},
-    'hr3': {'department': 'HR', 'name': 'Workforce Operations'},
-    'hr4': {'department': 'HR', 'name': 'Compensation & Analytics'},
-    'ct1': {'department': 'CORE_TRANSACTION', 'name': 'Patient Registration'},
-    'ct2': {'department': 'CORE_TRANSACTION', 'name': 'Pharmacy & Labs'},
-    'ct3': {'department': 'CORE_TRANSACTION', 'name': 'Medical Records'},
-    'log1': {'department': 'LOGISTICS', 'name': 'Inventory Management'},
-    'log2': {'department': 'LOGISTICS', 'name': 'Procurement'},
-    'financials': {'department': 'FINANCIALS', 'name': 'Financial Management System'},
+    'hr1': {'department': 'HR', 'name': 'Talent Acquisition', 'color': 'blue'},
+    'hr2': {'department': 'HR', 'name': 'Talent Development', 'color': 'blue'},
+    'hr3': {'department': 'HR', 'name': 'Workforce Operations', 'color': 'blue'},
+    'hr4': {'department': 'HR', 'name': 'Compensation & Analytics', 'color': 'blue'},
+    'ct1': {'department': 'CORE_TRANSACTION', 'name': 'Patient Registration', 'color': 'emerald'},
+    'ct2': {'department': 'CORE_TRANSACTION', 'name': 'Pharmacy & Labs', 'color': 'emerald'},
+    'ct3': {'department': 'CORE_TRANSACTION', 'name': 'Medical Records', 'color': 'emerald'},
+    'log1': {'department': 'LOGISTICS', 'name': 'Inventory Management', 'color': 'amber'},
+    'log2': {'department': 'LOGISTICS', 'name': 'Procurement', 'color': 'amber'},
+    'financials': {'department': 'FINANCIALS', 'name': 'Financial Management System', 'color': 'purple'},
 }

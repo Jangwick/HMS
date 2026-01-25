@@ -6,7 +6,12 @@ portal_bp = Blueprint('portal', __name__)
 
 @portal_bp.route('/')
 def index():
-    return render_template('portal/index.html')
+    from utils.supabase_client import SUBSYSTEM_CONFIG
+    subsystem_color = 'blue'
+    if current_user.is_authenticated:
+        subsystem_info = SUBSYSTEM_CONFIG.get(current_user.subsystem, {})
+        subsystem_color = subsystem_info.get('color', 'blue')
+    return render_template('portal/index.html', subsystem_color=subsystem_color)
 
 @portal_bp.route('/profile')
 @login_required
@@ -14,7 +19,11 @@ def profile():
     from utils.supabase_client import SUBSYSTEM_CONFIG
     subsystem_info = SUBSYSTEM_CONFIG.get(current_user.subsystem, {})
     subsystem_name = subsystem_info.get('name', current_user.subsystem.upper())
-    return render_template('portal/profile.html', user=current_user, subsystem_full_name=subsystem_name)
+    subsystem_color = subsystem_info.get('color', 'indigo')
+    return render_template('portal/profile.html', 
+                         user=current_user, 
+                         subsystem_full_name=subsystem_name,
+                         subsystem_color=subsystem_color)
 
 @portal_bp.route('/profile/upload-avatar', methods=['POST'])
 @login_required
