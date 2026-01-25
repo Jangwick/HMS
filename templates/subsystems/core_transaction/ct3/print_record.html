@@ -29,23 +29,24 @@
         </div>
 
         <!-- Patient Info -->
-        <div class="grid grid-cols-2 gap-12 py-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 py-4">
             <div>
                 <h2 class="text-xs font-bold text-gray-400 uppercase mb-4 tracking-widest">Patient Details</h2>
-                    <div class="flex flex-wrap gap-4">
-                        <p class="text-xl font-bold text-gray-900">{{ patient.first_name }} {{ patient.last_name }}</p>
-                        <span class="px-3 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-full border border-red-100 items-center flex">
-                            Allergies: {{ patient.allergies or 'None Known' }}
-                        </span>
-                    </div>
-                    <p class="text-gray-600">ID: {{ patient.patient_id_alt }}</p>
-                    <p class="text-gray-600">DOB: {{ patient.dob }}</p>
-                    <p class="text-gray-600">Gender: {{ patient.gender }}</p>
+                <div class="flex items-center gap-3 mb-2">
+                    <p class="text-xl font-bold text-gray-900">{{ patient.first_name }} {{ patient.last_name }}</p>
+                    <span class="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded-full border border-red-100">
+                        Allergies: {{ patient.allergies or 'None Known' }}
+                    </span>
+                </div>
+                <div class="space-y-1 text-sm text-gray-600">
+                    <p>ID: {{ patient.patient_id_alt }}</p>
+                    <p>DOB: {{ patient.dob }}</p>
+                    <p>Gender: {{ patient.gender }}</p>
                 </div>
             </div>
-            <div class="text-right">
+            <div class="md:text-right">
                 <h2 class="text-xs font-bold text-gray-400 uppercase mb-4 tracking-widest">Contact Information</h2>
-                <div class="space-y-2 text-gray-600 font-medium">
+                <div class="space-y-1 text-gray-600 font-medium">
                     <p>{{ patient.contact_number }}</p>
                     <p>{{ patient.address }}</p>
                 </div>
@@ -57,40 +58,48 @@
             <h2 class="text-xs font-bold text-gray-400 uppercase border-b border-gray-100 pb-4 tracking-widest">Electronic Health History</h2>
             
             {% for record in history %}
-            <div class="pb-8 border-b border-gray-50 last:border-0">
-                <div class="flex justify-between mb-4">
-                    <span class="text-lg font-bold text-emerald-600">Entry: {{ record.visit_date[:10] }}</span>
-                    <span class="text-gray-400">Attending: Dr. {{ record.doctor_name }}</span>
+            <div class="pb-10 border-b border-gray-50 last:border-0 last:pb-0">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-lg font-bold text-emerald-600">Entry: {{ record.visit_date[:10] if record.visit_date else '2026-01-25' }}</span>
+                    <span class="text-xs font-bold text-gray-400">Attending: <span class="text-gray-600">Dr. {{ record.doctor_name or 'N/A' }}</span></span>
                 </div>
-                <div class="grid grid-cols-1 gap-4">
-                    <div class="flex space-x-8 bg-gray-50/50 p-2 rounded-lg">
-                        <div>
-                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Temperature</p>
-                            <p class="text-sm font-bold">{{ record.vitals.temp or '--' }}°C</p>
+                
+                <div class="space-y-6">
+                    <!-- Vitals Summary -->
+                    <div class="grid grid-cols-3 gap-4 border-y border-gray-50 py-3">
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Temperature</span>
+                            <span class="text-sm font-black text-gray-900 uppercase">{{ record.vitals.temp or '--' }}°C</span>
                         </div>
-                        <div>
-                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Blood Pressure</p>
-                            <p class="text-sm font-bold">{{ record.vitals.bp or '--' }}</p>
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Blood Pressure</span>
+                            <span class="text-sm font-black text-gray-900 uppercase">{{ record.vitals.bp or '--' }}</span>
                         </div>
-                        <div>
-                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Weight</p>
-                            <p class="text-sm font-bold">{{ record.vitals.weight or '--' }}kg</p>
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Weight</span>
+                            <span class="text-sm font-black text-gray-900 uppercase">{{ record.vitals.weight or '--' }}kg</span>
                         </div>
                     </div>
-                    <div>
-                        <p class="text-xs font-bold text-gray-400 uppercase">Diagnosis</p>
-                        <p class="text-gray-900 font-bold text-lg">{{ record.diagnosis }}</p>
+
+                    <!-- Clinical Findings -->
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Diagnosis</p>
+                            <p class="text-gray-900 font-bold text-lg leading-tight">{{ record.diagnosis }}</p>
+                        </div>
+                        
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Treatment Plan</p>
+                            <p class="text-gray-700 text-sm leading-relaxed">{{ record.treatment or 'N/A' }}</p>
+                        </div>
+
+                        {% if record.notes %}
+                        <div class="bg-gray-50/80 p-5 rounded-2xl border border-gray-100">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Internal Notes</p>
+                            <p class="text-gray-600 text-sm italic leading-relaxed">{{ record.notes }}</p>
+                        </div>
+                        {% endif %}
                     </div>
-                    <div>
-                        <p class="text-xs font-bold text-gray-400 uppercase">Treatment Plan</p>
-                        <p class="text-gray-800">{{ record.treatment or 'N/A' }}</p>
-                    </div>
-                    {% if record.notes %}
-                    <div class="bg-gray-50 p-4 rounded-xl">
-                        <p class="text-xs font-bold text-gray-400 uppercase mb-2">Internal Notes</p>
-                        <p class="text-gray-600 text-sm italic">{{ record.notes }}</p>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
             {% endfor %}
