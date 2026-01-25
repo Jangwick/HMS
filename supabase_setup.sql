@@ -956,6 +956,26 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- =====================================================
+-- NOTIFICATIONS SYSTEM
+-- =====================================================
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    target_subsystem VARCHAR(50), -- Target subsystem (e.g. fin1, hr3)
+    target_role VARCHAR(50),      -- Optional: Target role (e.g. Manager)
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    sender_subsystem VARCHAR(50), -- Source subsystem
+    type VARCHAR(50) DEFAULT 'info', -- info, success, warning, danger
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE IF EXISTS notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on notifications" ON notifications;
+CREATE POLICY "Allow all on notifications" ON notifications FOR ALL USING (true) WITH CHECK (true);
+
 ALTER TABLE IF EXISTS audit_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on audit_logs" ON audit_logs;
 CREATE POLICY "Allow all on audit_logs" ON audit_logs FOR ALL USING (true) WITH CHECK (true);

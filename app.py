@@ -96,6 +96,25 @@ def create_app(config_class=Config):
         from datetime import datetime
         return {'now': datetime.now}
 
+    @app.context_processor
+    def inject_notifications():
+        from flask_login import current_user
+        from utils.hms_models import Notification
+        if current_user.is_authenticated:
+            try:
+                notifications = Notification.get_for_user(current_user)
+                unread_count = Notification.get_unread_count(current_user)
+                return {
+                    'sys_notifications': notifications,
+                    'unread_notifications_count': unread_count
+                }
+            except Exception as e:
+                print(f"Context Processor Notification Error: {e}")
+        return {
+            'sys_notifications': [],
+            'unread_notifications_count': 0
+        }
+
     @app.after_request
     def add_header(response):
         """

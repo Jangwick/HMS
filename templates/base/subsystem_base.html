@@ -450,11 +450,55 @@
                         subsystem_name }}{% endblock %}</h2>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <button class="p-2 text-gray-400 hover:text-accent transition-colors relative">
-                        <i class="bi bi-bell text-xl"></i>
-                        <span
-                            class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                    </button>
+                    <div class="relative" id="notificationDropdown">
+                        <button onclick="toggleNotifications()" class="p-2 text-gray-400 hover:text-accent transition-colors relative">
+                            <i class="bi bi-bell text-xl"></i>
+                            {% if unread_notifications_count > 0 %}
+                            <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                            {% endif %}
+                        </button>
+                        
+                        <!-- Dropdown Menu -->
+                        <div id="notificationMenu" class="hidden absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                            <div class="p-5 border-b border-gray-50 flex justify-between items-center">
+                                <h3 class="text-sm font-bold text-gray-900 uppercase tracking-widest">Notifications</h3>
+                                <span class="px-2 py-0.5 bg-accent/10 text-accent text-[10px] font-bold rounded-lg">{{ unread_notifications_count }} New</span>
+                            </div>
+                            
+                            <div class="max-h-96 overflow-y-auto" id="notificationList">
+                                {% for n in sys_notifications %}
+                                <div class="p-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-default {% if not n.is_read %}bg-accent/5{% endif %}" 
+                                     onclick="markAsRead('{{ n.id }}', this)">
+                                    <div class="flex items-start">
+                                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 
+                                            {% if n.type == 'danger' %}bg-red-50 text-red-600
+                                            {% elif n.type == 'warning' %}bg-amber-50 text-amber-600
+                                            {% elif n.type == 'success' %}bg-emerald-50 text-emerald-600
+                                            {% else %}bg-blue-50 text-blue-600{% endif %}">
+                                            <i class="bi {% if n.type == 'danger' %}bi-exclamation-octagon{% elif n.type == 'warning' %}bi-exclamation-triangle{% elif n.type == 'success' %}bi-check-circle{% else %}bi-info-circle{% endif %}"></i>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-xs font-bold text-gray-900 leading-tight mb-1">{{ n.title }}</p>
+                                            <p class="text-[11px] text-gray-500 leading-relaxed">{{ n.message }}</p>
+                                            <div class="flex items-center mt-2 space-x-2">
+                                                <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{{ n.sender_subsystem | upper }}</span>
+                                                <span class="text-[10px] text-gray-300">•</span>
+                                                <span class="text-[10px] text-gray-400">{{ n.created_at | datetime('%H:%M') }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                
+                                {% if not sys_notifications %}
+                                <div class="p-10 text-center">
+                                    <i class="bi bi-bell-slash text-3xl text-gray-200 mb-2 block"></i>
+                                    <p class="text-xs font-medium text-gray-400">No new notifications</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
                     <div class="h-8 w-px bg-gray-200 mx-2"></div>
                     <span class="text-sm font-medium text-gray-500">{{ now().strftime('%B %d, %Y') if now else ''
                         }}</span>
@@ -507,6 +551,39 @@
     {% block scripts %}{% endblock %}
     
     <script>
+        function toggleNotifications() {
+            const menu = document.getElementById('notificationMenu');
+            menu.classList.toggle('hidden');
+            
+            // Close when clicking outside
+            if (!menu.classList.contains('hidden')) {
+                const closeMenu = (e) => {
+                    if (!document.getElementById('notificationDropdown').contains(e.target)) {
+                        menu.classList.add('hidden');
+                        document.removeEventListener('click', closeMenu);
+                    }
+                };
+                setTimeout(() => document.addEventListener('click', closeMenu), 10);
+            }
+        }
+
+        async function markAsRead(id, element) {
+            try {
+                const response = await fetch(`/portal/notifications/read/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                });
+                if (response.ok) {
+                    element.classList.remove('bg-accent/5');
+                    // Optional: update unread counter in UI
+                }
+            } catch (err) {
+                console.error('Failed to mark notification as read:', err);
+            }
+        }
+
         function toggleSidebar() {
             const sidebar = document.getElementById('mainSidebar');
             const overlay = document.getElementById('sidebarOverlay');

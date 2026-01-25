@@ -98,6 +98,17 @@ def ct_hub():
 def logistics_hub():
     return render_template('departments/logistics_hub.html')
 
+@portal_bp.route('/notifications/read/<int:n_id>', methods=['POST'])
+@login_required
+def mark_notification_read(n_id):
+    from utils.hms_models import Notification
+    Notification.mark_as_read(n_id)
+    return {'status': 'success'}
+
+@portal_bp.route('/about')
+def about():
+    return render_template('portal/about.html')
+
 @portal_bp.route('/financials')
 def financials_hub():
     return render_template('departments/financials_hub.html')
@@ -113,10 +124,6 @@ def privacy():
 @portal_bp.route('/support')
 def support():
     return render_template('portal/support.html')
-
-@portal_bp.route('/about')
-def about():
-    return render_template('portal/about.html')
 
 @portal_bp.route('/logout-switch')
 def logout_switch():

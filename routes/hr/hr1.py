@@ -578,6 +578,16 @@ def handoff_hr2(id):
             'status': 'Pending'
         }
         client.table('onboarding').insert(onboarding_data).execute()
+
+        # Notify HR2 for onboarding
+        from utils.hms_models import Notification
+        Notification.create(
+            subsystem='hr2',
+            title="Personnel Handoff",
+            message=f"{applicant['first_name']} {applicant['last_name']} has been handed off for onboarding.",
+            n_type="info",
+            sender_subsystem=BLUEPRINT_NAME
+        )
         
         flash(f'Success! {applicant["first_name"]} {applicant["last_name"]} has been handed off to HR2 for onboarding.', 'success')
     except Exception as e:

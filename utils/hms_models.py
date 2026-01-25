@@ -292,6 +292,15 @@ class Billing:
                     'amount_due': new_total
                 }).eq('billing_id', bill['id']).execute()
                 
+                # Notify Financials (fin1)
+                Notification.create(
+                    subsystem='fin1',
+                    title="Revenue Update",
+                    message=f"New charge of ${amount} added for patient. Total: ${new_total}.",
+                    n_type="success",
+                    sender_subsystem=source_subsystem
+                )
+                
                 return bill['id']
             else:
                 # Create a new bill
@@ -313,6 +322,16 @@ class Billing:
                         'status': 'Unpaid'
                     }
                     client.table('receivables').insert(rec_data).execute()
+
+                    # Notify Financials (fin1)
+                    Notification.create(
+                        subsystem='fin1',
+                        title="New Billing Record",
+                        message=f"A new bill has been generated for ${amount} by {source_subsystem}.",
+                        n_type="info",
+                        sender_subsystem=source_subsystem
+                    )
+
                     return bill_id
         except Exception as e:
             print(f"Error in post_charge: {e}")
@@ -334,3 +353,77 @@ class AuditLog:
         except Exception as e:
             print(f"Failed to write audit log: {e}")
             # Silently fail to not block the main transaction
+
+class Notification:
+    @staticmethod
+    def create(user_id=None, subsystem=None, role=None, title="Notification", message="", n_type="info", sender_subsystem=None):
+        """
+        Create a notification for a specific user, subsystem, or role.
+        """
+        client = get_supabase_client()
+        data = {
+            'user_id': user_id,
+            'target_subsystem': subsystem,
+            'target_role': role,
+            'title': title,
+            'message': message,
+            'type': n_type,
+            'sender_subsystem': sender_subsystem,
+            'is_read': False,
+            'created_at': datetime.now().isoformat()
+        }
+        try:
+            client.table('notifications').insert(data).execute()
+        except Exception as e:
+            print(f"Failed to create notification: {e}")
+
+    @staticmethod
+    def get_for_user(user):
+        """
+        Retrieve notifications relevant to the user:
+        1. Explicitly for their user ID
+        2. For their subsystem (if no user_id is specified)
+        3. For their subsystem + role (if no user_id is specified)
+        """
+        client = get_supabase_client()
+        try:
+            # Build filters for OR logic
+            # 1. user_id = user.id
+            # 2. (user_id is null AND target_subsystem = user.subsystem AND target_role is null)
+            # 3. (user_id is null AND target_subsystem = user.subsystem AND target_role = user.role)
+            
+            # Simple combined query using Supabase or()
+            # In simple terms: user_id=X or target_subsystem=Y
+            query = f"user_id.eq.{user.id},target_subsystem.eq.{user.subsystem}"
+            response = client.table('notifications').select('*')\
+                .or_(query)\
+                .order('created_at', desc=True)\
+                .limit(20)\
+                .execute()
+            
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Failed to fetch notifications: {e}")
+            return []
+
+    @staticmethod
+    def mark_as_read(notification_id):
+        client = get_supabase_client()
+        try:
+            client.table('notifications').update({'is_read': True}).eq('id', notification_id).execute()
+        except Exception as e:
+            print(f"Failed to mark notification as read: {e}")
+
+    @staticmethod
+    def get_unread_count(user):
+        client = get_supabase_client()
+        try:
+            query = f"user_id.eq.{user.id},target_subsystem.eq.{user.subsystem}"
+            response = client.table('notifications').select('id', count='exact')\
+                .or_(query)\
+                .eq('is_read', False)\
+                .execute()
+            return response.count if response.count is not None else 0
+        except Exception as e:
+            print(f"Failed to count unread notifications: {e}")
+            return 0

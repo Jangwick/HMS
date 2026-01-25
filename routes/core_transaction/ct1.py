@@ -461,8 +461,19 @@ def book_appointment():
             }
             appointment = Appointment.create(appointment_data)
             if appointment:
-                from utils.hms_models import AuditLog
+                from utils.hms_models import AuditLog, Notification
                 AuditLog.log(current_user.id, "Book Appointment", BLUEPRINT_NAME, {"appointment_id": appointment.id, "patient_id": appointment.patient_id})
+                
+                # Notify the doctor/Clinical Ops (CT2)
+                Notification.create(
+                    user_id=appointment_data['doctor_id'], 
+                    subsystem='ct2',
+                    title="New Appointment Scheduled",
+                    message=f"A new appointment has been scheduled for {appointment_data['appointment_date']}.",
+                    n_type="info",
+                    sender_subsystem=BLUEPRINT_NAME
+                )
+                
                 flash('Appointment booked successfully!', 'success')
                 return redirect(url_for('ct1.dashboard'))
             else:
