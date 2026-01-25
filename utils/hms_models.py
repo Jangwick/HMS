@@ -378,44 +378,59 @@ class Notification:
             'created_at': datetime.now().isoformat()
         }
         try:
-            res = client.table('notifications').insert(data).execute()
-            return res.data
+            # Try full insert first
+            client.table('notifications').insert(data).execute()
         except Exception as e:
-            # More granular error handling for RLS and missing columns
             err_str = str(e)
-            if 'row-level security' in err_str.lower():
-                print(f"CRITICAL: Notification failed due to RLS Policy. Run SQL: ALTER TABLE notifications DISABLE ROW LEVEL SECURITY; or add an ALL policy.")
             
-            if 'target_url' in err_str:
-                try:
-                    data.pop('target_url', None)
-                    client.table('notifications').insert(data).execute()
-                except Exception as e2:
-                    print(f"Failed to create notification even with fallback: {e2}")
-            else:
-                print(f"Failed to create notification: {e}")
+            # If target_url OR created_at is the problem, try a bare-bones insert
+            try:
+                minimal_data = {
+                    'target_subsystem': subsystem,
+                    'user_id': user_id,
+                    'title': title,
+                    'message': message,
+                    'type': n_type,
+                    'sender_subsystem': sender_subsystem or 'SYSTEM'
+                }
+                client.table('notifications').insert(minimal_data).execute()
+                print("Created minimal notification after original failed.")
+            except Exception as e2:
+                print(f"FAILED TO CREATE ANY NOTIFICATION: {e2}")
+                print(f"Original error was: {e}")
             return None
 
     @staticmethod
     def get_for_user(user):
         """
         Retrieve notifications relevant to the user:
-        1. Explicitly for their user ID
-        2. For their subsystem where user_id is NULL
+        - Specifically for their user ID
+        - For their subsystem (where shared)
         """
         client = get_supabase_client()
         try:
-            # Build filters for OR logic
-            # (user_id = ID) OR (user_id IS NULL AND target_subsystem = SUBSYSTEM)
-            query = f"user_id.eq.{user.id},and(user_id.is.null,target_subsystem.eq.{user.subsystem})"
-            
-            response = client.table('notifications').select('*')\
-                .or_(query)\
+            # 1. Fetch subsystem notifications (shared)
+            sub_res = client.table('notifications').select('*')\
+                .eq('target_subsystem', user.subsystem)\
+                .is_('user_id', 'null')\
                 .order('created_at', desc=True)\
-                .limit(20)\
+                .limit(10)\
                 .execute()
             
-            return response.data if response.data else []
+            # 2. Fetch personal notifications
+            personal_res = client.table('notifications').select('*')\
+                .eq('user_id', user.id)\
+                .order('created_at', desc=True)\
+                .limit(10)\
+                .execute()
+            
+            combined = (sub_res.data or []) + (personal_res.data or [])
+            
+            # Deduplicate and sort
+            unique = {n['id']: n for n in combined}
+            sorted_notifs = sorted(unique.values(), key=lambda x: x['created_at'], reverse=True)
+            
+            return sorted_notifs[:15]
         except Exception as e:
             print(f"Failed to fetch notifications: {e}")
             return []
@@ -430,14 +445,28 @@ class Notification:
 
     @staticmethod
     def get_unread_count(user):
+        """
+        Count unread notifications for specified user or their current subsystem.
+        """
         client = get_supabase_client()
         try:
-            query = f"user_id.eq.{user.id},and(user_id.is.null,target_subsystem.eq.{user.subsystem})"
-            response = client.table('notifications').select('id', count='exact')\
-                .or_(query)\
+            # Simple combined check - fetch only IDs to save bandwidth
+            sub_res = client.table('notifications').select('id')\
+                .eq('target_subsystem', user.subsystem)\
+                .is_('user_id', 'null')\
                 .eq('is_read', False)\
                 .execute()
-            return response.count if response.count is not None else 0
+            
+            personal_res = client.table('notifications').select('id')\
+                .eq('user_id', user.id)\
+                .eq('is_read', False)\
+                .execute()
+            
+            # Use sets of IDs to merge
+            sub_ids = {n['id'] for n in (sub_res.data or [])}
+            personal_ids = {n['id'] for n in (personal_res.data or [])}
+            
+            return len(sub_ids | personal_ids)
         except Exception as e:
             print(f"Failed to count unread notifications: {e}")
             return 0
