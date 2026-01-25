@@ -518,8 +518,8 @@ def schedule_interview():
             
     # GET: fetch applicants and potential interviewers
     applicants = client.table('applicants').select('*').neq('status', 'Handoff').execute().data
-    # For now, interviewers are any HR users
-    interviewers = client.table('users').select('id, username').eq('department', 'HR').execute().data
+    # For now, interviewers are any HR staff only (excluding admins)
+    interviewers = client.table('users').select('id, username').eq('department', 'HR').eq('role', 'Staff').execute().data
     
     selected_applicant_id = request.args.get('applicant_id')
     
@@ -534,10 +534,6 @@ def schedule_interview():
 @hr1_bp.route('/applicants/<int:id>/status/<string:status>', methods=['POST'])
 @login_required
 def update_applicant_status_quick(id, status):
-    if not current_user.is_admin():
-        flash('Unauthorized: Admin access required.', 'danger')
-        return redirect(url_for('hr1.list_applicants'))
-        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
@@ -588,10 +584,6 @@ def handoff_hr2(id):
 @hr1_bp.route('/applicants/<int:id>/schedule', methods=['POST'])
 @login_required
 def schedule_interview_quick(id):
-    if not current_user.is_admin():
-        flash('Unauthorized: Admin access required.', 'danger')
-        return redirect(url_for('hr1.list_applicants'))
-        
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
