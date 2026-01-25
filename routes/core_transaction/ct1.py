@@ -230,9 +230,15 @@ def dashboard():
     new_patients_week = client.table('patients').select('id', count='exact').gte('created_at', last_week).execute().count or 0
     
     # Appointments today
-    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999).isoformat()
-    appointments_today = client.table('appointments').select('id', count='exact').gte('appointment_date', today_start).lte('appointment_date', today_end).execute().count or 0
+    today_start = datetime.now().strftime('%Y-%m-%d 00:00:00')
+    today_end = datetime.now().strftime('%Y-%m-%d 23:59:59')
+    appointments_today_resp = client.table('appointments')\
+        .select('id', count='exact')\
+        .gte('appointment_date', today_start)\
+        .lte('appointment_date', today_end)\
+        .neq('status', 'Cancelled')\
+        .execute()
+    appointments_today = appointments_today_resp.count or 0
 
     # Bed stats
     bed_resp = client.table('beds').select('id, status', count='exact').execute()
