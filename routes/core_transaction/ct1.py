@@ -471,7 +471,8 @@ def book_appointment():
                     title="New Appointment Scheduled",
                     message=f"A new appointment has been scheduled for {appointment_data['appointment_date']}.",
                     n_type="info",
-                    sender_subsystem=BLUEPRINT_NAME
+                    sender_subsystem=BLUEPRINT_NAME,
+                    target_url=url_for('ct2.dashboard')
                 )
                 
                 flash('Appointment booked successfully!', 'success')

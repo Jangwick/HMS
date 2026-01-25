@@ -28,6 +28,14 @@ class HMSFundamentalsPolicy:
         if current_user.subsystem == 'hr3' and current_user.role in ['Admin', 'Administrator']:
             return True, None
             
+        # Department-wide Administrator Access
+        from utils.supabase_client import SUBSYSTEM_CONFIG
+        target_config = SUBSYSTEM_CONFIG.get(subsystem_code, {})
+        target_dept = target_config.get('department')
+        
+        if current_user.department == target_dept and current_user.is_admin():
+            return True, None
+
         # Subsystem Isolation Check
         if current_user.subsystem != subsystem_code:
             # Audit unauthorized access attempts

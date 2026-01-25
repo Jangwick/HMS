@@ -403,18 +403,22 @@ def dispense_item():
     
     try:
         # Get current quantity
-        item_resp = client.table('inventory').select('quantity, item_name').eq('id', item_id).single().execute()
+        item_resp = client.table('inventory').select('quantity, item_name, reorder_level').eq('id', item_id).single().execute()
         if not item_resp.data:
             flash('Item not found.', 'danger')
             return redirect(url_for('log1.list_inventory'))
             
         current_qty = item_resp.data.get('quantity', 0)
+        reorder_level = item_resp.data.get('reorder_level', 10)
+        item_name = item_resp.data.get('item_name')
+
         if current_qty < quantity_to_dispense:
-            flash(f'Insufficient stock for {item_resp.data.get("item_name")}.', 'danger')
+            flash(f'Insufficient stock for {item_name}.', 'danger')
             return redirect(url_for('log1.list_inventory'))
             
         # Update quantity
-        client.table('inventory').update({'quantity': current_qty - quantity_to_dispense}).eq('id', item_id).execute()
+        new_qty = current_qty - quantity_to_dispense
+        client.table('inventory').update({'quantity': new_qty}).eq('id', item_id).execute()
         
         # Log in dispensing history
         client.table('dispensing_history').insert({
@@ -423,6 +427,18 @@ def dispense_item():
             'dispensed_by': current_user.id,
             'notes': request.form.get('notes', 'Standard dispensing')
         }).execute()
+
+        # Low stock notification for Procurement (LOG2)
+        if new_qty <= reorder_level:
+            from utils.hms_models import Notification
+            Notification.create(
+                subsystem='log2',
+                title="Low Stock Alert",
+                message=f"Stock for '{item_name}' has reached {new_qty}, which is at or below the reorder level ({reorder_level}).",
+                n_type="warning",
+                sender_subsystem=BLUEPRINT_NAME,
+                target_url=url_for('log1.list_inventory') # Link back to inventory to see status
+            )
         
         flash(f'Successfully dispensed {quantity_to_dispense} units.', 'success')
     except Exception as e:

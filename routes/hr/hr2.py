@@ -226,6 +226,7 @@ def dashboard():
 
 @hr2_bp.route('/onboarding')
 @login_required
+@policy_required(BLUEPRINT_NAME)
 def onboarding_pipeline():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()

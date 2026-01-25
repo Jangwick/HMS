@@ -968,6 +968,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     message TEXT NOT NULL,
     sender_subsystem VARCHAR(50), -- Source subsystem
     type VARCHAR(50) DEFAULT 'info', -- info, success, warning, danger
+    target_url TEXT,              -- Optional: Link to relevant page
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
 );

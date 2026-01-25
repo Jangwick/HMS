@@ -467,8 +467,8 @@
                             
                             <div class="max-h-96 overflow-y-auto" id="notificationList">
                                 {% for n in sys_notifications %}
-                                <div class="p-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-default {% if not n.is_read %}bg-accent/5{% endif %}" 
-                                     onclick="markAsRead('{{ n.id }}', this)">
+                                <div class="p-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer {% if not n.is_read %}bg-accent/5{% endif %}" 
+                                     onclick="markAsRead('{{ n.id }}', this, '{{ n.target_url if n.target_url else '' }}')">
                                     <div class="flex items-start">
                                         <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 
                                             {% if n.type == 'danger' %}bg-red-50 text-red-600
@@ -567,9 +567,9 @@
             }
         }
 
-        async function markAsRead(id, element) {
+        async function markAsRead(id, element, url = null) {
             try {
-                const response = await fetch(`/portal/notifications/read/${id}`, {
+                const response = await fetch(`/notifications/read/${id}`, {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': '{{ csrf_token() }}'
@@ -578,9 +578,15 @@
                 if (response.ok) {
                     element.classList.remove('bg-accent/5');
                     // Optional: update unread counter in UI
+                    if (url) {
+                        window.location.href = url;
+                    }
                 }
             } catch (err) {
                 console.error('Failed to mark notification as read:', err);
+                if (url) {
+                    window.location.href = url;
+                }
             }
         }
 

@@ -586,7 +586,8 @@ def handoff_hr2(id):
             title="Personnel Handoff",
             message=f"{applicant['first_name']} {applicant['last_name']} has been handed off for onboarding.",
             n_type="info",
-            sender_subsystem=BLUEPRINT_NAME
+            sender_subsystem=BLUEPRINT_NAME,
+            target_url=url_for('hr2.onboarding_pipeline')
         )
         
         flash(f'Success! {applicant["first_name"]} {applicant["last_name"]} has been handed off to HR2 for onboarding.', 'success')

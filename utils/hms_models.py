@@ -292,13 +292,15 @@ class Billing:
                     'amount_due': new_total
                 }).eq('billing_id', bill['id']).execute()
                 
-                # Notify Financials (fin1)
+                # Notify Financials
+                from flask import url_for
                 Notification.create(
-                    subsystem='fin1',
+                    subsystem='financials',
                     title="Revenue Update",
                     message=f"New charge of ${amount} added for patient. Total: ${new_total}.",
                     n_type="success",
-                    sender_subsystem=source_subsystem
+                    sender_subsystem=source_subsystem,
+                    target_url=url_for('financials.billing')
                 )
                 
                 return bill['id']
@@ -323,13 +325,15 @@ class Billing:
                     }
                     client.table('receivables').insert(rec_data).execute()
 
-                    # Notify Financials (fin1)
+                    # Notify Financials
+                    from flask import url_for
                     Notification.create(
-                        subsystem='fin1',
+                        subsystem='financials',
                         title="New Billing Record",
                         message=f"A new bill has been generated for ${amount} by {source_subsystem}.",
                         n_type="info",
-                        sender_subsystem=source_subsystem
+                        sender_subsystem=source_subsystem,
+                        target_url=url_for('financials.billing')
                     )
 
                     return bill_id
@@ -356,7 +360,7 @@ class AuditLog:
 
 class Notification:
     @staticmethod
-    def create(user_id=None, subsystem=None, role=None, title="Notification", message="", n_type="info", sender_subsystem=None):
+    def create(user_id=None, subsystem=None, role=None, title="Notification", message="", n_type="info", sender_subsystem=None, target_url=None):
         """
         Create a notification for a specific user, subsystem, or role.
         """
@@ -369,32 +373,42 @@ class Notification:
             'message': message,
             'type': n_type,
             'sender_subsystem': sender_subsystem,
+            'target_url': target_url,
             'is_read': False,
             'created_at': datetime.now().isoformat()
         }
         try:
-            client.table('notifications').insert(data).execute()
+            res = client.table('notifications').insert(data).execute()
+            return res.data
         except Exception as e:
-            print(f"Failed to create notification: {e}")
+            # More granular error handling for RLS and missing columns
+            err_str = str(e)
+            if 'row-level security' in err_str.lower():
+                print(f"CRITICAL: Notification failed due to RLS Policy. Run SQL: ALTER TABLE notifications DISABLE ROW LEVEL SECURITY; or add an ALL policy.")
+            
+            if 'target_url' in err_str:
+                try:
+                    data.pop('target_url', None)
+                    client.table('notifications').insert(data).execute()
+                except Exception as e2:
+                    print(f"Failed to create notification even with fallback: {e2}")
+            else:
+                print(f"Failed to create notification: {e}")
+            return None
 
     @staticmethod
     def get_for_user(user):
         """
         Retrieve notifications relevant to the user:
         1. Explicitly for their user ID
-        2. For their subsystem (if no user_id is specified)
-        3. For their subsystem + role (if no user_id is specified)
+        2. For their subsystem where user_id is NULL
         """
         client = get_supabase_client()
         try:
             # Build filters for OR logic
-            # 1. user_id = user.id
-            # 2. (user_id is null AND target_subsystem = user.subsystem AND target_role is null)
-            # 3. (user_id is null AND target_subsystem = user.subsystem AND target_role = user.role)
+            # (user_id = ID) OR (user_id IS NULL AND target_subsystem = SUBSYSTEM)
+            query = f"user_id.eq.{user.id},and(user_id.is.null,target_subsystem.eq.{user.subsystem})"
             
-            # Simple combined query using Supabase or()
-            # In simple terms: user_id=X or target_subsystem=Y
-            query = f"user_id.eq.{user.id},target_subsystem.eq.{user.subsystem}"
             response = client.table('notifications').select('*')\
                 .or_(query)\
                 .order('created_at', desc=True)\
@@ -418,7 +432,7 @@ class Notification:
     def get_unread_count(user):
         client = get_supabase_client()
         try:
-            query = f"user_id.eq.{user.id},target_subsystem.eq.{user.subsystem}"
+            query = f"user_id.eq.{user.id},and(user_id.is.null,target_subsystem.eq.{user.subsystem})"
             response = client.table('notifications').select('id', count='exact')\
                 .or_(query)\
                 .eq('is_read', False)\
