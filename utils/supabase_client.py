@@ -77,6 +77,7 @@ class User(UserMixin):
             self.subsystem = data.get('subsystem')
             self.department = data.get('department')
             self.role = data.get('role', 'Staff')
+            self.avatar_url = data.get('avatar_url')
             self.password_created_at = self._parse_datetime(data.get('password_created_at'))
             self.password_expires_at = self._parse_datetime(data.get('password_expires_at'))
             self.password_history = data.get('password_history') or []
