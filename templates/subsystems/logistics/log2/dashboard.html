@@ -96,7 +96,7 @@
         </div>
     </div>
 
-    {% if current_user.is_admin() %}
+    {% if current_user.is_staff() %}
     <!-- Admin Management -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h4 class="text-xl font-bold text-gray-900 mb-6">Fleet Management</h4>

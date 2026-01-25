@@ -604,9 +604,10 @@ def list_drivers():
 
 @log2_bp.route('/drivers/add', methods=['POST'])
 @login_required
+@policy_required(BLUEPRINT_NAME)
 def add_driver():
-    if not current_user.is_admin():
-        flash('Unauthorized: Only administrators can add new drivers.', 'danger')
+    if not current_user.is_staff():
+        flash('Unauthorized: Only authorized staff can add new drivers.', 'danger')
         return redirect(url_for('log2.dashboard'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
@@ -629,9 +630,10 @@ def add_driver():
 
 @log2_bp.route('/drivers/edit/<int:driver_id>', methods=['POST'])
 @login_required
+@policy_required(BLUEPRINT_NAME)
 def edit_driver(driver_id):
-    if not current_user.is_admin():
-        flash('Unauthorized: Only administrators can modify driver details.', 'danger')
+    if not current_user.is_staff():
+        flash('Unauthorized: Only authorized staff can modify driver details.', 'danger')
         return redirect(url_for('log2.dashboard'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
@@ -654,9 +656,10 @@ def edit_driver(driver_id):
 
 @log2_bp.route('/drivers/delete/<int:driver_id>', methods=['POST'])
 @login_required
+@policy_required(BLUEPRINT_NAME)
 def delete_driver(driver_id):
-    if not current_user.is_admin():
-        flash('Unauthorized: Only administrators can remove drivers.', 'danger')
+    if not current_user.is_staff():
+        flash('Unauthorized: Only authorized staff can remove drivers.', 'danger')
         return redirect(url_for('log2.dashboard'))
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()

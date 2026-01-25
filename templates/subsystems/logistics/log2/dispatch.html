@@ -52,7 +52,7 @@
                 <input type="text" id="dispatchSearch" onkeyup="filterDispatches()" placeholder="Search trips..." 
                     class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#F97316] outline-none text-sm">
             </div>
-            {% if current_user.is_admin() %}
+            {% if current_user.is_staff() %}
             <button onclick="document.getElementById('newDispatchModal').classList.remove('hidden')"
                 class="px-4 py-2 bg-[#F97316] text-white font-bold rounded-xl hover:bg-[#EA580C] transition-colors flex items-center space-x-2 whitespace-nowrap">
                 <i class="bi bi-send-plus"></i>
@@ -116,7 +116,7 @@
                                     <i class="bi bi-info-circle"></i>
                                 </button>
                                 {% if trip.status == 'On Trip' %}
-                                {% if current_user.is_admin() %}
+                                {% if current_user.is_staff() %}
                                 <button onclick="openCompleteModal('{{ trip.id }}', '{{ trip.license_plate }}')" 
                                     class="px-3 py-1 text-green-600 hover:bg-green-50 rounded-lg transition-colors font-bold whitespace-nowrap text-xs">
                                     Return
