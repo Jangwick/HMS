@@ -289,6 +289,7 @@ CREATE TABLE IF NOT EXISTS medical_records (
     visit_date TIMESTAMP DEFAULT NOW(),
     diagnosis TEXT NOT NULL,
     treatment TEXT,
+    vitals JSONB,
     notes TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -979,3 +980,18 @@ CREATE POLICY "Allow Uploads" ON storage.objects FOR INSERT WITH CHECK (bucket_i
 -- 4. Allow users to update their own avatars
 DROP POLICY IF EXISTS "Allow Updates" ON storage.objects;
 CREATE POLICY "Allow Updates" ON storage.objects FOR UPDATE USING (bucket_id = 'profiles');
+
+-- =====================================================
+-- SCHEMA PATCHES (Run these if column errors occur)
+-- =====================================================
+
+-- Patch for medical_records table
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='medical_records' AND column_name='treatment') THEN
+        ALTER TABLE medical_records ADD COLUMN treatment TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='medical_records' AND column_name='vitals') THEN
+        ALTER TABLE medical_records ADD COLUMN vitals JSONB;
+    END IF;
+END $$;
