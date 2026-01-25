@@ -83,7 +83,8 @@
                                     <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">Awaiting Pmt</span>
                                     {% endif %}
                                 {% endif %}
-                                <button class="p-2 text-gray-400 hover:text-[#EF4444] hover:bg-white rounded-lg transition-all">
+                                <button onclick="openViewModal({{ inv.id }}, '{{ inv.invoice_number or inv.id }}', '{{ inv.vendor_name }}', '{{ inv.due_date }}', {{ inv.amount }}, '{{ inv.status }}', '{{ inv.invoice_date }}', '{{ (inv.description or "") | replace("\r\n", " ") | replace("\n", " ") }}')"
+                                    class="p-2 text-gray-400 hover:text-[#EF4444] hover:bg-white rounded-lg transition-all">
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </div>
@@ -174,7 +175,85 @@
     </div>
 </div>
 
+<!-- View Invoice Modal -->
+<div id="viewModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden">
+        <div class="bg-gray-50 p-6 border-b border-gray-100 flex justify-between items-center">
+            <h3 class="text-xl font-bold text-gray-900" id="viewTitle">Invoice Details</h3>
+            <button onclick="closeViewModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="bi bi-x-lg text-xl"></i>
+            </button>
+        </div>
+        <div class="p-8 space-y-6">
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Vendor</p>
+                    <p class="font-bold text-gray-800 text-lg" id="viewVendor"></p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Amount</p>
+                    <p class="font-bold text-gray-800 text-lg" id="viewAmount"></p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Invoice Date</p>
+                    <p class="font-medium text-gray-600" id="viewDate"></p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Due Date</p>
+                    <p class="font-medium text-gray-600" id="viewDueDate"></p>
+                </div>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</p>
+                <div id="viewStatusBadge" class="mt-1"></div>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Description</p>
+                <p class="text-sm text-gray-600 mt-1 leading-relaxed" id="viewDescription"></p>
+            </div>
+        </div>
+        <div class="px-8 py-6 bg-gray-50 flex justify-end">
+            <button onclick="closeViewModal()" class="px-6 py-2 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition-all">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
+function openViewModal(id, number, vendor, dueDate, amount, status, date, description) {
+    document.getElementById('viewTitle').innerText = `Invoice #${number}`;
+    document.getElementById('viewVendor').innerText = vendor;
+    document.getElementById('viewAmount').innerText = `$${parseFloat(amount).toFixed(2)}`;
+    document.getElementById('viewDate').innerText = date || 'N/A';
+    document.getElementById('viewDueDate').innerText = dueDate;
+    document.getElementById('viewDescription').innerText = description || 'No description provided.';
+    
+    const badgeContainer = document.getElementById('viewStatusBadge');
+    badgeContainer.innerHTML = '';
+    const badge = document.createElement('span');
+    badge.className = 'px-3 py-1 rounded-full text-xs font-bold';
+    if (status === 'Paid') {
+        badge.classList.add('bg-green-50', 'text-green-600');
+    } else {
+        badge.classList.add('bg-amber-50', 'text-amber-600');
+    }
+    badge.innerText = status;
+    badgeContainer.appendChild(badge);
+
+    const modal = document.getElementById('viewModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeViewModal() {
+    const modal = document.getElementById('viewModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
 function openPaymentModal(id, vendor, amount) {
     const modal = document.getElementById('paymentModal');
     const form = document.getElementById('paymentForm');
