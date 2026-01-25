@@ -1,0 +1,92 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}System Audit Report - {{ subsystem_name }}{% endblock %}
+
+{% block header_title %}Full Audit Report{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('ct3.security_logs') }}" class="inline-flex items-center text-sm font-medium text-gray-500 hover:text-accent transition-colors">
+        <i class="bi bi-arrow-left-short text-xl mr-1"></i>
+        Back to Security Dashboard
+    </a>
+</div>
+
+<div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-xl font-bold text-gray-900">System-Wide Audit Trail</h3>
+            <p class="text-sm text-gray-500 mt-1">Showing all recorded activity since system start</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="window.print()" class="inline-flex items-center px-4 py-2 bg-gray-50 text-gray-600 text-sm font-bold rounded-xl hover:bg-gray-100 transition-all">
+                <i class="bi bi-printer mr-2"></i>
+                Print Report
+            </button>
+            <a href="{{ url_for('ct3.export_logs') }}" class="inline-flex items-center px-4 py-2 bg-accent text-white text-sm font-bold rounded-xl hover:opacity-90 transition-all shadow-sm">
+                <i class="bi bi-file-earmark-arrow-down mr-2"></i>
+                Download CSV
+            </a>
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead class="bg-gray-50 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+                <tr>
+                    <th class="px-8 py-4">User</th>
+                    <th class="px-6 py-4">Action</th>
+                    <th class="px-6 py-4">Subsystem</th>
+                    <th class="px-6 py-4">Date & Time</th>
+                    <th class="px-6 py-4">Details</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                {% for log in logs %}
+                <tr class="hover:bg-gray-50/50 transition-colors">
+                    <td class="px-8 py-4">
+                        <div class="flex items-center">
+                            {% if log.users and log.users.avatar_url %}
+                            <img src="{{ log.users.avatar_url }}" alt="" class="w-8 h-8 rounded-lg mr-3 object-cover shadow-sm">
+                            {% else %}
+                            <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center mr-3 text-slate-500 text-xs font-bold">
+                                {{ (log.users.username[0] if log.users else 'S') | upper }}
+                            </div>
+                            {% endif %}
+                            <div>
+                                <p class="text-sm font-bold text-gray-900">{{ log.users.username if log.users else 'System' }}</p>
+                                <p class="text-[10px] text-gray-400 font-medium lowercase">@{{ log.users.username if log.users else 'hms' }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider 
+                            {% if 'Delete' in log.action or 'Unauthorized' in log.action %}bg-red-100 text-red-700
+                            {% elif 'Update' in log.action or 'Edit' in log.action %}bg-amber-100 text-amber-700
+                            {% elif 'Add' in log.action or 'Register' in log.action %}bg-emerald-100 text-emerald-700
+                            {% elif 'Export' in log.action %}bg-blue-100 text-blue-700
+                            {% else %}bg-gray-100 text-gray-600{% endif %}">
+                            {{ log.action }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
+                            {{ log.subsystem | upper }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <p class="text-xs font-bold text-gray-700">{{ log.created_at[:10] }}</p>
+                        <p class="text-[10px] text-gray-400 font-medium">{{ log.created_at[11:16] }}</p>
+                    </td>
+                    <td class="px-6 py-4">
+                        <code class="text-[10px] text-gray-500 bg-gray-50 px-2 py-1 rounded-md block max-w-xs truncate" title="{{ log.details }}">
+                            {{ log.details }}
+                        </code>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -378,6 +378,33 @@ def security_logs():
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
+@ct3_bp.route('/security-report')
+@login_required
+def security_report():
+    if not current_user.is_admin():
+        flash('Unauthorized.', 'error')
+        return redirect(url_for('ct3.dashboard'))
+        
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        response = client.table('audit_logs')\
+            .select('*, users(username, avatar_url)')\
+            .order('created_at', desc=True)\
+            .execute()
+        
+        logs = response.data if response.data else []
+        
+        return render_template('subsystems/core_transaction/ct3/security_report.html',
+                               logs=logs,
+                               subsystem_name=SUBSYSTEM_NAME,
+                               accent_color=ACCENT_COLOR,
+                               blueprint_name=BLUEPRINT_NAME)
+    except Exception as e:
+        flash(f'Error generating report: {str(e)}', 'danger')
+        return redirect(url_for('ct3.security_logs'))
+
 @ct3_bp.route('/export-logs')
 @login_required
 def export_logs():
@@ -385,12 +412,51 @@ def export_logs():
         flash('Unauthorized.', 'error')
         return redirect(url_for('ct3.dashboard'))
         
+    import csv
+    import io
+    from flask import Response
+    from utils.supabase_client import get_supabase_client
     from utils.hms_models import AuditLog
-    AuditLog.log(current_user.id, "Export Logs", BLUEPRINT_NAME, {"type": "Audit Logs CSV"})
     
-    # Simple flash for now, in a real app this would generate a CSV/PDF
-    flash('Security logs have been exported and sent to system administrator email.', 'success')
-    return redirect(url_for('ct3.security_logs'))
+    client = get_supabase_client()
+    
+    try:
+        # Fetch all logs
+        response = client.table('audit_logs')\
+            .select('*, users(username)')\
+            .order('created_at', desc=True)\
+            .execute()
+        
+        logs = response.data if response.data else []
+        
+        # Create CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Date', 'User', 'Action', 'Subsystem', 'Details'])
+        
+        for log in logs:
+            username = log.get('users', {}).get('username', 'Unknown') if log.get('users') else 'System'
+            writer.writerow([
+                log.get('created_at'),
+                username,
+                log.get('action'),
+                log.get('subsystem'),
+                str(log.get('details', ''))
+            ])
+            
+        output.seek(0)
+        
+        AuditLog.log(current_user.id, "Download Security Logs", BLUEPRINT_NAME, {"type": "Audit Logs CSV", "count": len(logs)})
+        
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-disposition": f"attachment; filename=audit_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"}
+        )
+        
+    except Exception as e:
+        flash(f'Error exporting logs: {str(e)}', 'danger')
+        return redirect(url_for('ct3.security_logs'))
 
 @ct3_bp.route('/records')
 @login_required

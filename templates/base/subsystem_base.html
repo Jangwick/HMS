@@ -337,14 +337,6 @@
                         <span>Cost Analysis</span>
                     </a>
                     {% endif %}
-                    <a href="{{ url_for('log2.dispatch_board') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log2.dispatch_board' }}">
-                        <i class="bi bi-send mr-3"></i>
-                        <span>Dispatch</span>
-                    </a>
-                    <a href="{{ url_for('log2.cost_analysis') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log2.cost_analysis' }}">
-                        <i class="bi bi-currency-dollar mr-3"></i>
-                        <span>Costs</span>
-                    </a>
                     {% endif %}
 
                 <!-- Financial Subsystems (Unified) -->
