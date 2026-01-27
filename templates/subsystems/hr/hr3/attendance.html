@@ -111,7 +111,7 @@
                         <td class="px-6 py-6">
                             <div class="flex flex-col">
                                 <span class="text-sm font-bold text-gray-900">{{ log.clock_in|datetime }}</span>
-                                <span class="text-[10px] text-gray-400 font-medium font-mono">ID: {{ log.id[:8] }}...</span>
+                                <span class="text-[10px] text-gray-400 font-medium font-mono">ID: {{ log.id }}</span>
                             </div>
                         </td>
                         <td class="px-6 py-6 font-bold">
@@ -145,7 +145,7 @@
                             {% if not log.clock_out and log.user_id == current_user.id %}
                             <form action="{{ url_for('hr3.clock_out') }}" method="POST">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="next" value="{{ request.path }}">
+                                <input type="hidden" name="next" value="{{ request.full_path }}">
                                 <button type="submit" class="h-10 px-4 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-rose-100 flex items-center gap-2 ml-auto">
                                     <i class="bi bi-box-arrow-right"></i>
                                     Clock Out

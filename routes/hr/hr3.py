@@ -5,7 +5,7 @@ from utils.supabase_client import User, SUBSYSTEM_CONFIG, format_db_error
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
 from utils.policy import policy_required
-from datetime import datetime
+from datetime import datetime, timedelta
 
 hr3_bp = Blueprint('hr3', __name__)
 
@@ -318,6 +318,7 @@ def clock_in():
     
     # Default status
     status = 'On-time'
+    remarks = request.form.get('remarks') or ""
     
     # Check for assigned schedule
     try:
@@ -366,7 +367,7 @@ def clock_in():
             'user_id': current_user.id,
             'clock_in': now.isoformat(),
             'status': status,
-            'remarks': remarks or request.form.get('remarks')
+            'remarks': remarks
         }
         client.table('attendance_logs').insert(data).execute()
         flash(f'Clocked in successfully at {now.strftime("%H:%M")}. Status: {status}', 'success')
@@ -842,6 +843,27 @@ def list_attendance():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
+    # Use context from query param if provided, otherwise default to blueprint name
+    context = request.args.get('context', BLUEPRINT_NAME)
+    
+    # Context-aware UI configuration
+    CONTEXT_CONFIGS = {
+        'hr1': {'name': 'HR1 - Personnel Management', 'color': '#3B82F6'},
+        'hr2': {'name': 'HR2 - Development', 'color': '#3B82F6'},
+        'hr3': {'name': 'HR3 - Workforce Operations', 'color': '#3B82F6'},
+        'hr4': {'name': 'HR4 - Compensation', 'color': '#3B82F6'},
+        'ct1': {'name': 'CT1 - Patient Access', 'color': '#10B981'},
+        'ct2': {'name': 'CT2 - Clinical Ops', 'color': '#10B981'},
+        'ct3': {'name': 'CT3 - Records & Finance', 'color': '#10B981'},
+        'log1': {'name': 'LOG1 - Supply Chain', 'color': '#F59E0B'},
+        'log2': {'name': 'LOG2 - Fleet Operations', 'color': '#F97316'},
+        'financials': {'name': 'Financial Management', 'color': '#8B5CF6'}
+    }
+    
+    current_config = CONTEXT_CONFIGS.get(context, {'name': SUBSYSTEM_NAME, 'color': ACCENT_COLOR})
+    display_name = current_config['name']
+    display_color = current_config['color']
+    
     query = client.table('attendance_logs').select('*, users(username, avatar_url)')
     
     # Non-admins only see their own logs
@@ -883,9 +905,9 @@ def list_attendance():
     return render_template('subsystems/hr/hr3/attendance.html',
                            logs=logs,
                            missing_staff=missing_staff,
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
+                           subsystem_name=display_name,
+                           accent_color=display_color,
+                           blueprint_name=context)
 
 @hr3_bp.route('/schedules', methods=['GET', 'POST'])
 @login_required

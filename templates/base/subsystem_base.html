@@ -410,7 +410,7 @@
 
                 <!-- Shared System Links -->
                 <div class="mt-8 pt-4 border-t border-gray-200 pb-4">
-                    <a href="{{ url_for('hr3.list_attendance') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'attendance' in request.endpoint }}">
+                    <a href="{{ url_for('hr3.list_attendance', context=blueprint_name) }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'attendance' in request.endpoint }}">
                         <i class="bi bi-clock-history mr-3"></i>
                         <span>My Attendance</span>
                     </a>
@@ -470,7 +470,7 @@
                             </div>
                             <form action="{{ url_for('hr3.clock_out') }}" method="POST" class="inline">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="next" value="{{ request.path }}">
+                                <input type="hidden" name="next" value="{{ request.full_path }}">
                                 <button type="submit" class="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all shadow-sm shadow-red-200" title="Clock Out">
                                     <i class="bi bi-box-arrow-right text-xs"></i>
                                 </button>
@@ -479,7 +479,7 @@
                         {% else %}
                         <form action="{{ url_for('hr3.clock_in') }}" method="POST" class="inline">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <input type="hidden" name="next" value="{{ request.full_path }}">
                             <button type="submit" class="flex items-center space-x-2 px-4 py-2 bg-slate-900 text-white font-bold rounded-2xl hover:bg-black transition-all shadow-md shadow-gray-201">
                                 <i class="bi bi-clock-history"></i>
                                 <span class="text-sm">Clock In</span>
