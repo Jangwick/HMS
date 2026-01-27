@@ -1,0 +1,106 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block header_title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-black text-gray-900 tracking-tight">Notifications</h1>
+            <p class="text-gray-500 font-medium">Keep track of your system alerts and activities.</p>
+        </div>
+        
+        <form action="{{ url_for('portal.mark_all_notifications_read') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-2xl hover:bg-gray-50 transition-all shadow-sm flex items-center space-x-2">
+                <i class="bi bi-check2-all"></i>
+                <span>Mark All Read</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+            {% if notifications %}
+                <div class="divide-y divide-gray-50">
+                    {% for n in notifications %}
+                    <div class="p-6 hover:bg-gray-50/50 transition-colors {% if not n.is_read %}bg-{{ subsystem_color or 'blue' }}-50/30 border-l-4 border-{{ subsystem_color or 'blue' }}-500{% endif %}"
+                         id="notif-{{ n.id }}">
+                        <div class="flex items-start justify-between">
+                            <div class="flex space-x-4">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 
+                                    {% if n.type == 'danger' %}bg-red-50 text-red-600
+                                    {% elif n.type == 'warning' %}bg-amber-50 text-amber-600
+                                    {% elif n.type == 'success' %}bg-emerald-50 text-emerald-600
+                                    {% else %}bg-blue-50 text-blue-600{% endif %}">
+                                    <i class="bi {% if n.type == 'danger' %}bi-exclamation-octagon{% elif n.type == 'warning' %}bi-exclamation-triangle{% elif n.type == 'success' %}bi-check-circle{% else %}bi-info-circle{% endif %}"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-base font-bold text-gray-900 mb-1">{{ n.title }}</h3>
+                                    <p class="text-sm text-gray-600 leading-relaxed mb-3">{{ n.message }}</p>
+                                    
+                                    <div class="flex items-center space-x-4">
+                                        <span class="text-[10px] font-black text-gray-400 ring-1 ring-gray-100 px-2 py-0.5 rounded uppercase tracking-widest">{{ n.sender_subsystem | upper }}</span>
+                                        <span class="text-xs text-gray-400 flex items-center">
+                                            <i class="bi bi-clock mr-1.5"></i>
+                                            {{ n.created_at | datetime }}
+                                        </span>
+                                        {% if not n.is_read %}
+                                        <button onclick="markAsReadSingle('{{ n.id }}')" class="text-xs text-{{ subsystem_color or 'blue' }}-600 font-black uppercase tracking-widest hover:underline">
+                                            Mark as read
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if n.target_url %}
+                            <a href="{{ n.target_url }}" class="p-2 text-gray-400 hover:text-{{ subsystem_color or 'blue' }}-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-gray-100">
+                                <i class="bi bi-arrow-right-short text-2xl"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="p-20 text-center">
+                    <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="bi bi-bell-slash text-4xl text-gray-200"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-1">Stay Tuned!</h3>
+                    <p class="text-gray-500">You don't have any notifications right now.</p>
+                </div>
+            {% endif %}
+    </div>
+    
+    <div class="mt-8 text-center">
+        <a href="{{ url_for(blueprint_name + '.dashboard') if blueprint_name else url_for('portal.index') }}" class="text-sm font-bold text-gray-400 hover:text-gray-900 transition-colors">
+            <i class="bi bi-arrow-left mr-2"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<script>
+async function markAsReadSingle(id) {
+    try {
+        const response = await fetch(`/notifications/read/${id}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        });
+        if (response.ok) {
+            const el = document.getElementById(`notif-${id}`);
+            el.classList.remove('bg-{{ subsystem_color or "blue" }}-50/30', 'border-l-4', 'border-{{ subsystem_color or "blue" }}-500');
+            // Remove the mark as read button
+            const btn = el.querySelector('button[onclick^="markAsReadSingle"]');
+            if (btn) btn.remove();
+        }
+    } catch (err) {
+        console.error('Error marking notification as read:', err);
+    }
+}
+</script>
+{% endblock %}

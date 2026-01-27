@@ -461,6 +461,20 @@ def enroll_staff():
             'training_id': training_id,
             'user_id': user_id
         }).execute()
+        
+        # Notify the user
+        try:
+            from utils.hms_models import Notification
+            Notification.create(
+                user_id=user_id,
+                title="New Training Enrollment",
+                message=f"You have been enrolled in the training: {training.get('title', 'Professional Development')}.",
+                n_type="info",
+                sender_subsystem=BLUEPRINT_NAME
+            )
+        except:
+            pass
+            
         flash('Staff member enrolled successfully!', 'success')
     except Exception as e:
         if 'unique_training_participant' in str(e):

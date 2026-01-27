@@ -105,6 +105,45 @@ def mark_notification_read(n_id):
     Notification.mark_as_read(n_id)
     return {'status': 'success'}
 
+@portal_bp.route('/notifications/read-all', methods=['POST'])
+@login_required
+def mark_all_notifications_read():
+    from utils.hms_models import Notification
+    Notification.mark_all_read_for_user(current_user)
+    flash('All notifications marked as read', 'success')
+    return redirect(request.referrer or url_for('portal.index'))
+
+@portal_bp.route('/notifications')
+@login_required
+def list_notifications():
+    from utils.hms_models import Notification
+    from utils.supabase_client import SUBSYSTEM_CONFIG
+    
+    # Fetch all for the list page (limit=None)
+    all_notifs = Notification.get_for_user(current_user, limit=None)
+    
+    subsystem_info = SUBSYSTEM_CONFIG.get(current_user.subsystem, {})
+    subsystem_color = subsystem_info.get('color', 'indigo')
+    subsystem_name = subsystem_info.get('name', 'System')
+    
+    # Map colors to HEX for subsystem_base compatibility
+    color_map = {
+        'blue': '#3B82F6',
+        'emerald': '#10B981',
+        'amber': '#F59E0B',
+        'purple': '#8B5CF6',
+        'indigo': '#4F46E5',
+        'rose': '#F43F5E'
+    }
+    accent_color = color_map.get(subsystem_color, '#4F46E5')
+
+    return render_template('portal/notifications.html', 
+                         notifications=all_notifs,
+                         subsystem_color=subsystem_color,
+                         accent_color=accent_color,
+                         subsystem_name=subsystem_name,
+                         blueprint_name=current_user.subsystem)
+
 @portal_bp.route('/about')
 def about():
     return render_template('portal/about.html')

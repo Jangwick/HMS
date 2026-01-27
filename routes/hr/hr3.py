@@ -420,6 +420,18 @@ def request_leave():
                 'remarks': remarks
             }
             client.table('leave_requests').insert(data).execute()
+            
+            # Notify HR3 Admin
+            from utils.hms_models import Notification
+            Notification.create(
+                subsystem='hr3',
+                title="New Leave Request",
+                message=f"{current_user.full_name or current_user.username} has submitted a new {leave_type} leave request.",
+                n_type="info",
+                sender_subsystem=current_user.subsystem or 'SYSTEM',
+                target_url=url_for('hr3.list_leaves')
+            )
+            
             flash('Leave request submitted successfully!', 'success')
             return hr3_redirect_fallback()
         except Exception as e:
@@ -1020,7 +1032,23 @@ def approve_leave():
     client = get_supabase_client()
     
     try:
+        # Get target user ID before update to notify them
+        leave_data = client.table('leave_requests').select('user_id, leave_type').eq('id', leave_id).execute()
+        target_user_id = leave_data.data[0]['user_id'] if leave_data.data else None
+        
         client.table('leave_requests').update({'status': status, 'approved_by': current_user.id}).eq('id', leave_id).execute()
+        
+        # Notify user about leave status
+        if target_user_id:
+            from utils.hms_models import Notification
+            Notification.create(
+                user_id=target_user_id,
+                title=f"Leave Request {status}",
+                message=f"Your request for {leave_data.data[0]['leave_type']} leave has been {status.lower()}.",
+                n_type="success" if status == 'Approved' else "danger",
+                sender_subsystem=BLUEPRINT_NAME
+            )
+            
         flash(f'Leave request {status.lower()} successfully!', 'success')
     except Exception as e:
         flash(f'Error updating leave request: {str(e)}', 'danger')

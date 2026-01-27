@@ -401,7 +401,7 @@ class Notification:
             return None
 
     @staticmethod
-    def get_for_user(user):
+    def get_for_user(user, limit=15):
         """
         Retrieve notifications relevant to the user:
         - Specifically for their user ID
@@ -410,19 +410,25 @@ class Notification:
         client = get_supabase_client()
         try:
             # 1. Fetch subsystem notifications (shared)
-            sub_res = client.table('notifications').select('*')\
+            sub_query = client.table('notifications').select('*')\
                 .eq('target_subsystem', user.subsystem)\
                 .is_('user_id', 'null')\
-                .order('created_at', desc=True)\
-                .limit(10)\
-                .execute()
+                .order('created_at', desc=True)
+            
+            if limit:
+                sub_query = sub_query.limit(limit)
+            
+            sub_res = sub_query.execute()
             
             # 2. Fetch personal notifications
-            personal_res = client.table('notifications').select('*')\
+            personal_query = client.table('notifications').select('*')\
                 .eq('user_id', user.id)\
-                .order('created_at', desc=True)\
-                .limit(10)\
-                .execute()
+                .order('created_at', desc=True)
+                
+            if limit:
+                personal_query = personal_query.limit(limit)
+                
+            personal_res = personal_query.execute()
             
             combined = (sub_res.data or []) + (personal_res.data or [])
             
@@ -430,7 +436,9 @@ class Notification:
             unique = {n['id']: n for n in combined}
             sorted_notifs = sorted(unique.values(), key=lambda x: x['created_at'], reverse=True)
             
-            return sorted_notifs[:15]
+            if limit:
+                return sorted_notifs[:limit]
+            return sorted_notifs
         except Exception as e:
             print(f"Failed to fetch notifications: {e}")
             return []
@@ -442,6 +450,31 @@ class Notification:
             client.table('notifications').update({'is_read': True}).eq('id', notification_id).execute()
         except Exception as e:
             print(f"Failed to mark notification as read: {e}")
+
+    @staticmethod
+    def mark_all_read_for_user(user):
+        """Mark ALL notifications (personal + subsystem) as read for the user."""
+        client = get_supabase_client()
+        try:
+            # Mark personal notifications
+            client.table('notifications').update({'is_read': True})\
+                .eq('user_id', user.id)\
+                .eq('is_read', False)\
+                .execute()
+            
+            # Note: For subsystem notifications, marking as read for ONE user 
+            # might affect others if shared. In a real multi-user system, 
+            # you'd need a junction table for read status.
+            # But for this implementation, we'll mark them read.
+            client.table('notifications').update({'is_read': True})\
+                .eq('target_subsystem', user.subsystem)\
+                .is_('user_id', 'null')\
+                .eq('is_read', False)\
+                .execute()
+            return True
+        except Exception as e:
+            print(f"Failed to mark all notifications as read: {e}")
+            return False
 
     @staticmethod
     def get_unread_count(user):

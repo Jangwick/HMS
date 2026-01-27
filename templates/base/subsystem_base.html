@@ -498,9 +498,17 @@
                         
                         <!-- Dropdown Menu -->
                         <div id="notificationMenu" class="hidden absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
-                            <div class="p-5 border-b border-gray-50 flex justify-between items-center">
-                                <h3 class="text-sm font-bold text-gray-900 uppercase tracking-widest">Notifications</h3>
-                                <span class="px-2 py-0.5 bg-accent/10 text-accent text-[10px] font-bold rounded-lg">{{ unread_notifications_count }} New</span>
+                            <div class="px-5 py-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
+                                <div>
+                                    <h3 class="text-sm font-black text-gray-900 uppercase tracking-widest">Notifications</h3>
+                                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{{ unread_notifications_count }} New Alerts</span>
+                                </div>
+                                <form action="{{ url_for('portal.mark_all_notifications_read') }}" method="POST" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="p-2 text-gray-400 hover:text-accent transition-colors" title="Mark all as read">
+                                        <i class="bi bi-check2-all text-lg"></i>
+                                    </button>
+                                </form>
                             </div>
                             
                             <div class="max-h-96 overflow-y-auto" id="notificationList">
@@ -534,6 +542,13 @@
                                     <p class="text-xs font-medium text-gray-400">No new notifications</p>
                                 </div>
                                 {% endif %}
+                            </div>
+
+                            <div class="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                                <a href="{{ url_for('portal.list_notifications') }}" class="text-xs font-black text-gray-500 hover:text-accent uppercase tracking-widest transition-colors flex items-center justify-center">
+                                    View All Notifications
+                                    <i class="bi bi-arrow-right ml-2 text-sm"></i>
+                                </a>
                             </div>
                         </div>
                     </div>
