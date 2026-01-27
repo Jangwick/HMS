@@ -109,6 +109,17 @@ def register():
             )
             
             if new_user:
+                # Notify HR3 Admin for new registration
+                from utils.hms_models import Notification
+                Notification.create(
+                    subsystem='hr3',
+                    title="New User Registration",
+                    message=f"A new user '{username}' has registered for {SUBSYSTEM_NAME}. Approval required.",
+                    n_type="warning",
+                    sender_subsystem=BLUEPRINT_NAME,
+                    target_url=url_for('hr3.pending_approvals')
+                )
+                
                 flash('Registration successful! Your account is awaiting approval from HR3 Admin.', 'success')
                 return redirect(url_for('ct3.login'))
             else:

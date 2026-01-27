@@ -4,6 +4,7 @@ from utils.supabase_client import User, format_db_error
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
 from utils.policy import policy_required
+from utils.hms_models import Notification
 from datetime import datetime
 
 log2_bp = Blueprint('log2', __name__, template_folder='templates')
@@ -106,6 +107,16 @@ def register():
             )
             
             if new_user:
+                # Notify HR3 about new registration
+                Notification.create(
+                    subsystem='hr3',
+                    title="New User Registration",
+                    message=f"A new user '{username}' has registered for {SUBSYSTEM_NAME}. Approval required.",
+                    n_type="warning",
+                    sender_subsystem=BLUEPRINT_NAME,
+                    target_url=url_for('hr3.pending_approvals')
+                )
+                
                 flash('Registration successful! Your account is awaiting approval from HR3 Admin.', 'success')
                 return redirect(url_for('log2.login'))
             else:
