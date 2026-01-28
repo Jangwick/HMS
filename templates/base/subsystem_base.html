@@ -106,7 +106,7 @@
             <div class="h-20 flex items-center px-8 border-b border-gray-100">
                 <div
                     class="w-10 h-10 rounded-xl bg-accent bg-gradient-to-br from-transparent to-black/20 flex items-center justify-center shadow-lg mr-4 text-white">
-                    <i class="bi bi-hospital text-lg"></i>
+                    <i class="bi bi-{{ subsystem_icon if subsystem_icon else 'hospital' }} text-lg"></i>
                 </div>
                 <div>
                     <h1 class="text-xl font-extrabold text-gray-900 tracking-tight">{{ blueprint_name | upper }}</h1>
@@ -167,30 +167,26 @@
 
                     <!-- HR3: Workforce Operations -->
                     {% elif blueprint_name == 'hr3' %}
-                    {% if current_user.is_admin() %}
-                    <a href="{{ url_for('hr3.user_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.user_list' }}">
+                    <a href="{{ url_for('hr3.directory') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.directory' }}">
                         <i class="bi bi-people mr-3"></i>
                         <span>System Directory</span>
                     </a>
-                    {% endif %}
-                    <a href="{{ url_for('hr3.list_attendance') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.list_attendance' }}">
-                        <i class="bi bi-clock-history mr-3"></i>
-                        <span>Attendance</span>
+                    <a href="{{ url_for('hr3.my_schedule') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.my_schedule' }}">
+                        <i class="bi bi-calendar-event mr-3"></i>
+                        <span>My Schedule</span>
                     </a>
                     <a href="{{ url_for('hr3.list_leaves') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.list_leaves' }}">
                         <i class="bi bi-calendar-minus mr-3"></i>
                         <span>Leave Requests</span>
                     </a>
                     {% if current_user.is_admin() %}
-                    <a href="{{ url_for('hr3.manage_schedules') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.manage_schedules' }}">
-                        <i class="bi bi-calendar-week mr-3"></i>
-                        <span>Staff Scheduling</span>
-                    </a>
-                    {% endif %}
-                    {% if current_user.is_admin() %}
                     <a href="{{ url_for('hr3.pending_approvals') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.pending_approvals' }}">
                         <i class="bi bi-person-check mr-3"></i>
                         <span>Approvals</span>
+                    </a>
+                    <a href="{{ url_for('hr3.user_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.user_list' }}">
+                        <i class="bi bi-shield-lock mr-3"></i>
+                        <span>User Management</span>
                     </a>
 
                     <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Admin Actions</div>
@@ -410,11 +406,11 @@
 
                 <!-- Shared System Links -->
                 <div class="mt-8 pt-4 border-t border-gray-200 pb-4">
-                    <a href="{{ url_for('hr3.list_attendance', context=blueprint_name) }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'attendance' in request.endpoint }}">
-                        <i class="bi bi-clock-history mr-3"></i>
-                        <span>My Attendance</span>
+                    <a href="{{ url_for('hr3.list_attendance', context=blueprint_name) }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-accent-light border-l-4 border-accent text-accent' if 'attendance' in request.endpoint }}">
+                        <i class="bi {{ 'bi-activity' if blueprint_name == 'hr3' else 'bi-clock-history' }} mr-3"></i>
+                        <span>{{ "Workforce Operation" if blueprint_name == 'hr3' else "My Attendance" }}</span>
                     </a>
-                    <a href="{{ url_for(blueprint_name + '.settings') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint.endswith('.settings') }}">
+                    <a href="{{ url_for(blueprint_name + '.settings') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-accent-light border-l-4 border-accent text-accent' if request.endpoint.endswith('.settings') }}">
                         <i class="bi bi-gear mr-3"></i>
                         <span>System Settings</span>
                     </a>

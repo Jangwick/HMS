@@ -1,0 +1,90 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}My Schedule - {{ subsystem_name }}{% endblock %}
+{% block header_title %}My Shift Schedule{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+    <!-- Header Card -->
+    <div class="bg-white rounded-[2.5rem] p-10 shadow-sm border border-gray-100 relative overflow-hidden">
+        <div class="absolute top-0 right-0 p-10 opacity-[0.05] text-accent">
+            <i class="bi bi-calendar3 text-9xl"></i>
+        </div>
+        
+        <div class="relative z-10">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-14 h-14 rounded-2xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/20 text-2xl">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-black text-gray-900 leading-tight">Hello, {{ current_user.full_name or current_user.username }}!</h3>
+                    <p class="text-gray-500 font-medium">Your assigned shifts and weekly benchmarks.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Standard Start</p>
+                    <p class="text-xl font-black text-gray-900">09:00 AM</p>
+                </div>
+                <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Weekly Commitment</p>
+                    <p class="text-xl font-black text-gray-900">40 Hours</p>
+                </div>
+                <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Shift Type</p>
+                    <p class="text-xl font-black text-gray-900">Regular Duty</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Grid -->
+    <div class="grid grid-cols-1 gap-4">
+        {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'Daily'] %}
+        {% for day in days %}
+            {% set day_sched = schedules|selectattr('day_of_week', 'equalto', day)|first %}
+            {% if day_sched or day == 'Daily' %}
+            <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex items-center justify-between group hover:border-accent transition-all duration-300">
+                <div class="flex items-center gap-6">
+                    <div class="w-16 h-16 rounded-2xl {% if day_sched and day_sched.is_active %}bg-accent text-white shadow-lg shadow-accent/20{% else %}bg-gray-50 text-gray-400{% endif %} flex flex-col items-center justify-center">
+                        <span class="text-[10px] font-black uppercase tracking-tighter">{{ day[:3] }}</span>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-black text-gray-900">{{ day }}</h4>
+                        {% if day_sched and day_sched.is_active %}
+                        <p class="text-sm font-bold text-accent">{{ day_sched.start_time[:5] }} — {{ day_sched.end_time[:5] }}</p>
+                        {% else %}
+                        <p class="text-sm font-medium text-gray-400">No shift assigned</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    {% if day_sched and not day_sched.is_active %}
+                    <span class="px-3 py-1 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-rose-100">Off-Duty</span>
+                    {% elif day_sched %}
+                    <span class="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-100">Active Duty</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- Note Section -->
+    <div class="bg-amber-50 rounded-3xl p-8 border border-amber-100">
+        <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-amber-200">
+                <i class="bi bi-info-circle-fill"></i>
+            </div>
+            <div>
+                <h4 class="font-black text-amber-900">Shift Management Notice</h4>
+                <p class="text-sm text-amber-700 mt-1 leading-relaxed">
+                    Schedules are managed by the HR3 Administration. If you need to request a change in your shift timings or report a scheduling conflict, please contact the Personnel Operations team or submit a request through the support channel.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

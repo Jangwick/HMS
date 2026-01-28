@@ -409,6 +409,38 @@ def clock_out():
         
     return hr3_redirect_fallback()
 
+@hr3_bp.route('/attendance/force-clock-out/<int:log_id>', methods=['POST'])
+@login_required
+def force_clock_out(log_id):
+    if not current_user.is_admin() or current_user.subsystem != 'hr3':
+        flash('Unauthorized: Administrative access required.', 'danger')
+        return hr3_redirect_fallback()
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Verify log exists and is active
+        log_resp = client.table('attendance_logs').select('*').eq('id', log_id).execute()
+        if not log_resp.data:
+            flash('Log entry not found.', 'danger')
+            return hr3_redirect_fallback()
+        
+        if log_resp.data[0]['clock_out'] is not None:
+            flash('This personnel is already clocked out.', 'info')
+            return hr3_redirect_fallback()
+
+        client.table('attendance_logs').update({
+            'clock_out': datetime.now().isoformat(),
+            'remarks': (log_resp.data[0].get('remarks', '') or '') + " [Admin Force Clock-out]"
+        }).eq('id', log_id).execute()
+        
+        flash(f"Forcefully clocked out personnel for log #{log_id}.", 'success')
+    except Exception as e:
+        flash(f'Error during force clock-out: {str(e)}', 'danger')
+        
+    return hr3_redirect_fallback()
+
 @hr3_bp.route('/leaves/request', methods=['GET', 'POST'])
 @login_required
 def request_leave():
@@ -449,6 +481,40 @@ def request_leave():
             flash(f'Error submitting leave request: {str(e)}', 'danger')
             
     return render_template('subsystems/hr/hr3/leave_request_form.html',
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr3_bp.route('/directory')
+@login_required
+def directory():
+    """All-staff directory for HR3 users."""
+    users = User.get_all()
+    # Filter out sensitive or rejected users if needed
+    active_users = [u for u in users if u.status == 'Active']
+    
+    return render_template('subsystems/hr/hr3/directory.html',
+                           users=active_users,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr3_bp.route('/my-schedule')
+@login_required
+def my_schedule():
+    """View personal schedule for the current user."""
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        schedules_resp = client.table('staff_schedules').select('*').eq('user_id', current_user.id).execute()
+        schedules = schedules_resp.data or []
+    except Exception as e:
+        flash(f'Error fetching schedule: {str(e)}', 'danger')
+        schedules = []
+        
+    return render_template('subsystems/hr/hr3/my_schedule.html',
+                           schedules=schedules,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -871,23 +937,24 @@ def list_attendance():
     
     # Context-aware UI configuration
     CONTEXT_CONFIGS = {
-        'hr1': {'name': 'HR1 - Personnel Management', 'color': '#3B82F6'},
-        'hr2': {'name': 'HR2 - Development', 'color': '#3B82F6'},
-        'hr3': {'name': 'HR3 - Workforce Operations', 'color': '#3B82F6'},
-        'hr4': {'name': 'HR4 - Compensation', 'color': '#3B82F6'},
-        'ct1': {'name': 'CT1 - Patient Access', 'color': '#10B981'},
-        'ct2': {'name': 'CT2 - Clinical Ops', 'color': '#10B981'},
-        'ct3': {'name': 'CT3 - Records & Finance', 'color': '#10B981'},
-        'log1': {'name': 'LOG1 - Supply Chain', 'color': '#F59E0B'},
-        'log2': {'name': 'LOG2 - Fleet Operations', 'color': '#F97316'},
-        'financials': {'name': 'Financial Management', 'color': '#8B5CF6'}
+        'hr1': {'name': 'HR1 - Personnel', 'color': '#3B82F6', 'icon': 'person-plus-fill'},
+        'hr2': {'name': 'HR2 - Development', 'color': '#0891B2', 'icon': 'award-fill'},
+        'hr3': {'name': 'HR3 - Operations', 'color': '#0EA5E9', 'icon': 'clock-history'},
+        'hr4': {'name': 'HR4 - Compensation', 'color': '#6366F1', 'icon': 'wallet2'},
+        'ct1': {'name': 'CT1 - Patient Access', 'color': '#10B981', 'icon': 'person-badge'},
+        'ct2': {'name': 'CT2 - Clinical Ops', 'color': '#10B981', 'icon': 'clipboard-pulse'},
+        'ct3': {'name': 'CT3 - Admin & Finance', 'color': '#059669', 'icon': 'hospital'},
+        'log1': {'name': 'LOG1 - Inventory', 'color': '#F59E0B', 'icon': 'box-seam'},
+        'log2': {'name': 'LOG2 - Fleet Ops', 'color': '#F97316', 'icon': 'truck'},
+        'financials': {'name': 'Financial Management', 'color': '#8B5CF6', 'icon': 'bank'}
     }
     
-    current_config = CONTEXT_CONFIGS.get(context, {'name': SUBSYSTEM_NAME, 'color': ACCENT_COLOR})
+    current_config = CONTEXT_CONFIGS.get(context, {'name': SUBSYSTEM_NAME, 'color': ACCENT_COLOR, 'icon': SUBSYSTEM_ICON})
     display_name = current_config['name']
     display_color = current_config['color']
+    display_icon = current_config['icon']
     
-    query = client.table('attendance_logs').select('*, users(username, avatar_url)')
+    query = client.table('attendance_logs').select('*, users(username, avatar_url, full_name)')
     
     # Non-admins only see their own logs
     if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
@@ -898,14 +965,16 @@ def list_attendance():
     
     # If admin, also find who hasn't clocked in today
     missing_staff = []
+    users_list = []
+    sched_map = {}
     if current_user.is_admin() and current_user.subsystem == 'hr3':
         try:
             today = datetime.now().strftime('%Y-%m-%d')
             day_name = datetime.now().strftime('%A')
             
-            # Get everyone's schedules for today
-            sched_query = client.table('staff_schedules')\
-                .select('*, users(username, avatar_url)')\
+            # Get everyone's schedules for today (for missing staff alert)
+            sched_today_query = client.table('staff_schedules')\
+                .select('*, users(username, avatar_url, full_name)')\
                 .eq('is_active', True)\
                 .or_(f"day_of_week.eq.{day_name},day_of_week.eq.Daily")\
                 .execute()
@@ -914,7 +983,7 @@ def list_attendance():
             clocked_in_today = client.table('attendance_logs').select('user_id').gte('clock_in', today).execute()
             clocked_in_ids = [log['user_id'] for log in clocked_in_today.data]
             
-            for s in (sched_query.data or []):
+            for s in (sched_today_query.data or []):
                 if s['user_id'] not in clocked_in_ids:
                     missing_staff.append({
                         'full_name': s['users'].get('full_name') or s['users'].get('username'),
@@ -922,14 +991,27 @@ def list_attendance():
                         'avatar_url': s['users'].get('avatar_url'),
                         'start_time': s['start_time']
                     })
+
+            # ALSO FETCH DATA FOR SCHEDULING TAB
+            users_list = User.get_all()
+            all_schedules = client.table('staff_schedules').select('*').execute()
+            for s in (all_schedules.data or []):
+                u_id = s['user_id']
+                if u_id not in sched_map:
+                    sched_map[u_id] = []
+                sched_map[u_id].append(s)
+
         except Exception as e:
-            print(f"Error checking missing staff: {e}")
+            print(f"Error fetching monitoring data: {e}")
             
     return render_template('subsystems/hr/hr3/attendance.html',
                            logs=logs,
                            missing_staff=missing_staff,
+                           users=users_list,
+                           schedules=sched_map,
                            subsystem_name=display_name,
                            accent_color=display_color,
+                           subsystem_icon=display_icon,
                            blueprint_name=context)
 
 @hr3_bp.route('/schedules', methods=['GET', 'POST'])

@@ -121,7 +121,7 @@
                                         </form>
                                     </div>
                                     {% endfor %}
-                                    <button onclick='openScheduleModal({{ user.id|tojson }}, {{ user.full_name|tojson }}, {{ user_scheds|tojson }})'
+                                    <button onclick='openScheduleModal({{ user.id|tojson }}, {{ (user.full_name or user.username)|tojson }}, {{ user_scheds|tojson }})'
                                             class="w-8 h-8 rounded-xl bg-gray-50 text-gray-400 hover:bg-accent hover:text-white flex items-center justify-center transition-all">
                                         <i class="bi bi-plus"></i>
                                     </button>
@@ -138,7 +138,7 @@
                             </div>
                         </td>
                         <td class="px-8 py-6 text-right">
-                            <button onclick='openScheduleModal({{ user.id|tojson }}, {{ user.full_name|tojson }}, {{ user_scheds|tojson }})'
+                            <button onclick='openScheduleModal({{ user.id|tojson }}, {{ (user.full_name or user.username)|tojson }}, {{ user_scheds|tojson }})'
                                     class="h-12 px-6 bg-accent hover:opacity-90 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-accent/25 inline-flex items-center gap-2">
                                 <i class="bi bi-calendar-plus"></i>
                                 Configure

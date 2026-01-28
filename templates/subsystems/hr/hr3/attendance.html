@@ -1,98 +1,388 @@
 ﻿{% extends "base/subsystem_base.html" %}
 
 {% block content %}
+{% set is_workforce_admin = current_user.is_admin() and current_user.subsystem == 'hr3' %}
 <div class="space-y-8">
     <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-            <h3 class="text-3xl font-black text-gray-900 tracking-tight">Attendance Monitoring</h3>
-            <p class="text-gray-500 mt-1">
-                {% if current_user.role in ['Admin', 'Administrator'] %}
-                Track live clock-in status, benchmark deviations, and workforce availability.
-                {% else %}
-                View your personal attendance history and shift status.
-                {% endif %}
-            </p>
+    <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-8">
+        <div class="space-y-4">
+            <div>
+                <h3 class="text-4xl font-black text-gray-900 tracking-tight">
+                    {{ "Workforce Monitoring" if is_workforce_admin else "My Attendance Activity" }}
+                </h3>
+                <p class="text-gray-500 mt-2 text-lg">
+                    {% if is_workforce_admin %}
+                    Live view of hospital occupancy, shift compliance, and personnel activity.
+                    {% else %}
+                    View your personal attendance history and shift status.
+                    {% endif %}
+                </p>
+            </div>
+
+            {% if is_workforce_admin %}
+            <!-- Admin Tabs -->
+            <div class="flex items-center gap-2 p-1.5 bg-gray-100/50 rounded-[1.5rem] w-fit">
+                <button onclick="switchTab('dashboard')" id="dashboardTabBtn" 
+                        class="tab-btn px-8 py-3.5 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.15em] transition-all bg-white text-gray-900 shadow-sm border border-gray-100">
+                    Analytics Dashboard
+                </button>
+                <button onclick="switchTab('scheduling')" id="schedulingTabBtn"
+                        class="tab-btn px-8 py-3.5 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.15em] transition-all text-gray-400 hover:text-gray-600">
+                    Personnel Scheduling
+                </button>
+            </div>
+            {% endif %}
         </div>
         
+        {% if is_workforce_admin %}
+        <div class="flex flex-col gap-4 self-end lg:self-auto">
+            <!-- Row 1: Real-time Pulse -->
+            <div class="flex gap-4">
+                <div class="bg-white px-8 py-5 rounded-[2.5rem] border border-gray-100 flex items-center gap-6 shadow-sm min-w-[240px]">
+                    <div class="w-14 h-14 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-100 text-xl">
+                        <i class="bi bi-person-check-fill"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-2">Active Now</div>
+                        <div class="text-4xl font-black text-gray-900 leading-none">
+                            {{ logs|selectattr('clock_out', 'none')|list|length }}
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white px-8 py-5 rounded-[2.5rem] border border-gray-100 flex items-center gap-6 shadow-sm min-w-[240px]">
+                    <div class="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-100 text-xl">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-2">Late Entries</div>
+                        <div class="text-4xl font-black text-gray-900 leading-none">
+                            {{ logs|selectattr('status', 'equalto', 'Late')|list|length }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Row 2: Scheduling Stats -->
+            <div class="flex gap-4">
+                <div class="bg-blue-50/50 px-8 py-5 rounded-[2.5rem] border border-blue-100 flex items-center gap-6 shadow-sm min-w-[240px]">
+                    <div class="w-14 h-14 rounded-2xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-100 text-xl">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] leading-none mb-2">Total Staff</div>
+                        <div class="text-4xl font-black text-blue-900 leading-none">
+                            {{ users|length }}
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-emerald-50/50 px-8 py-5 rounded-[2.5rem] border border-emerald-100 flex items-center gap-6 shadow-sm min-w-[240px]">
+                    <div class="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-100 text-xl">
+                        <i class="bi bi-calendar-check-fill"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] leading-none mb-2">Scheduled</div>
+                        <div class="text-4xl font-black text-gray-900 leading-none">
+                            {{ schedules|length }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
         <div class="flex gap-4">
-            <div class="bg-white px-6 py-4 rounded-3xl border border-gray-100 flex items-center gap-4 shadow-sm">
-                <div class="w-10 h-10 rounded-2xl bg-green-500 text-white flex items-center justify-center shadow-lg shadow-green-100">
-                    <i class="bi bi-person-check-fill"></i>
+            <div class="bg-white px-8 py-5 rounded-[2.5rem] border border-gray-100 flex items-center gap-6 shadow-sm">
+                <div class="w-14 h-14 rounded-2xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/20 text-xl">
+                    <i class="bi bi-calendar-check"></i>
                 </div>
                 <div>
-                    <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">On-Duty</div>
-                    <div class="text-2xl font-black text-gray-900 mt-1">
-                        {{ logs|selectattr('clock_out', 'none')|list|length }}
-                    </div>
+                    <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-2">Total Logs</div>
+                    <div class="text-4xl font-black text-gray-900 leading-none">{{ logs|length }}</div>
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 
-    {% if missing_staff %}
-    <!-- Alerts Section -->
-    <div class="relative overflow-hidden bg-rose-50 border border-rose-100 rounded-[2rem] p-8">
-        <div class="absolute top-0 right-0 p-8 opacity-10">
-            <i class="bi bi-exclamation-triangle-fill text-8xl text-rose-500"></i>
-        </div>
-        
-        <div class="relative z-10">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-200">
-                    <i class="bi bi-megaphone-fill"></i>
+    {% if is_workforce_admin %}
+    <!-- (Admin Tabs removed from here and moved to header) -->
+    
+    <!-- TAB: DASHBOARD -->
+
+    <div id="dashboardSection" class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <!-- Real-time Monitor Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Live Occupancy -->
+            <div class="lg:col-span-2 bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-8 opacity-[0.03]">
+                    <i class="bi bi-activity text-9xl"></i>
                 </div>
-                <h4 class="text-xl font-black text-rose-900">Scheduled but Missing</h4>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {% for staff in missing_staff %}
-                <div class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-rose-100 shadow-sm group hover:scale-[1.02] transition-transform cursor-default">
+                
+                <div class="flex items-center justify-between mb-8">
                     <div class="flex items-center gap-3">
-                        {% if staff.avatar_url %}
-                        <img src="{{ staff.avatar_url }}" alt="" class="w-10 h-10 rounded-xl object-cover shadow-sm bg-gray-50">
-                        {% else %}
-                        <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-rose-100 group-hover:text-rose-500 transition-colors">
-                            <i class="bi bi-person-x-fill text-lg"></i>
+                        <div class="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/20">
+                            <i class="bi bi-person-video"></i>
                         </div>
-                        {% endif %}
-                        <div class="flex-1 min-w-0">
-                            <div class="font-black text-gray-900 text-sm truncate">{{ staff.full_name }}</div>
-                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Shift: {{ staff.start_time[:5] }}</div>
+                        <div>
+                            <h4 class="text-xl font-black text-gray-900 leading-tight">Live Personnel Status</h4>
+                            <p class="text-xs text-gray-400 font-bold uppercase tracking-tighter">Real-time Pulse</p>
                         </div>
                     </div>
                 </div>
-                {% endfor %}
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {% for log in logs|selectattr('clock_out', 'none') %}
+                    <div class="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 group hover:bg-white hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300">
+                        <div class="flex flex-col items-center text-center">
+                            {% if log.users and log.users.avatar_url %}
+                            <img src="{{ log.users.avatar_url }}" alt="" class="w-12 h-12 rounded-xl object-cover shadow-sm mb-3">
+                            {% else %}
+                            <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-gray-400 font-black mb-3 border border-gray-100">
+                                {{ log.users.username[0]|upper if log.users else 'S' }}
+                            </div>
+                            {% endif %}
+                            <div class="font-black text-gray-900 text-xs truncate w-full">{{ log.users.username }}</div>
+                            <div class="text-[9px] text-accent font-bold uppercase mt-1">{{ log.clock_in[11:16] }}</div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="col-span-full py-10 text-center opacity-40">
+                        <p class="text-sm font-medium">No personnel currently on active duty.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Compliance & Alerts -->
+            <div class="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-slate-900/40">
+                <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-accent/20 blur-3xl rounded-full"></div>
+                
+                <h4 class="text-lg font-black mb-6 flex items-center gap-2">
+                    <i class="bi bi-shield-check text-accent"></i>
+                    Shift Compliance
+                </h4>
+
+                <div class="space-y-6">
+                    <div class="bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/10">
+                        <div class="flex justify-between items-end mb-2">
+                            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">On-Time Rate</span>
+                            {% set total = logs|length %}
+                            {% set ontime = logs|selectattr('status', 'equalto', 'On-time')|list|length %}
+                            {% set rate = (ontime / total * 100)|round if total > 0 else 100 %}
+                            <span class="text-xl font-black text-white">{{ rate }}%</span>
+                        </div>
+                        <div class="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+                            <div class="bg-accent h-full rounded-full" style="width: {{ rate }}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/10">
+                        <div class="flex items-center justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                            <span>Recent Exceptions</span>
+                        </div>
+                        <div class="space-y-3">
+                            {% for log in (logs|selectattr('status', 'equalto', 'Late')|list)[:3] %}
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-500">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-xs font-black truncate">{{ log.users.username }}</div>
+                                    <div class="text-[9px] text-gray-500">{{ log.clock_in|datetime }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if missing_staff %}
+        <!-- Alerts Section -->
+        <div class="relative overflow-hidden bg-rose-50 border border-rose-100 rounded-[2rem] p-8">
+            <div class="absolute top-0 right-0 p-8 opacity-10">
+                <i class="bi bi-exclamation-triangle-fill text-8xl text-rose-500"></i>
+            </div>
+            
+            <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-200">
+                        <i class="bi bi-megaphone-fill"></i>
+                    </div>
+                    <h4 class="text-xl font-black text-rose-900">Scheduled but Missing</h4>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {% for staff in missing_staff %}
+                    <div class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-rose-100 shadow-sm group hover:scale-[1.02] transition-transform cursor-default">
+                        <div class="flex items-center gap-3">
+                            {% if staff.avatar_url %}
+                            <img src="{{ staff.avatar_url }}" alt="" class="w-10 h-10 rounded-xl object-cover shadow-sm bg-gray-50">
+                            {% else %}
+                            <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-rose-100 group-hover:text-rose-500 transition-colors">
+                                <i class="bi bi-person-x-fill text-lg"></i>
+                            </div>
+                            {% endif %}
+                            <div class="flex-1 min-w-0">
+                                <div class="font-black text-gray-900 text-sm truncate">{{ staff.full_name }}</div>
+                                <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Shift: {{ staff.start_time[:5] }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB: SCHEDULING -->
+    <div id="schedulingSection" class="hidden space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <!-- Header -->
+        <div>
+            <h3 class="text-3xl font-black text-gray-900 tracking-tight">Staff Scheduling</h3>
+            <p class="text-gray-500 mt-1">Configure attendance benchmarks and shift timings across the hospital.</p>
+        </div>
+
+        <!-- Search & Filters -->
+
+        <div class="bg-white p-4 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center">
+            <div class="relative flex-1 group w-full">
+                <i class="bi bi-search absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
+                <input type="text" id="staffSearch" placeholder="Search staff by name or username..." 
+                    class="w-full pl-14 pr-6 py-5 bg-gray-50 border-none rounded-[2rem] text-sm font-bold focus:ring-2 focus:ring-blue-500 transition-all">
+            </div>
+            <div class="w-full md:w-auto">
+                <select id="subsystemFilter" class="w-full px-8 py-5 bg-gray-50 border-none rounded-[2rem] text-sm font-bold focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer appearance-none">
+                    <option value="">All Subsystems</option>
+                    <option value="hr">Human Resources</option>
+                    <option value="ct">Clinical Services</option>
+                    <option value="log">Logistics Ops</option>
+                    <option value="fin">Finance & Admin</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left" id="staffTable">
+                    <thead class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
+                        <tr>
+                            <th class="px-10 py-8">Staff Member</th>
+                            <th class="px-6 py-8">Department Info</th>
+                            <th class="px-6 py-8">Weekly Benchmarks</th>
+                            <th class="px-10 py-8 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for user in users %}
+                        <tr class="hover:bg-gray-50/50 transition-colors group staff-row" data-name="{{ (user.full_name or user.username)|lower }}" data-subsystem="{{ user.subsystem|lower }}">
+                            <td class="px-10 py-8">
+                                <div class="flex items-center gap-5">
+                                    <div class="relative">
+                                        {% if user.avatar_url %}
+                                        <img src="{{ user.avatar_url }}" alt="" class="w-14 h-14 rounded-[1.25rem] object-cover shadow-sm bg-gray-100">
+                                        {% else %}
+                                        <div class="w-14 h-14 rounded-[1.25rem] bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xl">
+                                            {{ user.username[0]|upper }}
+                                        </div>
+                                        {% endif %}
+                                        <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-4 border-white shadow-sm"></div>
+                                    </div>
+                                    <div>
+                                        <div class="font-black text-gray-900 leading-tight text-lg">{{ user.full_name or user.username }}</div>
+                                        <div class="text-xs text-gray-400 font-bold mt-0.5">@{{ user.username }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-8">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1.5">{{ user.role }}</span>
+                                    <span class="text-[11px] text-gray-400 font-black uppercase tracking-tighter flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                        {{ user.subsystem|upper }} {{ user.subsystem|upper }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-8">
+                                <div class="flex items-center gap-1.5 mb-2.5">
+                                    {% set days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] %}
+                                    {% set user_scheds = schedules.get(user.id, []) %}
+                                    {% set scheduled_days = user_scheds|map(attribute='day_of_week')|list %}
+                                    {% for d in days %}
+                                    {% set day_name = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][loop.index0] %}
+                                    <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black border-2 transition-colors
+                                        {% if day_name in scheduled_days or 'Daily' in scheduled_days %}border-blue-500 text-blue-500 bg-blue-50
+                                        {% else %}border-gray-100 text-gray-200{% endif %}">
+                                        {{ d }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% set daily_sched = user_scheds|selectattr('day_of_week', 'equalto', 'Daily')|first %}
+                                <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                    DEFAULT <span class="text-gray-900">{{ daily_sched.start_time[:5] if daily_sched else '09:00' }}</span>
+                                </div>
+                            </td>
+                            <td class="px-10 py-8 text-right">
+                                <button onclick='openScheduleModal({{ user.id|tojson }}, {{ (user.full_name or user.username)|tojson }}, {{ user_scheds|tojson }})' 
+                                        class="px-8 py-4 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-blue-100 hover:shadow-blue-200 flex items-center gap-2 ml-auto">
+                                    <i class="bi bi-gear-fill text-xs"></i> CONFIGURE
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div id="staffEmptyState" class="hidden py-32 text-center">
+                    <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-200">
+                        <i class="bi bi-search text-4xl"></i>
+                    </div>
+                    <p class="text-gray-400 font-black uppercase tracking-widest text-xs">No personnel matched your search</p>
+                </div>
             </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- Data Table -->
+    <!-- Common Section: Activity Log (Always visible) -->
     <div class="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
         <div class="px-8 py-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
-            <h4 class="font-black text-gray-900 uppercase tracking-widest text-xs">Activity Log</h4>
-            <div class="flex gap-2">
-                <button class="w-10 h-10 rounded-xl bg-white border border-gray-100 text-gray-400 hover:text-accent flex items-center justify-center shadow-sm transition-all">
-                    <i class="bi bi-filter"></i>
-                </button>
+            <h4 class="font-black text-gray-900 uppercase tracking-widest text-xs">
+                {{ "Global Personnel Activity" if is_workforce_admin else "My Attendance Records" }}
+            </h4>
+            <div class="flex items-center gap-4">
+                <div class="relative hidden md:block">
+                    <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="logSearch" placeholder="Filter logs..." 
+                           class="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-accent transition-all">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="downloadAttendanceCSV()" class="w-10 h-10 rounded-xl bg-white border border-gray-100 text-gray-400 hover:text-accent flex items-center justify-center shadow-sm transition-all" title="Export CSV">
+                        <i class="bi bi-download"></i>
+                    </button>
+                    <button onclick="window.print()" class="w-10 h-10 rounded-xl bg-white border border-gray-100 text-gray-400 hover:text-accent flex items-center justify-center shadow-sm transition-all" title="Print">
+                        <i class="bi bi-printer"></i>
+                    </button>
+                </div>
             </div>
         </div>
         
         <div class="overflow-x-auto">
-            <table class="w-full text-left">
+            <table class="w-full text-left" id="attendanceTable">
                 <thead class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
                     <tr>
                         <th class="px-8 py-6">Staff Member</th>
-                        <th class="px-6 py-6">Clock In</th>
-                        <th class="px-6 py-6">Clock Out</th>
-                        <th class="px-6 py-6">Status & Deviation</th>
-                        <th class="px-8 py-6 text-right">Activity</th>
+                        <th class="px-6 py-6">Session Period</th>
+                        <th class="px-6 py-6">Timeline</th>
+                        <th class="px-6 py-6">Status Details</th>
+                        <th class="px-8 py-6 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     {% for log in logs %}
-                    <tr class="hover:bg-gray-50/50 transition-colors group">
+                    <tr class="hover:bg-gray-50/50 transition-colors group log-row" 
+                        data-username="{{ log.users.username|lower if log.users else 'system' }}" 
+                        data-status="{{ log.status|lower }}">
                         <td class="px-8 py-6">
                             <div class="flex items-center gap-4">
                                 {% if log.users and log.users.avatar_url %}
@@ -103,69 +393,70 @@
                                 </div>
                                 {% endif %}
                                 <div>
-                                    <div class="font-black text-gray-900 leading-tight">{{ (log.users.full_name or log.users.username) if log.users else 'System Employee' }}</div>
+                                    <div class="font-black text-gray-900 leading-tight truncate max-w-[150px]">{{ (log.users.full_name or log.users.username) if log.users else 'System User' }}</div>
                                     <div class="text-[10px] text-gray-400 font-medium">@{{ log.users.username or 'system' }}</div>
                                 </div>
                             </div>
                         </td>
                         <td class="px-6 py-6">
                             <div class="flex flex-col">
-                                <span class="text-sm font-bold text-gray-900">{{ log.clock_in|datetime }}</span>
-                                <span class="text-[10px] text-gray-400 font-medium font-mono">ID: {{ log.id }}</span>
+                                <span class="text-xs font-black text-gray-900">{{ log.clock_in|datetime }}</span>
+                                <span class="text-[9px] text-gray-400 font-mono">HASH: {{ log.id }}</span>
                             </div>
                         </td>
-                        <td class="px-6 py-6 font-bold">
+                        <td class="px-6 py-6">
                             {% if log.clock_out %}
-                                <span class="text-sm text-gray-900">{{ log.clock_out|datetime }}</span>
+                                <span class="text-xs font-black text-gray-900">{{ log.clock_out|datetime }}</span>
                             {% else %}
                                 <div class="flex items-center gap-2">
-                                    <span class="w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
-                                    <span class="bg-green-500 font-black text-white text-[9px] px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg shadow-green-100">
-                                        Active Duty
-                                    </span>
+                                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                    <span class="text-[10px] font-black text-green-600 uppercase tracking-[0.1em]">On Duty</span>
                                 </div>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-6 text-gray-500">
-                            <div class="flex flex-col gap-2">
-                                <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest w-fit
-                                    {% if log.status == 'On-time' %}bg-emerald-50 text-emerald-600
-                                    {% elif log.status == 'Late' %}bg-amber-50 text-amber-600
-                                    {% else %}bg-rose-50 text-rose-600{% endif %}">
-                                    {{ log.status }}
-                                </span>
-                                {% if log.remarks %}
-                                <div class="text-[10px] font-medium italic text-gray-400 flex items-center gap-1">
-                                    <i class="bi bi-info-circle"></i> {{ log.remarks }}
-                                </div>
-                                {% endif %}
-                            </div>
+                        <td class="px-6 py-6">
+                            <span class="px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest
+                                {% if log.status == 'On-time' %}bg-emerald-50 text-emerald-600
+                                {% elif log.status == 'Late' %}bg-amber-50 text-amber-600
+                                {% else %}bg-rose-50 text-rose-600{% endif %}">
+                                {{ log.status }}
+                            </span>
                         </td>
                         <td class="px-8 py-6 text-right">
-                            {% if not log.clock_out and log.user_id == current_user.id %}
-                            <form action="{{ url_for('hr3.clock_out') }}" method="POST">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="next" value="{{ request.full_path }}">
-                                <button type="submit" class="h-10 px-4 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-rose-100 flex items-center gap-2 ml-auto">
-                                    <i class="bi bi-box-arrow-right"></i>
-                                    Clock Out
+                            <div class="flex items-center justify-end gap-2">
+                                {% if not log.clock_out %}
+                                    {% if log.user_id == current_user.id %}
+                                    <form action="{{ url_for('hr3.clock_out') }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="next" value="{{ request.full_path }}">
+                                        <button type="submit" class="h-10 px-4 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-rose-100 flex items-center gap-2">
+                                            <i class="bi bi-box-arrow-right"></i>
+                                            End Shift
+                                        </button>
+                                    </form>
+                                    {% elif is_workforce_admin %}
+                                    <form action="{{ url_for('hr3.force_clock_out', log_id=log.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to forcefully clock out this personnel?')">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="next" value="{{ request.full_path }}">
+                                        <button type="submit" class="h-10 px-4 bg-slate-800 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-slate-200 flex items-center gap-2">
+                                            <i class="bi bi-shield-slash"></i>
+                                            Force Out
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                {% endif %}
+                                <button onclick='viewLogDetails({
+                                    id: {{ log.id|tojson }},
+                                    username: {{ (log.users.username|tojson) if log.users else "System"|tojson }},
+                                    fullName: {{ (log.users.full_name|default(log.users.username)|tojson) if log.users else "System User"|tojson }},
+                                    clockIn: {{ log.clock_in|datetime|tojson }},
+                                    clockOut: {{ (log.clock_out|datetime|tojson) if log.clock_out else "Still On-Duty"|tojson }},
+                                    status: {{ log.status|tojson }},
+                                    remarks: {{ (log.remarks|tojson) if log.remarks else "No remarks"|tojson }}
+                                })' class="w-10 h-10 rounded-xl bg-gray-50 text-gray-400 hover:text-accent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i class="bi bi-info-circle-fill"></i>
                                 </button>
-                            </form>
-                            {% else %}
-                            <button class="w-10 h-10 rounded-xl bg-gray-50 text-gray-300 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <i class="bi bi-eye-fill"></i>
-                            </button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="px-8 py-24 text-center">
-                            <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-dashed border-gray-200">
-                                <i class="bi bi-clock-history text-3xl text-gray-300"></i>
                             </div>
-                            <h4 class="text-xl font-black text-gray-900">No attendance history</h4>
-                            <p class="text-gray-400 text-sm max-w-xs mx-auto mt-2">Activity will appear here once shift logs are recorded in the system.</p>
                         </td>
                     </tr>
                     {% endfor %}
@@ -174,4 +465,332 @@
         </div>
     </div>
 </div>
+
+<!-- Scheduling Modal (Admin Only) -->
+{% if is_workforce_admin %}
+<div id="scheduleModal" class="fixed inset-0 z-[100] hidden" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity" onclick="closeScheduleModal()"></div>
+    <div class="flex min-h-screen items-center justify-center p-4">
+        <div class="relative bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden border border-gray-100 animate-fade-in">
+            <form method="POST" action="{{ url_for('hr3.manage_schedules') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_id" id="modalUserId">
+                
+                <div class="p-10">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <span class="bg-accent/10 text-accent text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full">Personnel Registry</span>
+                            <h3 class="text-2xl font-black text-gray-900 mt-3" id="modalStaffName">Personnel Configuration</h3>
+                        </div>
+                        <button type="button" onclick="closeScheduleModal()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:text-rose-500 transition-all">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="bg-gray-100/50 p-1.5 rounded-2xl flex gap-1">
+                            <button type="button" onclick="setSchedMode('Daily')" 
+                                    class="mode-btn flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all bg-white text-gray-900 shadow-sm border border-gray-100" data-mode="Daily">
+                                Daily Routine
+                            </button>
+                            <button type="button" onclick="setSchedMode('Specific')" 
+                                    class="mode-btn flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all text-gray-400 hover:text-gray-600" data-mode="Specific">
+                                Specific Day
+                            </button>
+                        </div>
+
+                        <div id="daySelectContainer" class="hidden animate-in fade-in slide-in-from-top-2">
+                            <div class="grid grid-cols-4 gap-2">
+                                {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                                <label class="cursor-pointer group">
+                                    <input type="radio" name="day_of_week" value="{{ day }}" class="hidden peer">
+                                    <div class="py-2.5 text-center rounded-xl bg-gray-50 border-2 border-transparent peer-checked:border-accent peer-checked:bg-accent/5 peer-checked:text-accent font-black text-[9px] transition-all group-hover:bg-gray-100 uppercase tracking-tighter">
+                                        {{ day[:3] }}
+                                    </div>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="final_day" id="finalDay" value="Daily">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Shift Start</label>
+                                <input type="time" name="start_time" required class="w-full bg-white rounded-xl border-none font-black text-lg p-3 focus:ring-accent shadow-sm">
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Shift End</label>
+                                <input type="time" name="end_time" required class="w-full bg-white rounded-xl border-none font-black text-lg p-3 focus:ring-accent shadow-sm">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between p-5 bg-accent/5 rounded-[2rem] border border-accent/10">
+                            <div class="flex items-center gap-3 text-accent transition-all" id="activeLabel">
+                                <i class="bi bi-check-circle-fill text-lg"></i>
+                                <span class="text-xs font-black uppercase tracking-widest">Benchmark Enabled</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="is_active" id="isActiveSwitch" class="sr-only peer" checked onchange="updateBenchmarkUI(this.checked)">
+                                <div class="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-8 flex items-center justify-between">
+                    <button type="button" onclick="closeScheduleModal()" class="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-900 transition-colors">Abort Change</button>
+                    <button type="submit" class="px-8 py-4 bg-accent hover:opacity-90 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-accent/20">Apply Benchmark</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Log Details Modal -->
+<div id="logDetailsModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeDetailsModal()"></div>
+    <div class="flex min-h-screen items-center justify-center p-4">
+        <div class="relative bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden border border-gray-100 animate-fade-in">
+            <div class="p-8">
+                <div class="flex items-center justify-between mb-8">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-accent/10 text-accent flex items-center justify-center text-xl">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-black text-gray-900 leading-tight">Log Analysis</h3>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest" id="modalLogId">ID: #0000</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white font-black text-xs" id="modalDetailAvatar">S</div>
+                        <div>
+                            <p class="font-black text-gray-900 leading-tight text-sm" id="modalDetailFullName">System User</p>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-tighter" id="modalDetailUsername">@system</p>
+                        </div>
+                        <div class="ml-auto">
+                            <span id="modalDetailStatusBadge" class="px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">ON-TIME</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 text-center">
+                            <p class="text-[8px] font-black text-accent uppercase tracking-widest mb-1">Shift Arrival</p>
+                            <p class="text-sm font-black text-gray-900" id="modalDetailClockIn">--:--</p>
+                        </div>
+                        <div class="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 text-center">
+                            <p class="text-[8px] font-black text-rose-500 uppercase tracking-widest mb-1">Shift Departure</p>
+                            <p class="text-sm font-black text-gray-900" id="modalDetailClockOut">--:--</p>
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-2xl border border-gray-100">
+                        <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-2">Audit Remarks</p>
+                        <p class="text-xs text-gray-600 italic leading-relaxed" id="modalDetailRemarks">No anomalies recorded for this session.</p>
+                    </div>
+                </div>
+
+                <button onclick="closeDetailsModal()" class="w-full mt-8 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200">Dismiss</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Tab Management
+    function switchTab(tabId) {
+        const sections = ['dashboardSection', 'schedulingSection'];
+        const btns = ['dashboardTabBtn', 'schedulingTabBtn'];
+        
+        sections.forEach(s => document.getElementById(s).classList.add('hidden'));
+        btns.forEach(b => {
+            const btn = document.getElementById(b);
+            btn.classList.remove('bg-white', 'text-gray-900', 'shadow-sm', 'border', 'border-gray-100');
+            btn.classList.add('text-gray-400');
+        });
+
+        document.getElementById(tabId + 'Section').classList.remove('hidden');
+        const activeBtn = document.getElementById(tabId + 'TabBtn');
+        activeBtn.classList.remove('text-gray-400');
+        activeBtn.classList.add('bg-white', 'text-gray-900', 'shadow-sm', 'border', 'border-gray-100');
+    }
+
+    // Scheduling Logic (Admin Only)
+    {% if is_workforce_admin %}
+    let currentSchedMode = 'Daily';
+
+    function setSchedMode(mode) {
+        currentSchedMode = mode;
+        const btns = document.querySelectorAll('.mode-btn');
+        btns.forEach(btn => {
+            if (btn.dataset.mode === mode) {
+                btn.classList.add('bg-white', 'text-gray-900', 'shadow-sm', 'border', 'border-gray-100');
+                btn.classList.remove('text-gray-400');
+            } else {
+                btn.classList.remove('bg-white', 'text-gray-900', 'shadow-sm', 'border', 'border-gray-100');
+                btn.classList.add('text-gray-400');
+            }
+        });
+
+        const container = document.getElementById('daySelectContainer');
+        const finalDayInput = document.getElementById('finalDay');
+        
+        if (mode === 'Specific') {
+            container.classList.remove('hidden');
+            finalDayInput.value = document.querySelector('input[name="day_of_week"]:checked')?.value || 'Monday';
+        } else {
+            container.classList.add('hidden');
+            finalDayInput.value = 'Daily';
+        }
+    }
+
+    // Update final day when radio changes
+    document.querySelectorAll('input[name="day_of_week"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (currentSchedMode === 'Specific') {
+                document.getElementById('finalDay').value = this.value;
+            }
+        });
+    });
+
+    function updateBenchmarkUI(isActive) {
+        const label = document.getElementById('activeLabel');
+        if (isActive) {
+            label.className = 'flex items-center gap-3 text-accent transition-all';
+            label.querySelector('span').innerText = 'Benchmark Enabled';
+            label.querySelector('i').className = 'bi bi-check-circle-fill text-lg';
+        } else {
+            label.className = 'flex items-center gap-3 text-gray-400 transition-all';
+            label.querySelector('span').innerText = 'Benchmark Suspended';
+            label.querySelector('i').className = 'bi bi-dash-circle text-lg';
+        }
+    }
+
+    function openScheduleModal(userId, fullName, existingScheds) {
+        document.getElementById('modalUserId').value = userId;
+        document.getElementById('modalStaffName').innerText = fullName;
+        
+        const form = document.querySelector('#scheduleModal form');
+        setSchedMode('Daily');
+        form.querySelector('[name="start_time"]').value = '09:00';
+        form.querySelector('[name="end_time"]').value = '17:00';
+        document.getElementById('isActiveSwitch').checked = true;
+        updateBenchmarkUI(true);
+
+        if (existingScheds && existingScheds.length > 0) {
+            const daily = existingScheds.find(s => s.day_of_week === 'Daily');
+            if (daily) {
+                form.querySelector('[name="start_time"]').value = daily.start_time.substring(0, 5);
+                form.querySelector('[name="end_time"]').value = daily.end_time.substring(0, 5);
+                document.getElementById('isActiveSwitch').checked = daily.is_active;
+                updateBenchmarkUI(daily.is_active);
+            }
+        }
+
+        document.getElementById('scheduleModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeScheduleModal() {
+        document.getElementById('scheduleModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Scheduling Search
+    const schedSearch = document.getElementById('staffSearch');
+    const schedFilter = document.getElementById('subsystemFilter');
+    const schedRows = document.querySelectorAll('.staff-row');
+    const schedEmpty = document.getElementById('staffEmptyState');
+    const schedTable = document.getElementById('staffTable');
+
+    function performSchedFilter() {
+        const term = schedSearch.value.toLowerCase();
+        const filter = schedFilter.value.toLowerCase();
+        let visibleCount = 0;
+
+        schedRows.forEach(row => {
+            const name = row.dataset.name;
+            const sub = row.dataset.subsystem;
+            const matchesSearch = name.includes(term);
+            const matchesFilter = filter === '' || sub.includes(filter);
+
+            if (matchesSearch && matchesFilter) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        schedTable.style.display = visibleCount === 0 ? 'none' : '';
+        schedEmpty.classList.toggle('hidden', visibleCount > 0);
+    }
+
+    if(schedSearch) schedSearch.addEventListener('input', performSchedFilter);
+    if(schedFilter) schedFilter.addEventListener('change', performSchedFilter);
+    {% endif %}
+
+    // Attendance Log Search
+    const logSearchInput = document.getElementById('logSearch');
+    const logRows = document.querySelectorAll('.log-row');
+
+    function performLogFilter() {
+        const term = logSearchInput.value.toLowerCase();
+        logRows.forEach(row => {
+            const username = row.dataset.username;
+            row.style.display = username.includes(term) ? '' : 'none';
+        });
+    }
+
+    if (logSearchInput) logSearchInput.addEventListener('input', performLogFilter);
+
+    // Detail Modal logic
+    function viewLogDetails(data) {
+        document.getElementById('modalLogId').innerText = 'ID: #' + data.id;
+        document.getElementById('modalDetailUsername').innerText = '@' + data.username;
+        document.getElementById('modalDetailFullName').innerText = data.fullName;
+        document.getElementById('modalDetailAvatar').innerText = data.username.charAt(0).toUpperCase();
+        document.getElementById('modalDetailClockIn').innerText = data.clockIn;
+        document.getElementById('modalDetailClockOut').innerText = data.clockOut;
+        document.getElementById('modalDetailRemarks').innerText = data.remarks;
+        
+        const badge = document.getElementById('modalDetailStatusBadge');
+        badge.innerText = data.status.toUpperCase();
+        badge.className = 'px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest block w-fit ';
+        if (data.status === 'On-time') { badge.classList.add('bg-emerald-50', 'text-emerald-600'); }
+        else if (data.status === 'Late') { badge.classList.add('bg-amber-50', 'text-amber-600'); }
+        else { badge.classList.add('bg-rose-50', 'text-rose-600'); }
+
+        document.getElementById('logDetailsModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDetailsModal() {
+        document.getElementById('logDetailsModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    function downloadAttendanceCSV() {
+        const rows = Array.from(document.querySelectorAll('#attendanceTable tr'));
+        const csvContent = rows.map(row => {
+            const cells = Array.from(row.querySelectorAll('th, td'));
+            return cells.slice(0, -1).map(cell => `"${cell.innerText.replace(/\n/g, ' ').replace(/,/g, ';').trim()}"`).join(',');
+        }).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `workforce_audit_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+    }
+</script>
+
+<style>
+@keyframes in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.animate-in { animation: in 0.4s ease-out forwards; }
+</style>
 {% endblock %}
+
