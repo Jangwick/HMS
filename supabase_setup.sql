@@ -1006,3 +1006,22 @@ BEGIN
         ALTER TABLE medical_records ADD COLUMN vitals JSONB;
     END IF;
 END $$;
+
+-- =====================================================
+-- SYSTEM AUDIT LOGS (For Backup/Restore and other actions)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS system_audit_logs (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP DEFAULT NOW(),
+    user_id INTEGER REFERENCES users(id),
+    action VARCHAR(20), -- BACKUP, RESTORE
+    scope VARCHAR(20), -- DEPARTMENT, SUBSYSTEM
+    target_id VARCHAR(50), -- e.g., HR1, Logistics
+    status VARCHAR(20), -- SUCCESS, FAIL
+    file_name VARCHAR(255),
+    details TEXT
+);
+
+-- Ensure correct permissions for audit logs
+ALTER TABLE IF EXISTS system_audit_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on system_audit_logs" ON system_audit_logs FOR ALL USING (true) WITH CHECK (true);

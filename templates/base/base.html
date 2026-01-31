@@ -12,6 +12,34 @@
 </head>
 
 <body class="bg-gray-50 text-gray-900 font-sans antialiased">
+    <!-- Flash Messages -->
+    <div class="fixed top-24 left-0 right-0 z-[100] pointer-events-none flex flex-col items-center">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="mb-4 transform transition-all duration-300 animate-fade-in pointer-events-auto">
+                <div class="flex items-center p-4 rounded-xl shadow-2xl border-l-4 
+                    {% if category == 'success' %}bg-green-50 border-green-500 text-green-800
+                    {% elif category == 'danger' or category == 'error' %}bg-red-50 border-red-500 text-red-800
+                    {% elif category == 'warning' %}bg-amber-50 border-amber-500 text-amber-800
+                    {% else %}bg-blue-50 border-blue-500 text-blue-800{% endif %} min-w-[320px]">
+                    <div class="flex-shrink-0 mr-3">
+                        {% if category == 'success' %}<i class="bi bi-check-circle-fill"></i>
+                        {% elif category == 'danger' or category == 'error' %}<i class="bi bi-exclamation-triangle-fill"></i>
+                        {% elif category == 'warning' %}<i class="bi bi-exclamation-circle-fill"></i>
+                        {% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
+                    </div>
+                    <div class="text-sm font-bold pr-8">{{ message }}</div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-auto -mx-1.5 -my-1.5 p-1.5 inline-flex items-center justify-center h-8 w-8 text-gray-400 hover:text-gray-900 focus:outline-none transition-colors">
+                        <i class="bi bi-x-lg text-xs"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+    </div>
+
     {% block content %}{% endblock %}
 
     {% block scripts %}

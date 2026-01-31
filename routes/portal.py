@@ -113,6 +113,40 @@ def mark_all_notifications_read():
     flash('All notifications marked as read', 'success')
     return redirect(request.referrer or url_for('portal.index'))
 
+@portal_bp.route('/notifications/delete/<int:n_id>', methods=['POST'])
+@login_required
+def delete_notification(n_id):
+    from utils.hms_models import Notification
+    Notification.delete(n_id)
+    return {'status': 'success'}
+
+@portal_bp.route('/notifications/clear-all', methods=['POST'])
+@login_required
+def clear_all_notifications():
+    from utils.hms_models import Notification
+    only_read = request.form.get('only_read') == 'true'
+    Notification.delete_all_for_user(current_user, only_read=only_read)
+    msg = 'Read notifications cleared' if only_read else 'All notifications cleared'
+    flash(msg, 'success')
+    return redirect(url_for('portal.list_notifications'))
+
+@portal_bp.route('/settings/notifications', methods=['POST'])
+@login_required
+def update_notification_settings():
+    settings = {
+        "email_notifications": request.form.get('email_notifications') == 'on',
+        "system_updates": request.form.get('system_updates') == 'on',
+        "security_alerts": request.form.get('security_alerts') == 'on',
+        "activity_logs": request.form.get('activity_logs') == 'on'
+    }
+    
+    if current_user.update(notification_settings=settings):
+        flash('Notification preferences updated successfully', 'success')
+    else:
+        flash('Failed to update settings', 'danger')
+        
+    return redirect(url_for('portal.profile') + '#notifications')
+
 @portal_bp.route('/notifications')
 @login_required
 def list_notifications():

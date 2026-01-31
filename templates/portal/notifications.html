@@ -11,13 +11,39 @@
             <p class="text-gray-500 font-medium">Keep track of your system alerts and activities.</p>
         </div>
         
-        <form action="{{ url_for('portal.mark_all_notifications_read') }}" method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-2xl hover:bg-gray-50 transition-all shadow-sm flex items-center space-x-2">
-                <i class="bi bi-check2-all"></i>
-                <span>Mark All Read</span>
-            </button>
-        </form>
+        <div class="flex items-center space-x-3">
+            <form action="{{ url_for('portal.mark_all_notifications_read') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-2xl hover:bg-gray-50 transition-all shadow-sm flex items-center space-x-2">
+                    <i class="bi bi-check2-all"></i>
+                    <span>Mark All Read</span>
+                </button>
+            </form>
+
+            <div class="relative inline-block text-left" id="clearDropdown">
+                <button onclick="toggleClearMenu()" class="px-4 py-3 bg-white border border-gray-200 text-gray-400 font-bold rounded-2xl hover:bg-gray-50 transition-all shadow-sm flex items-center">
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <div id="clearMenu" class="hidden absolute right-0 mt-2 w-56 rounded-2xl shadow-xl bg-white ring-1 ring-black ring-opacity-5 z-50 overflow-hidden border border-gray-100">
+                    <div class="py-1">
+                        <form action="{{ url_for('portal.clear_all_notifications') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="only_read" value="true">
+                            <button type="submit" class="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 font-medium">
+                                <i class="bi bi-eraser mr-3 text-gray-400"></i> Clear Read
+                            </button>
+                        </form>
+                        <form action="{{ url_for('portal.clear_all_notifications') }}" method="POST" onsubmit="return confirm('Are you sure you want to clear ALL notifications?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="only_read" value="false">
+                            <button type="submit" class="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 font-medium">
+                                <i class="bi bi-trash3 mr-3 text-red-400"></i> Clear All
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Notifications List -->
@@ -55,11 +81,16 @@
                                 </div>
                             </div>
                             
-                            {% if n.target_url %}
-                            <a href="{{ n.target_url }}" class="p-2 text-gray-400 hover:text-{{ subsystem_color or 'blue' }}-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-gray-100">
-                                <i class="bi bi-arrow-right-short text-2xl"></i>
-                            </a>
-                            {% endif %}
+                            <div class="flex items-center space-x-2">
+                                {% if n.target_url %}
+                                <a href="{{ n.target_url }}" class="p-2 text-gray-400 hover:text-{{ subsystem_color or 'blue' }}-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-gray-100" title="View details">
+                                    <i class="bi bi-arrow-right-short text-2xl"></i>
+                                </a>
+                                {% endif %}
+                                <button onclick="deleteNotif('{{ n.id }}')" class="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100" title="Delete notification">
+                                    <i class="bi bi-trash3 text-lg"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
@@ -83,6 +114,18 @@
 </div>
 
 <script>
+function toggleClearMenu() {
+    const menu = document.getElementById('clearMenu');
+    menu.classList.toggle('hidden');
+}
+
+// Close menu when clicking outside
+window.addEventListener('click', function(e) {
+    if (!document.getElementById('clearDropdown').contains(e.target)) {
+        document.getElementById('clearMenu').classList.add('hidden');
+    }
+});
+
 async function markAsReadSingle(id) {
     try {
         const response = await fetch(`/notifications/read/${id}`, {
@@ -100,6 +143,32 @@ async function markAsReadSingle(id) {
         }
     } catch (err) {
         console.error('Error marking notification as read:', err);
+    }
+}
+
+async function deleteNotif(id) {
+    if (!confirm('Are you sure you want to delete this notification?')) return;
+    
+    try {
+        const response = await fetch(`/notifications/delete/${id}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        });
+        if (response.ok) {
+            const el = document.getElementById(`notif-${id}`);
+            el.style.opacity = '0';
+            el.style.transform = 'translateX(20px)';
+            setTimeout(() => {
+                el.remove();
+                if (document.querySelectorAll('[id^="notif-"]').length === 0) {
+                    location.reload(); // Show the empty state
+                }
+            }, 300);
+        }
+    } catch (err) {
+        console.error('Error deleting notification:', err);
     }
 }
 </script>

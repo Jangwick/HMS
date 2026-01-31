@@ -16,116 +16,442 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Sidebar Navigation for Settings -->
         <div class="lg:col-span-1">
-            <nav class="space-y-1">
-                <a href="#profile" class="flex items-center px-4 py-3 bg-white font-bold rounded-xl shadow-sm border transition-all duration-200" style="color: {{ accent_color or '#3B82F6' }}; border-color: {{ accent_color or '#3B82F6' }}10;">
+            <nav class="space-y-1" id="settings-nav">
+                <button onclick="switchView('profile', this)" class="w-full flex items-center px-4 py-3 bg-white font-bold rounded-xl shadow-sm border transition-all duration-200 nav-link active" style="color: {{ accent_color or '#3B82F6' }}; border-color: {{ accent_color or '#3B82F6' }}10;">
                     <i class="bi bi-person-circle mr-3 text-lg"></i>
                     Profile Information
-                </a>
+                </button>
                 <a href="{{ url_for(blueprint_name + '.change_password') }}" class="flex items-center px-4 py-3 text-gray-600 hover:bg-white rounded-xl transition-all duration-200 font-medium group border border-transparent hover:border-gray-100 hover:shadow-sm" style="--hover-color: {{ accent_color or '#3B82F6' }};">
                     <i class="bi bi-shield-lock mr-3 text-lg text-gray-400 group-hover:text-[{{ accent_color or '#3B82F6' }}]"></i>
                     Security & Password
                 </a>
-                <a href="#notifications" class="flex items-center px-4 py-3 text-gray-600 hover:bg-white rounded-xl transition-all duration-200 font-medium group border border-transparent hover:border-gray-100 hover:shadow-sm">
+                <button onclick="switchView('notifications', this)" class="w-full flex items-center px-4 py-3 text-gray-600 hover:bg-white rounded-xl transition-all duration-200 font-medium group border border-transparent hover:border-gray-100 hover:shadow-sm nav-link">
                     <i class="bi bi-bell mr-3 text-lg text-gray-400"></i>
                     Notifications
-                </a>
+                </button>
+                {% if current_user.is_admin() %}
+                <button onclick="switchView('data-management', this)" class="w-full flex items-center px-4 py-3 text-gray-600 hover:bg-white rounded-xl transition-all duration-200 font-medium group border border-transparent hover:border-gray-100 hover:shadow-sm nav-link">
+                    <i class="bi bi-database-fill-gear mr-3 text-lg text-gray-400"></i>
+                    Data Management
+                </button>
+                {% endif %}
             </nav>
         </div>
 
         <!-- Main Settings Content -->
         <div class="lg:col-span-2 space-y-6">
             <!-- Profile Section -->
-            <div id="profile" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-8 border-b border-gray-50">
-                    <h4 class="text-lg font-bold text-gray-900">Personal Information</h4>
-                    <p class="text-sm text-gray-400">Your account details across the HMS ecosystem.</p>
+            <div id="profile-view" class="settings-view space-y-6">
+                <div id="profile" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-8 border-b border-gray-50">
+                        <h4 class="text-lg font-bold text-gray-900">Personal Information</h4>
+                        <p class="text-sm text-gray-400">Your account details across the HMS ecosystem.</p>
+                    </div>
+                    <div class="p-8 space-y-6">
+                            <form action="{{ url_for(blueprint_name + '.settings') }}" method="POST" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div>
+                                    <label for="username" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Username</label>
+                                    <input type="text" id="username" value="{{ current_user.username }}" disabled
+                                        class="block w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-gray-500 font-medium cursor-not-allowed">
+                                    <p class="text-[10px] text-gray-400 mt-1 ml-1">Username cannot be changed.</p>
+                                </div>
+                                <div>
+                                    <label for="email" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Email Address</label>
+                                    <input type="email" id="email" name="email" value="{{ current_user.email }}" required
+                                        class="block w-full p-3 bg-white border border-gray-200 rounded-xl text-gray-900 font-bold transition-all outline-none focus:ring-2"
+                                        style="--tw-ring-color: {{ accent_color or '#3B82F6' }};">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Department</label>
+                                    <p class="text-sm font-bold text-gray-900 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                        {{ current_user.department }}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Role</label>
+                                    <p class="text-sm font-bold text-gray-900 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                        {{ current_user.role }}
+                                    </p>
+                                </div>
+                                <div class="sm:col-span-2 pt-4">
+                                    <button type="submit" class="px-8 py-3 text-white font-bold rounded-xl shadow-lg transition-all duration-200 hover:scale-105"
+                                        style="background-color: {{ accent_color or '#3B82F6' }};">
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </form>
+
+                        <div class="pt-6 border-t border-gray-50">
+                            <div class="flex items-start p-4 rounded-2xl border" style="background-color: {{ accent_color or '#3B82F6' }}05; border-color: {{ accent_color or '#3B82F6' }}20;">
+                                <i class="bi i-info-circle text-lg mr-3 mt-0.5" style="color: {{ accent_color or '#3B82F6' }};"></i>
+                                <div>
+                                    <p class="text-sm font-bold" style="color: {{ accent_color or '#3B82F6' }};">Account Persistence</p>
+                                    <p class="text-xs mt-1" style="color: {{ accent_color or '#3B82F6' }}B3;">
+                                        Your account is isolated to the {{ subsystem_name }} subsystem. To access other departments, please use their respective portals.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="p-8 space-y-6">
-                        <form action="{{ url_for(blueprint_name + '.settings') }}" method="POST" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+                <!-- Appearance Section -->
+                <div id="system" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-8 border-b border-gray-50">
+                        <h4 class="text-lg font-bold text-gray-900">System Preferences</h4>
+                        <p class="text-sm text-gray-400">Customize how the management system looks and feels.</p>
+                    </div>
+                    <div class="p-8 space-y-6">
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-gray-600 shadow-sm mr-4">
+                                    <i class="bi bi-moon-stars"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-bold text-gray-900">Dark Mode</p>
+                                    <p class="text-xs text-gray-400">Adjust the interface for low light.</p>
+                                </div>
+                            </div>
+                            <button class="w-12 h-6 rounded-full bg-gray-200 relative transition-colors duration-200 focus:outline-none">
+                                <span class="absolute right-1 top-1 w-4 h-4 rounded-full bg-white shadow-sm ring-1 ring-black/5"></span>
+                            </button>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 opacity-60">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-gray-600 shadow-sm mr-4">
+                                    <i class="bi bi-globe"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-bold text-gray-900">Language</p>
+                                    <p class="text-xs text-gray-400">English (United States)</p>
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-right text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="notifications-view" class="settings-view hidden">
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-8 border-b border-gray-50">
+                        <h4 class="text-xl font-bold text-gray-900">Notification Preferences</h4>
+                        <p class="text-sm text-gray-400">Control which alerts you receive and how they are delivered.</p>
+                    </div>
+                    
+                    <form action="{{ url_for('portal.update_notification_settings') }}" method="POST" class="p-8 space-y-6">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="space-y-4">
+                            <!-- Email Notifications -->
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-blue-600 shadow-sm mr-4">
+                                        <i class="bi bi-envelope-at"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-gray-900">Email Notifications</p>
+                                        <p class="text-xs text-gray-400">Receive summary reports via your registered email.</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="email_notifications" class="sr-only peer" {% if current_user.notification_settings.get('email_notifications') %}checked{% endif %}>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- System Updates -->
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-emerald-600 shadow-sm mr-4">
+                                        <i class="bi bi-cpu"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-gray-900">System Updates</p>
+                                        <p class="text-xs text-gray-400">Alerts about feature updates and maintenance.</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="system_updates" class="sr-only peer" {% if current_user.notification_settings.get('system_updates') %}checked{% endif %}>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- Security Alerts -->
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-rose-600 shadow-sm mr-4">
+                                        <i class="bi bi-shield-check"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-gray-900">Security Alerts</p>
+                                        <p class="text-xs text-gray-400">Critical alerts about login attempts and password changes.</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="security_alerts" class="sr-only peer" {% if current_user.notification_settings.get('security_alerts', True) %}checked{% endif %}>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- Activity Logs -->
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-amber-600 shadow-sm mr-4">
+                                        <i class="bi bi-journal-text"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-gray-900">Activity Logs</p>
+                                        <p class="text-xs text-gray-400">Notify me about daily activity logs in my department.</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="activity_logs" class="sr-only peer" {% if current_user.notification_settings.get('activity_logs') %}checked{% endif %}>
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="pt-6 flex justify-end">
+                            <button type="submit" class="px-8 py-3 bg-{{ subsystem_color or 'blue' }}-600 text-white font-bold rounded-2xl hover:bg-{{ subsystem_color or 'blue' }}-700 transition-all shadow-lg shadow-{{ subsystem_color or 'blue' }}-500/20">
+                                Save Preferences
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% if current_user.is_admin() %}
+            <!-- Data Management Section -->
+            <div id="data-management-view" class="settings-view hidden">
+                <div id="data-management" class="bg-gray-900 rounded-3xl shadow-xl overflow-hidden text-white relative">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
+                    <div class="p-8 border-b border-white/10 relative z-10">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mr-4 text-blue-400">
+                                <i class="bi bi-shield-lock-fill text-2xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-bold">Subsystem Data Management</h4>
+                                <p class="text-white/50 text-sm">Backup and restore data for the {{ subsystem_name }} subsystem.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-8 space-y-6 relative z-10">
+                        <div class="flex flex-col md:flex-row items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/10">
+                            <div class="mb-4 md:mb-0">
+                                <p class="font-bold text-white">Full Backup</p>
+                                <p class="text-xs text-white/50 mt-1">Export all {{ subsystem_name }} records to a .hms-backup file.</p>
+                            </div>
+                            <a href="{{ url_for('admin.backup', scope='subsystem', target_id=blueprint_name|upper) }}" 
+                               class="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20">
+                                <i class="bi bi-download mr-2"></i> Export Data
+                            </a>
+                        </div>
+
+                        <div class="flex flex-col md:flex-row items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/10">
+                            <div class="mb-4 md:mb-0">
+                                <p class="font-bold text-white">Restore Data</p>
+                                <p class="text-xs text-white/50 mt-1">Upload a backup file to restore records. This will overwrite conflicting entries.</p>
+                            </div>
+                            <button onclick="document.getElementById('restore-subsystem-modal').classList.remove('hidden')" 
+                                    class="px-6 py-3 bg-white/10 text-white border border-white/20 font-bold rounded-xl hover:bg-white/20 transition-all backdrop-blur-sm">
+                                <i class="bi bi-upload mr-2"></i> Upload Backup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reset Section -->
+                <div class="mt-8 bg-white rounded-3xl border border-red-100 overflow-hidden">
+                    <div class="p-6 border-b border-red-50 bg-red-50/30 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <i class="bi bi-exclamation-octagon-fill text-red-500 text-xl mr-3"></i>
+                            <div>
+                                <h4 class="text-sm font-bold text-red-900">Danger Zone</h4>
+                                <p class="text-[10px] text-red-400 font-medium uppercase tracking-wider">Destructive Actions</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div>
+                                <p class="text-sm font-bold text-gray-900">Reset Subsystem Data</p>
+                                <p class="text-xs text-gray-500">Completely clear all records for {{ subsystem_name }}. This action is permanent.</p>
+                            </div>
+                            <form action="{{ url_for('admin.reset', scope='subsystem', target_id=blueprint_name|upper) }}" method="POST" onsubmit="return confirm('CRITICAL: This will PERMANENTLY DELETE all data for this subsystem. Are you absolutely sure?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-5 py-2.5 bg-white border border-red-200 text-red-600 font-bold text-sm rounded-xl hover:bg-red-50 transition-all">
+                                    Reset Subsystem
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Log Section -->
+                <div class="mt-8">
+                    <div class="flex items-center justify-between mb-4 px-2">
+                        <h4 class="text-sm font-black text-gray-400 uppercase tracking-widest">Management Activity</h4>
+                        <button onclick="loadAuditLogs()" class="text-xs font-bold text-blue-600 hover:underline">
+                            <i class="bi bi-arrow-clockwise mr-1"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                        <div id="audit-log-container" class="divide-y divide-gray-50">
+                            <!-- Logs will be loaded here -->
+                            <div class="p-8 text-center text-gray-400">
+                                <div class="animate-pulse flex flex-col items-center">
+                                    <div class="h-4 w-48 bg-gray-100 rounded mb-2"></div>
+                                    <div class="h-3 w-32 bg-gray-50 rounded"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Restore Subsystem Modal (Specific to Settings) -->
+            <div id="restore-subsystem-modal" class="fixed inset-0 z-[110] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                    <div class="fixed inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm transition-opacity" aria-hidden="true" onclick="this.parentElement.parentElement.classList.add('hidden')"></div>
+                    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                    <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                        <form action="{{ url_for('admin.restore', scope='subsystem', target_id=blueprint_name|upper) }}" method="POST" enctype="multipart/form-data">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <div>
-                                <label for="username" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Username</label>
-                                <input type="text" id="username" value="{{ current_user.username }}" disabled
-                                    class="block w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-gray-500 font-medium cursor-not-allowed">
-                                <p class="text-[10px] text-gray-400 mt-1 ml-1">Username cannot be changed.</p>
+                            <div class="bg-white px-8 pt-8 pb-4">
+                                <div class="flex items-center mb-6">
+                                    <div class="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mr-4">
+                                        <i class="bi bi-cloud-upload text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-bold text-gray-900" id="modal-title">Restore Subsystem</h3>
+                                        <p class="text-sm text-gray-500 line-clamp-1">Targeting: {{ subsystem_name }}</p>
+                                    </div>
+                                </div>
+                                <div class="mt-2 p-4 bg-amber-50 rounded-2xl border border-amber-100 mb-6">
+                                    <div class="flex">
+                                        <i class="bi bi-exclamation-triangle text-amber-600 mr-3"></i>
+                                        <p class="text-xs text-amber-800 leading-relaxed font-medium">
+                                            Restoring data will merge new records and overwrite existing ones with matching IDs. This operation cannot be undone.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Select Backup File (.hms-backup)</label>
+                                    <input type="file" name="backup_file" accept=".hms-backup" required 
+                                        class="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-extrabold file:bg-blue-600 file:text-white hover:file:bg-blue-700 transition-all cursor-pointer">
+                                </div>
                             </div>
-                            <div>
-                                <label for="email" class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Email Address</label>
-                                <input type="email" id="email" name="email" value="{{ current_user.email }}" required
-                                    class="block w-full p-3 bg-white border border-gray-200 rounded-xl text-gray-900 font-bold transition-all outline-none focus:ring-2"
-                                    style="--tw-ring-color: {{ accent_color or '#3B82F6' }};">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Department</label>
-                                <p class="text-sm font-bold text-gray-900 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                    {{ current_user.department }}
-                                </p>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Role</label>
-                                <p class="text-sm font-bold text-gray-900 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                    {{ current_user.role }}
-                                </p>
-                            </div>
-                            <div class="sm:col-span-2 pt-4">
-                                <button type="submit" class="px-8 py-3 text-white font-bold rounded-xl shadow-lg transition-all duration-200 hover:scale-105"
-                                    style="background-color: {{ accent_color or '#3B82F6' }};">
-                                    Save Changes
+                            <div class="bg-gray-50 px-8 py-6 sm:flex sm:flex-row-reverse gap-3">
+                                <button type="submit" class="w-full sm:w-auto px-8 py-3 bg-blue-600 text-white font-extrabold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all">
+                                    Start Restoration
+                                </button>
+                                <button type="button" onclick="document.getElementById('restore-subsystem-modal').classList.add('hidden')" 
+                                    class="w-full sm:w-auto px-8 py-3 bg-white text-gray-600 font-bold rounded-xl border border-gray-200 hover:bg-gray-50 transition-all">
+                                    Cancel
                                 </button>
                             </div>
                         </form>
-
-                    <div class="pt-6 border-t border-gray-50">
-                        <div class="flex items-start p-4 rounded-2xl border" style="background-color: {{ accent_color or '#3B82F6' }}05; border-color: {{ accent_color or '#3B82F6' }}20;">
-                            <i class="bi bi-info-circle text-lg mr-3 mt-0.5" style="color: {{ accent_color or '#3B82F6' }};"></i>
-                            <div>
-                                <p class="text-sm font-bold" style="color: {{ accent_color or '#3B82F6' }};">Account Persistence</p>
-                                <p class="text-xs mt-1" style="color: {{ accent_color or '#3B82F6' }}B3;">
-                                    Your account is isolated to the {{ subsystem_name }} subsystem. To access other departments, please use their respective portals.
-                                </p>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Appearance Section -->
-            <div id="system" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-8 border-b border-gray-50">
-                    <h4 class="text-lg font-bold text-gray-900">System Preferences</h4>
-                    <p class="text-sm text-gray-400">Customize how the management system looks and feels.</p>
-                </div>
-                <div class="p-8 space-y-6">
-                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-gray-600 shadow-sm mr-4">
-                                <i class="bi bi-moon-stars"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm font-bold text-gray-900">Dark Mode</p>
-                                <p class="text-xs text-gray-400">Adjust the interface for low light.</p>
-                            </div>
-                        </div>
-                        <button class="w-12 h-6 rounded-full bg-gray-200 relative transition-colors duration-200 focus:outline-none">
-                            <span class="absolute right-1 top-1 w-4 h-4 rounded-full bg-white shadow-sm ring-1 ring-black/5"></span>
-                        </button>
-                    </div>
-
-                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 opacity-60">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-gray-600 shadow-sm mr-4">
-                                <i class="bi bi-globe"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm font-bold text-gray-900">Language</p>
-                                <p class="text-xs text-gray-400">English (United States)</p>
-                            </div>
-                        </div>
-                        <i class="bi bi-chevron-right text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function switchView(viewId, element) {
+        // Hide all views
+        document.querySelectorAll('.settings-view').forEach(view => {
+            view.classList.add('hidden');
+        });
+        
+        // Show target view
+        document.getElementById(viewId + '-view').classList.remove('hidden');
+        
+        // Load data if needed
+        if (viewId === 'data-management') {
+            loadAuditLogs();
+        }
+
+        // Update navigation UI
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('bg-white', 'shadow-sm', 'border', 'font-bold');
+            link.classList.add('text-gray-600', 'font-medium', 'border-transparent');
+            link.style.color = '';
+            link.style.borderColor = '';
+            
+            // Re-apply icon colors for inactive states
+            const icon = link.querySelector('i');
+            if (icon) icon.classList.add('text-gray-400');
+        });
+        
+        // Mark active link
+        element.classList.add('bg-white', 'shadow-sm', 'border', 'font-bold');
+        element.classList.remove('text-gray-600', 'font-medium', 'border-transparent');
+        element.style.color = '{{ accent_color or "#3B82F6" }}';
+        element.style.borderColor = '{{ accent_color or "#3B82F6" }}10';
+        
+        // Mark active icon
+        const activeIcon = element.querySelector('i');
+        if (activeIcon) activeIcon.classList.remove('text-gray-400');
+    }
+
+    async function loadAuditLogs() {
+        const container = document.getElementById('audit-log-container');
+        if (!container) return;
+
+        try {
+            const response = await fetch("{{ url_for('admin.audit_logs', scope='subsystem', target_id=blueprint_name|upper) }}");
+            const data = await response.json();
+
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div class="p-8 text-center">
+                        <p class="text-sm text-gray-400 font-medium">No recent activity recorded.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = data.map(log => `
+                <div class="p-4 hover:bg-gray-50 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-lg ${log.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'} flex items-center justify-center mr-3">
+                                <i class="bi ${log.action === 'BACKUP' ? 'bi-download' : log.action === 'RESTORE' ? 'bi-upload' : 'bi-trash3'} text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-900">${log.action} ${log.status}</p>
+                                <p class="text-[10px] text-gray-400 font-medium">${new Date(log.timestamp).toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] font-black text-gray-300 uppercase tracking-widest">${log.scope}</span>
+                        </div>
+                    </div>
+                    ${log.details && log.details !== 'N/A' ? `<p class="mt-2 text-[10px] text-red-400 font-mono bg-red-50 p-2 rounded-lg">${log.details}</p>` : ''}
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error('Failed to load audit logs:', err);
+            container.innerHTML = '<div class="p-4 text-center text-red-400 text-xs">Failed to load logs.</div>';
+        }
+    }
+    
+    // Auto-switch to view based on URL hash if present
+    document.addEventListener('DOMContentLoaded', () => {
+        const hash = window.location.hash.replace('#', '');
+        if (hash) {
+            const btn = document.querySelector(`button[onclick*="'${hash}'"]`);
+            if (btn) btn.click();
+        }
+    });
+</script>
 {% endblock %}

@@ -503,3 +503,35 @@ class Notification:
         except Exception as e:
             print(f"Failed to count unread notifications: {e}")
             return 0
+
+    @staticmethod
+    def delete(notification_id):
+        """Delete a specific notification."""
+        client = get_supabase_client()
+        try:
+            client.table('notifications').delete().eq('id', notification_id).execute()
+            return True
+        except Exception as e:
+            print(f"Failed to delete notification: {e}")
+            return False
+
+    @staticmethod
+    def delete_all_for_user(user, only_read=False):
+        """Delete all notifications for a user."""
+        client = get_supabase_client()
+        try:
+            # Delete personal notifications
+            personal_query = client.table('notifications').delete().eq('user_id', user.id)
+            if only_read:
+                personal_query = personal_query.eq('is_read', True)
+            personal_query.execute()
+            
+            # Note: For subsystem notifications, deleting for ONE user 
+            # might affect others. We usually only delete if it was specifically for this user.
+            # But we can clear subsystem ones that are marked read if needed.
+            # For simplicity, we only delete personal ones or ones where this user is target.
+            
+            return True
+        except Exception as e:
+            print(f"Failed to delete notifications: {e}")
+            return False

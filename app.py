@@ -37,6 +37,9 @@ def create_app(config_class=Config):
     from routes.portal import portal_bp
     app.register_blueprint(portal_bp)
 
+    from routes.admin import admin_bp
+    app.register_blueprint(admin_bp, url_prefix='/admin')
+
     # HR
     from routes.hr.hr1 import hr1_bp
     app.register_blueprint(hr1_bp, url_prefix='/hr/hr1')

@@ -88,6 +88,12 @@ class User(UserMixin):
             self.created_at = self._parse_datetime(data.get('created_at'))
             self._is_active = data.get('is_active', True)
             self.status = data.get('status', 'Pending') # Pending, Active, Rejected
+            self.notification_settings = data.get('notification_settings') or {
+                "email_notifications": True,
+                "system_updates": True,
+                "security_alerts": True,
+                "activity_logs": False
+            }
     
     @property
     def is_active(self):
