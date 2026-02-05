@@ -210,6 +210,13 @@ def dashboard():
         response = client.table('competencies').select('id', count='exact').execute()
         total_competencies = response.count if response.count is not None else 0
         
+        # New stats for Career and Succession
+        resp = client.table('career_paths').select('id', count='exact').execute()
+        active_paths = resp.count if resp.count is not None else 0
+        
+        resp = client.table('succession_plans').select('id', count='exact').execute()
+        total_plans = resp.count if resp.count is not None else 0
+        
         # Recent onboarding items
         recent_onboarding_resp = client.table('onboarding').select('*, applicants(first_name, last_name)').order('created_at', desc=True).limit(5).execute()
         recent_onboarding = recent_onboarding_resp.data if recent_onboarding_resp.data else []
@@ -219,6 +226,8 @@ def dashboard():
         pending_onboarding = 0
         active_trainings = 0
         total_competencies = 0
+        active_paths = 0
+        total_plans = 0
         recent_onboarding = []
     
     if current_user.should_warn_password_expiry():
@@ -230,6 +239,8 @@ def dashboard():
                            pending_onboarding=pending_onboarding,
                            active_trainings=active_trainings,
                            total_competencies=total_competencies,
+                           active_paths=active_paths,
+                           total_plans=total_plans,
                            recent_onboarding=recent_onboarding,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
@@ -644,6 +655,185 @@ def assess_staff():
         flash(f'Error recording assessment: {str(e)}', 'danger')
         
     return redirect(url_for('hr2.list_competencies'))
+
+@hr2_bp.route('/career-paths')
+@login_required
+def list_career_paths():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    response = client.table('career_paths').select('*').execute()
+    paths = response.data if response.data else []
+    
+    return render_template('subsystems/hr/hr2/career_paths.html',
+                           paths=paths,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr2_bp.route('/career-paths/add', methods=['POST'])
+@login_required
+def add_career_path():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_career_paths'))
+        
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Process steps from form
+    roles = request.form.getlist('step_role[]')
+    durations = request.form.getlist('step_duration[]')
+    requirements = request.form.getlist('step_requirements[]')
+    
+    steps = []
+    for i in range(len(roles)):
+        if roles[i]:
+            steps.append({
+                'role': roles[i],
+                'duration': durations[i] if i < len(durations) else '',
+                'requirements': requirements[i] if i < len(requirements) else ''
+            })
+    
+    data = {
+        'path_name': request.form.get('path_name'),
+        'department': request.form.get('department'),
+        'description': request.form.get('description'),
+        'steps': steps
+    }
+    
+    try:
+        client.table('career_paths').insert(data).execute()
+        flash('Career path progression defined!', 'success')
+    except Exception as e:
+        flash(f'Error adding career path: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_career_paths'))
+
+@hr2_bp.route('/career-paths/edit/<int:id>', methods=['POST'])
+@login_required
+def edit_career_path(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_career_paths'))
+        
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Process steps from form
+    roles = request.form.getlist('step_role[]')
+    durations = request.form.getlist('step_duration[]')
+    requirements = request.form.getlist('step_requirements[]')
+    
+    steps = []
+    for i in range(len(roles)):
+        if roles[i]:
+            steps.append({
+                'role': roles[i],
+                'duration': durations[i] if i < len(durations) else '',
+                'requirements': requirements[i] if i < len(requirements) else ''
+            })
+    
+    data = {
+        'path_name': request.form.get('path_name'),
+        'department': request.form.get('department'),
+        'description': request.form.get('description'),
+        'steps': steps
+    }
+    
+    try:
+        client.table('career_paths').update(data).eq('id', id).execute()
+        flash('Career path updated successfully!', 'success')
+    except Exception as e:
+        flash(f'Error updating career path: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_career_paths'))
+
+@hr2_bp.route('/career-paths/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_career_path(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_career_paths'))
+        
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('career_paths').delete().eq('id', id).execute()
+        flash('Career path removed.', 'info')
+    except Exception as e:
+        flash(f'Error deleting career path: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_career_paths'))
+
+@hr2_bp.route('/succession')
+@login_required
+def list_succession_plans():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Fetch all users for selection
+    staff_response = client.table('users').select('id, username, department, role').eq('status', 'Active').execute()
+    staff_members = staff_response.data if staff_response.data else []
+    
+    # Fetch succession plans with joined user data (using explicit foreign keys)
+    plans_response = client.table('succession_plans').select('*, incumbent:users!incumbent_id(username), successor:users!successor_id(username)').execute()
+    plans = plans_response.data if plans_response.data else []
+    
+    return render_template('subsystems/hr/hr2/succession.html',
+                           plans=plans,
+                           staff_members=staff_members,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@hr2_bp.route('/succession/add', methods=['POST'])
+@login_required
+def add_succession_plan():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_succession_plans'))
+        
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    incumbent_id = request.form.get('incumbent_id')
+    
+    data = {
+        'role_title': request.form.get('role_title'),
+        'incumbent_id': int(incumbent_id) if incumbent_id and incumbent_id.isdigit() else None,
+        'successor_id': request.form.get('successor_id'),
+        'readiness_level': request.form.get('readiness_level'),
+        'risk_of_vacancy': request.form.get('risk_of_vacancy'),
+        'development_notes': request.form.get('development_notes')
+    }
+    
+    try:
+        client.table('succession_plans').insert(data).execute()
+        flash('Succession plan recorded!', 'success')
+    except Exception as e:
+        flash(f'Error adding succession plan: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_succession_plans'))
+
+@hr2_bp.route('/succession/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_succession_plan(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_succession_plans'))
+        
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('succession_plans').delete().eq('id', id).execute()
+        flash('Succession plan removed.', 'info')
+    except Exception as e:
+        flash(f'Error deleting plan: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_succession_plans'))
 
 @hr2_bp.route('/settings', methods=['GET', 'POST'])
 @login_required

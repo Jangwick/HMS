@@ -65,6 +65,28 @@
         </div>
     </div>
 
+    <!-- Career & Succession Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-[#0891B2]/5 border border-[#0891B2]/10 p-6 rounded-2xl flex items-center justify-between">
+            <div>
+                <p class="text-[#0891B2] text-xs font-black uppercase tracking-widest mb-1">Career Paths Defined</p>
+                <p class="text-2xl font-bold text-gray-900">{{ active_paths }} Paths</p>
+            </div>
+            <a href="{{ url_for('hr2.list_career_paths') }}" class="w-10 h-10 rounded-full bg-white border border-[#0891B2]/20 flex items-center justify-center text-[#0891B2] hover:bg-[#0891B2] hover:text-white transition-all shadow-sm">
+                <i class="bi bi-arrow-right-short text-2xl"></i>
+            </a>
+        </div>
+        <div class="bg-[#0891B2]/5 border border-[#0891B2]/10 p-6 rounded-2xl flex items-center justify-between">
+            <div>
+                <p class="text-[#0891B2] text-xs font-black uppercase tracking-widest mb-1">Succession Plans</p>
+                <p class="text-2xl font-bold text-gray-900">{{ total_plans }} Active</p>
+            </div>
+            <a href="{{ url_for('hr2.list_succession_plans') }}" class="w-10 h-10 rounded-full bg-white border border-[#0891B2]/20 flex items-center justify-center text-[#0891B2] hover:bg-[#0891B2] hover:text-white transition-all shadow-sm">
+                <i class="bi bi-arrow-right-short text-2xl"></i>
+            </a>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <!-- Recent Onboarding -->
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
@@ -121,9 +143,13 @@
                 {% endif %}
                 
                 {% if current_user.is_admin() %}
-                <a href="#" class="p-6 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors group">
-                    <i class="bi bi-graph-up text-2xl text-cyan-600 mb-2 block"></i>
-                    <span class="font-bold text-gray-700">Analytics</span>
+                <a href="{{ url_for('hr2.list_career_paths') }}" class="p-6 bg-green-50 rounded-2xl hover:bg-green-100 transition-colors group">
+                    <i class="bi bi-diagram-3 text-2xl text-green-600 mb-2 block"></i>
+                    <span class="font-bold text-green-900">Career Paths</span>
+                </a>
+                <a href="{{ url_for('hr2.list_succession_plans') }}" class="p-6 bg-pink-50 rounded-2xl hover:bg-pink-100 transition-colors group">
+                    <i class="bi bi-people-fill text-2xl text-pink-600 mb-2 block"></i>
+                    <span class="font-bold text-pink-900">Succession</span>
                 </a>
                 {% else %}
                 <div class="p-6 bg-gray-50 rounded-2xl opacity-50 cursor-not-allowed">

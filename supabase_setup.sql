@@ -127,6 +127,27 @@ CREATE TABLE IF NOT EXISTS training_participants (
     CONSTRAINT unique_training_participant UNIQUE (training_id, user_id)
 );
 
+-- HR2: Career & Succession
+CREATE TABLE IF NOT EXISTS career_paths (
+    id SERIAL PRIMARY KEY,
+    path_name VARCHAR(100) NOT NULL,
+    department VARCHAR(50),
+    description TEXT,
+    steps JSONB DEFAULT '[]'::jsonb, -- Array of {role: string, duration: string, requirements: string}
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS succession_plans (
+    id SERIAL PRIMARY KEY,
+    role_title VARCHAR(100) NOT NULL,
+    incumbent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    successor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    readiness_level VARCHAR(50), -- Ready Now, 1-2 Years, 3+ Years
+    risk_of_vacancy VARCHAR(50), -- Low, Medium, High
+    development_notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Ensure new columns exist in trainings table if it already exists
 DO $$ 
 BEGIN
@@ -722,6 +743,14 @@ CREATE POLICY "Allow all on staff_competencies" ON staff_competencies FOR ALL US
 ALTER TABLE IF EXISTS training_participants ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on training_participants" ON training_participants;
 CREATE POLICY "Allow all on training_participants" ON training_participants FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS career_paths ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on career_paths" ON career_paths;
+CREATE POLICY "Allow all on career_paths" ON career_paths FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS succession_plans ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on succession_plans" ON succession_plans;
+CREATE POLICY "Allow all on succession_plans" ON succession_plans FOR ALL USING (true) WITH CHECK (true);
 
 -- Core Transaction Module
 ALTER TABLE IF EXISTS patients ENABLE ROW LEVEL SECURITY;

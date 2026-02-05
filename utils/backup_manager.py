@@ -8,7 +8,7 @@ from utils.supabase_client import get_supabase_client
 # Mapping of subsystems to tables in correct dependency order for restoration
 SUBSYSTEM_TABLE_MAPPING = {
     'HR1': ['vacancies', 'applicants', 'interviews', 'onboarding'],
-    'HR2': ['competencies', 'trainings', 'staff_competencies', 'training_participants'],
+    'HR2': ['competencies', 'trainings', 'staff_competencies', 'training_participants', 'career_paths', 'succession_plans'],
     'HR3': ['attendance_logs', 'leave_requests', 'staff_schedules'],
     'HR4': ['salary_grades', 'compensation_records', 'payroll_records'],
     'CT1': ['patients', 'appointments'],

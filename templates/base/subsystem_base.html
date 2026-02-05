@@ -164,6 +164,14 @@
                         <i class="bi bi-award mr-3"></i>
                         <span>Competencies</span>
                     </a>
+                    <a href="{{ url_for('hr2.list_career_paths') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_career_paths' }}">
+                        <i class="bi bi-diagram-3 mr-3"></i>
+                        <span>Career Paths</span>
+                    </a>
+                    <a href="{{ url_for('hr2.list_succession_plans') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_succession_plans' }}">
+                        <i class="bi bi-people-fill mr-3"></i>
+                        <span>Succession Plan</span>
+                    </a>
 
                     <!-- HR3: Workforce Operations -->
                     {% elif blueprint_name == 'hr3' %}
