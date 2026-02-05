@@ -287,6 +287,31 @@ CREATE TABLE IF NOT EXISTS lab_orders (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- CT2: Radiology Orders
+CREATE TABLE IF NOT EXISTS radiology_orders (
+    id SERIAL PRIMARY KEY,
+    patient_id INTEGER REFERENCES patients(id),
+    doctor_id INTEGER REFERENCES users(id),
+    imaging_type VARCHAR(100) NOT NULL, -- X-Ray, MRI, CT Scan, etc.
+    status VARCHAR(50) DEFAULT 'Ordered', -- Ordered, In Progress, Resulted
+    findings TEXT,
+    image_url TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- CT2: Surgery Management
+CREATE TABLE IF NOT EXISTS surgeries (
+    id SERIAL PRIMARY KEY,
+    patient_id INTEGER REFERENCES patients(id),
+    surgeon_id INTEGER REFERENCES users(id),
+    surgery_name VARCHAR(200) NOT NULL,
+    surgery_date TIMESTAMP NOT NULL,
+    operating_theater VARCHAR(50),
+    status VARCHAR(50) DEFAULT 'Scheduled', -- Scheduled, In Progress, Completed, Post-Op, Cancelled
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS prescriptions (
     id SERIAL PRIMARY KEY,
     patient_id INTEGER REFERENCES patients(id),
@@ -710,6 +735,14 @@ CREATE POLICY "Allow all on appointments" ON appointments FOR ALL USING (true) W
 ALTER TABLE IF EXISTS lab_orders ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on lab_orders" ON lab_orders;
 CREATE POLICY "Allow all on lab_orders" ON lab_orders FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS radiology_orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on radiology_orders" ON radiology_orders;
+CREATE POLICY "Allow all on radiology_orders" ON radiology_orders FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS surgeries ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on surgeries" ON surgeries;
+CREATE POLICY "Allow all on surgeries" ON surgeries FOR ALL USING (true) WITH CHECK (true);
 
 ALTER TABLE IF EXISTS prescriptions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on prescriptions" ON prescriptions;

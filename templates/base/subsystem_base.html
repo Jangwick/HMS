@@ -257,6 +257,14 @@
                         <i class="bi bi-flask mr-3"></i>
                         <span>Lab Dashboard</span>
                     </a>
+                    <a href="{{ url_for('ct2.radiology_orders') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct2.radiology_orders' }}">
+                        <i class="bi bi-camera mr-3"></i>
+                        <span>Radiology Orders</span>
+                    </a>
+                    <a href="{{ url_for('ct2.surgery_schedule') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct2.surgery_schedule' }}">
+                        <i class="bi bi-hospital mr-3"></i>
+                        <span>Surgery Schedule</span>
+                    </a>
                     <a href="{{ url_for('ct2.pharmacy_inventory') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.pharmacy_inventory' }}">
                         <i class="bi bi-box-seam mr-3"></i>
                         <span>Pharmacy Stock</span>

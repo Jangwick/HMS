@@ -1,0 +1,308 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Surgery Schedule - {{ subsystem_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header Actions -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Surgery Management</h3>
+            <p class="text-gray-500">Coordinate surgical procedures, operating theaters, and anesthesia scheduling.</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+            <button onclick="window.print()" class="px-5 py-2.5 bg-white text-gray-700 font-bold rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-all flex items-center">
+                <i class="bi bi-calendar-check mr-2"></i>
+                Weekly View
+            </button>
+            <button onclick="document.getElementById('newSurgeryModal').classList.remove('hidden')" 
+                    class="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all flex items-center">
+                <i class="bi bi-plus-lg mr-2"></i>
+                Schedule Surgery
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="p-6 bg-white rounded-2xl shadow-sm border border-gray-100">
+            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Today</div>
+            <div class="text-3xl font-black text-gray-900">{{ surgeries | selectattr('status', 'equalto', 'Scheduled') | list | length }}</div>
+        </div>
+        <div class="p-6 bg-blue-50 rounded-2xl border border-blue-100">
+            <div class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-2">In Progress</div>
+            <div class="text-3xl font-black text-blue-600">{{ surgeries | selectattr('status', 'equalto', 'In Progress') | list | length }}</div>
+        </div>
+        <div class="p-6 bg-green-50 rounded-2xl border border-green-100">
+            <div class="text-xs font-bold text-green-400 uppercase tracking-wider mb-2">Completed</div>
+            <div class="text-3xl font-black text-green-600">{{ surgeries | selectattr('status', 'equalto', 'Completed') | list | length }}</div>
+        </div>
+        <div class="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Theaters Active</div>
+            <div class="text-3xl font-black text-gray-900">2/4</div>
+        </div>
+    </div>
+
+    <!-- Surgery List -->
+    <div class="glass-card rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50/50 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4">Procedure</th>
+                        <th class="px-6 py-4">Patient</th>
+                        <th class="px-6 py-4">Surgeon</th>
+                        <th class="px-6 py-4">Theater & Time</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for surgery in surgeries %}
+                    <tr class="hover:bg-indigo-50/30 transition-colors group">
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-gray-900">{{ surgery.surgery_name }}</div>
+                            <div class="text-[10px] text-indigo-500 font-bold uppercase mt-0.5">#SUR-{{ surgery.id }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-medium text-gray-700">{{ surgery.patient.first_name }} {{ surgery.patient.last_name }}</div>
+                            <div class="text-xs text-gray-400">{{ surgery.patient.patient_id_alt }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            Dr. {{ surgery.surgeon.username if surgery.surgeon else 'TBD' }}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-bold text-gray-700">{{ surgery.operating_theater }}</div>
+                            <div class="text-xs text-gray-500">{{ surgery.surgery_date.replace('T', ' ') if surgery.surgery_date else 'TBD' }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold 
+                                {% if surgery.status == 'Completed' %}bg-green-100 text-green-700
+                                {% elif surgery.status == 'In Progress' %}bg-blue-100 text-blue-700
+                                {% elif surgery.status == 'Cancelled' %}bg-red-100 text-red-700
+                                {% else %}bg-indigo-100 text-indigo-700{% endif %}">
+                                {{ surgery.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex justify-end space-x-2">
+                                <button onclick="openUpdateModal(this)" 
+                                        data-id="{{ surgery.id }}"
+                                        data-status="{{ surgery.status }}"
+                                        data-notes="{{ surgery.notes if surgery.notes else '' }}"
+                                        data-name="{{ surgery.surgery_name if surgery.surgery_name else '' }}"
+                                        data-theater="{{ surgery.operating_theater }}"
+                                        data-date="{{ surgery.surgery_date }}"
+                                        data-surgeon="{{ surgery.surgeon_id }}"
+                                        class="p-2 bg-gray-50 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-gray-100">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                {% if current_user.is_admin() %}
+                                <form action="{{ url_for('ct2.delete_surgery', surgery_id=surgery.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this surgical record?');" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="p-2 bg-gray-50 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-gray-100">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-24 text-center text-gray-400">
+                            <i class="bi bi-hospital text-5xl mb-4 block"></i>
+                            No surgeries scheduled.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- New Surgery Modal -->
+<div id="newSurgeryModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <h3 class="text-xl font-bold text-gray-900">Schedule Operative Procedure</h3>
+            <button onclick="document.getElementById('newSurgeryModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('ct2.new_surgery') }}" method="POST" class="p-6 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Patient</label>
+                    <select name="patient_id" required class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Select Patient...</option>
+                        {% for patient in patients %}
+                        <option value="{{ patient.id }}">{{ patient.first_name }} {{ patient.last_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Lead Surgeon</label>
+                    <select name="surgeon_id" required class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500">
+                        {% for surgeon in surgeons %}
+                        <option value="{{ surgeon.id }}">Dr. {{ surgeon.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Theater</label>
+                    <select name="operating_theater" class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500">
+                        <option>OT Room 1 (Major)</option>
+                        <option>OT Room 2 (Major)</option>
+                        <option>OT Room 3 (Minor)</option>
+                        <option>OT Room 4 (Ortho)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Procedure Name</label>
+                <input type="text" name="surgery_name" required placeholder="e.g. Appendectomy, Knee Replacement" 
+                       class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Date & Time</label>
+                <input type="datetime-local" name="surgery_date" required 
+                       class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Pre-Op Notes</label>
+                <textarea name="notes" rows="2" class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+
+            <div class="pt-4 flex space-x-3">
+                <button type="button" onclick="document.getElementById('newSurgeryModal').classList.add('hidden')" 
+                        class="flex-1 px-6 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">
+                    Confirm Schedule
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Update Modal -->
+<div id="updateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <h3 class="text-xl font-bold text-gray-900">Update Surgery Record</h3>
+            <button onclick="document.getElementById('updateModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="updateForm" method="POST" class="p-6 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            {% if current_user.is_admin() %}
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Procedure Name</label>
+                <input type="text" name="surgery_name" id="updateName" required class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Surgeon</label>
+                    <select name="surgeon_id" id="updateSurgeon" required class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500">
+                        {% for surgeon in surgeons %}
+                        <option value="{{ surgeon.id }}">Dr. {{ surgeon.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Theater</label>
+                    <select name="operating_theater" id="updateTheater" class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500">
+                        <option>OT Room 1 (Major)</option>
+                        <option>OT Room 2 (Major)</option>
+                        <option>OT Room 3 (Minor)</option>
+                        <option>OT Room 4 (Ortho)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Date & Time</label>
+                <input type="datetime-local" name="surgery_date" id="updateDate" required class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500">
+            </div>
+            {% endif %}
+
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Status</label>
+                <select name="status" id="updateStatus" class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500">
+                    <option value="Scheduled">Scheduled</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Post-Op">Post-Op Recovery</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Clinical Notes</label>
+                <textarea name="notes" id="updateNotes" rows="4" class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+
+            <div class="pt-4 flex space-x-3">
+                <button type="button" onclick="document.getElementById('updateModal').classList.add('hidden')" 
+                        class="flex-1 px-6 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all">
+                    Update Record
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openUpdateModal(btn) {
+    const modal = document.getElementById('updateModal');
+    const form = document.getElementById('updateForm');
+    const statusSelect = document.getElementById('updateStatus');
+    const notesArea = document.getElementById('updateNotes');
+    
+    // Admin fields (if they exist in DOM)
+    const nameInput = document.getElementById('updateName');
+    const theaterSelect = document.getElementById('updateTheater');
+    const dateInput = document.getElementById('updateDate');
+    const surgeonSelect = document.getElementById('updateSurgeon');
+
+    // Get data from attributes
+    const id = btn.getAttribute('data-id');
+    const status = btn.getAttribute('data-status');
+    const notes = btn.getAttribute('data-notes');
+    const name = btn.getAttribute('data-name');
+    const theater = btn.getAttribute('data-theater');
+    const date = btn.getAttribute('data-date');
+    const surgeonId = btn.getAttribute('data-surgeon');
+
+    form.action = `/core-transaction/ct2/surgery/${id}/update`;
+    statusSelect.value = status;
+    notesArea.value = notes;
+    
+    if (nameInput) nameInput.value = name;
+    if (theaterSelect) theaterSelect.value = theater;
+    if (dateInput && date) {
+        // Format date for datetime-local (YYYY-MM-DDTHH:MM)
+        dateInput.value = date.replace(' ', 'T').substring(0, 16);
+    }
+    if (surgeonSelect) surgeonSelect.value = surgeonId;
+
+    modal.classList.remove('hidden');
+}
+</script>
+{% endblock %}

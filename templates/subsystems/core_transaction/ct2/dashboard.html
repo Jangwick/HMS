@@ -52,26 +52,37 @@
             <p class="text-orange-500 text-[10px] font-medium mt-1">Awaiting</p>
         </div>
 
-        <div class="glass-card p-6 rounded-2xl hover-scale ring-2 ring-emerald-500/20">
+        <div class="glass-card p-6 rounded-2xl hover-scale">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Pending Rx</h4>
-                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                    <i class="bi bi-clipboard-pulse text-lg"></i>
+                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Pending RX</h4>
+                <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <i class="bi bi-capsule-pill text-lg"></i>
                 </div>
             </div>
             <p class="text-2xl font-bold text-gray-900">{{ metrics.pending_prescriptions }}</p>
-            <p class="text-emerald-600 text-[10px] font-medium mt-1">Unfilled</p>
+            <p class="text-emerald-500 text-[10px] font-medium mt-1">Unfilled</p>
+        </div>
+
+        <div class="glass-card p-6 rounded-2xl hover-scale ring-2 ring-emerald-500/20">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Radiology</h4>
+                <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center">
+                    <i class="bi bi-camera text-lg"></i>
+                </div>
+            </div>
+            <p class="text-2xl font-bold text-gray-900">{{ metrics.radiology_pending }}</p>
+            <p class="text-indigo-600 text-[10px] font-medium mt-1">Awaiting</p>
         </div>
 
         <div class="glass-card p-6 rounded-2xl hover-scale">
             <div class="flex items-center justify-between mb-4">
-                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Dispensed Today</h4>
+                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Surgeries</h4>
                 <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <i class="bi bi-box-seam text-lg"></i>
+                    <i class="bi bi-hospital text-lg"></i>
                 </div>
             </div>
-            <p class="text-2xl font-bold text-gray-900">{{ metrics.today_dispenses }}</p>
-            <p class="text-blue-500 text-[10px] font-medium mt-1">Fulfillment</p>
+            <p class="text-2xl font-bold text-gray-900">{{ metrics.surgeries_today }}</p>
+            <p class="text-blue-500 text-[10px] font-medium mt-1">Hospital Today</p>
         </div>
 
         <div class="glass-card p-6 rounded-2xl hover-scale">
@@ -149,9 +160,17 @@
                     <i class="bi bi-flask text-2xl text-emerald-600 mb-2 block group-hover:scale-110 transition-transform"></i>
                     <span class="font-bold text-emerald-900">Lab Orders</span>
                 </a>
-                <a href="{{ url_for('ct2.dispense_meds') }}" class="p-6 bg-blue-50 rounded-2xl hover:bg-blue-100 transition-all group">
-                    <i class="bi bi-capsule text-2xl text-blue-600 mb-2 block group-hover:scale-110 transition-transform"></i>
-                    <span class="font-bold text-blue-900">Dispense Rx</span>
+                <a href="{{ url_for('ct2.radiology_orders') }}" class="p-6 bg-indigo-50 rounded-2xl hover:bg-indigo-100 transition-all group">
+                    <i class="bi bi-camera text-2xl text-indigo-600 mb-2 block group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold text-indigo-900">Radiology</span>
+                </a>
+                <a href="{{ url_for('ct2.surgery_schedule') }}" class="p-6 bg-blue-50 rounded-2xl hover:bg-blue-100 transition-all group">
+                    <i class="bi bi-hospital text-2xl text-blue-600 mb-2 block group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold text-blue-900">Surgery</span>
+                </a>
+                <a href="{{ url_for('ct2.dispense_meds') }}" class="p-6 bg-teal-50 rounded-2xl hover:bg-teal-100 transition-all group">
+                    <i class="bi bi-capsule text-2xl text-teal-600 mb-2 block group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold text-teal-900">Dispense Rx</span>
                 </a>
                 <a href="{{ url_for('ct2.pharmacy_inventory') }}" class="p-6 bg-orange-50 rounded-2xl hover:bg-orange-100 transition-all group">
                     <i class="bi bi-box-seam text-2xl text-orange-600 mb-2 block group-hover:scale-110 transition-transform"></i>

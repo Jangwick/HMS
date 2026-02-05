@@ -243,7 +243,9 @@ def dashboard():
         'today_patients': 0,
         'pending_prescriptions': 0,
         'today_dispenses': 0,
-        'critical_count': 0
+        'critical_count': 0,
+        'radiology_pending': 0,
+        'surgeries_today': 0
     }
     recent_orders = []
     critical_labs = []
@@ -257,6 +259,15 @@ def dashboard():
         metrics['pending_labs'] = len([o for o in lab_data if o.get('status') == 'Ordered'])
         critical_labs = [o for o in lab_data if o.get('critical_alert')]
         metrics['critical_count'] = len(critical_labs)
+
+        # Radiology stats
+        res = supabase.table('radiology_orders').select('*').eq('status', 'Ordered').execute()
+        metrics['radiology_pending'] = len(res.data) if res.data else 0
+
+        # Surgery stats
+        today_str = datetime.utcnow().strftime('%Y-%m-%d')
+        res = supabase.table('surgeries').select('*').gte('surgery_date', f"{today_str}T00:00:00").lte('surgery_date', f"{today_str}T23:59:59").execute()
+        metrics['surgeries_today'] = len(res.data) if res.data else 0
 
         # Pharmacy stats
         res = supabase.table('inventory').select('*').execute()
@@ -375,6 +386,191 @@ def update_lab_order(order_id):
     except Exception as e:
         flash(f'Update failed: {str(e)}', 'danger')
     return redirect(url_for('ct2.lab_orders'))
+
+
+@ct2_bp.route('/radiology/orders')
+@login_required
+def radiology_orders():
+    from utils.hms_models import RadiologyOrder, Patient
+    orders = RadiologyOrder.get_all()
+    patients = Patient.get_all()
+    
+    client = get_supabase_client()
+    doctors = client.table('users').select('*').in_('subsystem', ['ct1', 'ct2', 'ct3']).execute().data or []
+        
+    return render_template('subsystems/core_transaction/ct2/radiology_orders.html', 
+                           now=datetime.utcnow,
+                           orders=orders,
+                           patients=patients,
+                           doctors=doctors,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct2_bp.route('/radiology/order/new', methods=['POST'])
+@login_required
+def new_radiology_order():
+    from utils.hms_models import RadiologyOrder
+    try:
+        data = {
+            'patient_id': request.form.get('patient_id'),
+            'doctor_id': request.form.get('doctor_id') or current_user.id,
+            'imaging_type': request.form.get('imaging_type'),
+            'status': 'Ordered'
+        }
+        RadiologyOrder.create(data)
+        
+        # Auto-Charge for Radiology (INTEGRATION)
+        from utils.hms_models import Billing
+        imaging_fee = 5000.0 # Standard imaging fee estimate
+        Billing.post_charge(data['patient_id'], imaging_fee, f"Radiology Order: {data['imaging_type']}", "Radiology (CT2)")
+        
+        flash('Radiology order created successfully!', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('ct2.radiology_orders'))
+
+@ct2_bp.route('/radiology/order/<int:order_id>/update', methods=['POST'])
+@login_required
+def update_radiology_order(order_id):
+    from utils.hms_models import RadiologyOrder
+    try:
+        findings = request.form.get('findings')
+        status = request.form.get('status')
+        image_url = request.form.get('image_url')
+        
+        update_data = {
+            'status': status,
+            'findings': findings,
+            'image_url': image_url
+        }
+            
+        RadiologyOrder.update(order_id, update_data)
+        
+        # AUDIT LOG
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Update Radiology Order", BLUEPRINT_NAME, 
+                     {"order_id": order_id, "status": status})
+                     
+        flash('Radiology order updated.', 'success')
+    except Exception as e:
+        flash(f'Update failed: {str(e)}', 'danger')
+    return redirect(url_for('ct2.radiology_orders'))
+
+@ct2_bp.route('/radiology/order/<int:order_id>/delete', methods=['POST'])
+@login_required
+def delete_radiology_order(order_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can delete radiology records.', 'danger')
+        return redirect(url_for('ct2.radiology_orders'))
+        
+    from utils.hms_models import RadiologyOrder, AuditLog
+    try:
+        RadiologyOrder.delete(order_id)
+        AuditLog.log(current_user.id, "Delete Radiology Order", BLUEPRINT_NAME, {"order_id": order_id})
+        flash('Radiology order deleted.', 'info')
+    except Exception as e:
+        flash(f'Deletion failed: {str(e)}', 'danger')
+    return redirect(url_for('ct2.radiology_orders'))
+
+
+@ct2_bp.route('/surgery/schedule')
+@login_required
+def surgery_schedule():
+    from utils.hms_models import Surgery, Patient
+    surgeries = Surgery.get_all()
+    patients = Patient.get_all()
+    
+    client = get_supabase_client()
+    surgeons = client.table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
+        
+    return render_template('subsystems/core_transaction/ct2/surgery_schedule.html', 
+                           now=datetime.utcnow,
+                           surgeries=surgeries,
+                           patients=patients,
+                           surgeons=surgeons,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct2_bp.route('/surgery/new', methods=['POST'])
+@login_required
+def new_surgery():
+    from utils.hms_models import Surgery
+    try:
+        data = {
+            'patient_id': request.form.get('patient_id'),
+            'surgeon_id': request.form.get('surgeon_id'),
+            'surgery_name': request.form.get('surgery_name'),
+            'surgery_date': request.form.get('surgery_date'),
+            'operating_theater': request.form.get('operating_theater'),
+            'status': 'Scheduled',
+            'notes': request.form.get('notes')
+        }
+        Surgery.create(data)
+        
+        # Auto-Charge for Surgery (INTEGRATION - Deposit/Base Fee)
+        from utils.hms_models import Billing
+        surgery_base_fee = 15000.0
+        Billing.post_charge(data['patient_id'], surgery_base_fee, f"Surgery Scheduled: {data['surgery_name']}", "Surgery (CT2)")
+        
+        flash('Surgery scheduled successfully!', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('ct2.surgery_schedule'))
+
+@ct2_bp.route('/surgery/<int:surgery_id>/update', methods=['POST'])
+@login_required
+def update_surgery(surgery_id):
+    from utils.hms_models import Surgery
+    try:
+        # Basic fields for everyone
+        status = request.form.get('status')
+        notes = request.form.get('notes')
+        
+        update_data = {
+            'status': status,
+            'notes': notes
+        }
+
+        # Admin extra fields
+        if current_user.is_admin():
+            if request.form.get('surgery_name'):
+                update_data['surgery_name'] = request.form.get('surgery_name')
+            if request.form.get('operating_theater'):
+                update_data['operating_theater'] = request.form.get('operating_theater')
+            if request.form.get('surgery_date'):
+                update_data['surgery_date'] = request.form.get('surgery_date')
+            if request.form.get('surgeon_id'):
+                update_data['surgeon_id'] = request.form.get('surgeon_id')
+            
+        Surgery.update(surgery_id, update_data)
+        
+        # AUDIT LOG
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Update Surgery", BLUEPRINT_NAME, 
+                     {"surgery_id": surgery_id, "status": status, "is_admin_edit": current_user.is_admin()})
+                     
+        flash('Surgery record updated successfully.', 'success')
+    except Exception as e:
+        flash(f'Update failed: {str(e)}', 'danger')
+    return redirect(url_for('ct2.surgery_schedule'))
+
+@ct2_bp.route('/surgery/<int:surgery_id>/delete', methods=['POST'])
+@login_required
+def delete_surgery(surgery_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can delete surgery records.', 'danger')
+        return redirect(url_for('ct2.surgery_schedule'))
+        
+    from utils.hms_models import Surgery, AuditLog
+    try:
+        Surgery.delete(surgery_id)
+        AuditLog.log(current_user.id, "Delete Surgery Record", BLUEPRINT_NAME, {"surgery_id": surgery_id})
+        flash('Surgery record removed.', 'info')
+    except Exception as e:
+        flash(f'Deletion failed: {str(e)}', 'danger')
+    return redirect(url_for('ct2.surgery_schedule'))
 
 
 @ct2_bp.route('/pharmacy/inventory')

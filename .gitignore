@@ -137,3 +137,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+docs/as_is_system_overview.md
+docs/detailed_subsystem_integration.md
+docs/subsystem_feature_integration_detailed.md
+docs/subsystem_functional_integration_map.md
+docs/system_data_transactions.md
+docs/system_governance_and_ops.md
+docs/to_be_system_overview.md
+docs/to_be_system_transactions.md

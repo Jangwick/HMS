@@ -262,6 +262,89 @@ class LabOrder:
         response = client.table('lab_orders').update(data).eq('id', order_id).execute()
         return response.data
 
+class RadiologyOrder:
+    def __init__(self, data: dict = None):
+        if data:
+            self.id = data.get('id')
+            self.patient_id = data.get('patient_id')
+            self.doctor_id = data.get('doctor_id')
+            self.imaging_type = data.get('imaging_type')
+            self.status = data.get('status', 'Ordered')
+            self.findings = data.get('findings')
+            self.image_url = data.get('image_url')
+            self.created_at = data.get('created_at')
+            # Joined data
+            self.patient = Patient(data.get('patients')) if data.get('patients') else None
+            self.doctor = data.get('users') if data.get('users') else None
+
+    @staticmethod
+    def create(data: dict):
+        client = get_supabase_client()
+        response = client.table('radiology_orders').insert(data).execute()
+        if response.data:
+            return RadiologyOrder(response.data[0])
+        return None
+
+    @staticmethod
+    def get_all():
+        client = get_supabase_client()
+        response = client.table('radiology_orders').select('*, patients(*), users(*)').order('created_at', desc=True).execute()
+        return [RadiologyOrder(d) for d in response.data] if response.data else []
+
+    @staticmethod
+    def update(order_id, data: dict):
+        client = get_supabase_client()
+        response = client.table('radiology_orders').update(data).eq('id', order_id).execute()
+        return response.data
+
+    @staticmethod
+    def delete(order_id):
+        client = get_supabase_client()
+        response = client.table('radiology_orders').delete().eq('id', order_id).execute()
+        return response.data
+
+class Surgery:
+    def __init__(self, data: dict = None):
+        if data:
+            self.id = data.get('id')
+            self.patient_id = data.get('patient_id')
+            self.surgeon_id = data.get('surgeon_id')
+            self.surgery_name = data.get('surgery_name')
+            self.surgery_date = data.get('surgery_date')
+            self.operating_theater = data.get('operating_theater')
+            self.status = data.get('status', 'Scheduled')
+            self.notes = data.get('notes')
+            self.created_at = data.get('created_at')
+            # Joined data
+            self.patient = Patient(data.get('patients')) if data.get('patients') else None
+            self.surgeon = data.get('users') if data.get('users') else None
+
+    @staticmethod
+    def create(data: dict):
+        client = get_supabase_client()
+        response = client.table('surgeries').insert(data).execute()
+        if response.data:
+            return Surgery(response.data[0])
+        return None
+
+    @staticmethod
+    def get_all():
+        client = get_supabase_client()
+        response = client.table('surgeries').select('*, patients(*), users(*)').order('surgery_date', desc=True).execute()
+        return [Surgery(d) for d in response.data] if response.data else []
+
+    @staticmethod
+    def update(surgery_id, data: dict):
+        client = get_supabase_client()
+        response = client.table('surgeries').update(data).eq('id', surgery_id).execute()
+        return response.data
+
+    @staticmethod
+    def delete(surgery_id):
+        client = get_supabase_client()
+        response = client.table('surgeries').delete().eq('id', surgery_id).execute()
+        return response.data
+
 class Billing:
     @staticmethod
     def post_charge(patient_id, amount, description, source_subsystem):
