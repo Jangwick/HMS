@@ -817,6 +817,35 @@ def add_succession_plan():
         
     return redirect(url_for('hr2.list_succession_plans'))
 
+@hr2_bp.route('/succession/edit/<int:id>', methods=['POST'])
+@login_required
+def edit_succession_plan(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_succession_plans'))
+        
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    incumbent_id = request.form.get('incumbent_id')
+    
+    data = {
+        'role_title': request.form.get('role_title'),
+        'incumbent_id': int(incumbent_id) if incumbent_id and incumbent_id.isdigit() else None,
+        'successor_id': request.form.get('successor_id'),
+        'readiness_level': request.form.get('readiness_level'),
+        'risk_of_vacancy': request.form.get('risk_of_vacancy'),
+        'development_notes': request.form.get('development_notes')
+    }
+    
+    try:
+        client.table('succession_plans').update(data).eq('id', id).execute()
+        flash('Succession plan updated successfully!', 'success')
+    except Exception as e:
+        flash(f'Error updating succession plan: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_succession_plans'))
+
 @hr2_bp.route('/succession/delete/<int:id>', methods=['POST'])
 @login_required
 def delete_succession_plan(id):

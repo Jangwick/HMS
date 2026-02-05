@@ -95,12 +95,18 @@
                             {% endif %}
                         </td>
                         <td class="px-8 py-6 text-right">
-                            <form action="{{ url_for('hr2.delete_succession_plan', id=plan.id) }}" method="POST" onsubmit="return confirm('Remove this plan?');">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="p-2 text-gray-300 hover:text-red-500 transition-colors">
-                                    <i class="bi bi-trash"></i>
+                            <div class="flex justify-end items-center gap-3">
+                                <button onclick='openEditPlanModal({{ plan | tojson | safe }})' 
+                                    class="p-2 text-blue-400 hover:text-blue-600 transition-colors">
+                                    <i class="bi bi-pencil-square"></i>
                                 </button>
-                            </form>
+                                <form action="{{ url_for('hr2.delete_succession_plan', id=plan.id) }}" method="POST" onsubmit="return confirm('Remove this plan?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="p-2 text-gray-300 hover:text-red-500 transition-colors">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     {% else %}
@@ -185,4 +191,110 @@
         </form>
     </div>
 </div>
+
+<!-- Edit Plan Modal -->
+<div id="editPlanModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-[#0891B2] text-white">
+            <h3 class="text-2xl font-bold">Edit Succession Plan</h3>
+            <button onclick="closeEditPlanModal()" class="text-white/80 hover:text-white">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="editPlanForm" method="POST" class="p-8 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Key Position Title</label>
+                <input type="text" name="role_title" id="edit_role_title" placeholder="e.g. Chief Nursing Officer" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Current Incumbent</label>
+                    <select name="incumbent_id" id="edit_incumbent_id" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                        <option value="">- Vacant -</option>
+                        {% for staff in staff_members %}
+                        <option value="{{ staff.id }}">{{ staff.username }} ({{ staff.role }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Successor</label>
+                    <select name="successor_id" id="edit_successor_id" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                        {% for staff in staff_members %}
+                        <option value="{{ staff.id }}">{{ staff.username }} ({{ staff.role }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Readiness</label>
+                    <select name="readiness_level" id="edit_readiness_level" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                        <option value="Ready Now">Ready Now</option>
+                        <option value="1-2 Years">1-2 Years</option>
+                        <option value="3+ Years">3+ Years</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Vacancy Risk</label>
+                    <select name="risk_of_vacancy" id="edit_risk_of_vacancy" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Dev. Plan Notes</label>
+                <textarea name="development_notes" id="edit_development_notes" rows="3" placeholder="Targeted trainings, mentorships..." class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]"></textarea>
+            </div>
+
+            <button type="submit" class="w-full py-4 bg-[#0891B2] text-white font-bold rounded-2xl shadow-lg hover:bg-cyan-700 transition-all mt-4">
+                Update Plan
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openEditPlanModal(plan) {
+        const form = document.getElementById('editPlanForm');
+        form.action = `/hr2/succession/edit/${plan.id}`;
+        
+        document.getElementById('edit_role_title').value = plan.role_title;
+        document.getElementById('edit_incumbent_id').value = plan.incumbent_id || '';
+        document.getElementById('edit_successor_id').value = plan.successor_id;
+        document.getElementById('edit_readiness_level').value = plan.readiness_level;
+        document.getElementById('edit_risk_of_vacancy').value = plan.risk_of_vacancy;
+        document.getElementById('edit_development_notes').value = plan.development_notes || '';
+
+        document.getElementById('editPlanModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeEditPlanModal() {
+        document.getElementById('editPlanModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Close on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeEditPlanModal();
+            document.getElementById('addPlanModal').classList.add('hidden');
+        }
+    });
+
+    // Close on outside click
+    window.onclick = (e) => {
+        const addModal = document.getElementById('addPlanModal');
+        const editModal = document.getElementById('editPlanModal');
+        if (e.target === addModal) addModal.classList.add('hidden');
+        if (e.target === editModal) closeEditPlanModal();
+    }
+</script>
 {% endblock %}
