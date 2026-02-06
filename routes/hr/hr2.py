@@ -971,6 +971,82 @@ def toggle_career_requirement():
     
     return {"status": "success", "completed": completed}
 
+@hr2_bp.route('/career-paths/upload-evidence', methods=['POST'])
+@login_required
+def upload_requirement_evidence():
+    import os
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    context = request.form.get('context', BLUEPRINT_NAME)
+    requirement = request.form.get('requirement', '').strip()
+    
+    if not requirement:
+        flash('Requirement name is missing.', 'danger')
+        return redirect(url_for('hr2.my_career', context=context))
+    
+    file = request.files['proof_file']
+    if file.filename == '':
+        flash('No selected file', 'danger')
+        return redirect(url_for('hr2.my_career', context=context))
+        
+    try:
+        # Get active assignment
+        resp = client.table('staff_career_paths')\
+            .select('*')\
+            .eq('user_id', current_user.id)\
+            .order('updated_at', desc=True)\
+            .execute()
+            
+        if not resp.data:
+            flash('No active roadmap found.', 'warning')
+            return redirect(url_for('hr2.my_career', context=context))
+            
+        assignments = resp.data
+        assignment = next((a for a in assignments if a['status'] in ['Active', 'Pending Approval']), assignments[0])
+        
+        # Upload to Storage
+        ext = os.path.splitext(file.filename)[1].lower()
+        file_path = f"career_evidence/{current_user.id}_{assignment['id']}_{requirement.replace(' ', '_')}{ext}"
+        bucket_name = 'career_proofs'
+        
+        file_content = file.read()
+        
+        # Upload
+        try:
+            client.storage.from_(bucket_name).upload(
+                path=file_path,
+                file=file_content,
+                file_options={"content-type": file.content_type, "x-upsert": "true"}
+            )
+        except Exception as storage_err:
+            if 'Bucket not found' in str(storage_err):
+                flash(f'Upload failed: Storage bucket "{bucket_name}" does not exist. Please contact your administrator to create the bucket in Supabase storage.', 'danger')
+            else:
+                flash(f'Storage error: {str(storage_err)}', 'danger')
+            return redirect(url_for('hr2.my_career', context=context))
+        
+        # Get public URL
+        file_url = client.storage.from_(bucket_name).get_public_url(file_path)
+        
+        # Update JSONB requirement_evidence
+        evidence = assignment.get('requirement_evidence') or {}
+        if not isinstance(evidence, dict): evidence = {}
+        
+        evidence[requirement] = file_url
+        
+        client.table('staff_career_paths').update({
+            'requirement_evidence': evidence,
+            'updated_at': 'now()'
+        }).eq('id', assignment['id']).execute()
+        
+        flash(f'Proof uploaded for {requirement}!', 'success')
+        
+    except Exception as e:
+        flash(f'Upload failed: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.my_career', context=context))
+
 @hr2_bp.route('/career-paths/request-completion', methods=['POST'])
 @login_required
 def request_career_milestone():

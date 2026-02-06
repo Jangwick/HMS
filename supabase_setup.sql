@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS staff_career_paths (
     current_step_index INTEGER DEFAULT 0,
     completed_requirements JSONB DEFAULT '[]'::jsonb,
     milestone_notes TEXT, -- New: Evidence/Reflection for current milestone
+    requirement_evidence JSONB DEFAULT '{}'::jsonb, -- New: Map of requirement names to proof file URLs
     status VARCHAR(20) DEFAULT 'Active', -- Active, Completed, Paused
     started_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
@@ -158,6 +159,9 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='staff_career_paths' AND column_name='completed_requirements') THEN
         ALTER TABLE staff_career_paths ADD COLUMN completed_requirements JSONB DEFAULT '[]'::jsonb;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='staff_career_paths' AND column_name='requirement_evidence') THEN
+        ALTER TABLE staff_career_paths ADD COLUMN requirement_evidence JSONB DEFAULT '{}'::jsonb;
     END IF;
 END $$;
 
@@ -1115,3 +1119,38 @@ CREATE TABLE IF NOT EXISTS system_audit_logs (
 -- Ensure correct permissions for audit logs
 ALTER TABLE IF EXISTS system_audit_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all on system_audit_logs" ON system_audit_logs FOR ALL USING (true) WITH CHECK (true);
+
+-- =====================================================
+-- STORAGE BUCKETS SETUP
+-- =====================================================
+-- Bucket for career proof evidence
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('career_proofs', 'career_proofs', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Bucket for user profiles
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('profiles', 'profiles', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Storage policies (Allow public access for development - refine for production)
+-- Policies for career_proofs
+DROP POLICY IF EXISTS "Public Access Proofs" ON storage.objects;
+CREATE POLICY "Public Access Proofs" ON storage.objects FOR SELECT USING (bucket_id = 'career_proofs');
+
+DROP POLICY IF EXISTS "Public Upload Proofs" ON storage.objects;
+CREATE POLICY "Public Upload Proofs" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'career_proofs');
+
+DROP POLICY IF EXISTS "Public Update Proofs" ON storage.objects;
+CREATE POLICY "Public Update Proofs" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'career_proofs');
+
+-- Policies for profiles
+DROP POLICY IF EXISTS "Public Access Profiles" ON storage.objects;
+CREATE POLICY "Public Access Profiles" ON storage.objects FOR SELECT USING (bucket_id = 'profiles');
+
+DROP POLICY IF EXISTS "Public Upload Profiles" ON storage.objects;
+CREATE POLICY "Public Upload Profiles" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'profiles');
+
+DROP POLICY IF EXISTS "Public Update Profiles" ON storage.objects;
+CREATE POLICY "Public Update Profiles" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'profiles');
+

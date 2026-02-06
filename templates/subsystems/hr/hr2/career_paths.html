@@ -134,8 +134,8 @@
                                 <span class="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold uppercase w-fit animate-pulse">
                                     Review Needed
                                 </span>
-                                {% if assign.milestone_notes %}
-                                <button onclick="viewEvidence('{{ assign.user.username }}', '{{ assign.milestone_notes|e }}', {{ assign.completed_requirements|tojson|safe }}, '{{ current_step.requirements|e if current_step else '' }}', {{ assign.id }}, {{ assign.current_step_index }}, {{ total_steps }})" 
+                                {% if assign.milestone_notes or assign.requirement_evidence %}
+                                <button onclick='viewEvidence({{ (assign.user.username if assign.user else "Unknown")|tojson|safe }}, {{ (assign.milestone_notes or "")|tojson|safe }}, {{ (assign.completed_requirements or [])|tojson|safe }}, {{ (current_step.requirements if current_step else "")|tojson|safe }}, {{ assign.id }}, {{ assign.current_step_index }}, {{ total_steps }}, {{ (assign.requirement_evidence or {})|tojson|safe }})' 
                                         class="text-[9px] text-[#0891B2] font-black uppercase tracking-tighter hover:underline text-left">
                                     <i class="bi bi-file-earmark-text"></i> View Evidence
                                 </button>
@@ -464,9 +464,13 @@
 </div>
 
 <script>
-function viewEvidence(username, notes, completedReqs, stepRequirements, assignId = null, currentIdx = 0, totalSteps = 0) {
+function viewEvidence(username, notes, completedReqs, stepRequirements, assignId = null, currentIdx = 0, totalSteps = 0, requirementEvidence = {}) {
     document.getElementById('evidence_username').innerText = username;
     document.getElementById('evidence_notes').innerText = notes || "No notes provided.";
+    
+    // Safety checks for inputs
+    const safeCompletedReqs = Array.isArray(completedReqs) ? completedReqs : [];
+    const safeEvidence = (requirementEvidence && typeof requirementEvidence === 'object') ? requirementEvidence : {};
     
     const checklist = document.getElementById('evidence_checklist');
     checklist.innerHTML = '';
@@ -476,14 +480,31 @@ function viewEvidence(username, notes, completedReqs, stepRequirements, assignId
         reqs.forEach(req => {
             const r = req.trim();
             if (!r) return;
-            const isDone = completedReqs.includes(r);
+            const isDone = safeCompletedReqs.includes(r);
+            const proofUrl = safeEvidence[r] || null;
             
             const div = document.createElement('div');
-            div.className = `flex items-center gap-3 p-3 rounded-xl border ${isDone ? 'bg-green-50 border-green-100 text-green-700' : 'bg-gray-50 border-gray-100 text-gray-400'}`;
-            div.innerHTML = `
-                <i class="bi ${isDone ? 'bi-check-circle-fill' : 'bi-circle'}"></i>
-                <span class="text-sm font-bold">${r}</span>
-            `;
+            div.className = `flex items-center justify-between p-3 rounded-xl border ${isDone ? 'bg-green-50 border-green-100 text-green-700' : 'bg-gray-50 border-gray-100 text-gray-400'}`;
+            
+            const leftSide = document.createElement('div');
+            leftSide.className = 'flex items-center gap-3';
+            leftSide.innerHTML = `<i class="bi ${isDone ? 'bi-check-circle-fill' : 'bi-circle'}"></i>`;
+            
+            const span = document.createElement('span');
+            span.className = 'text-sm font-bold';
+            span.innerText = r;
+            leftSide.appendChild(span);
+            div.appendChild(leftSide);
+
+            if (proofUrl) {
+                const link = document.createElement('a');
+                link.href = proofUrl;
+                link.target = '_blank';
+                link.className = 'px-3 py-1 bg-white border border-green-200 rounded-lg text-[10px] font-black uppercase text-green-600 hover:bg-green-50 transition-colors';
+                link.innerHTML = '<i class="bi bi-file-earmark-check"></i> View Proof';
+                div.appendChild(link);
+            }
+            
             checklist.appendChild(div);
         });
     } else {
@@ -499,7 +520,7 @@ function viewEvidence(username, notes, completedReqs, stepRequirements, assignId
         
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `/hr2/career-paths/update-progress/${assignId}`;
+        form.action = `/hr/hr2/career-paths/update-progress/${assignId}`;
         form.innerHTML = `
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="current_step_index" value="${isLastStep ? currentIdx : nextIdx}">
@@ -516,7 +537,7 @@ function viewEvidence(username, notes, completedReqs, stepRequirements, assignId
 
 function openUpdateModal(assign) {
     const form = document.getElementById('updateForm');
-    form.action = `/hr2/career-paths/update-progress/${assign.id}`;
+    form.action = `/hr/hr2/career-paths/update-progress/${assign.id}`;
     
     const stepSelect = document.getElementById('update_step_index');
     stepSelect.innerHTML = '';

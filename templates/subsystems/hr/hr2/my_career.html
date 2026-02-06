@@ -140,8 +140,9 @@
                                         {% for req in step.requirements.split(',') %}
                                         {% set req_clean = req.strip() %}
                                         {% set is_done = req_clean in assignment.completed_requirements %}
+                                        {% set proof_url = assignment.requirement_evidence.get(req_clean) if assignment.requirement_evidence else none %}
                                         
-                                        <div class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all
+                                        <div class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all
                                             {{ 'bg-green-100 text-green-700' if is_past }}
                                             {% if is_current %} 
                                                 {{ 'bg-accent-light text-accent border border-accent/20' if is_done else 'bg-gray-50 text-gray-600 border border-gray-100 hover:border-accent/40' }}
@@ -150,7 +151,7 @@
                                             
                                             {% if is_current and assignment.status == 'Active' %}
                                             <input type="checkbox" 
-                                                   onchange="toggleRequirement('{{ req_clean }}', this.checked)"
+                                                   onchange='toggleRequirement({{ req_clean|tojson|safe }}, this.checked)'
                                                    {{ 'checked' if is_done }}
                                                    class="w-4 h-4 rounded border-gray-300 text-accent focus:ring-accent">
                                             {% elif is_done or is_past %}
@@ -159,7 +160,24 @@
                                             <i class="bi bi-circle text-[10px]"></i>
                                             {% endif %}
                                             
-                                            {{ req_clean }}
+                                            <span>{{ req_clean }}</span>
+
+                                            {% if is_current and assignment.status == 'Active' %}
+                                            <div class="flex items-center gap-2 border-l border-gray-200 pl-2 ml-1">
+                                                {% if proof_url %}
+                                                <a href="{{ proof_url }}" target="_blank" class="{{ 'text-accent' if is_done else 'text-gray-400' }} hover:text-gray-900" title="View Proof">
+                                                    <i class="bi bi-file-earmark-check"></i>
+                                                </a>
+                                                {% endif %}
+                                                <button onclick='triggerProofUpload({{ req_clean|tojson|safe }})' class="text-gray-300 hover:text-gray-900" title="Upload Proof">
+                                                    <i class="bi bi-cloud-arrow-up"></i>
+                                                </button>
+                                            </div>
+                                            {% elif proof_url %}
+                                            <a href="{{ proof_url }}" target="_blank" class="text-gray-400 hover:text-gray-900 border-l border-gray-200 pl-2 ml-1">
+                                                <i class="bi bi-file-earmark-check"></i>
+                                            </a>
+                                            {% endif %}
                                         </div>
                                         {% endfor %}
                                     {% else %}
@@ -173,6 +191,28 @@
                 </div>
             </div>
         </div>
+
+        <!-- Proof Upload Hidden Form -->
+        <form id="proofUploadForm" action="{{ url_for('hr2.upload_requirement_evidence') }}" method="POST" enctype="multipart/form-data" class="hidden">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="context" value="{{ blueprint_name }}">
+            <input type="hidden" name="requirement" id="proof_requirement_name">
+            <input type="file" name="proof_file" id="proof_file_input" onchange="submitProof()">
+        </form>
+
+        <script>
+        function triggerProofUpload(reqName) {
+            document.getElementById('proof_requirement_name').value = reqName;
+            document.getElementById('proof_file_input').click();
+        }
+
+        function submitProof() {
+            const file = document.getElementById('proof_file_input').files[0];
+            if (file) {
+                document.getElementById('proofUploadForm').submit();
+            }
+        }
+        </script>
 
         <!-- Footer -->
         <div class="bg-gray-50 p-8 border-t border-gray-100 flex items-center justify-between">
