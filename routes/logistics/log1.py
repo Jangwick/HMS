@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
+from werkzeug.utils import secure_filename
 from utils.supabase_client import User, format_db_error
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
@@ -814,15 +815,53 @@ def add_document():
     client = get_supabase_client()
     
     try:
+        title = request.form.get('title')
+        doc_type = request.form.get('doc_type')
+        doc_number = request.form.get('doc_number')
+        file_url = request.form.get('file_url') or '#'
+        
+        # Handle File Upload if provided
+        file = request.files.get('document_file')
+        if file and file.filename:
+            bucket_name = 'logistics_docs'
+            filename = secure_filename(file.filename)
+            # Create a unique path: subsystem/timestamp_filename
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            file_path = f"{BLUEPRINT_NAME}/{timestamp}_{filename}"
+            
+            try:
+                # Read file content
+                content = file.read()
+                # Upload to Storage
+                client.storage.from_(bucket_name).upload(
+                    path=file_path,
+                    file=content,
+                    file_options={"content-type": file.content_type}
+                )
+                # Get Public URL
+                file_url = client.storage.from_(bucket_name).get_public_url(file_path)
+            except Exception as storage_err:
+                print(f"Storage Error: {storage_err}")
+                if 'Bucket not found' in str(storage_err):
+                    flash(f'Storage bucket "{bucket_name}" not found. Please ensure it is created in Supabase.', 'warning')
+                else:
+                    flash(f'File upload failed: {str(storage_err)}', 'danger')
+
         doc_data = {
-            'title': request.form.get('title'),
-            'doc_type': request.form.get('doc_type'),
-            'doc_number': request.form.get('doc_number'),
-            'file_url': request.form.get('file_url'),
+            'title': title,
+            'doc_type': doc_type,
+            'doc_number': doc_number,
+            'file_url': file_url,
             'status': 'Pending',
             'uploaded_by': current_user.id
         }
+        
         client.table('log_documents').insert(doc_data).execute()
+        
+        # Log Audit
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Upload Document", BLUEPRINT_NAME, {"title": title, "type": doc_type})
+        
         flash('Document record added successfully!', 'success')
     except Exception as e:
         flash(f'Error adding document: {str(e)}', 'danger')

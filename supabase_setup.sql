@@ -1203,3 +1203,16 @@ CREATE POLICY "Public Upload Profiles" ON storage.objects FOR INSERT WITH CHECK 
 DROP POLICY IF EXISTS "Public Update Profiles" ON storage.objects;
 CREATE POLICY "Public Update Profiles" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'profiles');
 
+-- Policies for logistics documents
+DROP POLICY IF EXISTS "Public Access Logistics Docs" ON storage.objects;
+CREATE POLICY "Public Access Logistics Docs" ON storage.objects FOR SELECT USING (bucket_id = 'logistics_docs');
+
+DROP POLICY IF EXISTS "Public Upload Logistics Docs" ON storage.objects;
+CREATE POLICY "Public Upload Logistics Docs" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'logistics_docs');
+
+DROP POLICY IF EXISTS "Public Update Logistics Docs" ON storage.objects;
+CREATE POLICY "Public Update Logistics Docs" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'logistics_docs');
+
+DROP POLICY IF EXISTS "Public Delete Logistics Docs" ON storage.objects;
+CREATE POLICY "Public Delete Logistics Docs" ON storage.objects FOR DELETE USING (bucket_id = 'logistics_docs');
+
