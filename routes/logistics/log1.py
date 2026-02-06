@@ -876,6 +876,11 @@ def update_doc_status(doc_id, status):
     
     try:
         client.table('log_documents').update({'status': status}).eq('id', doc_id).execute()
+        
+        # Log Audit
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, f"Update Document Status: {status}", BLUEPRINT_NAME, {"doc_id": doc_id, "new_status": status})
+        
         flash(f'Document status updated to {status}.', 'success')
     except Exception as e:
         flash(f'Error updating status: {str(e)}', 'danger')
@@ -890,6 +895,11 @@ def delete_doc(doc_id):
     
     try:
         client.table('log_documents').delete().eq('id', doc_id).execute()
+        
+        # Log Audit
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Delete Document", BLUEPRINT_NAME, {"doc_id": doc_id})
+        
         flash('Document removed from archive.', 'success')
     except Exception as e:
         flash(f'Error deleting document: {str(e)}', 'danger')
