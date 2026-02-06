@@ -16,14 +16,27 @@ def index():
 @portal_bp.route('/profile')
 @login_required
 def profile():
-    from utils.supabase_client import SUBSYSTEM_CONFIG
+    from utils.supabase_client import SUBSYSTEM_CONFIG, get_supabase_client
+    client = get_supabase_client()
+    
     subsystem_info = SUBSYSTEM_CONFIG.get(current_user.subsystem, {})
     subsystem_name = subsystem_info.get('name', current_user.subsystem.upper())
     subsystem_color = subsystem_info.get('color', 'indigo')
+    
+    # Fetch career paths for professional development section
+    career_resp = client.table('staff_career_paths')\
+        .select('*, path:career_paths(*)')\
+        .eq('user_id', current_user.id)\
+        .order('updated_at', desc=True)\
+        .execute()
+    
+    career_data = career_resp.data if career_resp.data else []
+    
     return render_template('portal/profile.html', 
                          user=current_user, 
                          subsystem_full_name=subsystem_name,
-                         subsystem_color=subsystem_color)
+                         subsystem_color=subsystem_color,
+                         career_paths=career_data)
 
 @portal_bp.route('/profile/upload-avatar', methods=['POST'])
 @login_required

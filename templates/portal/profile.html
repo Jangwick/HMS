@@ -131,6 +131,84 @@
                     </div>
                 </div>
 
+                <!-- Professional Roadmap -->
+                {% if career_paths %}
+                <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+                    <div class="p-8">
+                        <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                            <i class="bi bi-trophy text-amber-500 mr-2"></i>
+                            Professional Development
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            {% for cp in career_paths %}
+                            {% set steps = cp.path.steps if cp.path else [] %}
+                            {% set total_steps = steps|length %}
+                            
+                            {# Detailed Progress Calculation #}
+                            {% if cp.status == 'Completed' %}
+                                {% set progress = 100 %}
+                            {% else %}
+                                {% set current_step = steps[cp.current_step_index] if steps else None %}
+                                {% set current_req_list = current_step.requirements.split(',') if current_step and current_step.requirements else [] %}
+                                {% set completed_in_step = 0 %}
+                                {% for req in current_req_list %}
+                                    {% if req.strip() in cp.completed_requirements %}
+                                        {% set completed_in_step = completed_in_step + 1 %}
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% set base_progress = (cp.current_step_index / total_steps) * 100 if total_steps > 0 else 0 %}
+                                {% set step_weight = 100 / total_steps if total_steps > 0 else 0 %}
+                                {% set step_req_count = current_req_list|length if current_req_list|length > 0 else 1 %}
+                                {% set req_progress = (completed_in_step / step_req_count) * step_weight %}
+                                {% set progress = (base_progress + req_progress)|round|int %}
+                            {% endif %}
+
+                            <div class="p-5 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-amber-200 transition-all">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div>
+                                        <h4 class="font-black text-gray-900 tracking-tight">{{ cp.path.path_name }}</h4>
+                                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ cp.path.department }} Roadmap</p>
+                                    </div>
+                                    <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm border
+                                        {% if cp.status == 'Completed' %}bg-green-100 text-green-700 border-green-200
+                                        {% elif cp.status == 'Active' %}bg-blue-100 text-blue-700 border-blue-200
+                                        {% elif cp.status == 'Pending Approval' %}bg-amber-100 text-amber-700 border-amber-200
+                                        {% else %}bg-gray-200 text-gray-600 border-gray-300{% endif %}">
+                                        {{ cp.status }}
+                                    </span>
+                                </div>
+                                
+                                <div class="relative h-2 bg-gray-200 rounded-full overflow-hidden mb-2">
+                                    <div class="absolute inset-y-0 left-0 transition-all duration-1000
+                                        {% if cp.status == 'Completed' %}bg-green-500{% else %}bg-amber-500{% endif %}" 
+                                        style="width: {{ progress }}%;"></div>
+                                </div>
+                                
+                                <div class="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
+                                    <span class="text-gray-400">
+                                        {% if cp.status == 'Completed' %}
+                                            Path Finalized
+                                        {% else %}
+                                            Step {{ cp.current_step_index + 1 }} of {{ total_steps }}
+                                        {% endif %}
+                                    </span>
+                                    <span class="{% if cp.status == 'Completed' %}text-green-600{% else %}text-amber-600{% endif %} font-black">{{ progress }}% Done</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mt-6 flex justify-center">
+                            <a href="{{ url_for('hr2.my_career') }}" class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] hover:text-gray-900 transition-colors flex items-center gap-2">
+                                View Full Detailed Roadmap <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Activity & Security -->
                 <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
                     <div class="p-8">
