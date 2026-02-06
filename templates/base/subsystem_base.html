@@ -281,6 +281,10 @@
                         <i class="bi bi-capsule-pill mr-3"></i>
                         <span>Dispense Meds</span>
                     </a>
+                    <a href="{{ url_for('ct2.dnms_dashboard') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct2.dnms_dashboard' }}">
+                        <i class="bi bi-heart-pulse mr-3 text-rose-500"></i>
+                        <span>Diet & Nutrition</span>
+                    </a>
 
                     <!-- CT3: Admin & Finance -->
                     {% elif blueprint_name == 'ct3' %}

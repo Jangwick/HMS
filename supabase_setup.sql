@@ -348,6 +348,55 @@ CREATE TABLE IF NOT EXISTS radiology_orders (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- =====================================================
+-- CT2: DNMS (Diet and Nutrition Management System)
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS diet_plans (
+    id SERIAL PRIMARY KEY,
+    patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+    diet_type VARCHAR(100) NOT NULL, -- General, Liquid, Diabetic, Low Sodium, No Gluten, etc.
+    instruction TEXT,
+    prescribed_by INTEGER REFERENCES users(id),
+    start_date DATE DEFAULT CURRENT_DATE,
+    end_date DATE,
+    status VARCHAR(50) DEFAULT 'Active', -- Active, Completed, Terminated
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS nutritional_assessments (
+    id SERIAL PRIMARY KEY,
+    patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+    clinician_id INTEGER REFERENCES users(id),
+    weight DECIMAL(6, 2), -- kg
+    height DECIMAL(6, 2), -- cm
+    bmi DECIMAL(6, 2),
+    assessment_notes TEXT,
+    recommendations TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS meal_tracking (
+    id SERIAL PRIMARY KEY,
+    patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+    meal_type VARCHAR(50), -- Breakfast, Lunch, Dinner, Snack
+    delivery_status VARCHAR(50) DEFAULT 'Pending', -- Pending, Delivered, Consumed, Refused
+    delivered_at TIMESTAMP,
+    delivery_staff_id INTEGER REFERENCES users(id),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- RLS for DNMS
+ALTER TABLE IF EXISTS diet_plans ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on diet_plans" ON diet_plans FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS nutritional_assessments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on nutritional_assessments" ON nutritional_assessments FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS meal_tracking ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on meal_tracking" ON meal_tracking FOR ALL USING (true) WITH CHECK (true);
+
 -- CT2: Surgery Management
 CREATE TABLE IF NOT EXISTS surgeries (
     id SERIAL PRIMARY KEY,

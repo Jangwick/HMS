@@ -54,6 +54,57 @@
             </div>
         </div>
     </div>
+
+    <!-- Nutritional Summary (Integrated from CT2 DNMS) -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-8 py-5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-gray-900"><i class="bi bi-egg-fried mr-2 text-emerald-600"></i>Nutritional Summary</h3>
+            <a href="{{ url_for('ct2.patient_nutrition_profile', patient_id=patient.id) }}" class="text-sm font-bold text-emerald-600 hover:text-emerald-700">
+                Full Nutrition Profile <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+        <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Latest Vitals/BMI -->
+            <div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Latest Assessment</p>
+                {% if latest_assessment %}
+                <div class="flex items-center space-x-4">
+                    <div class="p-4 rounded-2xl {% if latest_assessment.bmi < 18.5 %}bg-blue-50 text-blue-600{% elif latest_assessment.bmi < 25 %}bg-emerald-50 text-emerald-600{% elif latest_assessment.bmi < 30 %}bg-orange-50 text-orange-600{% else %}bg-red-50 text-red-600{% endif %}">
+                        <div class="text-2xl font-black">{{ "%.1f"|format(latest_assessment.bmi) }}</div>
+                        <div class="text-[10px] font-bold uppercase tracking-tight">BMI Score</div>
+                    </div>
+                    <div>
+                        <div class="text-sm font-bold text-gray-900">
+                            {% if latest_assessment.bmi < 18.5 %}Underweight
+                            {% elif latest_assessment.bmi < 25 %}Normal Weight
+                            {% elif latest_assessment.bmi < 30 %}Overweight
+                            {% else %}Obese{% endif %}
+                        </div>
+                        <div class="text-xs text-gray-500">Measured on: {{ latest_assessment.assessment_date }}</div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-sm text-gray-500 italic">No nutritional assessment on file.</div>
+                {% endif %}
+            </div>
+
+            <!-- Active Diet Plan -->
+            <div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Active Prescription</p>
+                {% if active_diet %}
+                <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-bold text-gray-900">{{ active_diet.diet_type }}</span>
+                        <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full uppercase">Active</span>
+                    </div>
+                    <p class="text-xs text-gray-600 line-clamp-2">{{ active_diet.restrictions or 'No specific restrictions' }}</p>
+                </div>
+                {% else %}
+                <div class="text-sm text-gray-500 italic">No active diet plan prescribed.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
     <!-- Medical History Section -->
     <div class="space-y-4">
         <div class="flex items-center justify-between">

@@ -835,3 +835,275 @@ def view_patient(patient_id):
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+# =====================================================
+# DNMS: Diet and Nutrition Management System
+# =====================================================
+
+@ct2_bp.route('/dnms')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def dnms_dashboard():
+    supabase = get_supabase_client()
+    try:
+        # Get active diet plans
+        diet_plans = supabase.table('diet_plans').select('*, patients(first_name, last_name)').order('created_at', desc=True).limit(5).execute().data
+        
+        # Get pending meal deliveries for today
+        today = datetime.now().date().isoformat()
+        pending_meals = supabase.table('meal_tracking').select('*, patients(first_name, last_name)').eq('delivery_status', 'Pending').execute().data
+        
+        # Get recent assessments
+        recent_assessments = supabase.table('nutritional_assessments').select('*, patients(first_name, last_name)').order('created_at', desc=True).limit(5).execute().data
+        
+        stats = {
+            'active_plans': len(supabase.table('diet_plans').select('id').eq('status', 'Active').execute().data),
+            'pending_meals': len(pending_meals),
+            'assessments_today': len(supabase.table('nutritional_assessments').select('id').gte('created_at', today).execute().data)
+        }
+    except Exception as e:
+        flash(f"Error fetching DNMS data: {str(e)}", "danger")
+        diet_plans, pending_meals, recent_assessments, stats = [], [], [], {}
+
+    return render_template('subsystems/core_transaction/ct2/dnms_dashboard.html',
+                           diet_plans=diet_plans,
+                           pending_meals=pending_meals,
+                           recent_assessments=recent_assessments,
+                           stats=stats,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct2_bp.route('/dnms/diet-plans')
+@login_required
+def list_diet_plans():
+    supabase = get_supabase_client()
+    try:
+        plans = supabase.table('diet_plans').select('*, patients(first_name, last_name, patient_id_alt), users(username)').order('created_at', desc=True).execute().data
+        patients = supabase.table('patients').select('id, first_name, last_name, patient_id_alt').execute().data
+    except Exception as e:
+        flash(f"Error: {str(e)}", "danger")
+        plans, patients = [], []
+    
+    return render_template('subsystems/core_transaction/ct2/diet_plans.html',
+                           plans=plans,
+                           patients=patients,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct2_bp.route('/dnms/diet-plans/add', methods=['POST'])
+@login_required
+def add_diet_plan():
+    supabase = get_supabase_client()
+    data = {
+        'patient_id': request.form.get('patient_id'),
+        'diet_type': request.form.get('diet_type'),
+        'instruction': request.form.get('instruction'),
+        'prescribed_by': current_user.id,
+        'start_date': request.form.get('start_date') or datetime.now().date().isoformat(),
+        'end_date': request.form.get('end_date') or None,
+        'status': 'Active'
+    }
+    try:
+        supabase.table('diet_plans').insert(data).execute()
+        flash('Diet plan prescribed successfully!', 'success')
+    except Exception as e:
+        flash(f"Failed to add diet plan: {str(e)}", "danger")
+    return redirect(url_for('ct2.list_diet_plans'))
+
+@ct2_bp.route('/dnms/assessments')
+@login_required
+def list_assessments():
+    supabase = get_supabase_client()
+    try:
+        assessments = supabase.table('nutritional_assessments').select('*, patients(first_name, last_name, patient_id_alt), users(username)').order('created_at', desc=True).execute().data
+        patients = supabase.table('patients').select('id, first_name, last_name, patient_id_alt').execute().data
+    except Exception as e:
+        flash(f"Error: {str(e)}", "danger")
+        assessments, patients = [], []
+    
+    return render_template('subsystems/core_transaction/ct2/nutrition_assessments.html',
+                           assessments=assessments,
+                           patients=patients,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct2_bp.route('/dnms/assessments/add', methods=['POST'])
+@login_required
+def add_assessment():
+    supabase = get_supabase_client()
+    weight = float(request.form.get('weight', 0))
+    height = float(request.form.get('height', 1)) / 100 # cm to m
+    bmi = round(weight / (height * height), 2) if height > 0 else 0
+    
+    data = {
+        'patient_id': request.form.get('patient_id'),
+        'clinician_id': current_user.id,
+        'weight': weight,
+        'height': float(request.form.get('height', 0)),
+        'bmi': bmi,
+        'assessment_notes': request.form.get('assessment_notes'),
+        'recommendations': request.form.get('recommendations')
+    }
+    try:
+        supabase.table('nutritional_assessments').insert(data).execute()
+        flash('Nutritional assessment recorded!', 'success')
+    except Exception as e:
+        flash(f"Failed to save assessment: {str(e)}", "danger")
+    return redirect(url_for('ct2.list_assessments'))
+
+@ct2_bp.route('/dnms/meal-tracking')
+@login_required
+def meal_tracking():
+    supabase = get_supabase_client()
+    status_filter = request.args.get('status')
+    try:
+        query = supabase.table('meal_tracking').select('*, patients(first_name, last_name, patient_id_alt), users(username)').order('created_at', desc=True)
+        if status_filter:
+            query = query.eq('delivery_status', status_filter)
+        
+        meals = query.execute().data
+        patients = supabase.table('patients').select('id, first_name, last_name, patient_id_alt').execute().data
+    except Exception as e:
+        flash(f"Error: {str(e)}", "danger")
+        meals, patients = [], []
+    
+    return render_template('subsystems/core_transaction/ct2/meal_tracking.html',
+                           meals=meals,
+                           patients=patients,
+                           current_status=status_filter,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+# -----------------------------------------------------
+# New Feature: Patient Nutrition Profile
+# -----------------------------------------------------
+
+@ct2_bp.route('/dnms/patient/<int:patient_id>')
+@login_required
+def patient_nutrition_profile(patient_id):
+    supabase = get_supabase_client()
+    try:
+        patient = supabase.table('patients').select('*').eq('id', patient_id).single().execute().data
+        diet_plans = supabase.table('diet_plans').select('*, users(username)').eq('patient_id', patient_id).order('created_at', desc=True).execute().data
+        assessments = supabase.table('nutritional_assessments').select('*, users(username)').eq('patient_id', patient_id).order('created_at', desc=True).execute().data
+        meal_history = supabase.table('meal_tracking').select('*, users(username)').eq('patient_id', patient_id).order('created_at', desc=True).limit(20).execute().data
+    except Exception as e:
+        flash(f"Error loading profile: {str(e)}", "danger")
+        return redirect(url_for('ct2.dnms_dashboard'))
+    
+    return render_template('subsystems/core_transaction/ct2/patient_profile.html',
+                           patient=patient,
+                           diet_plans=diet_plans,
+                           assessments=assessments,
+                           meal_history=meal_history,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct2_bp.route('/dnms/meal-tracking/update/<int:meal_id>', methods=['POST'])
+@login_required
+def update_meal_status(meal_id):
+    supabase = get_supabase_client()
+    status = request.form.get('status')
+    data = {
+        'delivery_status': status,
+        'delivered_at': datetime.now().isoformat() if status in ['Delivered', 'Consumed'] else None,
+        'delivery_staff_id': current_user.id
+    }
+    try:
+        supabase.table('meal_tracking').update(data).eq('id', meal_id).execute()
+        flash('Meal status updated!', 'success')
+    except Exception as e:
+        flash(f"Failed to update meal: {str(e)}", "danger")
+    return redirect(url_for('ct2.meal_tracking'))
+
+@ct2_bp.route('/dnms/meal-tracking/add', methods=['POST'])
+@login_required
+def add_meal_log():
+    supabase = get_supabase_client()
+    data = {
+        'patient_id': request.form.get('patient_id'),
+        'meal_type': request.form.get('meal_type'),
+        'delivery_status': 'Pending',
+        'notes': request.form.get('notes')
+    }
+    try:
+        supabase.table('meal_tracking').insert(data).execute()
+        flash('Meal scheduled for delivery!', 'info')
+    except Exception as e:
+        flash(f"Failed to schedule meal: {str(e)}", "danger")
+    return redirect(url_for('ct2.meal_tracking'))
+
+# =====================================================
+# DNMS Admin CRUD Operations
+# =====================================================
+
+@ct2_bp.route('/dnms/diet-plans/delete/<int:plan_id>', methods=['POST'])
+@login_required
+def delete_diet_plan(plan_id):
+    if not current_user.is_admin():
+        flash("Permission denied. Admin access required.", "danger")
+        return redirect(url_for('ct2.list_diet_plans'))
+    
+    supabase = get_supabase_client()
+    try:
+        supabase.table('diet_plans').delete().eq('id', plan_id).execute()
+        flash('Diet plan deleted successfully!', 'success')
+    except Exception as e:
+        flash(f"Failed to delete plan: {str(e)}", "danger")
+    return redirect(url_for('ct2.list_diet_plans'))
+
+@ct2_bp.route('/dnms/diet-plans/update/<int:plan_id>', methods=['POST'])
+@login_required
+def update_diet_plan(plan_id):
+    if not current_user.is_admin():
+        flash("Permission denied. Admin access required.", "danger")
+        return redirect(url_for('ct2.list_diet_plans'))
+    
+    supabase = get_supabase_client()
+    data = {
+        'diet_type': request.form.get('diet_type'),
+        'instruction': request.form.get('instruction'),
+        'status': request.form.get('status'),
+        'end_date': request.form.get('end_date') or None
+    }
+    try:
+        supabase.table('diet_plans').update(data).eq('id', plan_id).execute()
+        flash('Diet plan updated successfully!', 'success')
+    except Exception as e:
+        flash(f"Failed to update plan: {str(e)}", "danger")
+    return redirect(url_for('ct2.list_diet_plans'))
+
+@ct2_bp.route('/dnms/assessments/delete/<int:assessment_id>', methods=['POST'])
+@login_required
+def delete_assessment(assessment_id):
+    if not current_user.is_admin():
+        flash("Permission denied. Admin access required.", "danger")
+        return redirect(url_for('ct2.list_assessments'))
+    
+    supabase = get_supabase_client()
+    try:
+        supabase.table('nutritional_assessments').delete().eq('id', assessment_id).execute()
+        flash('Assessment record deleted!', 'success')
+    except Exception as e:
+        flash(f"Failed to delete assessment: {str(e)}", "danger")
+    return redirect(url_for('ct2.list_assessments'))
+
+@ct2_bp.route('/dnms/meal-tracking/delete/<int:meal_id>', methods=['POST'])
+@login_required
+def delete_meal_log(meal_id):
+    if not current_user.is_admin():
+        flash("Permission denied. Admin access required.", "danger")
+        return redirect(url_for('ct2.meal_tracking'))
+    
+    supabase = get_supabase_client()
+    try:
+        supabase.table('meal_tracking').delete().eq('id', meal_id).execute()
+        flash('Meal log entry removed.', 'success')
+    except Exception as e:
+        flash(f"Failed to delete meal log: {str(e)}", "danger")
+    return redirect(url_for('ct2.meal_tracking'))

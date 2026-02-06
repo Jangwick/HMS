@@ -519,15 +519,28 @@ def view_record(patient_id):
                     record['doctor_name'] = doc_resp.data['username']
             else:
                 record['doctor_name'] = 'Unknown'
+        
+        # --- NEW: Get Nutritional Data ---
+        # Get active diet plan
+        diet_resp = client.table('diet_plans').select('*').eq('patient_id', patient_id).eq('status', 'active').order('created_at', desc=True).limit(1).execute()
+        active_diet = diet_resp.data[0] if diet_resp.data else None
+        
+        # Get latest nutritional assessment
+        assessment_resp = client.table('nutritional_assessments').select('*').eq('patient_id', patient_id).order('assessment_date', desc=True).limit(1).execute()
+        latest_assessment = assessment_resp.data[0] if assessment_resp.data else None
                 
     except Exception as e:
         print(f"Error fetching record: {e}")
         patient = {}
         history = []
+        active_diet = None
+        latest_assessment = None
     
     return render_template('subsystems/core_transaction/ct3/view_record.html',
                            patient=patient,
                            history=history,
+                           active_diet=active_diet,
+                           latest_assessment=latest_assessment,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
