@@ -662,11 +662,22 @@ def list_career_paths():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
+    # Fetch paths
     response = client.table('career_paths').select('*').execute()
     paths = response.data if response.data else []
     
+    # Fetch all active users for assignment
+    users_resp = client.table('users').select('id, username, role').eq('status', 'Active').execute()
+    employees = users_resp.data if users_resp.data else []
+    
+    # Fetch existing assignments with full user and path details
+    assign_resp = client.table('staff_career_paths').select('*, user:users(username), path:career_paths(*)').execute()
+    assignments = assign_resp.data if assign_resp.data else []
+    
     return render_template('subsystems/hr/hr2/career_paths.html',
                            paths=paths,
+                           employees=employees,
+                           assignments=assignments,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -684,6 +695,7 @@ def add_career_path():
     # Process steps from form
     roles = request.form.getlist('step_role[]')
     durations = request.form.getlist('step_duration[]')
+    descriptions = request.form.getlist('step_description[]')
     requirements = request.form.getlist('step_requirements[]')
     
     steps = []
@@ -692,6 +704,7 @@ def add_career_path():
             steps.append({
                 'role': roles[i],
                 'duration': durations[i] if i < len(durations) else '',
+                'description': descriptions[i] if i < len(descriptions) else '',
                 'requirements': requirements[i] if i < len(requirements) else ''
             })
     
@@ -723,6 +736,7 @@ def edit_career_path(id):
     # Process steps from form
     roles = request.form.getlist('step_role[]')
     durations = request.form.getlist('step_duration[]')
+    descriptions = request.form.getlist('step_description[]')
     requirements = request.form.getlist('step_requirements[]')
     
     steps = []
@@ -731,6 +745,7 @@ def edit_career_path(id):
             steps.append({
                 'role': roles[i],
                 'duration': durations[i] if i < len(durations) else '',
+                'description': descriptions[i] if i < len(descriptions) else '',
                 'requirements': requirements[i] if i < len(requirements) else ''
             })
     
@@ -766,6 +781,244 @@ def delete_career_path(id):
         flash(f'Error deleting career path: {str(e)}', 'danger')
         
     return redirect(url_for('hr2.list_career_paths'))
+
+@hr2_bp.route('/career-paths/assign', methods=['POST'])
+@login_required
+def assign_career_path():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_career_paths'))
+        
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    user_id = request.form.get('user_id')
+    path_id = request.form.get('path_id')
+    
+    try:
+        # First, set any existing 'Active' paths to 'Paused' to make room for the new focus
+        client.table('staff_career_paths').update({
+            'status': 'Paused',
+            'updated_at': 'now()'
+        }).eq('user_id', user_id).eq('status', 'Active').execute()
+
+        data = {
+            'user_id': user_id, 
+            'path_id': path_id, 
+            'current_step_index': 0,
+            'status': 'Active',
+            'updated_at': 'now()'
+        }
+        client.table('staff_career_paths').upsert(data, on_conflict='user_id,path_id').execute()
+        flash('Career path assigned successfully! This is now the employee\'s primary focus.', 'success')
+    except Exception as e:
+        flash(f'Error assigning path: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_career_paths'))
+
+@hr2_bp.route('/career-paths/update-progress/<int:id>', methods=['POST'])
+@login_required
+def update_career_progress(id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_career_paths'))
+        
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+    
+    new_step = int(request.form.get('current_step_index', 0))
+    new_status = request.form.get('status', 'Active')
+    
+    try:
+        # Get current state and path details
+        resp = client.table('staff_career_paths').select('*, path:career_paths(steps), user:users(username)').eq('id', id).single().execute()
+        if not resp.data:
+            flash('Record not found.', 'danger')
+            return redirect(url_for('hr2.list_career_paths'))
+            
+        record = resp.data
+        steps = record['path']['steps']
+        user_id = record['user_id']
+        username = record['user']['username']
+        
+        data = {
+            'current_step_index': new_step,
+            'status': new_status,
+            'updated_at': 'now()'
+        }
+        
+        # Check if completed
+        if new_step >= len(steps) - 1 and new_status == 'Active':
+             # If they were pending and we just kept them at the last step, maybe mark as Completed?
+             # Or let admin decide. For now, let's just notify.
+             pass
+
+        client.table('staff_career_paths').update(data).eq('id', id).execute()
+        
+        # Notify the user
+        Notification.create(
+            subsystem='hr2',
+            user_id=user_id,
+            title='Career Milestone Approved!',
+            message=f'Congratulations! Your request has been approved. You are now at step: {steps[new_step]["role"] if new_step < len(steps) else "Completion"}.',
+            n_type='success',
+            sender_subsystem='hr2',
+            target_url='/hr2/my-career'
+        )
+        
+        # If fully completed last step
+        if new_step == len(steps) - 1 and new_status == 'Completed':
+            Notification.create(
+                subsystem='hr2',
+                role='Admin',
+                title='Career Path Completed',
+                message=f'Staff member {username} has successfully completed all milestones in their career path!',
+                n_type='info',
+                sender_subsystem='hr2'
+            )
+
+        flash('Staff progression updated and notification sent!', 'success')
+    except Exception as e:
+        flash(f'Error updating progress: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.list_career_paths'))
+
+@hr2_bp.route('/my-career')
+@login_required
+def my_career():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Contextual awareness for the sidebar header
+    context = request.args.get('context', BLUEPRINT_NAME)
+    
+    # Subsystem settings mapping for global pages
+    subsystem_map = {
+        'hr1': ('HR1 - recruitment', '#6366F1'),
+        'hr2': ('HR2 - Talent Development', '#0891B2'),
+        'hr3': ('HR3 - Workforce Ops', '#8B5CF6'),
+        'hr4': ('HR4 - Compensation', '#EC4899'),
+        'ct1': ('CT1 - Patient Access', '#10B981'),
+        'ct2': ('CT2 - Clinical Ops', '#059669'),
+        'ct3': ('CT3 - medical records', '#10B981'),
+        'log1': ('LOG1 - Supply Chain', '#F59E0B'),
+        'log2': ('LOG2 - Fleet Operations', '#F97316'),
+        'financials': ('FIN1 - Revenue & Expenditure', '#0891B2'),
+        'admin': ('System Admin', '#1F2937')
+    }
+    
+    display_name, accent_color = subsystem_map.get(context, (SUBSYSTEM_NAME, ACCENT_COLOR))
+
+    # Get user's assignments - prioritize Active/Pending, then most recently updated
+    resp = client.table('staff_career_paths')\
+        .select('*, path:career_paths(*)')\
+        .eq('user_id', current_user.id)\
+        .order('updated_at', desc=True)\
+        .execute()
+    
+    assignments = resp.data if resp.data else []
+    
+    # Selection logic:
+    # 1. Look for an Active or Pending Approval path
+    # 2. Otherwise take the most recently updated one (could be Completed or Paused)
+    assignment = next((a for a in assignments if a['status'] in ['Active', 'Pending Approval']), 
+                      assignments[0] if assignments else None)
+    
+    return render_template('subsystems/hr/hr2/my_career.html',
+                           assignment=assignment,
+                           subsystem_name=display_name,
+                           accent_color=accent_color,
+                           blueprint_name=context)
+
+@hr2_bp.route('/career-paths/toggle-requirement', methods=['POST'])
+@login_required
+def toggle_career_requirement():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    context = request.form.get('context', BLUEPRINT_NAME)
+    requirement = request.form.get('requirement')
+    is_checked = request.form.get('checked') == 'true'
+    
+    # Get current assignment
+    resp = client.table('staff_career_paths')\
+        .select('*')\
+        .eq('user_id', current_user.id)\
+        .order('updated_at', desc=True)\
+        .execute()
+        
+    if not resp.data:
+        return {"error": "No assignment found"}, 404
+        
+    assignments = resp.data
+    # Use same priority logic as my_career
+    assignment = next((a for a in assignments if a['status'] in ['Active', 'Pending Approval']), assignments[0])
+    
+    completed = assignment.get('completed_requirements', [])
+    
+    if is_checked:
+        if requirement not in completed:
+            completed.append(requirement)
+    else:
+        if requirement in completed:
+            completed.remove(requirement)
+            
+    client.table('staff_career_paths').update({
+        'completed_requirements': completed,
+        'updated_at': 'now()'
+    }).eq('id', assignment['id']).execute()
+    
+    return {"status": "success", "completed": completed}
+
+@hr2_bp.route('/career-paths/request-completion', methods=['POST'])
+@login_required
+def request_career_milestone():
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+    
+    context = request.form.get('context', BLUEPRINT_NAME)
+    notes = request.form.get('milestone_notes', '')
+    
+    # Get active assignment
+    resp = client.table('staff_career_paths')\
+        .select('*')\
+        .eq('user_id', current_user.id)\
+        .order('updated_at', desc=True)\
+        .execute()
+        
+    if not resp.data:
+        flash('No active career path found.', 'warning')
+        return redirect(url_for('hr2.my_career', context=context))
+        
+    assignments = resp.data
+    assignment = next((a for a in assignments if a['status'] in ['Active', 'Pending Approval']), assignments[0])
+    
+    try:
+        # Update status and add notes
+        client.table('staff_career_paths').update({
+            'status': 'Pending Approval', 
+            'milestone_notes': notes,
+            'updated_at': 'now()'
+        }).eq('id', assignment['id']).execute()
+        
+        # Notify HR Admins
+        Notification.create(
+            subsystem='hr2',
+            role='Admin',
+            title='Career Milestone Completion Request',
+            message=f'Employee {current_user.username} has requested completion with notes: {notes[:50]}...',
+            n_type='info',
+            sender_subsystem='hr2',
+            target_url='/hr2/career-paths'
+        )
+        
+        flash('Completion request and evidence submitted to HR!', 'success')
+    except Exception as e:
+        flash(f'Submission failed: {str(e)}', 'danger')
+        
+    return redirect(url_for('hr2.my_career', context=context))
 
 @hr2_bp.route('/succession')
 @login_required

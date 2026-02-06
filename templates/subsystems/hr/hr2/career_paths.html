@@ -16,6 +16,166 @@
         </button>
     </div>
 
+    <!-- Stats & Assignments -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
+                    <i class="bi bi-person-check text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-gray-400 uppercase tracking-widest">Assigned Staff</p>
+                    <h4 class="text-2xl font-black text-gray-900">{{ assignments|length }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-600">
+                    <i class="bi bi-trophy text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-gray-400 uppercase tracking-widest">Completed Paths</p>
+                    <h4 class="text-2xl font-black text-gray-900">{{ assignments|selectattr('status', 'equalto', 'Completed')|list|length }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <button onclick="document.getElementById('assignModal').classList.remove('hidden')" 
+                class="w-full h-full flex flex-col items-center justify-center gap-2 text-[#0891B2] hover:bg-cyan-50 transition-colors rounded-2xl border-2 border-dashed border-cyan-100">
+                <i class="bi bi-person-plus-fill text-xl"></i>
+                <span class="font-bold">Assign Path to Staff</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Active Assignments Section -->
+    {% if assignments %}
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+            <h4 class="font-bold text-gray-900">Staff Progression Tracking</h4>
+            <span class="text-xs text-gray-400 uppercase font-black tracking-widest">Real-time Status</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50">
+                        <th class="px-8 py-4">Employee</th>
+                        <th class="px-8 py-4">Career Path</th>
+                        <th class="px-8 py-4">Current Milestone</th>
+                        <th class="px-8 py-4">Progress</th>
+                        <th class="px-8 py-4">Status</th>
+                        <th class="px-8 py-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for assign in assignments %}
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-8 py-4">
+                            <div class="font-bold text-gray-900">{{ assign.user.username }}</div>
+                        </td>
+                        <td class="px-8 py-4 text-sm text-gray-600">{{ assign.path.path_name }}</td>
+                        <td class="px-8 py-4 text-sm font-medium text-cyan-600">
+                            {% if assign.status == 'Completed' %}
+                                <span class="text-green-600"><i class="bi bi-patch-check-fill mr-1"></i> Path Completed</span>
+                            {% elif assign.path and assign.path.steps %}
+                                {{ assign.path.steps[assign.current_step_index].role if assign.current_step_index < assign.path.steps|length else 'Milestone ' ~ (assign.current_step_index + 1) }}
+                            {% else %}
+                                No steps
+                            {% endif %}
+                        </td>
+                        <td class="px-8 py-4">
+                            {% set total_steps = assign.path.steps|length if assign.path and assign.path.steps else 1 %}
+                            
+                            {# Calculate Detailed Progress for Admin Table #}
+                            {% if assign.status == 'Completed' %}
+                                {% set total_progress = 100 %}
+                                {% set display_step = total_steps %}
+                            {% else %}
+                                {% set current_step = assign.path.steps[assign.current_step_index] if assign.path and assign.path.steps and assign.current_step_index < assign.path.steps|length else none %}
+                                {% set req_list = [] %}
+                                {% if current_step and current_step.requirements and current_step.requirements.strip() %}
+                                    {% set req_list = current_step.requirements.split(',') %}
+                                {% endif %}
+                                
+                                {% set completed_in_step = 0 %}
+                                {% for req in req_list %}
+                                    {% if req.strip() in assign.completed_requirements %}
+                                        {% set completed_in_step = completed_in_step + 1 %}
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% set base_progress = (assign.current_step_index / total_steps) * 100 %}
+                                {% set step_weight = 100 / total_steps %}
+                                {% set req_progress = (completed_in_step / (req_list|length if req_list|length > 0 else 1)) * step_weight %}
+                                
+                                {# Correct req_progress for empty requirements #}
+                                {% if req_list|length == 0 %}
+                                    {% set req_progress = 0 %}
+                                {% endif %}
+
+                                {% set total_progress = base_progress + req_progress %}
+                                {% set display_step = assign.current_step_index + 1 %}
+                            {% endif %}
+
+                            <div class="w-full max-w-[160px] bg-gray-100 h-2 rounded-full overflow-hidden">
+                                <div class="bg-[#0891B2] {{ 'bg-green-500' if assign.status == 'Completed' else '' }} h-full transition-all duration-500" style="width: {{ total_progress }}%"></div>
+                            </div>
+                            <div class="flex justify-between items-center mt-1 w-full max-w-[160px]">
+                                <span class="text-[10px] font-bold text-gray-400">{{ display_step }}/{{ total_steps }} Steps</span>
+                                {% if assign.status != 'Completed' %}
+                                <span class="text-[10px] font-black text-[#0891B2]">{{ total_progress|round|int }}%</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-8 py-4">
+                            {% if assign.status == 'Pending Approval' %}
+                            <div class="flex flex-col gap-1">
+                                <span class="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold uppercase w-fit animate-pulse">
+                                    Review Needed
+                                </span>
+                                {% if assign.milestone_notes %}
+                                <button onclick="viewEvidence('{{ assign.user.username }}', '{{ assign.milestone_notes|e }}', {{ assign.completed_requirements|tojson|safe }}, '{{ current_step.requirements|e if current_step else '' }}', {{ assign.id }}, {{ assign.current_step_index }}, {{ total_steps }})" 
+                                        class="text-[9px] text-[#0891B2] font-black uppercase tracking-tighter hover:underline text-left">
+                                    <i class="bi bi-file-earmark-text"></i> View Evidence
+                                </button>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <span class="px-3 py-1 bg-{{ 'green' if assign.status == 'Completed' else 'blue' if assign.status == 'Active' else 'gray' }}-100 text-{{ 'green' if assign.status == 'Completed' else 'blue' if assign.status == 'Active' else 'gray' }}-700 rounded-full text-[10px] font-bold uppercase">
+                                {{ assign.status }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-8 py-4 text-right">
+                            <div class="flex justify-end gap-2">
+                                {% if assign.status == 'Pending Approval' %}
+                                <form action="{{ url_for('hr2.update_career_progress', id=assign.id) }}" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <!-- Calculate next step or mark as completed -->
+                                    {% set next_idx = assign.current_step_index + 1 %}
+                                    {% set max_idx = (assign.path.steps|length if assign.path and assign.path.steps else 1) - 1 %}
+                                    <input type="hidden" name="current_step_index" value="{{ next_idx if next_idx <= max_idx else assign.current_step_index }}">
+                                    <input type="hidden" name="status" value="{{ 'Completed' if next_idx > max_idx else 'Active' }}">
+                                    <button type="submit" class="px-4 py-1.5 bg-green-500 text-white text-[10px] font-bold uppercase rounded-lg hover:bg-green-600 transition-colors shadow-sm shadow-green-200">
+                                        Approve
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <button onclick='openUpdateModal({{ assign | tojson | safe }})' 
+                                    class="p-2 text-[#0891B2] hover:bg-cyan-50 rounded-lg transition-colors" title="Edit Manually">
+                                    <i class="bi bi-arrow-repeat text-lg"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
         {% for path in paths %}
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 hover:shadow-md transition-shadow">
@@ -108,16 +268,22 @@
                     <label class="text-sm font-bold text-gray-700">Progression Steps</label>
                     <button type="button" onclick="addStepRow()" class="text-[#0891B2] text-xs font-bold hover:underline">+ Add Step</button>
                 </div>
+                
                 <div id="stepsContainer" class="space-y-3">
-                    <div class="grid grid-cols-12 gap-3">
-                        <div class="col-span-5 italic text-[10px] text-gray-400 uppercase font-bold pl-1">Role Title</div>
-                        <div class="col-span-3 italic text-[10px] text-gray-400 uppercase font-bold">Est. Duration</div>
-                        <div class="col-span-4 italic text-[10px] text-gray-400 uppercase font-bold">Main Reqs</div>
+                    <!-- Column Headers -->
+                    <div class="grid grid-cols-12 gap-3 mb-2 px-1">
+                        <div class="col-span-3 italic text-[10px] text-gray-400 uppercase font-bold">Role Title</div>
+                        <div class="col-span-2 italic text-[10px] text-gray-400 uppercase font-bold">Duration</div>
+                        <div class="col-span-4 italic text-[10px] text-gray-400 uppercase font-bold">Description</div>
+                        <div class="col-span-3 italic text-[10px] text-gray-400 uppercase font-bold">Requirements</div>
                     </div>
+                    
+                    <!-- Initial Step Row -->
                     <div class="grid grid-cols-12 gap-3 step-row">
-                        <input type="text" name="step_role[]" placeholder="Role" class="col-span-5 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
-                        <input type="text" name="step_duration[]" placeholder="1-2y" class="col-span-3 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
-                        <input type="text" name="step_requirements[]" placeholder="Certifications..." class="col-span-4 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
+                        <input type="text" name="step_role[]" placeholder="Role" class="col-span-3 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0 focus:ring-1 focus:ring-[#0891B2]">
+                        <input type="text" name="step_duration[]" placeholder="1-2y" class="col-span-2 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0 focus:ring-1 focus:ring-[#0891B2]">
+                        <input type="text" name="step_description[]" placeholder="Goal of this phase..." class="col-span-4 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0 focus:ring-1 focus:ring-[#0891B2]">
+                        <input type="text" name="step_requirements[]" placeholder="Req 1, Req 2" class="col-span-3 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0 focus:ring-1 focus:ring-[#0891B2]">
                     </div>
                 </div>
             </div>
@@ -164,10 +330,11 @@
                     <button type="button" onclick="addEditStepRow()" class="text-[#0891B2] text-xs font-bold hover:underline">+ Add Step</button>
                 </div>
                 <div id="editStepsContainer" class="space-y-3">
-                    <div class="grid grid-cols-12 gap-3">
-                        <div class="col-span-5 italic text-[10px] text-gray-400 uppercase font-bold pl-1">Role Title</div>
-                        <div class="col-span-3 italic text-[10px] text-gray-400 uppercase font-bold">Est. Duration</div>
-                        <div class="col-span-4 italic text-[10px] text-gray-400 uppercase font-bold">Main Reqs</div>
+                    <div class="grid grid-cols-12 gap-3 mb-2 px-1">
+                        <div class="col-span-3 italic text-[10px] text-gray-400 uppercase font-bold">Role Title</div>
+                        <div class="col-span-2 italic text-[10px] text-gray-400 uppercase font-bold">Duration</div>
+                        <div class="col-span-4 italic text-[10px] text-gray-400 uppercase font-bold">Description</div>
+                        <div class="col-span-3 italic text-[10px] text-gray-400 uppercase font-bold">Requirements</div>
                     </div>
                     <!-- Existing rows will be injected here -->
                 </div>
@@ -180,27 +347,216 @@
     </div>
 </div>
 
+<!-- Assign Path Modal -->
+<div id="assignModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-[#0891B2] text-white">
+            <h3 class="text-2xl font-bold">Assign Career Path</h3>
+            <button onclick="document.getElementById('assignModal').classList.add('hidden')" class="text-white/80 hover:text-white">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('hr2.assign_career_path') }}" method="POST" class="p-8 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Select Employee</label>
+                <select name="user_id" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                    <option value="">-- Choose Staff --</option>
+                    {% for emp in employees %}
+                    <option value="{{ emp.id }}">{{ emp.username }} ({{ emp.role }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Select Career Path</label>
+                <select name="path_id" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                    <option value="">-- Choose Path --</option>
+                    {% for path in paths %}
+                    <option value="{{ path.id }}">{{ path.path_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="w-full py-4 bg-[#0891B2] text-white font-bold rounded-2xl shadow-lg hover:bg-cyan-700 transition-all mt-4">
+                Assign Path
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Update Progress Modal -->
+<div id="updateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-cyan-600 text-white">
+            <h3 class="text-2xl font-bold">Update Staff Progress</h3>
+            <button onclick="document.getElementById('updateModal').classList.add('hidden')" class="text-white/80 hover:text-white">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="updateForm" method="POST" class="p-8 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Current Milestone / Step</label>
+                <select name="current_step_index" id="update_step_index" required 
+                        class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                    <!-- Injected by JS -->
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Engagement Status</label>
+                <select name="status" id="update_status" required 
+                        class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                    <option value="Active">Active</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Paused">Paused</option>
+                </select>
+            </div>
+
+            <button type="submit" class="w-full py-4 bg-[#0891B2] text-white font-bold rounded-2xl shadow-lg hover:bg-cyan-700 transition-all mt-4">
+                Update Progression
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Evidence Review Modal -->
+<div id="evidenceModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-amber-500 text-white">
+            <h3 class="text-2xl font-bold">Evidence Review</h3>
+            <button onclick="document.getElementById('evidenceModal').classList.add('hidden')" class="text-white/80 hover:text-white">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="p-8 space-y-6">
+            <div>
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Submitted By</label>
+                <div id="evidence_username" class="text-lg font-bold text-gray-900"></div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Achievement Evidence / Notes</label>
+                <div id="evidence_notes" class="p-4 bg-amber-50 rounded-2xl text-gray-700 italic border border-amber-100 whitespace-pre-wrap text-sm"></div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Requirements Checklist</label>
+                <div id="evidence_checklist" class="space-y-2">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-gray-100 flex gap-3">
+                <button onclick="document.getElementById('evidenceModal').classList.add('hidden')" 
+                    class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">
+                    Close
+                </button>
+                <div id="approval_action_container" class="flex-1">
+                    <!-- Action button will be injected if relevant -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+function viewEvidence(username, notes, completedReqs, stepRequirements, assignId = null, currentIdx = 0, totalSteps = 0) {
+    document.getElementById('evidence_username').innerText = username;
+    document.getElementById('evidence_notes').innerText = notes || "No notes provided.";
+    
+    const checklist = document.getElementById('evidence_checklist');
+    checklist.innerHTML = '';
+    
+    if (stepRequirements) {
+        const reqs = stepRequirements.split(',');
+        reqs.forEach(req => {
+            const r = req.trim();
+            if (!r) return;
+            const isDone = completedReqs.includes(r);
+            
+            const div = document.createElement('div');
+            div.className = `flex items-center gap-3 p-3 rounded-xl border ${isDone ? 'bg-green-50 border-green-100 text-green-700' : 'bg-gray-50 border-gray-100 text-gray-400'}`;
+            div.innerHTML = `
+                <i class="bi ${isDone ? 'bi-check-circle-fill' : 'bi-circle'}"></i>
+                <span class="text-sm font-bold">${r}</span>
+            `;
+            checklist.appendChild(div);
+        });
+    } else {
+        checklist.innerHTML = '<p class="text-sm text-gray-400 italic">No specific requirements for this step.</p>';
+    }
+
+    // Add Approve button if assignId provided (meaning it's pending)
+    const actionContainer = document.getElementById('approval_action_container');
+    actionContainer.innerHTML = '';
+    if (assignId) {
+        const nextIdx = currentIdx + 1;
+        const isLastStep = nextIdx >= totalSteps;
+        
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/hr2/career-paths/update-progress/${assignId}`;
+        form.innerHTML = `
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="current_step_index" value="${isLastStep ? currentIdx : nextIdx}">
+            <input type="hidden" name="status" value="${isLastStep ? 'Completed' : 'Active'}">
+            <button type="submit" class="w-full py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 shadow-lg shadow-green-100 transition-all">
+                ${isLastStep ? 'Complete Path' : 'Approve & Advance'}
+            </button>
+        `;
+        actionContainer.appendChild(form);
+    }
+
+    document.getElementById('evidenceModal').classList.remove('hidden');
+}
+
+function openUpdateModal(assign) {
+    const form = document.getElementById('updateForm');
+    form.action = `/hr2/career-paths/update-progress/${assign.id}`;
+    
+    const stepSelect = document.getElementById('update_step_index');
+    stepSelect.innerHTML = '';
+    
+    if (assign.path && assign.path.steps) {
+        assign.path.steps.forEach((step, index) => {
+            const opt = document.createElement('option');
+            opt.value = index;
+            opt.text = `Step ${index + 1}: ${step.role}`;
+            if (index === assign.current_step_index) opt.selected = true;
+            stepSelect.appendChild(opt);
+        });
+    }
+
+    document.getElementById('update_status').value = assign.status;
+    document.getElementById('updateModal').classList.remove('hidden');
+}
+
 function addStepRow() {
     const container = document.getElementById('stepsContainer');
     const newRow = document.createElement('div');
     newRow.className = 'grid grid-cols-12 gap-3 step-row py-2 border-t border-gray-50';
     newRow.innerHTML = `
-        <input type="text" name="step_role[]" placeholder="Role" class="col-span-5 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
-        <input type="text" name="step_duration[]" placeholder="1-2y" class="col-span-3 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
-        <input type="text" name="step_requirements[]" placeholder="Reqs" class="col-span-4 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
+        <input type="text" name="step_role[]" placeholder="Role" class="col-span-3 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
+        <input type="text" name="step_duration[]" placeholder="1-2y" class="col-span-2 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
+        <input type="text" name="step_description[]" placeholder="Goal" class="col-span-4 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
+        <input type="text" name="step_requirements[]" placeholder="Reqs" class="col-span-3 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
     `;
     container.appendChild(newRow);
 }
 
-function addEditStepRow(role = '', duration = '', requirements = '') {
+function addEditStepRow(role = '', duration = '', description = '', requirements = '') {
     const container = document.getElementById('editStepsContainer');
     const newRow = document.createElement('div');
     newRow.className = 'grid grid-cols-12 gap-3 step-row py-2 border-t border-gray-50';
     newRow.innerHTML = `
-        <input type="text" name="step_role[]" value="${role}" placeholder="Role" class="col-span-5 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
-        <input type="text" name="step_duration[]" value="${duration}" placeholder="1-2y" class="col-span-3 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
-        <input type="text" name="step_requirements[]" value="${requirements}" placeholder="Reqs" class="col-span-4 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
+        <input type="text" name="step_role[]" value="${role}" placeholder="Role" class="col-span-3 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
+        <input type="text" name="step_duration[]" value="${duration}" placeholder="1-2y" class="col-span-2 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
+        <input type="text" name="step_description[]" value="${description}" placeholder="Goal" class="col-span-4 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
+        <input type="text" name="step_requirements[]" value="${requirements}" placeholder="Reqs" class="col-span-3 px-3 py-2 bg-gray-50 rounded-lg text-sm border-0">
     `;
     container.appendChild(newRow);
 }
@@ -221,7 +577,7 @@ function openEditPathModal(path) {
     
     if (path.steps && path.steps.length > 0) {
         path.steps.forEach(step => {
-            addEditStepRow(step.role, step.duration, step.requirements);
+            addEditStepRow(step.role, step.duration, step.description || '', step.requirements);
         });
     } else {
         addEditStepRow(); // At least one empty row

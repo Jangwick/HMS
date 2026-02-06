@@ -137,6 +137,30 @@ CREATE TABLE IF NOT EXISTS career_paths (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS staff_career_paths (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    path_id INTEGER REFERENCES career_paths(id) ON DELETE CASCADE,
+    current_step_index INTEGER DEFAULT 0,
+    completed_requirements JSONB DEFAULT '[]'::jsonb,
+    milestone_notes TEXT, -- New: Evidence/Reflection for current milestone
+    status VARCHAR(20) DEFAULT 'Active', -- Active, Completed, Paused
+    started_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, path_id)
+);
+
+-- Safe injection
+ALTER TABLE IF EXISTS staff_career_paths ADD COLUMN IF NOT EXISTS milestone_notes TEXT;
+
+-- Ensure completed_requirements column exists if table already created
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='staff_career_paths' AND column_name='completed_requirements') THEN
+        ALTER TABLE staff_career_paths ADD COLUMN completed_requirements JSONB DEFAULT '[]'::jsonb;
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS succession_plans (
     id SERIAL PRIMARY KEY,
     role_title VARCHAR(100) NOT NULL,
@@ -747,6 +771,10 @@ CREATE POLICY "Allow all on training_participants" ON training_participants FOR 
 ALTER TABLE IF EXISTS career_paths ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on career_paths" ON career_paths;
 CREATE POLICY "Allow all on career_paths" ON career_paths FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS staff_career_paths ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on staff_career_paths" ON staff_career_paths;
+CREATE POLICY "Allow all on staff_career_paths" ON staff_career_paths FOR ALL USING (true) WITH CHECK (true);
 
 ALTER TABLE IF EXISTS succession_plans ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on succession_plans" ON succession_plans;
