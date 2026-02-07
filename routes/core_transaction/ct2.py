@@ -300,6 +300,13 @@ def dashboard():
         metrics['today_dispenses'] = len([d for d in dispense_data if d.get('dispensed_at', '').startswith(datetime.utcnow().strftime('%Y-%m-%d'))])
         recent_dispenses = sorted(dispense_data, key=lambda x: x.get('dispensed_at', ''), reverse=True)[:5]
 
+        # DNMS Stats
+        res = supabase.table('diet_plans').select('*').eq('status', 'Active').execute()
+        metrics['active_diet_plans'] = len(res.data) if res.data else 0
+        
+        res = supabase.table('meal_tracking').select('*').gte('created_at', f"{today_str}T00:00:00").execute()
+        metrics['today_meals'] = len(res.data) if res.data else 0
+
         recent_orders = LabOrder.get_recent(5)
         
     except Exception as e:

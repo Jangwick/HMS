@@ -12,7 +12,7 @@
         
         <div class="relative z-10">
             <h3 class="text-3xl font-bold mb-2">Welcome back, {{ current_user.username }}!</h3>
-            <p class="text-white/80 text-lg max-w-2xl">Manage laboratory diagnostics, pharmacy inventory, and medical dispensing.</p>
+            <p class="text-white/80 text-lg max-w-2xl">Manage laboratory diagnostics, pharmacy inventory, medical dispensing, and diet management (DNMS).</p>
 
             <div class="welcome-card-actions">
                 <a href="{{ url_for('ct2.lab_orders') }}"
@@ -24,12 +24,16 @@
                     class="px-6 py-3 bg-black/20 text-white font-bold rounded-xl hover:bg-black/30 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center">
                     Dispense Meds
                 </a>
+                <a href="{{ url_for('ct2.dnms_dashboard') }}"
+                    class="px-6 py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center border border-white/20">
+                    Diet Management (DNMS)
+                </a>
             </div>
         </div>
     </div>
 
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
         <div class="glass-card p-6 rounded-2xl hover-scale">
             <div class="flex items-center justify-between mb-4">
                 <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Lab Orders</h4>
@@ -39,6 +43,17 @@
             </div>
             <p class="text-2xl font-bold text-gray-900">{{ metrics.total_lab_orders }}</p>
             <p class="text-gray-400 text-[10px] font-medium mt-1">Total</p>
+        </div>
+
+        <div class="glass-card p-6 rounded-2xl hover-scale ring-2 ring-emerald-500/20">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Diet Plans</h4>
+                <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                    <i class="bi bi-heart-pulse text-lg"></i>
+                </div>
+            </div>
+            <p class="text-2xl font-bold text-gray-900">{{ metrics.active_diet_plans }}</p>
+            <p class="text-rose-500 text-[10px] font-medium mt-1">Active DNMS</p>
         </div>
 
         <div class="glass-card p-6 rounded-2xl hover-scale">
@@ -72,6 +87,17 @@
             </div>
             <p class="text-2xl font-bold text-gray-900">{{ metrics.radiology_pending }}</p>
             <p class="text-indigo-600 text-[10px] font-medium mt-1">Awaiting</p>
+        </div>
+
+        <div class="glass-card p-6 rounded-2xl hover-scale">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Meals Today</h4>
+                <div class="w-8 h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center">
+                    <i class="bi bi-bag-check text-lg"></i>
+                </div>
+            </div>
+            <p class="text-2xl font-bold text-gray-900">{{ metrics.today_meals }}</p>
+            <p class="text-pink-500 text-[10px] font-medium mt-1">Tracked</p>
         </div>
 
         <div class="glass-card p-6 rounded-2xl hover-scale">
