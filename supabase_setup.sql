@@ -1165,6 +1165,43 @@ CREATE TABLE IF NOT EXISTS system_audit_logs (
     details TEXT
 );
 
+-- CT1 Features: Telehealth and ER Triage
+CREATE TABLE IF NOT EXISTS er_triage (
+    id SERIAL PRIMARY KEY,
+    patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+    complaint TEXT NOT NULL,
+    vitals JSONB DEFAULT '{}'::jsonb, -- bp, hr, temp, resp, spo2
+    pain_score INTEGER, -- 1-10
+    priority_level VARCHAR(50), -- Level 1 (Resuscitation) to Level 5 (Non-Urgent)
+    triage_officer_id INTEGER REFERENCES users(id),
+    status VARCHAR(50) DEFAULT 'Waiting', -- Waiting, Seen, Admitted, Discharged
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS telehealth_sessions (
+    id SERIAL PRIMARY KEY,
+    appointment_id INTEGER REFERENCES appointments(id) ON DELETE SET NULL,
+    patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+    doctor_id INTEGER REFERENCES users(id),
+    scheduled_at TIMESTAMP NOT NULL,
+    meeting_link TEXT,
+    status VARCHAR(50) DEFAULT 'Scheduled', -- Scheduled, In Progress, Completed, Cancelled
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- RLS for ER Triage and Telehealth
+ALTER TABLE IF EXISTS er_triage ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on er_triage" ON er_triage;
+CREATE POLICY "Allow all on er_triage" ON er_triage FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE er_triage DISABLE ROW LEVEL SECURITY;
+
+ALTER TABLE IF EXISTS telehealth_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on telehealth_sessions" ON telehealth_sessions;
+CREATE POLICY "Allow all on telehealth_sessions" ON telehealth_sessions FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE telehealth_sessions DISABLE ROW LEVEL SECURITY;
+
 -- Ensure correct permissions for audit logs
 ALTER TABLE IF EXISTS system_audit_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all on system_audit_logs" ON system_audit_logs FOR ALL USING (true) WITH CHECK (true);

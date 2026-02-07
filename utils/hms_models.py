@@ -441,6 +441,32 @@ class AuditLog:
             print(f"Failed to write audit log: {e}")
             # Silently fail to not block the main transaction
 
+class ERTriage:
+    @staticmethod
+    def get_all():
+        client = get_supabase_client()
+        response = client.table('er_triage').select('*, patients(*)').order('created_at', desc=True).execute()
+        return response.data
+
+    @staticmethod
+    def create(data: dict):
+        client = get_supabase_client()
+        response = client.table('er_triage').insert(data).execute()
+        return response.data[0] if response.data else None
+
+class TelehealthSession:
+    @staticmethod
+    def get_all():
+        client = get_supabase_client()
+        response = client.table('telehealth_sessions').select('*, patients(*), users(*)').order('scheduled_at', desc=True).execute()
+        return response.data
+
+    @staticmethod
+    def create(data: dict):
+        client = get_supabase_client()
+        response = client.table('telehealth_sessions').insert(data).execute()
+        return response.data[0] if response.data else None
+
 class Notification:
     @staticmethod
     def create(user_id=None, subsystem=None, role=None, title="Notification", message="", n_type="info", sender_subsystem=None, target_url=None):

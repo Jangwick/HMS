@@ -615,6 +615,95 @@ def delete_bed(bed_id):
         flash(f'Error deleting bed: {str(e)}', 'danger')
     return redirect(url_for('ct1.bed_management'))
 
+@ct1_bp.route('/triage', methods=['GET', 'POST'])
+@login_required
+def emergency_triage():
+    from utils.hms_models import Patient, ERTriage
+    client = get_supabase_client()
+    
+    if request.method == 'POST':
+        try:
+            triage_data = {
+                'patient_id': request.form.get('patient_id'),
+                'complaint': request.form.get('complaint'),
+                'priority_level': request.form.get('priority_level'),
+                'pain_score': int(request.form.get('pain_score') or 0),
+                'vitals': {
+                    'bp': request.form.get('bp'),
+                    'hr': request.form.get('hr'),
+                    'temp': request.form.get('temp'),
+                    'resp': request.form.get('resp'),
+                    'spo2': request.form.get('spo2')
+                },
+                'triage_officer_id': current_user.id,
+                'status': 'Waiting',
+                'notes': request.form.get('notes')
+            }
+            ERTriage.create(triage_data)
+            flash('Triage record created successfully.', 'success')
+        except Exception as e:
+            flash(f'Error creating triage: {str(e)}', 'danger')
+            
+    triage_list = ERTriage.get_all()
+    patients = Patient.get_all()
+    
+    return render_template('subsystems/core_transaction/ct1/triage.html',
+                           triage_list=triage_list,
+                           patients=patients,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct1_bp.route('/triage/update-status/<int:triage_id>', methods=['POST'])
+@login_required
+def update_triage_status(triage_id):
+    client = get_supabase_client()
+    new_status = request.form.get('status')
+    try:
+        client.table('er_triage').update({'status': new_status}).eq('id', triage_id).execute()
+        flash(f'Triage status updated to {new_status}.', 'success')
+    except Exception as e:
+        flash(f'Error updating status: {str(e)}', 'danger')
+    return redirect(url_for('ct1.emergency_triage'))
+
+@ct1_bp.route('/telehealth')
+@login_required
+def telehealth():
+    from utils.hms_models import Patient, TelehealthSession
+    client = get_supabase_client()
+    
+    sessions = TelehealthSession.get_all()
+    patients = Patient.get_all()
+    # Doctors for meeting
+    doctors = client.table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
+    
+    return render_template('subsystems/core_transaction/ct1/telehealth.html',
+                           sessions=sessions,
+                           patients=patients,
+                           doctors=doctors,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@ct1_bp.route('/telehealth/schedule', methods=['POST'])
+@login_required
+def schedule_telehealth():
+    from utils.hms_models import TelehealthSession
+    try:
+        data = {
+            'patient_id': request.form.get('patient_id'),
+            'doctor_id': request.form.get('doctor_id'),
+            'scheduled_at': request.form.get('scheduled_at'),
+            'meeting_link': request.form.get('meeting_link'),
+            'notes': request.form.get('notes'),
+            'status': 'Scheduled'
+        }
+        TelehealthSession.create(data)
+        flash('Telehealth session scheduled.', 'success')
+    except Exception as e:
+        flash(f'Error scheduling: {str(e)}', 'danger')
+    return redirect(url_for('ct1.telehealth'))
+
 @ct1_bp.route('/logout')
 @login_required
 def logout():
