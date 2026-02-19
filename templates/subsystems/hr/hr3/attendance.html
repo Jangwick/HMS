@@ -22,39 +22,45 @@
             {% if is_workforce_admin %}
             <!-- Admin Tabs -->
             <div class="flex items-center gap-2 p-1.5 bg-gray-100/50 rounded-[1.5rem] w-fit">
-                <button onclick="switchTab('dashboard')" id="dashboardTabBtn" 
-                        class="tab-btn px-8 py-3.5 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.15em] transition-all bg-white text-gray-900 shadow-sm border border-gray-100">
+                <button onclick="switchTab('dashboard')" id="dashboardTabBtn"
+                    class="tab-btn px-8 py-3.5 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.15em] transition-all bg-white text-gray-900 shadow-sm border border-gray-100">
                     Analytics Dashboard
                 </button>
                 <button onclick="switchTab('scheduling')" id="schedulingTabBtn"
-                        class="tab-btn px-8 py-3.5 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.15em] transition-all text-gray-400 hover:text-gray-600">
+                    class="tab-btn px-8 py-3.5 rounded-[1.25rem] text-[10px] font-black uppercase tracking-[0.15em] transition-all text-gray-400 hover:text-gray-600">
                     Personnel Scheduling
                 </button>
             </div>
             {% endif %}
         </div>
-        
+
         {% if is_workforce_admin %}
         <div class="flex flex-col gap-4 self-end lg:self-auto">
             <!-- Row 1: Real-time Pulse -->
             <div class="flex gap-4">
-                <div class="bg-white px-8 py-5 rounded-[2.5rem] border border-gray-100 flex items-center gap-6 shadow-sm min-w-[240px]">
-                    <div class="w-14 h-14 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-100 text-xl">
+                <div
+                    class="bg-white px-8 py-5 rounded-[2.5rem] border border-gray-100 flex items-center gap-6 shadow-sm min-w-[240px]">
+                    <div
+                        class="w-14 h-14 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-100 text-xl">
                         <i class="bi bi-person-check-fill"></i>
                     </div>
                     <div>
-                        <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-2">Active Now</div>
+                        <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-2">
+                            Active Now</div>
                         <div class="text-4xl font-black text-gray-900 leading-none">
                             {{ logs|selectattr('clock_out', 'none')|list|length }}
                         </div>
                     </div>
                 </div>
-                <div class="bg-white px-8 py-5 rounded-[2.5rem] border border-gray-100 flex items-center gap-6 shadow-sm min-w-[240px]">
-                    <div class="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-100 text-xl">
+                <div
+                    class="bg-white px-8 py-5 rounded-[2.5rem] border border-gray-100 flex items-center gap-6 shadow-sm min-w-[240px]">
+                    <div
+                        class="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-100 text-xl">
                         <i class="bi bi-clock-history"></i>
                     </div>
                     <div>
-                        <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-2">Late Entries</div>
+                        <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-2">
+                            Late Entries</div>
                         <div class="text-4xl font-black text-gray-900 leading-none">
                             {{ logs|selectattr('status', 'equalto', 'Late')|list|length }}
                         </div>
@@ -63,23 +69,30 @@
             </div>
             <!-- Row 2: Scheduling Stats -->
             <div class="flex gap-4">
-                <div class="bg-blue-50/50 px-8 py-5 rounded-[2.5rem] border border-blue-100 flex items-center gap-6 shadow-sm min-w-[240px]">
-                    <div class="w-14 h-14 rounded-2xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-100 text-xl">
+                <div
+                    class="bg-blue-50/50 px-8 py-5 rounded-[2.5rem] border border-blue-100 flex items-center gap-6 shadow-sm min-w-[240px]">
+                    <div
+                        class="w-14 h-14 rounded-2xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-100 text-xl">
                         <i class="bi bi-people-fill"></i>
                     </div>
                     <div>
-                        <div class="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] leading-none mb-2">Total Staff</div>
+                        <div class="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] leading-none mb-2">
+                            Total Staff</div>
                         <div class="text-4xl font-black text-blue-900 leading-none">
                             {{ users|length }}
                         </div>
                     </div>
                 </div>
-                <div class="bg-emerald-50/50 px-8 py-5 rounded-[2.5rem] border border-emerald-100 flex items-center gap-6 shadow-sm min-w-[240px]">
-                    <div class="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-100 text-xl">
+                <div
+                    class="bg-emerald-50/50 px-8 py-5 rounded-[2.5rem] border border-emerald-100 flex items-center gap-6 shadow-sm min-w-[240px]">
+                    <div
+                        class="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-100 text-xl">
                         <i class="bi bi-calendar-check-fill"></i>
                     </div>
                     <div>
-                        <div class="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] leading-none mb-2">Scheduled</div>
+                        <div
+                            class="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] leading-none mb-2">
+                            Scheduled</div>
                         <div class="text-4xl font-black text-gray-900 leading-none">
                             {{ schedules|length }}
                         </div>
@@ -90,11 +103,13 @@
         {% else %}
         <div class="flex gap-4">
             <div class="bg-white px-8 py-5 rounded-[2.5rem] border border-gray-100 flex items-center gap-6 shadow-sm">
-                <div class="w-14 h-14 rounded-2xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/20 text-xl">
+                <div
+                    class="w-14 h-14 rounded-2xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/20 text-xl">
                     <i class="bi bi-calendar-check"></i>
                 </div>
                 <div>
-                    <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-2">Total Logs</div>
+                    <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-2">Total
+                        Logs</div>
                     <div class="text-4xl font-black text-gray-900 leading-none">{{ logs|length }}</div>
                 </div>
             </div>
@@ -104,22 +119,24 @@
 
     {% if is_workforce_admin %}
     <!-- (Admin Tabs removed from here and moved to header) -->
-    
+
     <!-- TAB: DASHBOARD -->
 
     <div id="dashboardSection" class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <!-- Real-time Monitor Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Live Occupancy -->
-            <div class="lg:col-span-2 bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm relative overflow-hidden">
+            <div
+                class="lg:col-span-2 bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-8 opacity-[0.03]">
                     <i class="bi bi-activity text-9xl"></i>
                 </div>
-                
+
                 <div class="flex items-center justify-between mb-8">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/20">
-                            <i class="bi bi-person-video"></i>
+                        <div
+                            class="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/20">
+                            <i class="bi bi-activity"></i>
                         </div>
                         <div>
                             <h4 class="text-xl font-black text-gray-900 leading-tight">Live Personnel Status</h4>
@@ -130,12 +147,15 @@
 
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {% for log in logs|selectattr('clock_out', 'none') %}
-                    <div class="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 group hover:bg-white hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300">
+                    <div
+                        class="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 group hover:bg-white hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300">
                         <div class="flex flex-col items-center text-center">
                             {% if log.users and log.users.avatar_url %}
-                            <img src="{{ log.users.avatar_url }}" alt="" class="w-12 h-12 rounded-xl object-cover shadow-sm mb-3">
+                            <img src="{{ log.users.avatar_url }}" alt=""
+                                class="w-12 h-12 rounded-xl object-cover shadow-sm mb-3">
                             {% else %}
-                            <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-gray-400 font-black mb-3 border border-gray-100">
+                            <div
+                                class="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-gray-400 font-black mb-3 border border-gray-100">
                                 {{ log.users.username[0]|upper if log.users else 'S' }}
                             </div>
                             {% endif %}
@@ -152,9 +172,10 @@
             </div>
 
             <!-- Compliance & Alerts -->
-            <div class="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-slate-900/40">
+            <div
+                class="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-slate-900/40">
                 <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-accent/20 blur-3xl rounded-full"></div>
-                
+
                 <h4 class="text-lg font-black mb-6 flex items-center gap-2">
                     <i class="bi bi-shield-check text-accent"></i>
                     Shift Compliance
@@ -163,7 +184,8 @@
                 <div class="space-y-6">
                     <div class="bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/10">
                         <div class="flex justify-between items-end mb-2">
-                            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">On-Time Rate</span>
+                            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">On-Time
+                                Rate</span>
                             {% set total = logs|length %}
                             {% set ontime = logs|selectattr('status', 'equalto', 'On-time')|list|length %}
                             {% set rate = (ontime / total * 100)|round if total > 0 else 100 %}
@@ -175,13 +197,15 @@
                     </div>
 
                     <div class="bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/10">
-                        <div class="flex items-center justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                        <div
+                            class="flex items-center justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
                             <span>Recent Exceptions</span>
                         </div>
                         <div class="space-y-3">
                             {% for log in (logs|selectattr('status', 'equalto', 'Late')|list)[:3] %}
                             <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-500">
+                                <div
+                                    class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-500">
                                     <i class="bi bi-clock-history"></i>
                                 </div>
                                 <div class="flex-1 min-w-0">
@@ -202,29 +226,34 @@
             <div class="absolute top-0 right-0 p-8 opacity-10">
                 <i class="bi bi-exclamation-triangle-fill text-8xl text-rose-500"></i>
             </div>
-            
+
             <div class="relative z-10">
                 <div class="flex items-center gap-3 mb-6">
-                    <div class="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-200">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-200">
                         <i class="bi bi-megaphone-fill"></i>
                     </div>
                     <h4 class="text-xl font-black text-rose-900">Scheduled but Missing</h4>
                 </div>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {% for staff in missing_staff %}
-                    <div class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-rose-100 shadow-sm group hover:scale-[1.02] transition-transform cursor-default">
+                    <div
+                        class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-rose-100 shadow-sm group hover:scale-[1.02] transition-transform cursor-default">
                         <div class="flex items-center gap-3">
                             {% if staff.avatar_url %}
-                            <img src="{{ staff.avatar_url }}" alt="" class="w-10 h-10 rounded-xl object-cover shadow-sm bg-gray-50">
+                            <img src="{{ staff.avatar_url }}" alt=""
+                                class="w-10 h-10 rounded-xl object-cover shadow-sm bg-gray-50">
                             {% else %}
-                            <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-rose-100 group-hover:text-rose-500 transition-colors">
+                            <div
+                                class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-rose-100 group-hover:text-rose-500 transition-colors">
                                 <i class="bi bi-person-x-fill text-lg"></i>
                             </div>
                             {% endif %}
                             <div class="flex-1 min-w-0">
                                 <div class="font-black text-gray-900 text-sm truncate">{{ staff.full_name }}</div>
-                                <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Shift: {{ staff.start_time[:5] }}</div>
+                                <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Shift: {{
+                                    staff.start_time[:5] }}</div>
                             </div>
                         </div>
                     </div>
@@ -245,14 +274,17 @@
 
         <!-- Search & Filters -->
 
-        <div class="bg-white p-4 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center">
+        <div
+            class="bg-white p-4 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center">
             <div class="relative flex-1 group w-full">
-                <i class="bi bi-search absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
-                <input type="text" id="staffSearch" placeholder="Search staff by name or username..." 
+                <i
+                    class="bi bi-search absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
+                <input type="text" id="staffSearch" placeholder="Search staff by name or username..."
                     class="w-full pl-14 pr-6 py-5 bg-gray-50 border-none rounded-[2rem] text-sm font-bold focus:ring-2 focus:ring-blue-500 transition-all">
             </div>
             <div class="w-full md:w-auto">
-                <select id="subsystemFilter" class="w-full px-8 py-5 bg-gray-50 border-none rounded-[2rem] text-sm font-bold focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer appearance-none">
+                <select id="subsystemFilter"
+                    class="w-full px-8 py-5 bg-gray-50 border-none rounded-[2rem] text-sm font-bold focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer appearance-none">
                     <option value="">All Subsystems</option>
                     <option value="hr">Human Resources</option>
                     <option value="ct">Clinical Services</option>
@@ -266,7 +298,8 @@
         <div class="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left" id="staffTable">
-                    <thead class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
+                    <thead
+                        class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
                         <tr>
                             <th class="px-10 py-8">Staff Member</th>
                             <th class="px-6 py-8">Department Info</th>
@@ -276,29 +309,39 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         {% for user in users %}
-                        <tr class="hover:bg-gray-50/50 transition-colors group staff-row" data-name="{{ (user.full_name or user.username)|lower }}" data-subsystem="{{ user.subsystem|lower }}">
+                        <tr class="hover:bg-gray-50/50 transition-colors group staff-row"
+                            data-name="{{ (user.full_name or user.username)|lower }}"
+                            data-subsystem="{{ user.subsystem|lower }}">
                             <td class="px-10 py-8">
                                 <div class="flex items-center gap-5">
                                     <div class="relative">
                                         {% if user.avatar_url %}
-                                        <img src="{{ user.avatar_url }}" alt="" class="w-14 h-14 rounded-[1.25rem] object-cover shadow-sm bg-gray-100">
+                                        <img src="{{ user.avatar_url }}" alt=""
+                                            class="w-14 h-14 rounded-[1.25rem] object-cover shadow-sm bg-gray-100">
                                         {% else %}
-                                        <div class="w-14 h-14 rounded-[1.25rem] bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xl">
+                                        <div
+                                            class="w-14 h-14 rounded-[1.25rem] bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xl">
                                             {{ user.username[0]|upper }}
                                         </div>
                                         {% endif %}
-                                        <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-4 border-white shadow-sm"></div>
+                                        <div
+                                            class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-4 border-white shadow-sm">
+                                        </div>
                                     </div>
                                     <div>
-                                        <div class="font-black text-gray-900 leading-tight text-lg">{{ user.full_name or user.username }}</div>
+                                        <div class="font-black text-gray-900 leading-tight text-lg">{{ user.full_name or
+                                            user.username }}</div>
                                         <div class="text-xs text-gray-400 font-bold mt-0.5">@{{ user.username }}</div>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-6 py-8">
                                 <div class="flex flex-col">
-                                    <span class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1.5">{{ user.role }}</span>
-                                    <span class="text-[11px] text-gray-400 font-black uppercase tracking-tighter flex items-center gap-2">
+                                    <span
+                                        class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1.5">{{
+                                        user.role }}</span>
+                                    <span
+                                        class="text-[11px] text-gray-400 font-black uppercase tracking-tighter flex items-center gap-2">
                                         <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
                                         {{ user.subsystem|upper }} {{ user.subsystem|upper }}
                                     </span>
@@ -310,7 +353,9 @@
                                     {% set user_scheds = schedules.get(user.id, []) %}
                                     {% set scheduled_days = user_scheds|map(attribute='day_of_week')|list %}
                                     {% for d in days %}
-                                    {% set day_name = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][loop.index0] %}
+                                    {% set day_name = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+                                    'Saturday',
+                                    'Sunday'][loop.index0] %}
                                     <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black border-2 transition-colors
                                         {% if day_name in scheduled_days or 'Daily' in scheduled_days %}border-blue-500 text-blue-500 bg-blue-50
                                         {% else %}border-gray-100 text-gray-200{% endif %}">
@@ -320,12 +365,15 @@
                                 </div>
                                 {% set daily_sched = user_scheds|selectattr('day_of_week', 'equalto', 'Daily')|first %}
                                 <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                    DEFAULT <span class="text-gray-900">{{ daily_sched.start_time[:5] if daily_sched else '09:00' }}</span>
+                                    DEFAULT <span class="text-gray-900">{{ daily_sched.start_time[:5] if daily_sched
+                                        else
+                                        '09:00' }}</span>
                                 </div>
                             </td>
                             <td class="px-10 py-8 text-right">
-                                <button onclick='openScheduleModal({{ user.id|tojson }}, {{ (user.full_name or user.username)|tojson }}, {{ user_scheds|tojson }})' 
-                                        class="px-8 py-4 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-blue-100 hover:shadow-blue-200 flex items-center gap-2 ml-auto">
+                                <button
+                                    onclick='openScheduleModal({{ user.id|tojson }}, {{ (user.full_name or user.username)|tojson }}, {{ user_scheds|tojson }})'
+                                    class="px-8 py-4 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-blue-100 hover:shadow-blue-200 flex items-center gap-2 ml-auto">
                                     <i class="bi bi-gear-fill text-xs"></i> CONFIGURE
                                 </button>
                             </td>
@@ -334,10 +382,13 @@
                     </tbody>
                 </table>
                 <div id="staffEmptyState" class="hidden py-32 text-center">
-                    <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-200">
+                    <div
+                        class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-200">
                         <i class="bi bi-search text-4xl"></i>
                     </div>
-                    <p class="text-gray-400 font-black uppercase tracking-widest text-xs">No personnel matched your search</p>
+                    <p class="text-gray-400 font-black uppercase tracking-widest text-xs">No personnel matched your
+                        search
+                    </p>
                 </div>
             </div>
         </div>
@@ -353,23 +404,28 @@
             <div class="flex items-center gap-4">
                 <div class="relative hidden md:block">
                     <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" id="logSearch" placeholder="Filter logs..." 
-                           class="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-accent transition-all">
+                    <input type="text" id="logSearch" placeholder="Filter logs..."
+                        class="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-accent transition-all">
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="downloadAttendanceCSV()" class="w-10 h-10 rounded-xl bg-white border border-gray-100 text-gray-400 hover:text-accent flex items-center justify-center shadow-sm transition-all" title="Export CSV">
+                    <button onclick="downloadAttendanceCSV()"
+                        class="w-10 h-10 rounded-xl bg-white border border-gray-100 text-gray-400 hover:text-accent flex items-center justify-center shadow-sm transition-all"
+                        title="Export CSV">
                         <i class="bi bi-download"></i>
                     </button>
-                    <button onclick="window.print()" class="w-10 h-10 rounded-xl bg-white border border-gray-100 text-gray-400 hover:text-accent flex items-center justify-center shadow-sm transition-all" title="Print">
+                    <button onclick="window.print()"
+                        class="w-10 h-10 rounded-xl bg-white border border-gray-100 text-gray-400 hover:text-accent flex items-center justify-center shadow-sm transition-all"
+                        title="Print">
                         <i class="bi bi-printer"></i>
                     </button>
                 </div>
             </div>
         </div>
-        
+
         <div class="overflow-x-auto">
             <table class="w-full text-left" id="attendanceTable">
-                <thead class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
+                <thead
+                    class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
                     <tr>
                         <th class="px-8 py-6">Staff Member</th>
                         <th class="px-6 py-6">Session Period</th>
@@ -380,21 +436,27 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     {% for log in logs %}
-                    <tr class="hover:bg-gray-50/50 transition-colors group log-row" 
-                        data-username="{{ log.users.username|lower if log.users else 'system' }}" 
+                    <tr class="hover:bg-gray-50/50 transition-colors group log-row"
+                        data-username="{{ log.users.username|lower if log.users else 'system' }}"
                         data-status="{{ log.status|lower }}">
                         <td class="px-8 py-6">
                             <div class="flex items-center gap-4">
                                 {% if log.users and log.users.avatar_url %}
-                                <img src="{{ log.users.avatar_url }}" alt="" class="w-10 h-10 rounded-xl object-cover shadow-sm bg-gray-100">
+                                <img src="{{ log.users.avatar_url }}" alt=""
+                                    class="w-10 h-10 rounded-xl object-cover shadow-sm bg-gray-100">
                                 {% else %}
-                                <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xs">
+                                <div
+                                    class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xs">
                                     {{ log.users.username[0]|upper if log.users else 'S' }}
                                 </div>
                                 {% endif %}
                                 <div>
-                                    <div class="font-black text-gray-900 leading-tight truncate max-w-[150px]">{{ (log.users.full_name or log.users.username) if log.users else 'System User' }}</div>
-                                    <div class="text-[10px] text-gray-400 font-medium">@{{ log.users.username or 'system' }}</div>
+                                    <div class="font-black text-gray-900 leading-tight truncate max-w-[150px]">{{
+                                        (log.users.full_name or log.users.username) if log.users else 'System User' }}
+                                    </div>
+                                    <div class="text-[10px] text-gray-400 font-medium">@{{ log.users.username or
+                                        'system' }}
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -406,12 +468,13 @@
                         </td>
                         <td class="px-6 py-6">
                             {% if log.clock_out %}
-                                <span class="text-xs font-black text-gray-900">{{ log.clock_out|datetime }}</span>
+                            <span class="text-xs font-black text-gray-900">{{ log.clock_out|datetime }}</span>
                             {% else %}
-                                <div class="flex items-center gap-2">
-                                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                                    <span class="text-[10px] font-black text-green-600 uppercase tracking-[0.1em]">On Duty</span>
-                                </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                <span class="text-[10px] font-black text-green-600 uppercase tracking-[0.1em]">On
+                                    Duty</span>
+                            </div>
                             {% endif %}
                         </td>
                         <td class="px-6 py-6">
@@ -425,25 +488,28 @@
                         <td class="px-8 py-6 text-right">
                             <div class="flex items-center justify-end gap-2">
                                 {% if not log.clock_out %}
-                                    {% if log.user_id == current_user.id %}
-                                    <form action="{{ url_for('hr3.clock_out') }}" method="POST">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <input type="hidden" name="next" value="{{ request.full_path }}">
-                                        <button type="submit" class="h-10 px-4 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-rose-100 flex items-center gap-2">
-                                            <i class="bi bi-box-arrow-right"></i>
-                                            End Shift
-                                        </button>
-                                    </form>
-                                    {% elif is_workforce_admin %}
-                                    <form action="{{ url_for('hr3.force_clock_out', log_id=log.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to forcefully clock out this personnel?')">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <input type="hidden" name="next" value="{{ request.full_path }}">
-                                        <button type="submit" class="h-10 px-4 bg-slate-800 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-slate-200 flex items-center gap-2">
-                                            <i class="bi bi-shield-slash"></i>
-                                            Force Out
-                                        </button>
-                                    </form>
-                                    {% endif %}
+                                {% if log.user_id == current_user.id %}
+                                <form action="{{ url_for('hr3.clock_out') }}" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="next" value="{{ request.full_path }}">
+                                    <button type="submit"
+                                        class="h-10 px-4 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-rose-100 flex items-center gap-2">
+                                        <i class="bi bi-box-arrow-right"></i>
+                                        End Shift
+                                    </button>
+                                </form>
+                                {% elif is_workforce_admin %}
+                                <form action="{{ url_for('hr3.force_clock_out', log_id=log.id) }}" method="POST"
+                                    onsubmit="return confirm('Are you sure you want to forcefully clock out this personnel?')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="next" value="{{ request.full_path }}">
+                                    <button type="submit"
+                                        class="h-10 px-4 bg-slate-800 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-slate-200 flex items-center gap-2">
+                                        <i class="bi bi-shield-slash"></i>
+                                        Force Out
+                                    </button>
+                                </form>
+                                {% endif %}
                                 {% endif %}
                                 <button onclick='viewLogDetails({
                                     id: {{ log.id|tojson }},
@@ -453,7 +519,8 @@
                                     clockOut: {{ (log.clock_out|datetime|tojson) if log.clock_out else "Still On-Duty"|tojson }},
                                     status: {{ log.status|tojson }},
                                     remarks: {{ (log.remarks|tojson) if log.remarks else "No remarks"|tojson }}
-                                })' class="w-10 h-10 rounded-xl bg-gray-50 text-gray-400 hover:text-accent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                })'
+                                    class="w-10 h-10 rounded-xl bg-gray-50 text-gray-400 hover:text-accent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                     <i class="bi bi-info-circle-fill"></i>
                                 </button>
                             </div>
@@ -471,40 +538,49 @@
 <div id="scheduleModal" class="fixed inset-0 z-[100] hidden" role="dialog" aria-modal="true">
     <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity" onclick="closeScheduleModal()"></div>
     <div class="flex min-h-screen items-center justify-center p-4">
-        <div class="relative bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden border border-gray-100 animate-fade-in">
+        <div
+            class="relative bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden border border-gray-100 animate-fade-in">
             <form method="POST" action="{{ url_for('hr3.manage_schedules') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="user_id" id="modalUserId">
-                
+
                 <div class="p-10">
                     <div class="flex items-center justify-between mb-8">
                         <div>
-                            <span class="bg-accent/10 text-accent text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full">Personnel Registry</span>
-                            <h3 class="text-2xl font-black text-gray-900 mt-3" id="modalStaffName">Personnel Configuration</h3>
+                            <span
+                                class="bg-accent/10 text-accent text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full">Personnel
+                                Registry</span>
+                            <h3 class="text-2xl font-black text-gray-900 mt-3" id="modalStaffName">Personnel
+                                Configuration</h3>
                         </div>
-                        <button type="button" onclick="closeScheduleModal()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:text-rose-500 transition-all">
+                        <button type="button" onclick="closeScheduleModal()"
+                            class="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:text-rose-500 transition-all">
                             <i class="bi bi-x-lg"></i>
                         </button>
                     </div>
 
                     <div class="space-y-6">
                         <div class="bg-gray-100/50 p-1.5 rounded-2xl flex gap-1">
-                            <button type="button" onclick="setSchedMode('Daily')" 
-                                    class="mode-btn flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all bg-white text-gray-900 shadow-sm border border-gray-100" data-mode="Daily">
+                            <button type="button" onclick="setSchedMode('Daily')"
+                                class="mode-btn flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all bg-white text-gray-900 shadow-sm border border-gray-100"
+                                data-mode="Daily">
                                 Daily Routine
                             </button>
-                            <button type="button" onclick="setSchedMode('Specific')" 
-                                    class="mode-btn flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all text-gray-400 hover:text-gray-600" data-mode="Specific">
+                            <button type="button" onclick="setSchedMode('Specific')"
+                                class="mode-btn flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all text-gray-400 hover:text-gray-600"
+                                data-mode="Specific">
                                 Specific Day
                             </button>
                         </div>
 
                         <div id="daySelectContainer" class="hidden animate-in fade-in slide-in-from-top-2">
                             <div class="grid grid-cols-4 gap-2">
-                                {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                                {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+                                'Sunday'] %}
                                 <label class="cursor-pointer group">
                                     <input type="radio" name="day_of_week" value="{{ day }}" class="hidden peer">
-                                    <div class="py-2.5 text-center rounded-xl bg-gray-50 border-2 border-transparent peer-checked:border-accent peer-checked:bg-accent/5 peer-checked:text-accent font-black text-[9px] transition-all group-hover:bg-gray-100 uppercase tracking-tighter">
+                                    <div
+                                        class="py-2.5 text-center rounded-xl bg-gray-50 border-2 border-transparent peer-checked:border-accent peer-checked:bg-accent/5 peer-checked:text-accent font-black text-[9px] transition-all group-hover:bg-gray-100 uppercase tracking-tighter">
                                         {{ day[:3] }}
                                     </div>
                                 </label>
@@ -515,31 +591,45 @@
 
                         <div class="grid grid-cols-2 gap-4">
                             <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Shift Start</label>
-                                <input type="time" name="start_time" required class="w-full bg-white rounded-xl border-none font-black text-lg p-3 focus:ring-accent shadow-sm">
+                                <label
+                                    class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Shift
+                                    Start</label>
+                                <input type="time" name="start_time" required
+                                    class="w-full bg-white rounded-xl border-none font-black text-lg p-3 focus:ring-accent shadow-sm">
                             </div>
                             <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Shift End</label>
-                                <input type="time" name="end_time" required class="w-full bg-white rounded-xl border-none font-black text-lg p-3 focus:ring-accent shadow-sm">
+                                <label
+                                    class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Shift
+                                    End</label>
+                                <input type="time" name="end_time" required
+                                    class="w-full bg-white rounded-xl border-none font-black text-lg p-3 focus:ring-accent shadow-sm">
                             </div>
                         </div>
 
-                        <div class="flex items-center justify-between p-5 bg-accent/5 rounded-[2rem] border border-accent/10">
+                        <div
+                            class="flex items-center justify-between p-5 bg-accent/5 rounded-[2rem] border border-accent/10">
                             <div class="flex items-center gap-3 text-accent transition-all" id="activeLabel">
                                 <i class="bi bi-check-circle-fill text-lg"></i>
                                 <span class="text-xs font-black uppercase tracking-widest">Benchmark Enabled</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" name="is_active" id="isActiveSwitch" class="sr-only peer" checked onchange="updateBenchmarkUI(this.checked)">
-                                <div class="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+                                <input type="checkbox" name="is_active" id="isActiveSwitch" class="sr-only peer" checked
+                                    onchange="updateBenchmarkUI(this.checked)">
+                                <div
+                                    class="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent">
+                                </div>
                             </label>
                         </div>
                     </div>
                 </div>
 
                 <div class="bg-gray-50 p-8 flex items-center justify-between">
-                    <button type="button" onclick="closeScheduleModal()" class="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-900 transition-colors">Abort Change</button>
-                    <button type="submit" class="px-8 py-4 bg-accent hover:opacity-90 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-accent/20">Apply Benchmark</button>
+                    <button type="button" onclick="closeScheduleModal()"
+                        class="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-900 transition-colors">Abort
+                        Change</button>
+                    <button type="submit"
+                        class="px-8 py-4 bg-accent hover:opacity-90 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-accent/20">Apply
+                        Benchmark</button>
                 </div>
             </form>
         </div>
@@ -551,50 +641,61 @@
 <div id="logDetailsModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" role="dialog" aria-modal="true">
     <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeDetailsModal()"></div>
     <div class="flex min-h-screen items-center justify-center p-4">
-        <div class="relative bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden border border-gray-100 animate-fade-in">
+        <div
+            class="relative bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden border border-gray-100 animate-fade-in">
             <div class="p-8">
                 <div class="flex items-center justify-between mb-8">
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-accent/10 text-accent flex items-center justify-center text-xl">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-accent/10 text-accent flex items-center justify-center text-xl">
                             <i class="bi bi-clock-history"></i>
                         </div>
                         <div>
                             <h3 class="text-xl font-black text-gray-900 leading-tight">Log Analysis</h3>
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest" id="modalLogId">ID: #0000</p>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest" id="modalLogId">
+                                ID: #0000</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="space-y-6">
                     <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                        <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white font-black text-xs" id="modalDetailAvatar">S</div>
+                        <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white font-black text-xs"
+                            id="modalDetailAvatar">S</div>
                         <div>
-                            <p class="font-black text-gray-900 leading-tight text-sm" id="modalDetailFullName">System User</p>
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-tighter" id="modalDetailUsername">@system</p>
+                            <p class="font-black text-gray-900 leading-tight text-sm" id="modalDetailFullName">System
+                                User</p>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-tighter"
+                                id="modalDetailUsername">@system</p>
                         </div>
                         <div class="ml-auto">
-                            <span id="modalDetailStatusBadge" class="px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">ON-TIME</span>
+                            <span id="modalDetailStatusBadge"
+                                class="px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">ON-TIME</span>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div class="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 text-center">
-                            <p class="text-[8px] font-black text-accent uppercase tracking-widest mb-1">Shift Arrival</p>
+                            <p class="text-[8px] font-black text-accent uppercase tracking-widest mb-1">Shift Arrival
+                            </p>
                             <p class="text-sm font-black text-gray-900" id="modalDetailClockIn">--:--</p>
                         </div>
                         <div class="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 text-center">
-                            <p class="text-[8px] font-black text-rose-500 uppercase tracking-widest mb-1">Shift Departure</p>
+                            <p class="text-[8px] font-black text-rose-500 uppercase tracking-widest mb-1">Shift
+                                Departure</p>
                             <p class="text-sm font-black text-gray-900" id="modalDetailClockOut">--:--</p>
                         </div>
                     </div>
 
                     <div class="p-4 rounded-2xl border border-gray-100">
                         <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-2">Audit Remarks</p>
-                        <p class="text-xs text-gray-600 italic leading-relaxed" id="modalDetailRemarks">No anomalies recorded for this session.</p>
+                        <p class="text-xs text-gray-600 italic leading-relaxed" id="modalDetailRemarks">No anomalies
+                            recorded for this session.</p>
                     </div>
                 </div>
 
-                <button onclick="closeDetailsModal()" class="w-full mt-8 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200">Dismiss</button>
+                <button onclick="closeDetailsModal()"
+                    class="w-full mt-8 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200">Dismiss</button>
             </div>
         </div>
     </div>
@@ -605,7 +706,7 @@
     function switchTab(tabId) {
         const sections = ['dashboardSection', 'schedulingSection'];
         const btns = ['dashboardTabBtn', 'schedulingTabBtn'];
-        
+
         sections.forEach(s => document.getElementById(s).classList.add('hidden'));
         btns.forEach(b => {
             const btn = document.getElementById(b);
@@ -638,7 +739,7 @@
 
         const container = document.getElementById('daySelectContainer');
         const finalDayInput = document.getElementById('finalDay');
-        
+
         if (mode === 'Specific') {
             container.classList.remove('hidden');
             finalDayInput.value = document.querySelector('input[name="day_of_week"]:checked')?.value || 'Monday';
@@ -650,7 +751,7 @@
 
     // Update final day when radio changes
     document.querySelectorAll('input[name="day_of_week"]').forEach(radio => {
-        radio.addEventListener('change', function() {
+        radio.addEventListener('change', function () {
             if (currentSchedMode === 'Specific') {
                 document.getElementById('finalDay').value = this.value;
             }
@@ -673,7 +774,7 @@
     function openScheduleModal(userId, fullName, existingScheds) {
         document.getElementById('modalUserId').value = userId;
         document.getElementById('modalStaffName').innerText = fullName;
-        
+
         const form = document.querySelector('#scheduleModal form');
         setSchedMode('Daily');
         form.querySelector('[name="start_time"]').value = '09:00';
@@ -730,8 +831,8 @@
         schedEmpty.classList.toggle('hidden', visibleCount > 0);
     }
 
-    if(schedSearch) schedSearch.addEventListener('input', performSchedFilter);
-    if(schedFilter) schedFilter.addEventListener('change', performSchedFilter);
+    if (schedSearch) schedSearch.addEventListener('input', performSchedFilter);
+    if (schedFilter) schedFilter.addEventListener('change', performSchedFilter);
     {% endif %}
 
     // Attendance Log Search
@@ -757,7 +858,7 @@
         document.getElementById('modalDetailClockIn').innerText = data.clockIn;
         document.getElementById('modalDetailClockOut').innerText = data.clockOut;
         document.getElementById('modalDetailRemarks').innerText = data.remarks;
-        
+
         const badge = document.getElementById('modalDetailStatusBadge');
         badge.innerText = data.status.toUpperCase();
         badge.className = 'px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest block w-fit ';
@@ -789,8 +890,20 @@
 </script>
 
 <style>
-@keyframes in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-.animate-in { animation: in 0.4s ease-out forwards; }
+    @keyframes in {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-in {
+        animation: in 0.4s ease-out forwards;
+    }
 </style>
 {% endblock %}
-
