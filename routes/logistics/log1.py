@@ -89,50 +89,6 @@ def login():
             
     return render_template('subsystems/logistics/log1/login.html')
 
-@log1_bp.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        
-        try:
-            # Create user with 'Pending' status
-            new_user = User.create(
-                username=username,
-                email=email,
-                password=password,
-                subsystem=BLUEPRINT_NAME,
-                department='LOGISTICS',
-                status='Pending'
-            )
-            
-            if new_user:
-                # Notify HR3 about new registration
-                Notification.create(
-                    subsystem='hr2',
-                    title="New User Registration",
-                    message=f"A new user '{username}' has registered for {SUBSYSTEM_NAME}. Approval required.",
-                    n_type="warning",
-                    sender_subsystem=BLUEPRINT_NAME,
-                    target_url=url_for('hr2.pending_approvals')
-                )
-                
-                flash('Registration successful! Your account is awaiting approval from HR2 Admin.', 'success')
-                return redirect(url_for('log1.login'))
-            else:
-                flash('Registration failed. Please try again.', 'danger')
-        except PasswordValidationError as e:
-            for error in e.errors:
-                flash(error, 'danger')
-        except Exception as e:
-            flash(format_db_error(e), 'danger')
-            
-    return render_template('shared/register.html', 
-                           subsystem_name=SUBSYSTEM_NAME, 
-                           blueprint_name=BLUEPRINT_NAME,
-                           hub_route='portal.logistics_hub',
-                           accent_color=ACCENT_COLOR)
 
 @log1_bp.route('/change-password', methods=['GET', 'POST'])
 def change_password():
