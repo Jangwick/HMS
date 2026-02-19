@@ -18,7 +18,7 @@ BLUEPRINT_NAME = 'hr3'
 @hr3_bp.route('/login', methods=['GET', 'POST'])
 def login():
     # Check IP-based lockout first
-    locked, remaining_seconds, unlock_time_str = is_ip_locked()
+    locked, remaining_seconds, unlock_time_str = is_ip_locked(subsystem=BLUEPRINT_NAME)
     if locked:
         flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
         return render_template('subsystems/hr/hr3/login.html', 
@@ -60,7 +60,7 @@ def login():
                     return redirect(url_for('hr3.change_password'))
 
                 # Clear IP lockout attempts on successful login
-                register_successful_login()
+                register_successful_login(subsystem=BLUEPRINT_NAME)
                 user.register_successful_login()
                 
                 if login_user(user):
@@ -78,7 +78,7 @@ def login():
                                            hub_route='portal.hr_hub')
             else:
                 # Register failed attempt by IP
-                is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
+                is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt(subsystem=BLUEPRINT_NAME)
                 
                 if is_now_locked:
                     flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
@@ -104,7 +104,7 @@ def login():
                 flash('Invalid credentials.', 'danger')
             
             # Register failed attempt even for non-existent users
-            is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
+            is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt(subsystem=BLUEPRINT_NAME)
             
             if is_now_locked:
                 return render_template('subsystems/hr/hr3/login.html', 
@@ -796,3 +796,5 @@ def approve_leave():
         flash(f'Error updating leave request: {str(e)}', 'danger')
         
     return redirect(url_for('hr3.list_leaves'))
+
+

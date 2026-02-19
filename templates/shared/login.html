@@ -63,8 +63,7 @@
             </div>
             <script>
                 document.addEventListener('DOMContentLoaded', function () {
-                    var remaining = {{ remaining_seconds }
-                };
+                    var remaining = {{ remaining_seconds | default(0) }};
                 function updateTimer() {
                     if (remaining < 0) {
                         document.getElementById("lockout-timer").innerHTML = '<p class="text-sm font-medium text-green-800">Lockout expired. Please refresh to login.</p>';
@@ -190,3 +189,4 @@
     }
 </script>
 {% endblock %}
+

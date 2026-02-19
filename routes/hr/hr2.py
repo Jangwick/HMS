@@ -16,7 +16,7 @@ BLUEPRINT_NAME = 'hr2'
 @hr2_bp.route('/login', methods=['GET', 'POST'])
 def login():
     # Check IP-based lockout first
-    locked, remaining_seconds, unlock_time_str = is_ip_locked()
+    locked, remaining_seconds, unlock_time_str = is_ip_locked(subsystem=BLUEPRINT_NAME)
     if locked:
         flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
         return render_template('subsystems/hr/hr2/login.html', remaining_seconds=remaining_seconds)
@@ -47,7 +47,7 @@ def login():
                     return redirect(url_for('hr2.change_password'))
 
                 # Clear IP lockout attempts on successful login
-                register_successful_login()
+                register_successful_login(subsystem=BLUEPRINT_NAME)
                 user.register_successful_login()
                 
                 if login_user(user):
@@ -60,7 +60,7 @@ def login():
                     return render_template('subsystems/hr/hr2/login.html')
             else:
                 # Register failed attempt by IP
-                is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
+                is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt(subsystem=BLUEPRINT_NAME)
                 
                 if is_now_locked:
                     flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
@@ -80,7 +80,7 @@ def login():
                 flash('Invalid credentials.', 'danger')
                 
             # Register failed attempt even for non-existent users
-            is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
+            is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt(subsystem=BLUEPRINT_NAME)
             
             if is_now_locked:
                 return render_template('subsystems/hr/hr2/login.html', remaining_seconds=remaining_seconds)
@@ -1477,4 +1477,6 @@ def admin_change_password(user_id):
             return jsonify({'status': 'error', 'message': error_msg}), 400
         flash(error_msg, 'danger')
     return redirect(url_for('hr2.user_list'))
+
+
 

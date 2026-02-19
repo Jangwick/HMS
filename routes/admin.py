@@ -122,3 +122,5 @@ def audit_logs(scope, target_id):
     from utils.backup_manager import get_audit_logs
     logs = get_audit_logs(scope, target_id)
     return jsonify(logs)
+
+

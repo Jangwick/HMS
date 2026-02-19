@@ -17,7 +17,7 @@ BLUEPRINT_NAME = 'ct1'
 @ct1_bp.route('/login', methods=['GET', 'POST'])
 def login():
     # Check IP-based lockout first
-    locked, remaining_seconds, unlock_time_str = is_ip_locked()
+    locked, remaining_seconds, unlock_time_str = is_ip_locked(subsystem=BLUEPRINT_NAME)
     if locked:
         flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
         return render_template('subsystems/core_transaction/ct1/login.html', 
@@ -59,7 +59,7 @@ def login():
                                            hub_route='portal.ct_hub')
 
                 # Clear IP lockout attempts on successful login
-                register_successful_login()
+                register_successful_login(subsystem=BLUEPRINT_NAME)
                 user.register_successful_login()
                 
                 if login_user(user):
@@ -80,7 +80,7 @@ def login():
                                            hub_route='portal.ct_hub')
             else:
                 # Register failed attempt by IP
-                is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
+                is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt(subsystem=BLUEPRINT_NAME)
                 
                 if is_now_locked:
                     flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
@@ -106,7 +106,7 @@ def login():
                 flash('Invalid credentials.', 'danger')
                 
             # Register failed attempt even for non-existent users
-            is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
+            is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt(subsystem=BLUEPRINT_NAME)
             
             if is_now_locked:
                 return render_template('shared/login.html', 
@@ -677,3 +677,5 @@ def cancel_appointment(appointment_id):
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
     return redirect(request.referrer or url_for('ct1.dashboard'))
+
+

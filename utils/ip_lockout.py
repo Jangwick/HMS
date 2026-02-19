@@ -40,11 +40,12 @@ def get_client_ip():
     return request.remote_addr
 
 
-def is_ip_locked(ip_address=None):
+def is_ip_locked(subsystem=None, ip_address=None):
     """
-    Check if an IP address is currently locked out.
+    Check if an IP address is currently locked out for a specific subsystem.
     
     Args:
+        subsystem: The subsystem identifier.
         ip_address: The IP to check. If None, uses the current request's IP.
         
     Returns:
@@ -53,11 +54,14 @@ def is_ip_locked(ip_address=None):
     if ip_address is None:
         ip_address = get_client_ip()
     
+    # Create composite key if subsystem is provided
+    key = f"{ip_address}:{subsystem}" if subsystem else ip_address
+    
     with _lock:
-        if ip_address not in _ip_lockouts:
+        if key not in _ip_lockouts:
             return False, 0, None
         
-        locked_until = _ip_lockouts[ip_address]
+        locked_until = _ip_lockouts[key]
         now = datetime.utcnow()
         
         if locked_until > now:
@@ -72,15 +76,16 @@ def is_ip_locked(ip_address=None):
             return True, remaining_seconds, unlock_time_str
         else:
             # Lockout has expired, clean up
-            del _ip_lockouts[ip_address]
+            del _ip_lockouts[key]
             return False, 0, None
 
 
-def register_failed_attempt(ip_address=None):
+def register_failed_attempt(subsystem=None, ip_address=None):
     """
-    Register a failed login attempt for an IP address.
+    Register a failed login attempt for an IP address in a specific subsystem.
     
     Args:
+        subsystem: The subsystem identifier.
         ip_address: The IP to register. If None, uses the current request's IP.
         
     Returns:
@@ -88,21 +93,23 @@ def register_failed_attempt(ip_address=None):
     """
     if ip_address is None:
         ip_address = get_client_ip()
+        
+    key = f"{ip_address}:{subsystem}" if subsystem else ip_address
     
     with _lock:
         # Increment attempt counter
-        if ip_address not in _ip_attempts:
-            _ip_attempts[ip_address] = 0
-        _ip_attempts[ip_address] += 1
+        if key not in _ip_attempts:
+            _ip_attempts[key] = 0
+        _ip_attempts[key] += 1
         
-        attempts = _ip_attempts[ip_address]
+        attempts = _ip_attempts[key]
         
         # Check if we should lock
         if attempts >= MAX_ATTEMPTS_BEFORE_LOCKOUT:
             # Incremental lockout: (attempts - 4) * 5 minutes
             lockout_minutes = (attempts - MAX_ATTEMPTS_BEFORE_LOCKOUT + 1) * BASE_LOCKOUT_MINUTES
             locked_until = datetime.utcnow() + timedelta(minutes=lockout_minutes)
-            _ip_lockouts[ip_address] = locked_until
+            _ip_lockouts[key] = locked_until
             
             remaining_seconds = int(lockout_minutes * 60)
             
@@ -118,28 +125,32 @@ def register_failed_attempt(ip_address=None):
             return False, remaining, 0, None
 
 
-def register_successful_login(ip_address=None):
+def register_successful_login(subsystem=None, ip_address=None):
     """
-    Register a successful login, clearing failed attempts for the IP.
+    Register a successful login, clearing failed attempts for the IP and subsystem.
     
     Args:
+        subsystem: The subsystem identifier.
         ip_address: The IP to clear. If None, uses the current request's IP.
     """
     if ip_address is None:
         ip_address = get_client_ip()
+        
+    key = f"{ip_address}:{subsystem}" if subsystem else ip_address
     
     with _lock:
-        if ip_address in _ip_attempts:
-            del _ip_attempts[ip_address]
-        if ip_address in _ip_lockouts:
-            del _ip_lockouts[ip_address]
+        if key in _ip_attempts:
+            del _ip_attempts[key]
+        if key in _ip_lockouts:
+            del _ip_lockouts[key]
 
 
-def get_failed_attempts(ip_address=None):
+def get_failed_attempts(subsystem=None, ip_address=None):
     """
-    Get the current number of failed attempts for an IP.
+    Get the current number of failed attempts for an IP and subsystem.
     
     Args:
+        subsystem: The subsystem identifier.
         ip_address: The IP to check. If None, uses the current request's IP.
         
     Returns:
@@ -147,9 +158,11 @@ def get_failed_attempts(ip_address=None):
     """
     if ip_address is None:
         ip_address = get_client_ip()
+        
+    key = f"{ip_address}:{subsystem}" if subsystem else ip_address
     
     with _lock:
-        return _ip_attempts.get(ip_address, 0)
+        return _ip_attempts.get(key, 0)
 
 
 def clear_all_lockouts():

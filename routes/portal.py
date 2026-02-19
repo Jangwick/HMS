@@ -221,3 +221,5 @@ def logout_switch():
     logout_user()
     target = request.args.get('target', url_for('portal.index'))
     return redirect(target)
+
+

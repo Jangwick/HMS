@@ -61,8 +61,7 @@
             </div>
             <script>
                 document.addEventListener('DOMContentLoaded', function () {
-                    var remaining = {{ remaining_seconds | default (0)
-                }};
+                    var remaining = {{ remaining_seconds | default(0) }};
 
                 function updateTimer() {
                     if (remaining < 0) {

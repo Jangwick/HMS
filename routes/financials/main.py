@@ -16,7 +16,7 @@ BLUEPRINT_NAME = 'financials'
 
 @financials_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    locked, remaining_seconds, unlock_time_str = is_ip_locked()
+    locked, remaining_seconds, unlock_time_str = is_ip_locked(subsystem=BLUEPRINT_NAME)
     if locked:
         flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
         return render_template('subsystems/financials/login.html', remaining_seconds=remaining_seconds)
@@ -44,7 +44,7 @@ def login():
                         flash('Your account has been rejected or deactivated.', 'danger')
                     return render_template('subsystems/financials/login.html')
 
-                register_successful_login()
+                register_successful_login(subsystem=BLUEPRINT_NAME)
                 user.register_successful_login()
                 
                 if login_user(user):
@@ -55,14 +55,14 @@ def login():
                 else:
                     flash('Login failed. Your account may be deactivated.', 'danger')
             else:
-                is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt()
+                is_now_locked, remaining_attempts, remaining_seconds, unlock_time_str = register_failed_attempt(subsystem=BLUEPRINT_NAME)
                 if is_now_locked:
                     flash(f'Too many failed attempts. Try again at {unlock_time_str}', 'danger')
                 else:
                     flash(f'Invalid credentials. {remaining_attempts} attempts remaining before lockout.', 'danger')
         else:
             flash('Invalid credentials or account not in Financials department.', 'danger')
-            register_failed_attempt()
+            register_failed_attempt(subsystem=BLUEPRINT_NAME)
             
     return render_template('subsystems/financials/login.html')
 
@@ -857,3 +857,5 @@ def settings():
 def logout():
     logout_user()
     return redirect(url_for('financials.login'))
+
+
