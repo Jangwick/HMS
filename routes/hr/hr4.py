@@ -1,4 +1,4 @@
-﻿from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 from utils.supabase_client import User, format_db_error, get_supabase_client
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
@@ -34,7 +34,7 @@ def login():
                 # Check if account is approved
                 if user.status != 'Active':
                     if user.status == 'Pending':
-                        flash('Your account is awaiting approval from HR3 Admin.', 'info')
+                        flash('Your account is awaiting approval from HR2 Admin.', 'info')
                     else:
                         flash('Your account has been rejected or deactivated.', 'danger')
                     return render_template('subsystems/hr/hr4/login.html')
@@ -109,18 +109,18 @@ def register():
             )
             
             if new_user:
-                # Notify HR3 Admin for new registration
+                # Notify HR2 Admin for new registration
                 from utils.hms_models import Notification
                 Notification.create(
-                    subsystem='hr3',
+                    subsystem='hr2',
                     title="New User Registration",
                     message=f"A new user '{username}' has registered for {SUBSYSTEM_NAME}. Approval required.",
                     n_type="warning",
                     sender_subsystem=BLUEPRINT_NAME,
-                    target_url=url_for('hr3.pending_approvals')
+                    target_url=url_for('hr2.pending_approvals')
                 )
                 
-                flash('Registration successful! Your account is awaiting approval from HR3 Admin.', 'success')
+                flash('Registration successful! Your account is awaiting approval from HR2 Admin.', 'success')
                 return redirect(url_for('hr4.login'))
             else:
                 flash('Registration failed. Please try again.', 'danger')

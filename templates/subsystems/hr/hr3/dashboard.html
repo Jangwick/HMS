@@ -7,26 +7,34 @@
 <div class="space-y-8">
     <!-- Welcome Card -->
     <div class="rounded-[2.5rem] shadow-2xl p-10 text-white relative overflow-hidden"
-         style="background: linear-gradient(135deg, {{ accent_color or '#4F46E5' }} 0%, #1e1b4b 100%);">
-        
+        style="background: linear-gradient(135deg, {{ accent_color or '#4F46E5' }} 0%, #1e1b4b 100%);">
+
         <!-- Decorative elements -->
         <div class="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
         <div class="absolute bottom-0 left-0 w-60 h-60 bg-accent/20 rounded-full blur-[80px] -ml-20 -mb-20"></div>
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full opacity-10 pointer-events-none">
+        <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full opacity-10 pointer-events-none">
             <svg class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                <defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" stroke-width="0.1"/></pattern></defs>
+                <defs>
+                    <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" stroke-width="0.1" />
+                    </pattern>
+                </defs>
                 <rect width="100" height="100" fill="url(#grid)" />
             </svg>
         </div>
 
         <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
             <div class="text-center md:text-left">
-                <span class="inline-flex items-center px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-4">
+                <span
+                    class="inline-flex items-center px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-4">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-400 mr-2 animate-pulse"></span>
                     System Active
                 </span>
-                <h3 class="text-4xl md:text-5xl font-black mb-3 tracking-tighter">Welcome, {{ current_user.full_name.split(' ')[0] }}!</h3>
-                <p class="text-white/60 text-lg max-w-xl font-medium">Manage hospital workforce attendance, staff scheduling, and operations through our premium HR suite.</p>
+                <h3 class="text-4xl md:text-5xl font-black mb-3 tracking-tighter">Welcome, {{
+                    current_user.full_name.split(' ')[0] }}!</h3>
+                <p class="text-white/60 text-lg max-w-xl font-medium">Manage hospital workforce attendance, staff
+                    scheduling, and operations through our premium HR suite.</p>
             </div>
 
             <div class="flex flex-wrap justify-center gap-3">
@@ -47,9 +55,11 @@
 
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
+        <div
+            class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
             <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                <div
+                    class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl group-hover:bg-indigo-600 group-hover:text-white transition-all">
                     <i class="bi bi-people-fill"></i>
                 </div>
                 <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Global</span>
@@ -58,22 +68,12 @@
             <div class="text-xs font-bold text-gray-400 mt-1 uppercase tracking-tighter">Active Staff</div>
         </div>
 
-        {% if current_user.is_admin() %}
-        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
-            <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl group-hover:bg-amber-600 group-hover:text-white transition-all">
-                    <i class="bi bi-shield-lock-fill"></i>
-                </div>
-                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Security</span>
-            </div>
-            <div class="text-3xl font-black text-gray-900">{{ pending_count }}</div>
-            <div class="text-xs font-bold text-gray-400 mt-1 uppercase tracking-tighter">Pending Approval</div>
-        </div>
-        {% endif %}
 
-        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
+        <div
+            class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
             <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                <div
+                    class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl group-hover:bg-emerald-600 group-hover:text-white transition-all">
                     <i class="bi bi-clock-history"></i>
                 </div>
                 <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Attendance</span>
@@ -82,9 +82,11 @@
             <div class="text-xs font-bold text-gray-400 mt-1 uppercase tracking-tighter">Clocked In Today</div>
         </div>
 
-        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
+        <div
+            class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all group">
             <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl group-hover:bg-rose-600 group-hover:text-white transition-all">
+                <div
+                    class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl group-hover:bg-rose-600 group-hover:text-white transition-all">
                     <i class="bi bi-calendar2-x-fill"></i>
                 </div>
                 <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Leave</span>
@@ -104,56 +106,70 @@
                         <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
                         <h4 class="font-black text-gray-900 uppercase tracking-widest text-xs">Shift Terminal</h4>
                     </div>
-                    <div id="current-time" class="font-mono font-black text-accent text-sm bg-white px-4 py-2 rounded-2xl shadow-sm border border-gray-100"></div>
+                    <div id="current-time"
+                        class="font-mono font-black text-accent text-sm bg-white px-4 py-2 rounded-2xl shadow-sm border border-gray-100">
+                    </div>
                 </div>
-                
+
                 <div class="p-10 text-center">
                     {% if is_clocked_in %}
                     <div class="mb-8 inline-flex flex-col items-center">
                         {% if current_user.avatar_url %}
                         <div class="relative">
-                            <img src="{{ current_user.avatar_url }}" alt="" class="w-24 h-24 rounded-[2rem] object-cover shadow-2xl shadow-emerald-200 mb-4 animate-bounce border-4 border-emerald-500">
-                            <div class="absolute -bottom-2 -right-2 w-8 h-8 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg ring-4 ring-white">
+                            <img src="{{ current_user.avatar_url }}" alt=""
+                                class="w-24 h-24 rounded-[2rem] object-cover shadow-2xl shadow-emerald-200 mb-4 animate-bounce border-4 border-emerald-500">
+                            <div
+                                class="absolute -bottom-2 -right-2 w-8 h-8 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg ring-4 ring-white">
                                 <i class="bi bi-person-walking text-sm"></i>
                             </div>
                         </div>
                         {% else %}
-                        <div class="w-24 h-24 rounded-[2rem] bg-emerald-500 text-white flex items-center justify-center text-4xl shadow-2xl shadow-emerald-200 mb-4 animate-bounce">
+                        <div
+                            class="w-24 h-24 rounded-[2rem] bg-emerald-500 text-white flex items-center justify-center text-4xl shadow-2xl shadow-emerald-200 mb-4 animate-bounce">
                             <i class="bi bi-person-walking"></i>
                         </div>
                         {% endif %}
                         <h4 class="text-2xl font-black text-gray-900 mt-2">You are on duty!</h4>
-                        <p class="text-gray-400 font-bold mt-1 uppercase tracking-tight text-xs">Shift started at {{ current_log.clock_in|datetime }}</p>
+                        <p class="text-gray-400 font-bold mt-1 uppercase tracking-tight text-xs">Shift started at {{
+                            current_log.clock_in|datetime }}</p>
                     </div>
                     <form action="{{ url_for('hr3.clock_out') }}" method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="next" value="{{ request.full_path }}">
-                        <button type="submit" class="w-full max-w-sm mx-auto py-5 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl shadow-2xl shadow-rose-200 transition-all flex items-center justify-center text-xs uppercase tracking-[0.2em] group">
-                            End Shift Now <i class="bi bi-arrow-right ml-3 group-hover:translate-x-1 transition-transform"></i>
+                        <button type="submit"
+                            class="w-full max-w-sm mx-auto py-5 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl shadow-2xl shadow-rose-200 transition-all flex items-center justify-center text-xs uppercase tracking-[0.2em] group">
+                            End Shift Now <i
+                                class="bi bi-arrow-right ml-3 group-hover:translate-x-1 transition-transform"></i>
                         </button>
                     </form>
                     {% else %}
                     <div class="mb-8 inline-flex flex-col items-center">
                         {% if current_user.avatar_url %}
                         <div class="relative">
-                            <img src="{{ current_user.avatar_url }}" alt="" class="w-24 h-24 rounded-[2rem] object-cover shadow-2xl shadow-gray-200 mb-4 opacity-50 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-500">
-                            <div class="absolute -bottom-2 -right-2 w-8 h-8 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center shadow-lg ring-4 ring-white">
+                            <img src="{{ current_user.avatar_url }}" alt=""
+                                class="w-24 h-24 rounded-[2rem] object-cover shadow-2xl shadow-gray-200 mb-4 opacity-50 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-500">
+                            <div
+                                class="absolute -bottom-2 -right-2 w-8 h-8 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center shadow-lg ring-4 ring-white">
                                 <i class="bi bi-fingerprint text-sm"></i>
                             </div>
                         </div>
                         {% else %}
-                        <div class="w-24 h-24 rounded-[2rem] bg-gray-100 text-gray-300 flex items-center justify-center text-4xl mb-4">
+                        <div
+                            class="w-24 h-24 rounded-[2rem] bg-gray-100 text-gray-300 flex items-center justify-center text-4xl mb-4">
                             <i class="bi bi-fingerprint"></i>
                         </div>
                         {% endif %}
                         <h4 class="text-2xl font-black text-gray-900 mt-2">Ready for your shift?</h4>
-                        <p class="text-gray-400 font-bold mt-1 uppercase tracking-tight text-xs">Scan fingerprint or click button to start</p>
+                        <p class="text-gray-400 font-bold mt-1 uppercase tracking-tight text-xs">Scan fingerprint or
+                            click button to start</p>
                     </div>
                     <form action="{{ url_for('hr3.clock_in') }}" method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="next" value="{{ request.full_path }}">
-                        <button type="submit" class="w-full max-w-sm mx-auto py-5 bg-accent hover:opacity-90 text-white font-black rounded-2xl shadow-2xl shadow-accent/20 transition-all flex items-center justify-center text-xs uppercase tracking-[0.2em] group">
-                            Start Shift Now <i class="bi bi-play-fill text-lg ml-2 group-hover:scale-125 transition-transform"></i>
+                        <button type="submit"
+                            class="w-full max-w-sm mx-auto py-5 bg-accent hover:opacity-90 text-white font-black rounded-2xl shadow-2xl shadow-accent/20 transition-all flex items-center justify-center text-xs uppercase tracking-[0.2em] group">
+                            Start Shift Now <i
+                                class="bi bi-play-fill text-lg ml-2 group-hover:scale-125 transition-transform"></i>
                         </button>
                     </form>
                     {% endif %}
@@ -164,19 +180,26 @@
             <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
                 <div class="px-8 py-6 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
                     <h4 class="font-black text-gray-900 uppercase tracking-widest text-xs">Recent Leave Requests</h4>
-                    <a href="{{ url_for('hr3.list_leaves') }}" class="text-accent text-[10px] font-black uppercase tracking-widest hover:underline">View Ledger</a>
+                    <a href="{{ url_for('hr3.list_leaves') }}"
+                        class="text-accent text-[10px] font-black uppercase tracking-widest hover:underline">View
+                        Ledger</a>
                 </div>
                 <div class="divide-y divide-gray-50">
                     {% for leave in recent_leaves %}
                     <div class="p-6 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
                         <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 rounded-2xl bg-white flex flex-col items-center justify-center shadow-sm border border-gray-100 ring-4 ring-gray-50">
-                                <span class="text-[8px] font-black text-gray-400 uppercase leading-none">{{ leave.start_date.split('-')[1] }}</span>
-                                <span class="text-sm font-black text-gray-900 leading-none">{{ leave.start_date.split('-')[2] }}</span>
+                            <div
+                                class="w-12 h-12 rounded-2xl bg-white flex flex-col items-center justify-center shadow-sm border border-gray-100 ring-4 ring-gray-50">
+                                <span class="text-[8px] font-black text-gray-400 uppercase leading-none">{{
+                                    leave.start_date.split('-')[1] }}</span>
+                                <span class="text-sm font-black text-gray-900 leading-none">{{
+                                    leave.start_date.split('-')[2] }}</span>
                             </div>
                             <div>
-                                <div class="font-black text-gray-900 text-sm leading-tight">{{ leave.users.username }}</div>
-                                <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">{{ leave.leave_type }}</div>
+                                <div class="font-black text-gray-900 text-sm leading-tight">{{ leave.users.username }}
+                                </div>
+                                <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">{{
+                                    leave.leave_type }}</div>
                             </div>
                         </div>
                         <span class="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest
@@ -197,40 +220,52 @@
         <div class="space-y-8">
             <!-- Schedule Card -->
             <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-gray-100 relative overflow-hidden group">
-                <div class="absolute -top-12 -right-12 w-40 h-40 bg-accent/5 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
-                
+                <div
+                    class="absolute -top-12 -right-12 w-40 h-40 bg-accent/5 rounded-full group-hover:scale-150 transition-transform duration-700">
+                </div>
+
                 <div class="relative z-10">
                     <div class="flex items-center justify-between mb-8">
                         <div>
-                            <span class="bg-accent/10 text-accent text-[9px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-md">My Shift</span>
+                            <span
+                                class="bg-accent/10 text-accent text-[9px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-md">My
+                                Shift</span>
                             <h4 class="text-xl font-black text-gray-900 mt-2">Today's Goal</h4>
                         </div>
                         <div class="text-right">
                             <div class="text-2xl font-black text-gray-900 leading-none">{{ now().strftime('%d') }}</div>
-                            <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">{{ now().strftime('%b, %Y') }}</div>
+                            <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">{{
+                                now().strftime('%b, %Y') }}</div>
                         </div>
                     </div>
 
                     {% if user_schedule %}
                     <div class="space-y-6">
-                        <div class="bg-gray-50 p-6 rounded-[1.5rem] border border-gray-100 flex items-center justify-between group-hover:bg-accent/5 transition-colors">
+                        <div
+                            class="bg-gray-50 p-6 rounded-[1.5rem] border border-gray-100 flex items-center justify-between group-hover:bg-accent/5 transition-colors">
                             <div class="flex flex-col">
-                                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Clock In By</span>
-                                <span class="text-2xl font-black text-accent mt-1">{{ user_schedule.start_time[:5] }}</span>
+                                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Clock In
+                                    By</span>
+                                <span class="text-2xl font-black text-accent mt-1">{{ user_schedule.start_time[:5]
+                                    }}</span>
                             </div>
                             <i class="bi bi-clock-fill text-2xl text-accent/30"></i>
                         </div>
-                        <div class="bg-gray-50 p-6 rounded-[1.5rem] border border-gray-100 flex items-center justify-between group-hover:bg-accent/5 transition-colors">
+                        <div
+                            class="bg-gray-50 p-6 rounded-[1.5rem] border border-gray-100 flex items-center justify-between group-hover:bg-accent/5 transition-colors">
                             <div class="flex flex-col">
-                                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">End Shift At</span>
-                                <span class="text-2xl font-black text-gray-900 mt-1">{{ user_schedule.end_time[:5] }}</span>
+                                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">End Shift
+                                    At</span>
+                                <span class="text-2xl font-black text-gray-900 mt-1">{{ user_schedule.end_time[:5]
+                                    }}</span>
                             </div>
                             <i class="bi bi-moon-fill text-2xl text-gray-200"></i>
                         </div>
                     </div>
                     <div class="mt-6 flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
                         <i class="bi bi-check2-circle text-emerald-500"></i>
-                        <span class="text-[10px] font-black text-emerald-700 uppercase tracking-tight">Personal benchmark active for today</span>
+                        <span class="text-[10px] font-black text-emerald-700 uppercase tracking-tight">Personal
+                            benchmark active for today</span>
                     </div>
                     {% else %}
                     <div class="p-10 text-center bg-gray-50 rounded-[1.5rem] border border-dashed border-gray-200">
@@ -246,21 +281,19 @@
             <div class="bg-indigo-900 rounded-[2rem] p-8 text-white shadow-2xl shadow-indigo-200">
                 <h4 class="text-lg font-black mb-6 uppercase tracking-widest text-indigo-300">Quick Portal</h4>
                 <div class="space-y-3">
-                    {% if current_user.is_admin() %}
-                    <a href="{{ url_for('hr3.add_user') }}" class="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group">
-                        <span class="font-black text-xs uppercase tracking-widest">Recruit Staff</span>
-                        <i class="bi bi-person-plus text-xl group-hover:scale-125 transition-transform"></i>
-                    </a>
-                    <a href="{{ url_for('hr3.user_list') }}" class="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group">
-                        <span class="font-black text-xs uppercase tracking-widest">Staff Ledger</span>
-                        <i class="bi bi-journal-text text-xl group-hover:scale-125 transition-transform"></i>
+                    <a href="{{ url_for('hr3.manage_schedules') }}"
+                        class="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group">
+                        <span class="font-black text-xs uppercase tracking-widest">Shift Roster</span>
+                        <i class="bi bi-calendar-range text-xl group-hover:scale-125 transition-transform"></i>
                     </a>
                     {% else %}
-                    <a href="{{ url_for('hr3.list_attendance') }}" class="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group">
+                    <a href="{{ url_for('hr3.list_attendance') }}"
+                        class="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group">
                         <span class="font-black text-xs uppercase tracking-widest">Attendance Logs</span>
                         <i class="bi bi-clock-history text-xl group-hover:scale-125 transition-transform"></i>
                     </a>
-                    <a href="{{ url_for('hr3.list_leaves') }}" class="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group">
+                    <a href="{{ url_for('hr3.list_leaves') }}"
+                        class="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group">
                         <span class="font-black text-xs uppercase tracking-widest">My Requests</span>
                         <i class="bi bi-calendar-event text-xl group-hover:scale-125 transition-transform"></i>
                     </a>

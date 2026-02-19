@@ -39,7 +39,7 @@ def login():
 
                 if user.status != 'Active':
                     if user.status == 'Pending':
-                        flash('Your account is awaiting approval from HR3 Admin.', 'info')
+                        flash('Your account is awaiting approval from HR2 Admin.', 'info')
                     else:
                         flash('Your account has been rejected or deactivated.', 'danger')
                     return render_template('subsystems/financials/login.html')
@@ -86,15 +86,15 @@ def register():
             if new_user:
                 # Notify HR3 about new registration
                 Notification.create(
-                    subsystem='hr3',
+                    subsystem='hr2',
                     title="New User Registration",
                     message=f"A new user '{username}' has registered for {SUBSYSTEM_NAME}. Approval required.",
                     n_type="warning",
                     sender_subsystem=BLUEPRINT_NAME,
-                    target_url=url_for('hr3.pending_approvals')
+                    target_url=url_for('hr2.pending_approvals')
                 )
                 
-                flash('Registration successful! Your account is awaiting approval from HR3 Admin.', 'success')
+                flash('Registration successful! Your account is awaiting approval from HR2 Admin.', 'success')
                 return redirect(url_for('financials.login'))
             else:
                 flash('Registration failed. Please try again.', 'danger')

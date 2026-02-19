@@ -102,13 +102,13 @@
                 </div>
 
                 <div class="flex gap-2">
-                    <a href="{{ url_for('hr3.process_approval', user_id=user.id, action='deny') }}"
+                    <a href="{{ url_for('hr2.process_approval', user_id=user.id, action='deny') }}"
                         onclick="return confirm('Are you sure you want to DENY this registration for {{ user.username }}?')"
                         class="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white rounded-xl transition-all font-medium text-sm border border-red-100 hover:border-red-500">
                         <i class="bi bi-x-lg"></i>
                         <span class="hidden sm:inline">Deny</span>
                     </a>
-                    <a href="{{ url_for('hr3.process_approval', user_id=user.id, action='approve') }}"
+                    <a href="{{ url_for('hr2.process_approval', user_id=user.id, action='approve') }}"
                         onclick="return confirm('Are you sure you want to APPROVE this registration for {{ user.username }}?')"
                         class="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-xl transition-all font-medium text-sm border border-emerald-100 hover:border-emerald-500">
                         <i class="bi bi-check-lg"></i>

@@ -14,7 +14,7 @@ def backup(scope, target_id):
         flash("Unauthorized: Admin access required for data management.", "danger")
         return redirect(url_for('portal.index'))
     
-    # Departmental isolation check (HR3 admins bypass)
+    # Departmental isolation check (HR2 Admins bypass)
     if current_user.subsystem != 'hr3':
         from utils.supabase_client import SUBSYSTEM_CONFIG
         user_dept = current_user.department
@@ -52,7 +52,7 @@ def restore(scope, target_id):
         flash("Unauthorized: Admin access required for data management.", "danger")
         return redirect(url_for('portal.index'))
 
-    # Departmental isolation check (HR3 admins bypass)
+    # Departmental isolation check (HR2 Admins bypass)
     if current_user.subsystem != 'hr3':
         from utils.supabase_client import SUBSYSTEM_CONFIG
         user_dept = current_user.department

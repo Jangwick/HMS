@@ -113,31 +113,31 @@
                             <div
                                 class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
                                 {% if user.status == 'Pending' %}
-                                <a href="{{ url_for('hr3.process_approval', user_id=user.id, action='approve') }}"
+                                <a href="{{ url_for('hr2.process_approval', user_id=user.id, action='approve') }}"
                                     class="flex items-center gap-2 px-4 py-3 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors">
                                     <i class="bi bi-check-lg"></i>
                                     Approve User
                                 </a>
-                                <a href="{{ url_for('hr3.process_approval', user_id=user.id, action='deny') }}"
+                                <a href="{{ url_for('hr2.process_approval', user_id=user.id, action='deny') }}"
                                     class="flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors">
                                     <i class="bi bi-x-lg"></i>
                                     Deny User
                                 </a>
                                 {% elif user.status == 'Active' %}
-                                <a href="{{ url_for('hr3.reset_user_password', user_id=user.id) }}"
+                                <a href="{{ url_for('hr2.reset_user_password', user_id=user.id) }}"
                                     class="flex items-center gap-2 px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
                                     onclick="return confirm('Are you sure you want to reset this user\'s password to default?')">
                                     <i class="bi bi-shield-lock"></i>
                                     Reset Password
                                 </a>
-                                <a href="{{ url_for('hr3.toggle_user_status', user_id=user.id) }}"
+                                <a href="{{ url_for('hr2.toggle_user_status', user_id=user.id) }}"
                                     class="flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
                                     onclick="return confirm('Are you sure you want to deactivate this user?')">
                                     <i class="bi bi-person-x"></i>
                                     Deactivate User
                                 </a>
                                 {% else %}
-                                <a href="{{ url_for('hr3.toggle_user_status', user_id=user.id) }}"
+                                <a href="{{ url_for('hr2.toggle_user_status', user_id=user.id) }}"
                                     class="flex items-center gap-2 px-4 py-3 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors">
                                     <i class="bi bi-person-check"></i>
                                     Activate User
@@ -180,7 +180,7 @@
 
                                 <!-- Hidden Forms for Actions -->
                                 <form id="delete-form-{{ user.id }}"
-                                    action="{{ url_for('hr3.delete_user', user_id=user.id) }}" method="POST"
+                                    action="{{ url_for('hr2.delete_user', user_id=user.id) }}" method="POST"
                                     class="hidden">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 </form>
@@ -224,7 +224,7 @@
                     <span id="addUserSuccessMessage" class="text-sm font-medium"></span>
                 </div>
 
-                <form id="addUserForm" action="{{ url_for('hr3.add_user') }}" method="POST" class="p-8 space-y-6">
+                <form id="addUserForm" action="{{ url_for('hr2.add_user') }}" method="POST" class="p-8 space-y-6">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -586,7 +586,7 @@
         document.getElementById('edit_role').value = role;
         document.getElementById('edit_status').value = status;
 
-        form.action = `/hr/hr3/admin/users/${id}/edit`;
+        form.action = `/hr/hr2/admin/users/${id}/edit`;
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     }
@@ -643,7 +643,7 @@
         document.getElementById('passwordError').classList.add('hidden');
         document.getElementById('passwordSuccess').classList.add('hidden');
         document.getElementById('target-username').textContent = username;
-        form.action = `/hr/hr3/admin/users/${userId}/change-password`;
+        form.action = `/hr/hr2/admin/users/${userId}/change-password`;
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     }

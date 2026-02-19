@@ -16,7 +16,13 @@
 
     <style>
         :root {
-            --accent-color: {{ accent_color or '#6366F1' }};
+            --accent-color: {
+                    {
+                    accent_color or '#6366F1'
+                }
+            }
+
+            ;
         }
 
         body {
@@ -51,11 +57,28 @@
         }
 
         @media print {
-            .no-print { display: none !important; }
-            aside { display: none !important; }
-            body { background: white !important; }
-            .h-screen { height: auto !important; overflow: visible !important; }
-            main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            .no-print {
+                display: none !important;
+            }
+
+            aside {
+                display: none !important;
+            }
+
+            body {
+                background: white !important;
+            }
+
+            .h-screen {
+                height: auto !important;
+                overflow: visible !important;
+            }
+
+            main {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
         }
 
         ::-webkit-scrollbar {
@@ -77,9 +100,17 @@
 
         /* Page Animations */
         @keyframes fade-in {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
+
         .animate-fade-in {
             animation: fade-in 0.4s ease-out forwards;
         }
@@ -98,11 +129,13 @@
 
 <body class="bg-gray-50 text-gray-900 antialiased">
     <!-- Mobile Sidebar Overlay -->
-    <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-[55] hidden transition-opacity duration-300 opacity-0" onclick="toggleSidebar()"></div>
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-[55] hidden transition-opacity duration-300 opacity-0"
+        onclick="toggleSidebar()"></div>
 
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
-        <aside id="mainSidebar" class="fixed inset-y-0 left-0 w-72 bg-white shadow-2xl flex flex-col z-[60] border-r border-gray-100 no-print transition-transform duration-300 -translate-x-full lg:translate-x-0">
+        <aside id="mainSidebar"
+            class="fixed inset-y-0 left-0 w-72 bg-white shadow-2xl flex flex-col z-[60] border-r border-gray-100 no-print transition-transform duration-300 -translate-x-full lg:translate-x-0">
             <div class="h-20 flex items-center px-8 border-b border-gray-100">
                 <div
                     class="w-10 h-10 rounded-xl bg-accent bg-gradient-to-br from-transparent to-black/20 flex items-center justify-center shadow-lg mr-4 text-white">
@@ -120,7 +153,8 @@
 
             <!-- Sidebar Menu -->
             <nav class="mt-6 flex-1 overflow-y-auto">
-                <a href="{{ url_for(blueprint_name + '.dashboard') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint.endswith('.dashboard') }}">
+                <a href="{{ url_for(blueprint_name + '.dashboard') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint.endswith('.dashboard') }}">
                     <i class="bi bi-grid mr-3"></i>
                     <span>Dashboard</span>
                 </a>
@@ -129,320 +163,418 @@
 
                 <!-- HR Subsystems -->
                 {% if blueprint_name.startswith('hr') %}
-                    <!-- HR1: Recruitment -->
-                    {% if blueprint_name == 'hr1' %}
-                    <a href="{{ url_for('hr1.list_vacancies') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.list_vacancies' }}">
-                        <i class="bi bi-briefcase mr-3"></i>
-                        <span>Vacancies</span>
-                    </a>
-                    <a href="{{ url_for('hr1.list_applicants') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.list_applicants' }}">
-                        <i class="bi bi-people mr-3"></i>
-                        <span>Applicants</span>
-                    </a>
+                <!-- HR1: Recruitment -->
+                {% if blueprint_name == 'hr1' %}
+                <a href="{{ url_for('hr1.list_vacancies') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.list_vacancies' }}">
+                    <i class="bi bi-briefcase mr-3"></i>
+                    <span>Vacancies</span>
+                </a>
+                <a href="{{ url_for('hr1.list_applicants') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.list_applicants' }}">
+                    <i class="bi bi-people mr-3"></i>
+                    <span>Applicants</span>
+                </a>
 
-                    <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Recruitment Actions</div>
-                    <a href="{{ url_for('hr1.list_vacancies', action='add') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                        <i class="bi bi-file-earmark-plus mr-3"></i>
-                        <span>Post Vacancy</span>
-                    </a>
-                    <a href="{{ url_for('hr1.schedule_interview') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.schedule_interview' }}">
-                        <i class="bi bi-calendar-event mr-3"></i>
-                        <span>Schedule Interview</span>
-                    </a>
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Recruitment
+                    Actions</div>
+                <a href="{{ url_for('hr1.list_vacancies', action='add') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
+                    <i class="bi bi-file-earmark-plus mr-3"></i>
+                    <span>Post Vacancy</span>
+                </a>
+                <a href="{{ url_for('hr1.schedule_interview') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.schedule_interview' }}">
+                    <i class="bi bi-calendar-event mr-3"></i>
+                    <span>Schedule Interview</span>
+                </a>
 
-                    <!-- HR2: Talent Development -->
-                    {% elif blueprint_name == 'hr2' %}
-                    <a href="{{ url_for('hr2.onboarding_pipeline') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.onboarding_pipeline' }}">
-                        <i class="bi bi-person-check mr-3"></i>
-                        <span>Onboarding Queue</span>
-                    </a>
-                    <a href="{{ url_for('hr2.list_trainings') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_trainings' }}">
-                        <i class="bi bi-mortarboard mr-3"></i>
-                        <span>Training Programs</span>
-                    </a>
-                    <a href="{{ url_for('hr2.list_competencies') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_competencies' }}">
-                        <i class="bi bi-award mr-3"></i>
-                        <span>Competencies</span>
-                    </a>
-                    <a href="{{ url_for('hr2.list_career_paths') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_career_paths' }}">
-                        <i class="bi bi-diagram-3 mr-3"></i>
-                        <span>Career Paths</span>
-                    </a>
-                    <a href="{{ url_for('hr2.list_succession_plans') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_succession_plans' }}">
-                        <i class="bi bi-people-fill mr-3"></i>
-                        <span>Succession Plan</span>
-                    </a>
+                <!-- HR2: Talent Development -->
+                {% elif blueprint_name == 'hr2' %}
+                <a href="{{ url_for('hr2.onboarding_pipeline') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.onboarding_pipeline' }}">
+                    <i class="bi bi-person-check mr-3"></i>
+                    <span>Onboarding Queue</span>
+                </a>
+                <a href="{{ url_for('hr2.list_trainings') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_trainings' }}">
+                    <i class="bi bi-mortarboard mr-3"></i>
+                    <span>Training Programs</span>
+                </a>
+                <a href="{{ url_for('hr2.list_competencies') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_competencies' }}">
+                    <i class="bi bi-award mr-3"></i>
+                    <span>Competencies</span>
+                </a>
+                <a href="{{ url_for('hr2.list_career_paths') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_career_paths' }}">
+                    <i class="bi bi-diagram-3 mr-3"></i>
+                    <span>Career Paths</span>
+                </a>
+                <a href="{{ url_for('hr2.list_succession_plans') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.list_succession_plans' }}">
+                    <i class="bi bi-people-fill mr-3"></i>
+                    <span>Succession Plan</span>
+                </a>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('hr2.pending_approvals') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.pending_approvals' }}">
+                    <i class="bi bi-person-check mr-3"></i>
+                    <span>Approvals</span>
+                </a>
+                <a href="{{ url_for('hr2.user_list') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.user_list' }}">
+                    <i class="bi bi-shield-lock mr-3"></i>
+                    <span>User Management</span>
+                </a>
 
-                    <!-- HR3: Workforce Operations -->
-                    {% elif blueprint_name == 'hr3' %}
-                    <a href="{{ url_for('hr3.directory') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.directory' }}">
-                        <i class="bi bi-people mr-3"></i>
-                        <span>System Directory</span>
-                    </a>
-                    <a href="{{ url_for('hr3.my_schedule') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.my_schedule' }}">
-                        <i class="bi bi-calendar-event mr-3"></i>
-                        <span>My Schedule</span>
-                    </a>
-                    <a href="{{ url_for('hr3.list_leaves') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.list_leaves' }}">
-                        <i class="bi bi-calendar-minus mr-3"></i>
-                        <span>Leave Requests</span>
-                    </a>
-                    {% if current_user.is_admin() %}
-                    <a href="{{ url_for('hr3.pending_approvals') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.pending_approvals' }}">
-                        <i class="bi bi-person-check mr-3"></i>
-                        <span>Approvals</span>
-                    </a>
-                    <a href="{{ url_for('hr3.user_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.user_list' }}">
-                        <i class="bi bi-shield-lock mr-3"></i>
-                        <span>User Management</span>
-                    </a>
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Admin Actions
+                </div>
+                <a href="{{ url_for('hr2.add_user') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr2.add_user' }}">
+                    <i class="bi bi-person-plus mr-3"></i>
+                    <span>Register User</span>
+                </a>
+                {% endif %}
 
-                    <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Admin Actions</div>
-                    <a href="{{ url_for('hr3.add_user') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.add_user' }}">
-                        <i class="bi bi-person-plus mr-3"></i>
-                        <span>Register User</span>
-                    </a>
-                    <a href="{{ url_for('hr3.analytics') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.analytics' }}">
-                        <i class="bi bi-graph-up-arrow mr-3"></i>
-                        <span>Analytics</span>
-                    </a>
-                    {% endif %}
+                <!-- HR3: Workforce Operations -->
+                {% elif blueprint_name == 'hr3' %}
+                <a href="{{ url_for('hr3.directory') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.directory' }}">
+                    <i class="bi bi-people mr-3"></i>
+                    <span>System Directory</span>
+                </a>
+                <a href="{{ url_for('hr3.my_schedule') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.my_schedule' }}">
+                    <i class="bi bi-calendar-event mr-3"></i>
+                    <span>My Schedule</span>
+                </a>
+                <a href="{{ url_for('hr3.list_leaves') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.list_leaves' }}">
+                    <i class="bi bi-calendar-minus mr-3"></i>
+                    <span>Leave Requests</span>
+                </a>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('hr3.analytics') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.analytics' }}">
+                    <i class="bi bi-graph-up-arrow mr-3"></i>
+                    <span>Analytics</span>
+                </a>
+                {% endif %}
 
-                    <!-- HR4: Compensation & Analytics -->
-                    {% elif blueprint_name == 'hr4' %}
-                    <a href="{{ url_for('hr4.compensation') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.compensation' }}">
-                        <i class="bi bi-wallet2 mr-3"></i>
-                        <span>Compensation</span>
-                    </a>
-                    <a href="{{ url_for('hr4.salary_grades') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.salary_grades' }}">
-                        <i class="bi bi-layers mr-3"></i>
-                        <span>Salary Grades</span>
-                    </a>
-                    <a href="{{ url_for('hr4.analytics') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.analytics' }}">
-                        <i class="bi bi-bar-chart-line mr-3"></i>
-                        <span>Compensation Analytics</span>
-                    </a>
+                <!-- HR4: Compensation & Analytics -->
+                {% elif blueprint_name == 'hr4' %}
+                <a href="{{ url_for('hr4.compensation') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.compensation' }}">
+                    <i class="bi bi-wallet2 mr-3"></i>
+                    <span>Compensation</span>
+                </a>
+                <a href="{{ url_for('hr4.salary_grades') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.salary_grades' }}">
+                    <i class="bi bi-layers mr-3"></i>
+                    <span>Salary Grades</span>
+                </a>
+                <a href="{{ url_for('hr4.analytics') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.analytics' }}">
+                    <i class="bi bi-bar-chart-line mr-3"></i>
+                    <span>Compensation Analytics</span>
+                </a>
 
-                    <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Payroll ReportsCenter</div>
-                    <a href="{{ url_for('hr4.reports') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.reports' }}">
-                        <i class="bi bi-file-earmark-bar-graph mr-3"></i>
-                        <span>Reporting Center</span>
-                    </a>
-                    {% endif %}
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Payroll
+                    ReportsCenter</div>
+                <a href="{{ url_for('hr4.reports') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr4.reports' }}">
+                    <i class="bi bi-file-earmark-bar-graph mr-3"></i>
+                    <span>Reporting Center</span>
+                </a>
+                {% endif %}
 
                 <!-- Core Transaction Subsystems -->
                 {% elif blueprint_name.startswith('ct') %}
-                    <!-- CT1: Patient Registration -->
-                    {% if blueprint_name == 'ct1' %}
-                    <a href="{{ url_for('ct1.list_patients') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.list_patients' }}">
-                        <i class="bi bi-people mr-3"></i>
-                        <span>Patient Directory</span>
-                    </a>
-                    <a href="{{ url_for('ct1.search_patients') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.search_patients' }}">
-                        <i class="bi bi-search mr-3"></i>
-                        <span>Search Patients</span>
-                    </a>
-                    <a href="{{ url_for('ct1.book_appointment') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.book_appointment' }}">
-                        <i class="bi bi-calendar-event mr-3"></i>
-                        <span>Appointments</span>
-                    </a>
-                    <a href="{{ url_for('ct1.bed_management') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.bed_management' }}">
-                        <i class="bi bi-door-open mr-3"></i>
-                        <span>Wards/Beds</span>
-                    </a>
-                    <a href="{{ url_for('ct1.emergency_triage') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.emergency_triage' }}">
-                        <i class="bi bi-heart-pulse mr-3 text-red-500"></i>
-                        <span>Emergency Triage</span>
-                    </a>
-                    <a href="{{ url_for('ct1.telehealth') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.telehealth' }}">
-                        <i class="bi bi-camera-video mr-3 text-indigo-500"></i>
-                        <span>Telehealth</span>
-                    </a>
+                <!-- CT1: Patient Registration -->
+                {% if blueprint_name == 'ct1' %}
+                <a href="{{ url_for('ct1.list_patients') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.list_patients' }}">
+                    <i class="bi bi-people mr-3"></i>
+                    <span>Patient Directory</span>
+                </a>
+                <a href="{{ url_for('ct1.search_patients') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.search_patients' }}">
+                    <i class="bi bi-search mr-3"></i>
+                    <span>Search Patients</span>
+                </a>
+                <a href="{{ url_for('ct1.book_appointment') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.book_appointment' }}">
+                    <i class="bi bi-calendar-event mr-3"></i>
+                    <span>Appointments</span>
+                </a>
+                <a href="{{ url_for('ct1.bed_management') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.bed_management' }}">
+                    <i class="bi bi-door-open mr-3"></i>
+                    <span>Wards/Beds</span>
+                </a>
+                <a href="{{ url_for('ct1.emergency_triage') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.emergency_triage' }}">
+                    <i class="bi bi-heart-pulse mr-3 text-red-500"></i>
+                    <span>Emergency Triage</span>
+                </a>
+                <a href="{{ url_for('ct1.telehealth') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct1.telehealth' }}">
+                    <i class="bi bi-camera-video mr-3 text-indigo-500"></i>
+                    <span>Telehealth</span>
+                </a>
 
-                    {% if current_user.is_admin() %}
-                    <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Administration</div>
-                    <a href="{{ url_for('ct1.register_patient') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 font-bold border-accent' if request.endpoint == 'ct1.register_patient' }}">
-                        <i class="bi bi-person-plus mr-3 text-emerald-500"></i>
-                        <span>Register Patient</span>
-                    </a>
-                    {% endif %}
+                {% if current_user.is_admin() %}
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Administration
+                </div>
+                <a href="{{ url_for('ct1.register_patient') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 font-bold border-accent' if request.endpoint == 'ct1.register_patient' }}">
+                    <i class="bi bi-person-plus mr-3 text-emerald-500"></i>
+                    <span>Register Patient</span>
+                </a>
+                {% endif %}
 
-                    <!-- CT2: Lab & Pharmacy -->
-                    {% elif blueprint_name == 'ct2' %}
-                    <a href="{{ url_for('ct2.lab_orders') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.lab_orders' }}">
-                        <i class="bi bi-flask mr-3"></i>
-                        <span>Lab Dashboard</span>
-                    </a>
-                    <a href="{{ url_for('ct2.radiology_orders') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct2.radiology_orders' }}">
-                        <i class="bi bi-camera mr-3"></i>
-                        <span>Radiology Orders</span>
-                    </a>
-                    <a href="{{ url_for('ct2.surgery_schedule') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct2.surgery_schedule' }}">
-                        <i class="bi bi-hospital mr-3"></i>
-                        <span>Surgery Schedule</span>
-                    </a>
-                    <a href="{{ url_for('ct2.pharmacy_inventory') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.pharmacy_inventory' }}">
-                        <i class="bi bi-box-seam mr-3"></i>
-                        <span>Pharmacy Stock</span>
-                    </a>
-                    <a href="{{ url_for('ct2.dispense_meds') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.dispense_meds' }}">
-                        <i class="bi bi-capsule-pill mr-3"></i>
-                        <span>Dispense Meds</span>
-                    </a>
-                    <a href="{{ url_for('ct2.dnms_dashboard') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct2.dnms_dashboard' }}">
-                        <i class="bi bi-heart-pulse mr-3 text-rose-500"></i>
-                        <span>Diet & Nutrition</span>
-                    </a>
+                <!-- CT2: Lab & Pharmacy -->
+                {% elif blueprint_name == 'ct2' %}
+                <a href="{{ url_for('ct2.lab_orders') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.lab_orders' }}">
+                    <i class="bi bi-flask mr-3"></i>
+                    <span>Lab Dashboard</span>
+                </a>
+                <a href="{{ url_for('ct2.radiology_orders') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct2.radiology_orders' }}">
+                    <i class="bi bi-camera mr-3"></i>
+                    <span>Radiology Orders</span>
+                </a>
+                <a href="{{ url_for('ct2.surgery_schedule') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct2.surgery_schedule' }}">
+                    <i class="bi bi-hospital mr-3"></i>
+                    <span>Surgery Schedule</span>
+                </a>
+                <a href="{{ url_for('ct2.pharmacy_inventory') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.pharmacy_inventory' }}">
+                    <i class="bi bi-box-seam mr-3"></i>
+                    <span>Pharmacy Stock</span>
+                </a>
+                <a href="{{ url_for('ct2.dispense_meds') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'ct2.dispense_meds' }}">
+                    <i class="bi bi-capsule-pill mr-3"></i>
+                    <span>Dispense Meds</span>
+                </a>
+                <a href="{{ url_for('ct2.dnms_dashboard') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct2.dnms_dashboard' }}">
+                    <i class="bi bi-heart-pulse mr-3 text-rose-500"></i>
+                    <span>Diet & Nutrition</span>
+                </a>
 
-                    <!-- CT3: Admin & Finance -->
-                    {% elif blueprint_name == 'ct3' %}
-                    <a href="{{ url_for('ct3.patient_records') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint.startswith('ct3.patient_records') or request.endpoint == 'ct3.view_record' }}">
-                        <i class="bi bi-file-medical mr-3"></i>
-                        <span>Health Records (EMRS)</span>
-                    </a>
-                    <a href="{{ url_for('ct3.billing') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.billing' }}">
-                        <i class="bi bi-wallet2 mr-3"></i>
-                        <span>Transactional Billing</span>
-                    </a>
-                    {% if current_user.is_admin() %}
-                    <a href="{{ url_for('ct3.security_logs') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.security_logs' }}">
-                        <i class="bi bi-shield-check mr-3"></i>
-                        <span>Security Admin</span>
-                    </a>
+                <!-- CT3: Admin & Finance -->
+                {% elif blueprint_name == 'ct3' %}
+                <a href="{{ url_for('ct3.patient_records') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint.startswith('ct3.patient_records') or request.endpoint == 'ct3.view_record' }}">
+                    <i class="bi bi-file-medical mr-3"></i>
+                    <span>Health Records (EMRS)</span>
+                </a>
+                <a href="{{ url_for('ct3.billing') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.billing' }}">
+                    <i class="bi bi-wallet2 mr-3"></i>
+                    <span>Transactional Billing</span>
+                </a>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('ct3.security_logs') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.security_logs' }}">
+                    <i class="bi bi-shield-check mr-3"></i>
+                    <span>Security Admin</span>
+                </a>
 
-                    <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Quick Actions</div>
-                    <a href="{{ url_for('ct3.patient_records', focus='search') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                        <i class="bi bi-search mr-3"></i>
-                        <span>Search Patient</span>
-                    </a>
-                    {% endif %}
-                    {% endif %}
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Quick Actions
+                </div>
+                <a href="{{ url_for('ct3.patient_records', focus='search') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
+                    <i class="bi bi-search mr-3"></i>
+                    <span>Search Patient</span>
+                </a>
+                {% endif %}
+                {% endif %}
 
                 <!-- Logistics Subsystems -->
                 {% elif blueprint_name.startswith('log') %}
-                    <!-- LOG1: Inventory -->
-                    {% if blueprint_name == 'log1' %}
-                    <a href="{{ url_for('log1.list_inventory') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log1.list_inventory' }}">
-                        <i class="bi bi-box-seam mr-3"></i>
-                        <span>Inventory</span>
-                    </a>
-                    <a href="{{ url_for('log1.procurement') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log1.procurement' }}">
-                        <i class="bi bi-cart-check mr-3"></i>
-                        <span>Procurement</span>
-                    </a>
-                    <a href="{{ url_for('log1.list_assets') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log1.list_assets' }}">
-                        <i class="bi bi-truck mr-3"></i>
-                        <span>Assets</span>
-                    </a>
-                    <a href="{{ url_for('log1.list_documents') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log1.list_documents' }}">
-                        <i class="bi bi-file-earmark-text mr-3"></i>
-                        <span>Documents</span>
-                    </a>
+                <!-- LOG1: Inventory -->
+                {% if blueprint_name == 'log1' %}
+                <a href="{{ url_for('log1.list_inventory') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log1.list_inventory' }}">
+                    <i class="bi bi-box-seam mr-3"></i>
+                    <span>Inventory</span>
+                </a>
+                <a href="{{ url_for('log1.procurement') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log1.procurement' }}">
+                    <i class="bi bi-cart-check mr-3"></i>
+                    <span>Procurement</span>
+                </a>
+                <a href="{{ url_for('log1.list_assets') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log1.list_assets' }}">
+                    <i class="bi bi-truck mr-3"></i>
+                    <span>Assets</span>
+                </a>
+                <a href="{{ url_for('log1.list_documents') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'log1.list_documents' }}">
+                    <i class="bi bi-file-earmark-text mr-3"></i>
+                    <span>Documents</span>
+                </a>
 
-                    <!-- LOG2: Fleet -->
-                    {% elif blueprint_name == 'log2' %}
-                    <a href="{{ url_for('log2.list_vehicles') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#F97316]' if request.endpoint == 'log2.list_vehicles' }}">
-                        <i class="bi bi-truck mr-3"></i>
-                        <span>Vehicles</span>
-                    </a>
-                    <a href="{{ url_for('log2.list_drivers') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#F97316]' if request.endpoint == 'log2.list_drivers' }}">
-                        <i class="bi bi-person-badge mr-3"></i>
-                        <span>Drivers</span>
-                    </a>
-                    <a href="{{ url_for('log2.dispatch_board') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#F97316]' if request.endpoint == 'log2.dispatch_board' }}">
-                        <i class="bi bi-calendar-check mr-3"></i>
-                        <span>Dispatch Board</span>
-                    </a>
-                    <a href="{{ url_for('log2.dispatch_logs') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#F97316]' if request.endpoint == 'log2.dispatch_logs' }}">
-                        <i class="bi bi-clock-history mr-3"></i>
-                        <span>Dispatch Logs</span>
-                    </a>
-                    <a href="{{ url_for('log2.resource_map') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#F97316]' if request.endpoint == 'log2.resource_map' }}">
-                        <i class="bi bi-geo-alt mr-3"></i>
-                        <span>Resource Map</span>
-                    </a>
-                    {% if current_user.is_admin() %}
-                    <a href="{{ url_for('log2.cost_analysis') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#F97316]' if request.endpoint == 'log2.cost_analysis' }}">
-                        <i class="bi bi-currency-dollar mr-3"></i>
-                        <span>Cost Analysis</span>
-                    </a>
-                    {% endif %}
-                    {% endif %}
+                <!-- LOG2: Fleet -->
+                {% elif blueprint_name == 'log2' %}
+                <a href="{{ url_for('log2.list_vehicles') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#F97316]' if request.endpoint == 'log2.list_vehicles' }}">
+                    <i class="bi bi-truck mr-3"></i>
+                    <span>Vehicles</span>
+                </a>
+                <a href="{{ url_for('log2.list_drivers') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#F97316]' if request.endpoint == 'log2.list_drivers' }}">
+                    <i class="bi bi-person-badge mr-3"></i>
+                    <span>Drivers</span>
+                </a>
+                <a href="{{ url_for('log2.dispatch_board') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#F97316]' if request.endpoint == 'log2.dispatch_board' }}">
+                    <i class="bi bi-calendar-check mr-3"></i>
+                    <span>Dispatch Board</span>
+                </a>
+                <a href="{{ url_for('log2.dispatch_logs') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#F97316]' if request.endpoint == 'log2.dispatch_logs' }}">
+                    <i class="bi bi-clock-history mr-3"></i>
+                    <span>Dispatch Logs</span>
+                </a>
+                <a href="{{ url_for('log2.resource_map') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#F97316]' if request.endpoint == 'log2.resource_map' }}">
+                    <i class="bi bi-geo-alt mr-3"></i>
+                    <span>Resource Map</span>
+                </a>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('log2.cost_analysis') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#F97316]' if request.endpoint == 'log2.cost_analysis' }}">
+                    <i class="bi bi-currency-dollar mr-3"></i>
+                    <span>Cost Analysis</span>
+                </a>
+                {% endif %}
+                {% endif %}
 
                 <!-- Financial Subsystems (Unified) -->
                 {% elif blueprint_name == 'financials' %}
-                    <div class="px-6 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Billing</div>
-                    <a href="{{ url_for('financials.list_billing') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'financials.list_billing' }}">
-                        <i class="bi bi-receipt mr-3"></i>
-                        <span>Billing Management</span>
-                    </a>
+                <div class="px-6 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Billing</div>
+                <a href="{{ url_for('financials.list_billing') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'financials.list_billing' }}">
+                    <i class="bi bi-receipt mr-3"></i>
+                    <span>Billing Management</span>
+                </a>
 
-                    <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Payables & Receivables</div>
-                    <a href="{{ url_for('financials.vendors_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'vendors_list' in request.endpoint }}">
-                        <i class="bi bi-people mr-3"></i>
-                        <span>Vendor Directory</span>
-                    </a>
-                    <a href="{{ url_for('financials.vendor_invoices') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'vendor_invoices' in request.endpoint }}">
-                        <i class="bi bi-journal-text mr-3"></i>
-                        <span>Payables</span>
-                    </a>
-                    <a href="{{ url_for('financials.receivables_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'receivables_list' in request.endpoint }}">
-                        <i class="bi bi-arrow-down-left-circle mr-3"></i>
-                        <span>Receivables</span>
-                    </a>
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Payables &
+                    Receivables</div>
+                <a href="{{ url_for('financials.vendors_list') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'vendors_list' in request.endpoint }}">
+                    <i class="bi bi-people mr-3"></i>
+                    <span>Vendor Directory</span>
+                </a>
+                <a href="{{ url_for('financials.vendor_invoices') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'vendor_invoices' in request.endpoint }}">
+                    <i class="bi bi-journal-text mr-3"></i>
+                    <span>Payables</span>
+                </a>
+                <a href="{{ url_for('financials.receivables_list') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'receivables_list' in request.endpoint }}">
+                    <i class="bi bi-arrow-down-left-circle mr-3"></i>
+                    <span>Receivables</span>
+                </a>
 
-                    <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Cash & Treasury</div>
-                    <a href="{{ url_for('financials.transactions') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'transactions' in request.endpoint }}">
-                        <i class="bi bi-bank mr-3"></i>
-                        <span>Cash Transactions</span>
-                    </a>
-                    <a href="{{ url_for('financials.bank_accounts') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'bank_accounts' in request.endpoint }}">
-                        <i class="bi bi-credit-card-2-back mr-3"></i>
-                        <span>Bank Accounts</span>
-                    </a>
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Cash & Treasury
+                </div>
+                <a href="{{ url_for('financials.transactions') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'transactions' in request.endpoint }}">
+                    <i class="bi bi-bank mr-3"></i>
+                    <span>Cash Transactions</span>
+                </a>
+                <a href="{{ url_for('financials.bank_accounts') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'bank_accounts' in request.endpoint }}">
+                    <i class="bi bi-credit-card-2-back mr-3"></i>
+                    <span>Bank Accounts</span>
+                </a>
 
-                    <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Financial Intelligence</div>
-                    <a href="{{ url_for('financials.reports_list') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'reports_list' in request.endpoint }}">
-                        <i class="bi bi-file-earmark-bar-graph mr-3"></i>
-                        <span>All Reports</span>
-                    </a>
-                    <a href="{{ url_for('financials.income_statement') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'income_statement' in request.endpoint }}">
-                        <i class="bi bi-file-earmark-text mr-3"></i>
-                        <span>Income Statement</span>
-                    </a>
-                    <a href="{{ url_for('financials.balance_sheet') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'balance_sheet' in request.endpoint }}">
-                        <i class="bi bi-file-earmark-medical mr-3"></i>
-                        <span>Balance Sheet</span>
-                    </a>
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Financial
+                    Intelligence</div>
+                <a href="{{ url_for('financials.reports_list') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'reports_list' in request.endpoint }}">
+                    <i class="bi bi-file-earmark-bar-graph mr-3"></i>
+                    <span>All Reports</span>
+                </a>
+                <a href="{{ url_for('financials.income_statement') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'income_statement' in request.endpoint }}">
+                    <i class="bi bi-file-earmark-text mr-3"></i>
+                    <span>Income Statement</span>
+                </a>
+                <a href="{{ url_for('financials.balance_sheet') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'balance_sheet' in request.endpoint }}">
+                    <i class="bi bi-file-earmark-medical mr-3"></i>
+                    <span>Balance Sheet</span>
+                </a>
                 {% endif %}
 
                 <!-- Department Modules (Quick Switch) -->
-                <div class="mt-4 px-6 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-50 pt-4">Department Modules</div>
+                <div
+                    class="mt-4 px-6 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-50 pt-4">
+                    Department Modules</div>
                 {% if blueprint_name.startswith('hr') %}
-                    {% if blueprint_name != 'hr1' %}<a href="{{ url_for('portal.logout_switch', target=url_for('hr1.login')) }}" class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-indigo-600"><i class="bi bi-circle-fill text-[6px] mr-3"></i> HR1: Recruitment</a>{% endif %}
-                    {% if blueprint_name != 'hr2' %}<a href="{{ url_for('portal.logout_switch', target=url_for('hr2.login')) }}" class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-indigo-600"><i class="bi bi-circle-fill text-[6px] mr-3"></i> HR2: Development</a>{% endif %}
-                    {% if blueprint_name != 'hr3' %}<a href="{{ url_for('portal.logout_switch', target=url_for('hr3.login')) }}" class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-indigo-600"><i class="bi bi-circle-fill text-[6px] mr-3"></i> HR3: Operations</a>{% endif %}
-                    {% if blueprint_name != 'hr4' %}<a href="{{ url_for('portal.logout_switch', target=url_for('hr4.login')) }}" class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-indigo-600"><i class="bi bi-circle-fill text-[6px] mr-3"></i> HR4: Compensation</a>{% endif %}
+                {% if blueprint_name != 'hr1' %}<a
+                    href="{{ url_for('portal.logout_switch', target=url_for('hr1.login')) }}"
+                    class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-indigo-600"><i
+                        class="bi bi-circle-fill text-[6px] mr-3"></i> HR1: Recruitment</a>{% endif %}
+                {% if blueprint_name != 'hr2' %}<a
+                    href="{{ url_for('portal.logout_switch', target=url_for('hr2.login')) }}"
+                    class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-indigo-600"><i
+                        class="bi bi-circle-fill text-[6px] mr-3"></i> HR2: Development</a>{% endif %}
+                {% if blueprint_name != 'hr3' %}<a
+                    href="{{ url_for('portal.logout_switch', target=url_for('hr3.login')) }}"
+                    class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-indigo-600"><i
+                        class="bi bi-circle-fill text-[6px] mr-3"></i> HR3: Operations</a>{% endif %}
+                {% if blueprint_name != 'hr4' %}<a
+                    href="{{ url_for('portal.logout_switch', target=url_for('hr4.login')) }}"
+                    class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-indigo-600"><i
+                        class="bi bi-circle-fill text-[6px] mr-3"></i> HR4: Compensation</a>{% endif %}
                 {% elif blueprint_name.startswith('ct') %}
-                    {% if blueprint_name != 'ct1' %}<a href="{{ url_for('portal.logout_switch', target=url_for('ct1.login')) }}" class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-emerald-600"><i class="bi bi-circle-fill text-[6px] mr-3"></i> CT1: Patient Access</a>{% endif %}
-                    {% if blueprint_name != 'ct2' %}<a href="{{ url_for('portal.logout_switch', target=url_for('ct2.login')) }}" class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-emerald-600"><i class="bi bi-circle-fill text-[6px] mr-3"></i> CT2: Clinical Ops</a>{% endif %}
-                    {% if blueprint_name != 'ct3' %}<a href="{{ url_for('portal.logout_switch', target=url_for('ct3.login')) }}" class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-emerald-600"><i class="bi bi-circle-fill text-[6px] mr-3"></i> CT3: Records & Finance</a>{% endif %}
+                {% if blueprint_name != 'ct1' %}<a
+                    href="{{ url_for('portal.logout_switch', target=url_for('ct1.login')) }}"
+                    class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-emerald-600"><i
+                        class="bi bi-circle-fill text-[6px] mr-3"></i> CT1: Patient Access</a>{% endif %}
+                {% if blueprint_name != 'ct2' %}<a
+                    href="{{ url_for('portal.logout_switch', target=url_for('ct2.login')) }}"
+                    class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-emerald-600"><i
+                        class="bi bi-circle-fill text-[6px] mr-3"></i> CT2: Clinical Ops</a>{% endif %}
+                {% if blueprint_name != 'ct3' %}<a
+                    href="{{ url_for('portal.logout_switch', target=url_for('ct3.login')) }}"
+                    class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-emerald-600"><i
+                        class="bi bi-circle-fill text-[6px] mr-3"></i> CT3: Records & Finance</a>{% endif %}
                 {% elif blueprint_name.startswith('log') %}
-                    {% if blueprint_name != 'log1' %}<a href="{{ url_for('portal.logout_switch', target=url_for('log1.login')) }}" class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-amber-600"><i class="bi bi-circle-fill text-[6px] mr-3"></i> LOG1: Supply Chain</a>{% endif %}
-                    {% if blueprint_name != 'log2' %}<a href="{{ url_for('portal.logout_switch', target=url_for('log2.login')) }}" class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-amber-600"><i class="bi bi-circle-fill text-[6px] mr-3"></i> LOG2: Fleet Ops</a>{% endif %}
+                {% if blueprint_name != 'log1' %}<a
+                    href="{{ url_for('portal.logout_switch', target=url_for('log1.login')) }}"
+                    class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-amber-600"><i
+                        class="bi bi-circle-fill text-[6px] mr-3"></i> LOG1: Supply Chain</a>{% endif %}
+                {% if blueprint_name != 'log2' %}<a
+                    href="{{ url_for('portal.logout_switch', target=url_for('log2.login')) }}"
+                    class="flex items-center px-6 py-2 text-xs text-gray-500 hover:text-amber-600"><i
+                        class="bi bi-circle-fill text-[6px] mr-3"></i> LOG2: Fleet Ops</a>{% endif %}
                 {% endif %}
 
                 <!-- Shared System Links -->
                 <div class="mt-8 pt-4 border-t border-gray-200 pb-4">
-                    <a href="{{ url_for('hr2.my_career', context=blueprint_name) }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#0891B2]' if request.endpoint == 'hr2.my_career' }}">
+                    <a href="{{ url_for('hr2.my_career', context=blueprint_name) }}"
+                        class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#0891B2]' if request.endpoint == 'hr2.my_career' }}">
                         <i class="bi bi-person-workspace mr-3 text-[#0891B2]"></i>
                         <span class="font-bold text-[#0891B2]">My Roadmap</span>
                     </a>
-                    <a href="{{ url_for('hr3.list_attendance', context=blueprint_name) }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-accent-light border-l-4 border-accent text-accent' if 'attendance' in request.endpoint }}">
+                    <a href="{{ url_for('hr3.list_attendance', context=blueprint_name) }}"
+                        class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-accent-light border-l-4 border-accent text-accent' if 'attendance' in request.endpoint }}">
                         <i class="bi {{ 'bi-activity' if blueprint_name == 'hr3' else 'bi-clock-history' }} mr-3"></i>
                         <span>{{ "Workforce Operation" if blueprint_name == 'hr3' else "My Attendance" }}</span>
                     </a>
-                    <a href="{{ url_for(blueprint_name + '.settings') }}" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-accent-light border-l-4 border-accent text-accent' if request.endpoint.endswith('.settings') }}">
+                    <a href="{{ url_for(blueprint_name + '.settings') }}"
+                        class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-accent-light border-l-4 border-accent text-accent' if request.endpoint.endswith('.settings') }}">
                         <i class="bi bi-gear mr-3"></i>
                         <span>System Settings</span>
                     </a>
@@ -452,16 +584,21 @@
             <!-- User Info & Sign Out Section -->
             <div class="p-4 border-t border-gray-100 bg-white">
                 <a href="{{ url_for('portal.profile') }}" class="block group">
-                    <div class="flex items-center p-3 mb-3 bg-white border border-gray-100 shadow-sm rounded-2xl transition-all duration-300 group-hover:border-accent group-hover:bg-accent-light">
+                    <div
+                        class="flex items-center p-3 mb-3 bg-white border border-gray-100 shadow-sm rounded-2xl transition-all duration-300 group-hover:border-accent group-hover:bg-accent-light">
                         {% if current_user.avatar_url %}
-                        <img src="{{ current_user.avatar_url }}" alt="" class="w-14 h-14 rounded-full object-cover shadow-xl border-2 border-white ring-2 ring-gray-100/50">
+                        <img src="{{ current_user.avatar_url }}" alt=""
+                            class="w-14 h-14 rounded-full object-cover shadow-xl border-2 border-white ring-2 ring-gray-100/50">
                         {% else %}
-                        <div class="flex items-center justify-center w-14 h-14 text-xl font-bold text-white bg-slate-800 rounded-full shadow-xl border-2 border-white ring-2 ring-gray-100/50">
+                        <div
+                            class="flex items-center justify-center w-14 h-14 text-xl font-bold text-white bg-slate-800 rounded-full shadow-xl border-2 border-white ring-2 ring-gray-100/50">
                             {{ current_user.username[0] | upper }}
                         </div>
                         {% endif %}
                         <div class="ml-3 overflow-hidden text-left">
-                            <p class="text-sm font-bold text-slate-800 truncate leading-tight transition-colors group-hover:text-accent">{{ current_user.username }}</p>
+                            <p
+                                class="text-sm font-bold text-slate-800 truncate leading-tight transition-colors group-hover:text-accent">
+                                {{ current_user.username }}</p>
                             <p class="text-[11px] font-medium text-slate-400 truncate mt-0.5">My Profile</p>
                         </div>
                     </div>
@@ -475,13 +612,15 @@
         </aside>
 
         <!-- Main Content -->
-        <div id="mainContentContainer" class="flex-1 flex flex-col min-h-0 overflow-hidden relative transition-all duration-300 lg:ml-72">
+        <div id="mainContentContainer"
+            class="flex-1 flex flex-col min-h-0 overflow-hidden relative transition-all duration-300 lg:ml-72">
             <!-- Top Header -->
             <header
                 class="bg-white/80 backdrop-blur-md shadow-sm h-20 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50 border-b border-gray-100 no-print">
                 <div class="flex items-center">
                     <!-- Sidebar Toggle Button -->
-                    <button onclick="toggleSidebar()" class="p-2 mr-4 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+                    <button onclick="toggleSidebar()"
+                        class="p-2 mr-4 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
                         <i class="bi bi-list text-2xl"></i>
                     </button>
                     <h2 class="text-xl md:text-2xl font-bold text-gray-800 tracking-tight">{% block header_title %}{{
@@ -491,15 +630,21 @@
                     <!-- Attendance Clock In/Out -->
                     <div class="hidden sm:flex items-center border-r border-gray-100 pr-4 mr-2">
                         {% if active_attendance %}
-                        <div class="flex items-center space-x-3 bg-green-50 px-4 py-1.5 rounded-2xl border border-green-100">
+                        <div
+                            class="flex items-center space-x-3 bg-green-50 px-4 py-1.5 rounded-2xl border border-green-100">
                             <div class="flex flex-col items-end">
-                                <span class="text-[10px] font-bold text-green-600 uppercase tracking-widest leading-none">Clocked In</span>
-                                <span class="text-xs font-black text-green-700 mt-1">{{ active_attendance.clock_in[11:16] }}</span>
+                                <span
+                                    class="text-[10px] font-bold text-green-600 uppercase tracking-widest leading-none">Clocked
+                                    In</span>
+                                <span class="text-xs font-black text-green-700 mt-1">{{
+                                    active_attendance.clock_in[11:16] }}</span>
                             </div>
                             <form action="{{ url_for('hr3.clock_out') }}" method="POST" class="inline">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="next" value="{{ request.full_path }}">
-                                <button type="submit" class="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all shadow-sm shadow-red-200" title="Clock Out">
+                                <button type="submit"
+                                    class="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all shadow-sm shadow-red-200"
+                                    title="Clock Out">
                                     <i class="bi bi-box-arrow-right text-xs"></i>
                                 </button>
                             </form>
@@ -508,7 +653,8 @@
                         <form action="{{ url_for('hr3.clock_in') }}" method="POST" class="inline">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="next" value="{{ request.full_path }}">
-                            <button type="submit" class="flex items-center space-x-2 px-4 py-2 bg-slate-900 text-white font-bold rounded-2xl hover:bg-black transition-all shadow-md shadow-gray-201">
+                            <button type="submit"
+                                class="flex items-center space-x-2 px-4 py-2 bg-slate-900 text-white font-bold rounded-2xl hover:bg-black transition-all shadow-md shadow-gray-201">
                                 <i class="bi bi-clock-history"></i>
                                 <span class="text-sm">Clock In</span>
                             </button>
@@ -517,53 +663,66 @@
                     </div>
 
                     <div class="relative" id="notificationDropdown">
-                        <button onclick="toggleNotifications()" class="p-2 text-gray-400 hover:text-accent transition-colors relative">
+                        <button onclick="toggleNotifications()"
+                            class="p-2 text-gray-400 hover:text-accent transition-colors relative">
                             <i class="bi bi-bell text-xl"></i>
                             {% if unread_notifications_count > 0 %}
-                            <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                            <span
+                                class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                             {% endif %}
                         </button>
-                        
+
                         <!-- Dropdown Menu -->
-                        <div id="notificationMenu" class="hidden absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
-                            <div class="px-5 py-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
+                        <div id="notificationMenu"
+                            class="hidden absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                            <div
+                                class="px-5 py-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
                                 <div>
-                                    <h3 class="text-sm font-black text-gray-900 uppercase tracking-widest">Notifications</h3>
-                                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{{ unread_notifications_count }} New Alerts</span>
+                                    <h3 class="text-sm font-black text-gray-900 uppercase tracking-widest">Notifications
+                                    </h3>
+                                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{{
+                                        unread_notifications_count }} New Alerts</span>
                                 </div>
-                                <form action="{{ url_for('portal.mark_all_notifications_read') }}" method="POST" class="inline">
+                                <form action="{{ url_for('portal.mark_all_notifications_read') }}" method="POST"
+                                    class="inline">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="p-2 text-gray-400 hover:text-accent transition-colors" title="Mark all as read">
+                                    <button type="submit" class="p-2 text-gray-400 hover:text-accent transition-colors"
+                                        title="Mark all as read">
                                         <i class="bi bi-check2-all text-lg"></i>
                                     </button>
                                 </form>
                             </div>
-                            
+
                             <div class="max-h-96 overflow-y-auto" id="notificationList">
                                 {% for n in sys_notifications %}
-                                <div class="p-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer {% if not n.is_read %}bg-accent/5{% endif %}" 
-                                     onclick="markAsRead('{{ n.id }}', this, '{{ n.target_url if n.target_url else '' }}')">
+                                <div class="p-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer {% if not n.is_read %}bg-accent/5{% endif %}"
+                                    onclick="markAsRead('{{ n.id }}', this, '{{ n.target_url if n.target_url else '' }}')">
                                     <div class="flex items-start">
                                         <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 
                                             {% if n.type == 'danger' %}bg-red-50 text-red-600
                                             {% elif n.type == 'warning' %}bg-amber-50 text-amber-600
                                             {% elif n.type == 'success' %}bg-emerald-50 text-emerald-600
                                             {% else %}bg-blue-50 text-blue-600{% endif %}">
-                                            <i class="bi {% if n.type == 'danger' %}bi-exclamation-octagon{% elif n.type == 'warning' %}bi-exclamation-triangle{% elif n.type == 'success' %}bi-check-circle{% else %}bi-info-circle{% endif %}"></i>
+                                            <i
+                                                class="bi {% if n.type == 'danger' %}bi-exclamation-octagon{% elif n.type == 'warning' %}bi-exclamation-triangle{% elif n.type == 'success' %}bi-check-circle{% else %}bi-info-circle{% endif %}"></i>
                                         </div>
                                         <div class="ml-3">
-                                            <p class="text-xs font-bold text-gray-900 leading-tight mb-1">{{ n.title }}</p>
+                                            <p class="text-xs font-bold text-gray-900 leading-tight mb-1">{{ n.title }}
+                                            </p>
                                             <p class="text-[11px] text-gray-500 leading-relaxed">{{ n.message }}</p>
                                             <div class="flex items-center mt-2 space-x-2">
-                                                <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{{ n.sender_subsystem | upper }}</span>
+                                                <span
+                                                    class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{{
+                                                    n.sender_subsystem | upper }}</span>
                                                 <span class="text-[10px] text-gray-300">•</span>
-                                                <span class="text-[10px] text-gray-400">{{ n.created_at | datetime('%H:%M') }}</span>
+                                                <span class="text-[10px] text-gray-400">{{ n.created_at |
+                                                    datetime('%H:%M') }}</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 {% endfor %}
-                                
+
                                 {% if not sys_notifications %}
                                 <div class="p-10 text-center">
                                     <i class="bi bi-bell-slash text-3xl text-gray-200 mb-2 block"></i>
@@ -573,7 +732,8 @@
                             </div>
 
                             <div class="p-4 bg-gray-50 border-t border-gray-100 text-center">
-                                <a href="{{ url_for('portal.list_notifications') }}" class="text-xs font-black text-gray-500 hover:text-accent uppercase tracking-widest transition-colors flex items-center justify-center">
+                                <a href="{{ url_for('portal.list_notifications') }}"
+                                    class="text-xs font-black text-gray-500 hover:text-accent uppercase tracking-widest transition-colors flex items-center justify-center">
                                     View All Notifications
                                     <i class="bi bi-arrow-right ml-2 text-sm"></i>
                                 </a>
@@ -608,16 +768,22 @@
 
                     <!-- Standardized Footer -->
                     <footer class="mt-auto pt-12 pb-8 border-t border-gray-100 no-print">
-                        <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-sm text-gray-500">
+                        <div
+                            class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-sm text-gray-500">
                             <div class="flex items-center">
                                 <i class="bi bi-hospital text-accent mr-2"></i>
-                                <span>© 2025 <span class="font-semibold text-gray-900">Hospital Management System</span>. All rights reserved.</span>
+                                <span>© 2025 <span class="font-semibold text-gray-900">Hospital Management
+                                        System</span>. All rights reserved.</span>
                             </div>
                             <div class="flex items-center space-x-6 h-8">
-                                <a href="{{ url_for('portal.terms') }}" class="inline-flex items-center hover:text-accent transition-colors font-medium">Terms</a>
-                                <a href="{{ url_for('portal.privacy') }}" class="inline-flex items-center hover:text-accent transition-colors font-medium">Privacy</a>
-                                <a href="#" class="inline-flex items-center hover:text-accent transition-colors font-medium">Legal</a>
-                                <a href="{{ url_for('portal.support') }}" class="inline-flex items-center hover:text-accent transition-colors group">
+                                <a href="{{ url_for('portal.terms') }}"
+                                    class="inline-flex items-center hover:text-accent transition-colors font-medium">Terms</a>
+                                <a href="{{ url_for('portal.privacy') }}"
+                                    class="inline-flex items-center hover:text-accent transition-colors font-medium">Privacy</a>
+                                <a href="#"
+                                    class="inline-flex items-center hover:text-accent transition-colors font-medium">Legal</a>
+                                <a href="{{ url_for('portal.support') }}"
+                                    class="inline-flex items-center hover:text-accent transition-colors group">
                                     <i class="bi bi-headset mr-2 text-accent text-lg"></i>
                                     <span>Support</span>
                                 </a>
@@ -630,12 +796,12 @@
     </div>
 
     {% block scripts %}{% endblock %}
-    
+
     <script>
         function toggleNotifications() {
             const menu = document.getElementById('notificationMenu');
             menu.classList.toggle('hidden');
-            
+
             // Close when clicking outside
             if (!menu.classList.contains('hidden')) {
                 const closeMenu = (e) => {
@@ -675,9 +841,9 @@
             const sidebar = document.getElementById('mainSidebar');
             const overlay = document.getElementById('sidebarOverlay');
             const content = document.getElementById('mainContentContainer');
-            
+
             const isDesktop = window.innerWidth >= 1024;
-            
+
             if (isDesktop) {
                 sidebar.classList.toggle('lg:!-translate-x-full');
                 content.classList.toggle('lg:!ml-0');
@@ -732,9 +898,9 @@
         });
 
         // Prevent browser undo/redo (Back/Forward) to enforce re-login
-        (function() {
+        (function () {
             window.history.pushState(null, null, window.location.href);
-            window.onpopstate = function() {
+            window.onpopstate = function () {
                 window.history.pushState(null, null, window.location.href);
                 // Optional: Force a reload to trigger authentication check
                 window.location.reload();

@@ -42,7 +42,7 @@ def login():
                 # Check if account is approved
                 if user.status != 'Active':
                     if user.status == 'Pending':
-                        flash('Your account is awaiting approval from HR3 Admin.', 'info')
+                        flash('Your account is awaiting approval from HR2 Admin.', 'info')
                     else:
                         flash('Your account has been rejected or deactivated.', 'danger')
                     return render_template('subsystems/hr/hr3/login.html',
@@ -141,18 +141,18 @@ def register():
             )
             
             if new_user:
-                # Notify HR3 Admin (yourself or other admins)
+                # Notify HR2 Admin (yourself or other admins)
                 from utils.hms_models import Notification
                 Notification.create(
-                    subsystem='hr3',
+                    subsystem='hr2',
                     title="New User Registration",
                     message=f"A new user '{username}' has registered for {SUBSYSTEM_NAME}. Approval required.",
                     n_type="warning",
                     sender_subsystem=BLUEPRINT_NAME,
-                    target_url=url_for('hr3.pending_approvals')
+                    target_url=url_for('hr2.pending_approvals')
                 )
                 
-                flash('Registration successful! Your account is awaiting approval from HR3 Admin.', 'success')
+                flash('Registration successful! Your account is awaiting approval from HR2 Admin.', 'success')
                 return redirect(url_for('hr3.login'))
             else:
                 flash('Registration failed. Please try again.', 'danger')
@@ -248,10 +248,9 @@ def dashboard():
     
     # Get Workforce stats
     try:
-        # Get active vs pending users (from all subsystems since HR3 is Admin)
+        # Get active users count
         all_users = User.get_all()
         active_count = len([u for u in all_users if u.status == 'Active'])
-        pending_count = len([u for u in all_users if u.status == 'Pending'])
         
         # Today's Attendance (simplified count)
         today = datetime.now().strftime('%Y-%m-%d')
@@ -278,7 +277,6 @@ def dashboard():
     except Exception as e:
         print(f"Error fetching HR3 stats: {e}")
         active_count = 0
-        pending_count = 0
         today_attendance = 0
         pending_leaves = 0
         recent_leaves = []
@@ -287,7 +285,6 @@ def dashboard():
     return render_template('subsystems/hr/hr3/dashboard.html', 
                           now=datetime.utcnow, 
                           active_count=active_count,
-                          pending_count=pending_count,
                           today_attendance=today_attendance,
                           pending_leaves=pending_leaves,
                           recent_leaves=recent_leaves,
@@ -464,10 +461,10 @@ def request_leave():
             }
             client.table('leave_requests').insert(data).execute()
             
-            # Notify HR3 Admin
+            # Notify HR2 Admin
             from utils.hms_models import Notification
             Notification.create(
-                subsystem='hr3',
+                subsystem='hr2',
                 title="New Leave Request",
                 message=f"{current_user.full_name or current_user.username} has submitted a new {leave_type} leave request.",
                 n_type="info",
@@ -519,310 +516,7 @@ def my_schedule():
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
-# Admin: User Management & Approvals
-@hr3_bp.route('/admin/users')
-@login_required
-def user_list():
-    if not current_user.is_admin():
-        flash('Access denied.', 'danger')
-        return redirect(url_for('hr3.dashboard'))
-    
-    users = User.get_all()
-    return render_template('subsystems/hr/hr3/admin/user_list.html', 
-                           users=users, 
-                           subsystem_name=SUBSYSTEM_NAME, 
-                           accent_color=ACCENT_COLOR,
-                           subsystem_config=SUBSYSTEM_CONFIG,
-                           blueprint_name=BLUEPRINT_NAME)
-
-@hr3_bp.route('/admin/users/add', methods=['GET', 'POST'])
-@login_required
-def add_user():
-    if not current_user.is_admin():
-        flash('Access denied.', 'danger')
-        return redirect(url_for('hr3.dashboard'))
-    
-    if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        subsystem = request.form.get('subsystem')
-        role = request.form.get('role')
-        status = request.form.get('status')
-        
-        config = SUBSYSTEM_CONFIG.get(subsystem)
-        if not config:
-            flash('Invalid subsystem selected.', 'danger')
-            return render_template('subsystems/hr/hr3/admin/user_form.html', 
-                                   subsystem_name=SUBSYSTEM_NAME, 
-                                   subsystem_config=SUBSYSTEM_CONFIG,
-                                   user=None,
-                                   blueprint_name=BLUEPRINT_NAME)
-        
-        try:
-            new_user = User.create(
-                username=username,
-                email=email,
-                password=password,
-                subsystem=subsystem,
-                department=config['department'],
-                role=role,
-                status=status
-            )
-            
-            if new_user:
-                from utils.hms_models import AuditLog
-                AuditLog.log(current_user.id, "Register User", BLUEPRINT_NAME, {"username": username, "subsystem": subsystem})
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'status': 'success', 'message': f'User {username} created successfully.'})
-                flash(f'User {username} created successfully.', 'success')
-                return redirect(url_for('hr3.user_list'))
-            else:
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'status': 'error', 'message': 'Failed to create user.'}), 400
-                flash('Failed to create user.', 'danger')
-        except PasswordValidationError as e:
-            error_msg = ', '.join(e.errors)
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'status': 'error', 'message': error_msg}), 400
-            for error in e.errors:
-                flash(error, 'danger')
-        except Exception as e:
-            error_msg = format_db_error(e)
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'status': 'error', 'message': error_msg}), 400
-            flash(error_msg, 'danger')
-            
-    return render_template('subsystems/hr/hr3/admin/user_form.html', 
-                           subsystem_name=SUBSYSTEM_NAME, 
-                           subsystem_config=SUBSYSTEM_CONFIG,
-                           user=None,
-                           blueprint_name=BLUEPRINT_NAME)
-
-@hr3_bp.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
-@login_required
-def edit_user(user_id):
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
-        flash('Access denied.', 'danger')
-        return redirect(url_for('hr3.dashboard'))
-    
-    user = User.get_by_id(user_id)
-    if not user:
-        flash('User not found.', 'danger')
-        return redirect(url_for('hr3.user_list'))
-    
-    if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        subsystem = request.form.get('subsystem')
-        role = request.form.get('role')
-        status = request.form.get('status')
-        password = request.form.get('password')
-        
-        config = SUBSYSTEM_CONFIG.get(subsystem)
-        if not config:
-            flash('Invalid subsystem selected.', 'danger')
-            return redirect(url_for('hr3.user_list'))
-        
-        update_data = {
-            'username': username,
-            'email': email,
-            'subsystem': subsystem,
-            'department': config['department'],
-            'role': role,
-            'status': status,
-            'is_active': status == 'Active'
-        }
-        
-        try:
-            if password:
-                user.set_password(password)
-                flash('Password updated.', 'info')
-            
-            if user.update(**update_data):
-                from utils.hms_models import AuditLog
-                AuditLog.log(current_user.id, "Update User", BLUEPRINT_NAME, {"target_user_id": user_id, "username": username})
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'status': 'success', 'message': f'User {username} updated successfully.'})
-                flash(f'User {username} updated successfully.', 'success')
-            else:
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'status': 'error', 'message': 'Failed to update user.'}), 400
-                flash('Failed to update user.', 'danger')
-            
-            return redirect(url_for('hr3.user_list'))
-        except PasswordValidationError as e:
-            error_msg = ', '.join(e.errors)
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'status': 'error', 'message': error_msg}), 400
-            for error in e.errors:
-                flash(error, 'danger')
-            return redirect(url_for('hr3.user_list'))
-        except Exception as e:
-            error_msg = format_db_error(e)
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'status': 'error', 'message': error_msg}), 400
-            flash(error_msg, 'danger')
-            return redirect(url_for('hr3.user_list'))
-            
-    return render_template('subsystems/hr/hr3/admin/user_form.html', 
-                           subsystem_name=SUBSYSTEM_NAME, 
-                           subsystem_config=SUBSYSTEM_CONFIG,
-                           user=user,
-                           blueprint_name=BLUEPRINT_NAME)
-
-@hr3_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
-@login_required
-def delete_user(user_id):
-    if not current_user.is_admin():
-        flash('Access denied.', 'danger')
-        return redirect(url_for('hr3.dashboard'))
-    
-    user = User.get_by_id(user_id)
-    if not user:
-        flash('User not found.', 'danger')
-        return redirect(url_for('hr3.user_list'))
-    
-    if user.id == current_user.id:
-        flash('You cannot delete your own account.', 'danger')
-        return redirect(url_for('hr3.user_list'))
-        
-    if user.delete():
-        flash(f'User {user.username} deleted successfully.', 'success')
-    else:
-        flash('Failed to delete user.', 'danger')
-        
-    return redirect(url_for('hr3.user_list'))
-
-@hr3_bp.route('/admin/approvals')
-@login_required
-def pending_approvals():
-    if not current_user.is_admin():
-        flash('Access denied.', 'danger')
-        return redirect(url_for('hr3.dashboard'))
-    
-    # Filter for pending users
-    all_users = User.get_all()
-    pending_users = [u for u in all_users if u.status == 'Pending']
-    
-    # Calculate stats for the dashboard
-    from datetime import datetime
-    today = datetime.utcnow().date()
-    
-    # Count approved today (using created_at as a proxy if we don't have updated_at)
-    # or just count total approved/rejected if we want accurate total counts
-    approved_today = len([u for u in all_users if u.status == 'Active' and u.role != 'Administrator'])
-    rejected_today = len([u for u in all_users if u.status == 'Rejected'])
-    
-    return render_template('subsystems/hr/hr3/admin/approvals.html', 
-                          users=pending_users,
-                          approved_count=approved_today,
-                          rejected_count=rejected_today,
-                          subsystem_name=SUBSYSTEM_NAME, 
-                          accent_color=ACCENT_COLOR,
-                          blueprint_name=BLUEPRINT_NAME)
-
-@hr3_bp.route('/admin/approvals/<int:user_id>/<action>')
-@login_required
-def process_approval(user_id, action):
-    if not current_user.is_admin():
-        flash('Access denied.', 'danger')
-        return redirect(url_for('hr3.dashboard'))
-    
-    user = User.get_by_id(user_id)
-    if not user:
-        flash('User not found.', 'danger')
-        return redirect(url_for('hr3.pending_approvals'))
-    
-    try:
-        if action == 'approve':
-            user.update(status='Active', is_active=True)
-            flash(f'User {user.username} has been approved.', 'success')
-        elif action == 'deny':
-            user.update(status='Rejected', is_active=False)
-            flash(f'User {user.username} has been rejected.', 'warning')
-    except Exception as e:
-        flash(format_db_error(e), 'danger')
-    
-    return redirect(url_for('hr3.pending_approvals'))
-
-@hr3_bp.route('/admin/users/<int:user_id>/toggle')
-@login_required
-def toggle_user_status(user_id):
-    if not current_user.is_admin():
-        flash('Access denied.', 'danger')
-        return redirect(url_for('hr3.dashboard'))
-    
-    user = User.get_by_id(user_id)
-    if not user:
-        flash('User not found.', 'danger')
-        return redirect(url_for('hr3.user_list'))
-    
-    try:
-        # Toggle the status
-        if user.status == 'Active':
-            user.update(status='Rejected', is_active=False)
-            flash(f'User {user.username} has been deactivated.', 'warning')
-        else:
-            user.update(status='Active', is_active=True)
-            flash(f'User {user.username} has been activated.', 'success')
-    except Exception as e:
-        flash(format_db_error(e), 'danger')
-    
-    return redirect(url_for('hr3.user_list'))
-
-@hr3_bp.route('/admin/users/<int:user_id>/reset-password')
-@login_required
-def reset_user_password(user_id):
-    if not current_user.is_admin():
-        flash('Access denied.', 'danger')
-        return redirect(url_for('hr3.dashboard'))
-    
-    user = User.get_by_id(user_id)
-    if not user:
-        flash('User not found.', 'danger')
-        return redirect(url_for('hr3.user_list'))
-    
-    try:
-        # Reset to default password
-        default_pw = "HMSPassword@123"
-        user.set_password(default_pw, skip_validation=True)
-        flash(f'Password for {user.username} has been reset to: {default_pw}', 'success')
-    except Exception as e:
-        flash(format_db_error(e), 'danger')
-    return redirect(url_for('hr3.user_list'))
-
-@hr3_bp.route('/admin/users/<int:user_id>/change-password', methods=['POST'])
-@login_required
-def admin_change_password(user_id):
-    if not current_user.is_admin():
-        flash('Access denied.', 'danger')
-        return redirect(url_for('hr3.dashboard'))
-    
-    user = User.get_by_id(user_id)
-    if not user:
-        flash('User not found.', 'danger')
-        return redirect(url_for('hr3.user_list'))
-    
-    new_password = request.form.get('new_password')
-    if not new_password or len(new_password) < 8:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'status': 'error', 'message': 'Password must be at least 8 characters long.'}), 400
-        flash('Password must be at least 8 characters long.', 'warning')
-        return redirect(url_for('hr3.user_list'))
-    
-    try:
-        user.set_password(new_password, skip_validation=True)
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'status': 'success', 'message': f'Password for {user.username} has been updated.'})
-        flash(f'Password for {user.username} has been updated.', 'success')
-    except Exception as e:
-        error_msg = format_db_error(e)
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'status': 'error', 'message': error_msg}), 400
-        flash(error_msg, 'danger')
-    return redirect(url_for('hr3.user_list'))
-
+# Admin: Analytics & Settings
 @hr3_bp.route('/analytics')
 @login_required
 def analytics():

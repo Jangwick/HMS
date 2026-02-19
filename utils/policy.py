@@ -14,7 +14,7 @@ class HMSFundamentalsPolicy:
         """
         Policy Rule 1: Identity & Isolation
         Ensures that a user can only access routes belonging to their assigned subsystem.
-        Exception: HR3 Administrators can access all modules for oversight.
+        Exception: HR2 Administrators can access all modules for oversight.
         """
         if not current_user.is_authenticated:
             return False, "Session required. Please login."
@@ -24,8 +24,8 @@ class HMSFundamentalsPolicy:
         if current_user.status != 'Active':
             return False, f"Your account status is currently '{current_user.status}'. Access to functional modules is restricted."
 
-        # Global Administrator Privilege (HR3)
-        if current_user.subsystem == 'hr3' and current_user.role in ['Admin', 'Administrator']:
+        # Global Administrator Privilege (HR2)
+        if current_user.subsystem == 'hr2' and current_user.role in ['Admin', 'Administrator']:
             return True, None
             
         # Department-wide Administrator Access
