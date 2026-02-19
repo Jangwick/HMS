@@ -281,6 +281,7 @@
             <div class="bg-indigo-900 rounded-[2rem] p-8 text-white shadow-2xl shadow-indigo-200">
                 <h4 class="text-lg font-black mb-6 uppercase tracking-widest text-indigo-300">Quick Portal</h4>
                 <div class="space-y-3">
+                    {% if current_user.is_admin() %}
                     <a href="{{ url_for('hr3.manage_schedules') }}"
                         class="flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group">
                         <span class="font-black text-xs uppercase tracking-widest">Shift Roster</span>
