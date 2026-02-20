@@ -45,10 +45,17 @@ def login():
             session['superadmin_otp'] = otp
             session['otp_timestamp'] = time.time()
             
-            # In a real system, we would send this via email/SMS
-            print(f"DEBUG: SuperAdmin OTP for {user.username} is: {otp}")
+            # Send OTP via Email
+            from utils.mail_system import send_otp
+            target_email = "Johnrick1214@gmail.com" # As requested by user
             
-            flash('Verification code sent. Please enter the 6-digit code to continue.', 'info')
+            if send_otp(target_email, otp):
+                flash(f'Verification code sent to {target_email}. Please check your inbox.', 'info')
+            else:
+                flash('Security Alert: Failed to send verification code. Please contact system admin.', 'danger')
+                # Keep printing to console for emergency backup
+                print(f"DEBUG: SuperAdmin OTP (Fallback): {otp}")
+            
             return redirect(url_for('superadmin.verify_otp'))
         else:
             flash('Invalid credentials or account not found.', 'danger')

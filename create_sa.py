@@ -3,7 +3,7 @@ from utils.password_validator import PasswordValidationError
 
 def create_superadmin():
     username = "superadmin"
-    email = "superadmin@hms.com"
+    email = "Johnrick1214@gmail.com"
     password = "Admin@12345"
     subsystem = "superadmin" # Virtual subsystem
     department = "System Administration"
@@ -14,8 +14,8 @@ def create_superadmin():
         # Check if exists
         existing = User.get_by_username(username)
         if existing:
-            print(f"User {username} already exists. Updating role to SuperAdmin...")
-            existing.update(role='SuperAdmin', status='Active')
+            print(f"User {username} already exists. Updating role to SuperAdmin and setting email...")
+            existing.update(role='SuperAdmin', status='Active', email=email)
             print("Update complete.")
             return
 
