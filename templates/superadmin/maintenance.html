@@ -111,8 +111,20 @@
                             <label
                                 class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Target
                                 ID</label>
-                            <input type="text" name="target_id" placeholder="e.g., HR1 or HR" required
-                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all">
+                            <select name="target_id" required
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all cursor-pointer">
+                                <optgroup label="Subsystems">
+                                    {% for code in subsystem_config.keys() %}
+                                    <option value="{{ code }}">{{ code|upper }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                                <optgroup label="Departments">
+                                    <option value="HR">HR Department</option>
+                                    <option value="CORE_TRANSACTION">Core Transaction</option>
+                                    <option value="LOGISTICS">Logistics</option>
+                                    <option value="FINANCIALS">Financials</option>
+                                </optgroup>
+                            </select>
                         </div>
                     </div>
 
