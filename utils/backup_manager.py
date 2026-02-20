@@ -24,18 +24,23 @@ DEPARTMENT_MAPPING = {
     'HR': ['HR1', 'HR2', 'HR3', 'HR4'],
     'CORE_TRANSACTION': ['CT1', 'CT2', 'CT3'],
     'LOGISTICS': ['LOG1', 'LOG2'],
-    'FINANCIALS': ['FIN1']
+    'FINANCIALS': ['FINANCIALS']
 }
 
 def get_tables_for_scope(scope, target_id):
     """Returns a list of tables for the given scope and target_id."""
+    if not target_id:
+        return []
+        
+    tid = target_id.upper()
     if scope == 'subsystem':
-        return SUBSYSTEM_TABLE_MAPPING.get(target_id, [])
+        return SUBSYSTEM_TABLE_MAPPING.get(tid, [])
     elif scope == 'department':
-        subsystems = DEPARTMENT_MAPPING.get(target_id, [])
+        subsystems = DEPARTMENT_MAPPING.get(tid, [])
         tables = []
         for ss in subsystems:
-            for table in SUBSYSTEM_TABLE_MAPPING.get(ss, []):
+            # Note: We want the ss in the mapping to match SUBSYSTEM_TABLE_MAPPING keys
+            for table in SUBSYSTEM_TABLE_MAPPING.get(ss.upper(), []):
                 if table not in tables:
                     tables.append(table)
         return tables
