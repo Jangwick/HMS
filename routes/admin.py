@@ -15,7 +15,7 @@ def backup(scope, target_id):
         return redirect(url_for('portal.index'))
     
     # Departmental isolation check (HR2 Admins bypass)
-    if current_user.subsystem != 'hr3':
+    if not current_user.is_super_admin() and current_user.subsystem != 'hr3':
         from utils.supabase_client import SUBSYSTEM_CONFIG
         user_dept = current_user.department
         
@@ -53,7 +53,7 @@ def restore(scope, target_id):
         return redirect(url_for('portal.index'))
 
     # Departmental isolation check (HR2 Admins bypass)
-    if current_user.subsystem != 'hr3':
+    if not current_user.is_super_admin() and current_user.subsystem != 'hr3':
         from utils.supabase_client import SUBSYSTEM_CONFIG
         user_dept = current_user.department
         
@@ -96,7 +96,7 @@ def reset(scope, target_id):
         return jsonify({"error": "Unauthorized"}), 403
 
     # Departmental isolation check
-    if current_user.subsystem != 'hr3':
+    if not current_user.is_super_admin() and current_user.subsystem != 'hr3':
         from utils.supabase_client import SUBSYSTEM_CONFIG
         user_dept = current_user.department
         if scope == 'subsystem':

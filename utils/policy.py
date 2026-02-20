@@ -24,8 +24,8 @@ class HMSFundamentalsPolicy:
         if current_user.status != 'Active':
             return False, f"Your account status is currently '{current_user.status}'. Access to functional modules is restricted."
 
-        # Global Administrator Privilege (HR2)
-        if current_user.subsystem == 'hr2' and current_user.role in ['Admin', 'Administrator']:
+        # Global Administrator Privilege (HR2 Legacy or SuperAdmin)
+        if (current_user.subsystem == 'hr2' and current_user.role in ['Admin', 'Administrator']) or current_user.is_super_admin():
             return True, None
             
         # Department-wide Administrator Access
@@ -37,6 +37,9 @@ class HMSFundamentalsPolicy:
             return True, None
 
         # Subsystem Isolation Check
+        if current_user.is_super_admin(): # Double-check for SuperAdmin to ensure zero mistakes
+             return True, None
+             
         if current_user.subsystem != subsystem_code:
             # Audit unauthorized access attempts
             AuditLog.log(

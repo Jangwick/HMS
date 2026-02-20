@@ -1,0 +1,130 @@
+{% extends "base/base.html" %}
+
+{% block title %}MFA Verification - Global Command Center{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-[#F8FAFC] relative overflow-hidden font-['Inter']">
+    <!-- Dynamic Trademark Background -->
+    <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+        <div class="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full opacity-10 blur-3xl"
+            style="background: radial-gradient(circle, #7C3AED 0%, transparent 70%);"></div>
+        <div class="absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] rounded-full opacity-10 blur-3xl"
+            style="background: radial-gradient(circle, #7C3AED 0%, transparent 70%);"></div>
+    </div>
+
+    <div
+        class="max-w-[448px] w-full bg-white/90 backdrop-blur-sm px-10 py-12 rounded-[40px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.06)] border border-gray-100 relative z-10 mx-4">
+        <!-- Floating Header Icon -->
+        <div class="absolute -top-10 left-1/2 transform -translate-x-1/2">
+            <div class="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg border-4 border-white text-white shadow-violet-500/20"
+                style="background: linear-gradient(to bottom right, #7C3AED, #4c1d95);">
+                <i class="bi bi-shield-lock-fill text-4xl"></i>
+            </div>
+        </div>
+
+        <div class="text-center space-y-2 mb-10 mt-4">
+            <h2 class="text-3xl font-bold text-gray-900 tracking-tight">Security Check</h2>
+            <div class="flex items-center justify-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Two-Factor Authentication</p>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed px-4">
+                Enter the 6-digit verification code sent to your authorized device to unlock the command center.
+            </p>
+        </div>
+
+        <div class="mt-8">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="rounded-xl p-4 mb-6 border flex items-start animate-fade-in"
+                style="background-color: {{ '#FEF2F2' if category == 'danger' else '#F0FDF4' }}; border-color: {{ '#FEE2E2' if category == 'danger' else '#DCFCE7' }};">
+                <div class="flex-shrink-0">
+                    <i class="bi bi-{{ 'exclamation-octagon' if category == 'danger' else 'check2-circle' }} text-lg"
+                        style="color: {{ '#EF4444' if category == 'danger' else '#22C55E' }};"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-bold leading-tight"
+                        style="color: {{ '#991B1B' if category == 'danger' else '#166534' }};">{{ message }}</p>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('superadmin.verify_otp') }}" method="POST" class="space-y-8">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+                <div class="flex justify-between items-center gap-2" id="otp-inputs">
+                    {% for i in range(6) %}
+                    <input type="text" maxlength="1"
+                        class="w-12 h-16 bg-gray-50 border-2 border-gray-100 rounded-2xl text-center text-2xl font-black text-gray-900 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all duration-200"
+                        name="otp_{{ i }}" id="otp_{{ i }}" onkeyup="moveFocus({{ i }}, event)"
+                        onpaste="handlePaste(event)" required autocomplete="off">
+                    {% endfor %}
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit"
+                        class="group relative w-full flex justify-center py-4 px-4 border border-transparent text-sm font-bold rounded-xl text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 shadow-lg transform hover:-translate-y-0.5"
+                        style="background: linear-gradient(to right, #7C3AED, #4c1d95); box-shadow: 0 10px 20px -5px rgba(124, 58, 237, 0.4); --tw-ring-color: #7C3AED;">
+                        Verify Identity
+                        <i class="bi bi-arrow-right ml-3 group-hover:translate-x-2 transition-transform"></i>
+                    </button>
+                </div>
+
+                <div class="text-center">
+                    <a href="{{ url_for('superadmin.login') }}"
+                        class="text-[10px] font-bold text-gray-400 hover:text-violet-600 transition-colors uppercase tracking-[0.2em]">
+                        <i class="bi bi-arrow-left mr-2"></i> Back to Login
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Security Footer -->
+    <div class="absolute bottom-8 w-full text-center">
+        <p
+            class="text-[9px] font-black text-gray-400 uppercase tracking-[0.3em] flex items-center justify-center gap-3">
+            <i class="bi bi-lock-fill text-violet-500/50"></i> Encrypted Session
+            <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+            HMS Sentinel Core v2.4
+        </p>
+    </div>
+</div>
+
+<script>
+    function moveFocus(index, event) {
+        const input = document.getElementById('otp_' + index);
+
+        // Handle backspace
+        if (event.key === "Backspace" && index > 0 && !input.value) {
+            document.getElementById('otp_' + (index - 1)).focus();
+        }
+        // Handle number input
+        else if (input.value && index < 5) {
+            document.getElementById('otp_' + (index + 1)).focus();
+        }
+    }
+
+    function handlePaste(event) {
+        event.preventDefault();
+        const paste = event.clipboardData.getData('text');
+        const digits = paste.match(/\d/g);
+
+        if (digits) {
+            digits.slice(0, 6).forEach((digit, i) => {
+                const input = document.getElementById('otp_' + i);
+                input.value = digit;
+            });
+            // Focus last input or first empty
+            const lastIndex = Math.min(digits.length, 6) - 1;
+            document.getElementById('otp_' + lastIndex).focus();
+        }
+    }
+
+    // Auto-focus first input
+    window.onload = () => document.getElementById('otp_0').focus();
+</script>
+{% endblock %}

@@ -1,0 +1,249 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block header_title %}Global User Management{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
+                    <i class="bi bi-people-fill text-violet-600"></i>
+                </div>
+                <span
+                    class="text-[10px] font-black text-violet-500 uppercase tracking-[0.15em] bg-violet-50 px-3 py-1 rounded-full">SuperAdmin</span>
+            </div>
+            <h1 class="text-3xl font-black text-gray-900 tracking-tight">Global User Management</h1>
+            <p class="text-gray-400 mt-1">Manage all {{ users|length }} user accounts across every department and
+                subsystem.</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div
+        class="bg-white p-4 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col md:flex-row gap-3 items-center">
+        <form method="GET" action="{{ url_for('superadmin.user_list') }}"
+            class="flex flex-col md:flex-row gap-3 items-center w-full" id="filterForm">
+            <div class="relative flex-1 group w-full">
+                <i
+                    class="bi bi-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-violet-500 transition-colors"></i>
+                <input type="text" id="liveSearch" placeholder="Search users by name, username, or email..."
+                    class="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-[1.5rem] text-sm font-bold focus:ring-2 focus:ring-violet-500 transition-all">
+            </div>
+
+            <select name="department" onchange="this.form.submit()"
+                class="px-5 py-4 bg-gray-50 border-none rounded-[1.5rem] text-sm font-bold focus:ring-2 focus:ring-violet-500 transition-all cursor-pointer appearance-none min-w-[140px]">
+                <option value="">All Departments</option>
+                {% for dept in departments %}
+                <option value="{{ dept }}" {{ 'selected' if filter_dept==dept }}>{{ dept }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="subsystem" onchange="this.form.submit()"
+                class="px-5 py-4 bg-gray-50 border-none rounded-[1.5rem] text-sm font-bold focus:ring-2 focus:ring-violet-500 transition-all cursor-pointer appearance-none min-w-[140px]">
+                <option value="">All Subsystems</option>
+                {% for sub in subsystems %}
+                <option value="{{ sub }}" {{ 'selected' if filter_subsystem==sub }}>{{ sub|upper }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="status" onchange="this.form.submit()"
+                class="px-5 py-4 bg-gray-50 border-none rounded-[1.5rem] text-sm font-bold focus:ring-2 focus:ring-violet-500 transition-all cursor-pointer appearance-none min-w-[120px]">
+                <option value="">All Statuses</option>
+                <option value="Active" {{ 'selected' if filter_status=='Active' }}>Active</option>
+                <option value="Pending" {{ 'selected' if filter_status=='Pending' }}>Pending</option>
+                <option value="Suspended" {{ 'selected' if filter_status=='Suspended' }}>Suspended</option>
+                <option value="Rejected" {{ 'selected' if filter_status=='Rejected' }}>Rejected</option>
+            </select>
+
+            <select name="role" onchange="this.form.submit()"
+                class="px-5 py-4 bg-gray-50 border-none rounded-[1.5rem] text-sm font-bold focus:ring-2 focus:ring-violet-500 transition-all cursor-pointer appearance-none min-w-[120px]">
+                <option value="">All Roles</option>
+                {% for role in roles %}
+                <option value="{{ role }}" {{ 'selected' if filter_role==role }}>{{ role }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <!-- User Count Badge -->
+    <div class="flex items-center gap-4">
+        <span class="text-xs font-black text-gray-400 uppercase tracking-widest">
+            Showing {{ users|length }} user{{ 's' if users|length != 1 }}
+        </span>
+        {% if filter_dept or filter_subsystem or filter_status or filter_role %}
+        <a href="{{ url_for('superadmin.user_list') }}"
+            class="text-[10px] font-black text-violet-500 uppercase tracking-widest hover:text-violet-700 flex items-center gap-1">
+            <i class="bi bi-x-circle"></i> Clear Filters
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Users Table -->
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left" id="usersTable">
+                <thead
+                    class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
+                    <tr>
+                        <th class="px-8 py-6">User</th>
+                        <th class="px-6 py-6">Department / Subsystem</th>
+                        <th class="px-6 py-6">Role</th>
+                        <th class="px-6 py-6">Status</th>
+                        <th class="px-6 py-6">Last Login</th>
+                        <th class="px-8 py-6 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for user in users %}
+                    <tr class="hover:bg-gray-50/50 transition-colors group user-row"
+                        data-search="{{ (user.full_name or '')|lower }} {{ user.username|lower }} {{ (user.email or '')|lower }}">
+                        <td class="px-8 py-5">
+                            <div class="flex items-center gap-4">
+                                <div class="relative">
+                                    {% if user.avatar_url %}
+                                    <img src="{{ user.avatar_url }}" alt=""
+                                        class="w-12 h-12 rounded-xl object-cover shadow-sm">
+                                    {% else %}
+                                    <div
+                                        class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-black text-lg">
+                                        {{ user.username[0]|upper }}
+                                    </div>
+                                    {% endif %}
+                                    {% if user.status == 'Active' %}
+                                    <div
+                                        class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-[3px] border-white">
+                                    </div>
+                                    {% elif user.status == 'Pending' %}
+                                    <div
+                                        class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-amber-500 border-[3px] border-white">
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <div class="font-black text-gray-900 text-sm leading-tight">{{ user.full_name or
+                                        user.username }}</div>
+                                    <div class="text-[10px] text-gray-400 font-medium mt-0.5">@{{ user.username }}</div>
+                                    <div class="text-[10px] text-gray-400 font-medium">{{ user.email or 'No email' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="flex flex-col">
+                                <span class="text-[10px] font-black text-gray-500 uppercase tracking-wider">{{
+                                    user.department or 'N/A' }}</span>
+                                {% set sub_config = subsystem_config.get(user.subsystem, {}) %}
+                                <span class="text-[10px] font-bold text-violet-500 uppercase tracking-wider mt-0.5">
+                                    {{ user.subsystem|upper }} — {{ sub_config.get('name', 'Unknown') }}
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider
+                                {% if user.role == 'SuperAdmin' %}bg-violet-50 text-violet-600
+                                {% elif user.role in ['Admin', 'Administrator'] %}bg-blue-50 text-blue-600
+                                {% elif user.role == 'Manager' %}bg-amber-50 text-amber-600
+                                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                {{ user.role }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider
+                                {% if user.status == 'Active' %}bg-emerald-50 text-emerald-600
+                                {% elif user.status == 'Pending' %}bg-amber-50 text-amber-600
+                                {% elif user.status == 'Suspended' %}bg-rose-50 text-rose-600
+                                {% else %}bg-gray-100 text-gray-500{% endif %}">
+                                {{ user.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="text-xs text-gray-400 font-medium">
+                                {{ user.last_login|datetime if user.last_login else 'Never' }}
+                            </span>
+                        </td>
+                        <td class="px-8 py-5">
+                            <div
+                                class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <!-- Edit -->
+                                <a href="{{ url_for('superadmin.edit_user', user_id=user.id) }}"
+                                    class="w-9 h-9 rounded-xl bg-violet-50 text-violet-500 hover:bg-violet-500 hover:text-white flex items-center justify-center transition-all"
+                                    title="Edit User">
+                                    <i class="bi bi-pencil-fill text-xs"></i>
+                                </a>
+
+                                <!-- Toggle Status -->
+                                <form action="{{ url_for('superadmin.toggle_user_status', user_id=user.id) }}"
+                                    method="POST" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit"
+                                        class="w-9 h-9 rounded-xl {{ 'bg-rose-50 text-rose-500 hover:bg-rose-500' if user.status == 'Active' else 'bg-emerald-50 text-emerald-500 hover:bg-emerald-500' }} hover:text-white flex items-center justify-center transition-all"
+                                        title="{{ 'Suspend' if user.status == 'Active' else 'Activate' }}"
+                                        onclick="return confirm('{{ 'Suspend' if user.status == 'Active' else 'Activate' }} user {{ user.username }}?')">
+                                        <i
+                                            class="bi bi-{{ 'pause-fill' if user.status == 'Active' else 'play-fill' }} text-xs"></i>
+                                    </button>
+                                </form>
+
+                                <!-- Reset Password -->
+                                <form action="{{ url_for('superadmin.reset_password', user_id=user.id) }}" method="POST"
+                                    class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="new_password" value="Temp@1234">
+                                    <button type="submit"
+                                        class="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 hover:bg-amber-500 hover:text-white flex items-center justify-center transition-all"
+                                        title="Reset Password"
+                                        onclick="return confirm('Reset password for {{ user.username }}? Temp password: Temp@1234')">
+                                        <i class="bi bi-key-fill text-xs"></i>
+                                    </button>
+                                </form>
+
+                                <!-- Delete -->
+                                {% if user.id != current_user.id %}
+                                <form action="{{ url_for('superadmin.delete_user', user_id=user.id) }}" method="POST"
+                                    class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit"
+                                        class="w-9 h-9 rounded-xl bg-gray-100 text-gray-400 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-all"
+                                        title="Delete User"
+                                        onclick="return confirm('PERMANENTLY DELETE user {{ user.username }}? This cannot be undone.')">
+                                        <i class="bi bi-trash3-fill text-xs"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-8 py-16 text-center">
+                            <div
+                                class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-200">
+                                <i class="bi bi-people text-4xl"></i>
+                            </div>
+                            <p class="text-gray-400 font-black uppercase tracking-widest text-xs">No users match your
+                                filters</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Live search functionality
+    const searchInput = document.getElementById('liveSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            const query = this.value.toLowerCase();
+            document.querySelectorAll('.user-row').forEach(row => {
+                const searchData = row.getAttribute('data-search');
+                row.style.display = searchData.includes(query) ? '' : 'none';
+            });
+        });
+    }
+</script>
+{% endblock %}

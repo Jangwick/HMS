@@ -1,0 +1,113 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block header_title %}System Audit Trail{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
+                    <i class="bi bi-shield-check text-violet-600"></i>
+                </div>
+                <span
+                    class="text-[10px] font-black text-violet-500 uppercase tracking-[0.15em] bg-violet-50 px-3 py-1 rounded-full">Security
+                    Audit</span>
+            </div>
+            <h1 class="text-3xl font-black text-gray-900 tracking-tight">System Audit Trail</h1>
+            <p class="text-gray-400 mt-1">Real-time monitoring of all administrative actions across the HMS platform.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button onclick="window.print()"
+                class="px-6 py-3 bg-white border border-gray-100 rounded-2xl text-xs font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50 transition-all flex items-center gap-2">
+                <i class="bi bi-printer"></i> Export PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Search/Filter -->
+    <div
+        class="bg-white p-4 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col md:flex-row gap-3 items-center">
+        <div class="relative flex-1 group w-full">
+            <i
+                class="bi bi-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-violet-500 transition-colors"></i>
+            <input type="text" id="auditSearch" placeholder="Filter by action, user, or subsystem..."
+                class="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-[1.5rem] text-sm font-bold focus:ring-2 focus:ring-violet-500 transition-all">
+        </div>
+    </div>
+
+    <!-- Audit Table -->
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left" id="auditTable">
+                <thead
+                    class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
+                    <tr>
+                        <th class="px-8 py-6">Timestamp</th>
+                        <th class="px-6 py-6">Action</th>
+                        <th class="px-6 py-6">Target Subsystem</th>
+                        <th class="px-6 py-6">User ID</th>
+                        <th class="px-8 py-6">Details</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for log in logs %}
+                    <tr class="hover:bg-gray-50/50 transition-colors group log-row"
+                        data-search="{{ log.action|lower }} {{ log.subsystem|lower }} {{ log.user_id|lower }}">
+                        <td class="px-8 py-5">
+                            <div class="text-xs font-bold text-gray-900">{{ log.created_at|datetime }}</div>
+                            <div class="text-[9px] text-gray-400 font-mono mt-0.5">{{ log.id }}</div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="text-sm font-black text-slate-800">{{ log.action }}</span>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span
+                                class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-violet-50 text-violet-600">
+                                {{ log.subsystem|upper }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5 text-sm font-medium text-gray-500">
+                            #{{ log.user_id }}
+                        </td>
+                        <td class="px-8 py-5">
+                            <div class="text-[10px] text-gray-500 font-medium font-mono bg-gray-50 p-2 rounded-lg border border-gray-100 max-w-xs truncate"
+                                title="{{ log.details|tojson }}">
+                                {{ log.details|tojson }}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-8 py-16 text-center">
+                            <div
+                                class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-200">
+                                <i class="bi bi-shield-slash text-4xl"></i>
+                            </div>
+                            <p class="text-gray-400 font-black uppercase tracking-widest text-xs">No audit logs found
+                            </p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const searchInput = document.getElementById('auditSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            const query = this.value.toLowerCase();
+            document.querySelectorAll('.log-row').forEach(row => {
+                const searchData = row.getAttribute('data-search');
+                row.style.display = searchData.includes(query) ? '' : 'none';
+            });
+        });
+    }
+</script>
+{% endblock %}

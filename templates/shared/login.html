@@ -63,7 +63,8 @@
             </div>
             <script>
                 document.addEventListener('DOMContentLoaded', function () {
-                    var remaining = {{ remaining_seconds | default(0) }};
+                    var remaining = {{ remaining_seconds | default (0)
+                }};
                 function updateTimer() {
                     if (remaining < 0) {
                         document.getElementById("lockout-timer").innerHTML = '<p class="text-sm font-medium text-green-800">Lockout expired. Please refresh to login.</p>';
@@ -137,8 +138,16 @@
     </div>
 
     <!-- Footer -->
-    <div class="absolute bottom-6 text-center w-full text-[10px] uppercase tracking-widest text-gray-400">
-        &copy; 2026 Hospital Management System. Secure Environment.
+    <div class="absolute bottom-6 text-center w-full space-y-2">
+        <p class="text-[10px] uppercase tracking-widest text-gray-400">
+            &copy; 2026 Hospital Management System. Secure Environment.
+        </p>
+        <div class="flex items-center justify-center gap-4">
+            <a href="{{ url_for('superadmin.login') }}"
+                class="text-[9px] font-bold text-gray-300 hover:text-violet-500 transition-colors uppercase tracking-widest">
+                <i class="bi bi-shield-lock mr-1"></i> Admin Access
+            </a>
+        </div>
     </div>
 </div>
 
@@ -189,4 +198,3 @@
     }
 </script>
 {% endblock %}
-

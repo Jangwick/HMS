@@ -1,0 +1,163 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block header_title %}Edit User — {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="flex items-center gap-4">
+        <a href="{{ url_for('superadmin.user_list') }}"
+            class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-violet-100 hover:text-violet-600 transition-all">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-black text-gray-900 tracking-tight">Edit User Profile</h1>
+            <p class="text-sm text-gray-400">Modifying account for <span class="font-bold text-violet-500">@{{
+                    user.username }}</span></p>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div
+        class="rounded-xl bg-{{ 'red' if category == 'danger' else 'green' }}-50 p-4 border border-{{ 'red' if category == 'danger' else 'green' }}-100 flex items-start">
+        <i
+            class="bi bi-{{ 'x-circle-fill' if category == 'danger' else 'check-circle-fill' }} text-{{ 'red' if category == 'danger' else 'green' }}-500 text-lg mr-3"></i>
+        <p class="text-sm font-medium text-{{ 'red' if category == 'danger' else 'green' }}-800">{{ message }}</p>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Edit Form -->
+    <div class="bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-sm">
+        <form method="POST" action="{{ url_for('superadmin.edit_user', user_id=user.id) }}" class="space-y-8">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- User Identity -->
+            <div>
+                <div
+                    class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i class="bi bi-person-fill"></i> Identity
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2">Full Name</label>
+                        <input type="text" name="full_name" value="{{ user.full_name or '' }}"
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                            placeholder="Enter full name">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2">Email</label>
+                        <input type="email" name="email" value="{{ user.email or '' }}"
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                            placeholder="Enter email address">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Access Control -->
+            <div class="pt-6 border-t border-gray-100">
+                <div
+                    class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i class="bi bi-shield-lock-fill"></i> Access Control
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2">Role</label>
+                        <select name="role"
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all cursor-pointer">
+                            {% for role_opt in ['Staff', 'Manager', 'Admin', 'Administrator', 'SuperAdmin'] %}
+                            <option value="{{ role_opt }}" {{ 'selected' if user.role==role_opt }}>{{ role_opt }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2">Status</label>
+                        <select name="status"
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all cursor-pointer">
+                            {% for status_opt in ['Active', 'Pending', 'Suspended', 'Rejected'] %}
+                            <option value="{{ status_opt }}" {{ 'selected' if user.status==status_opt }}>{{ status_opt
+                                }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Organization -->
+            <div class="pt-6 border-t border-gray-100">
+                <div
+                    class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i class="bi bi-building"></i> Organization
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2">Department</label>
+                        <select name="department"
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all cursor-pointer">
+                            {% for dept in ['HR', 'CORE_TRANSACTION', 'LOGISTICS', 'FINANCIALS'] %}
+                            <option value="{{ dept }}" {{ 'selected' if user.department==dept }}>{{ dept }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2">Subsystem</label>
+                        <select name="subsystem"
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all cursor-pointer">
+                            {% for code, config in subsystem_config.items() %}
+                            <option value="{{ code }}" {{ 'selected' if user.subsystem==code }}>{{ code|upper }}: {{
+                                config.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Info (readonly) -->
+            <div class="pt-6 border-t border-gray-100">
+                <div
+                    class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i class="bi bi-info-circle-fill"></i> Account Metadata
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-gray-50 p-4 rounded-xl text-center">
+                        <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">User ID</div>
+                        <div class="text-sm font-black text-gray-900">{{ user.id }}</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-xl text-center">
+                        <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Username</div>
+                        <div class="text-sm font-black text-gray-900">{{ user.username }}</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-xl text-center">
+                        <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Created</div>
+                        <div class="text-sm font-black text-gray-900">{{ user.created_at|datetime if user.created_at
+                            else 'N/A' }}</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-xl text-center">
+                        <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Last Login</div>
+                        <div class="text-sm font-black text-gray-900">{{ user.last_login|datetime if user.last_login
+                            else 'Never' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-between pt-8 border-t border-gray-100">
+                <a href="{{ url_for('superadmin.user_list') }}"
+                    class="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-900 transition-colors flex items-center gap-2">
+                    <i class="bi bi-arrow-left"></i> Cancel
+                </a>
+                <button type="submit"
+                    class="px-10 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-violet-200 flex items-center gap-2">
+                    <i class="bi bi-check-lg"></i>
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -33,12 +33,13 @@ def create_app(config_class=Config):
     Session(app)
     login_manager.init_app(app)
 
-    # Register Blueprints
+    # Portal and Admin
     from routes.portal import portal_bp
     app.register_blueprint(portal_bp)
-
     from routes.admin import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    from routes.superadmin import superadmin_bp
+    app.register_blueprint(superadmin_bp, url_prefix='/superadmin')
 
     # HR
     from routes.hr.hr1 import hr1_bp

@@ -170,8 +170,29 @@
 
             <!-- Sidebar Menu -->
             <nav class="mt-6 flex-1 overflow-y-auto">
+                {% if current_user.is_super_admin() %}
+                <div class="px-6 py-2 text-[11px] font-bold text-violet-500 uppercase tracking-widest">Global Tools
+                </div>
+                <a href="{{ url_for('superadmin.dashboard') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-violet-50 hover:text-violet-600 transition-colors {{ 'bg-violet-50 border-l-4 border-violet-500 text-violet-600' if blueprint_name == 'superadmin' and request.endpoint.endswith('.dashboard') }}">
+                    <i class="bi bi-shield-lock mr-3"></i>
+                    <span>Command Center</span>
+                </a>
+                <a href="{{ url_for('superadmin.user_list') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-violet-50 hover:text-violet-600 transition-colors {{ 'bg-violet-50 border-l-4 border-violet-500 text-violet-600' if request.endpoint == 'superadmin.user_list' }}">
+                    <i class="bi bi-people-fill mr-3"></i>
+                    <span>Global Users</span>
+                </a>
+                <a href="{{ url_for('superadmin.audit_logs') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-violet-50 hover:text-violet-600 transition-colors {{ 'bg-violet-50 border-l-4 border-violet-500 text-violet-600' if request.endpoint == 'superadmin.audit_logs' }}">
+                    <i class="bi bi-shield-check mr-3"></i>
+                    <span>System Audit</span>
+                </a>
+                <div class="my-4 mx-6 border-t border-gray-100"></div>
+                {% endif %}
+
                 <a href="{{ url_for(blueprint_name + '.dashboard') }}"
-                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint.endswith('.dashboard') }}">
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint.endswith('.dashboard') and blueprint_name != 'superadmin' }}">
                     <i class="bi bi-grid mr-3"></i>
                     <span>Dashboard</span>
                 </a>

@@ -178,7 +178,7 @@ def dashboard():
         
         # User management stats (moved from HR3)
         pending_users_count = 0
-        if current_user.is_admin() and current_user.subsystem == 'hr2':
+        if current_user.is_super_admin() or (current_user.is_admin() and current_user.subsystem == 'hr2'):
             pending_users_count = len([u for u in User.get_all() if u.status == 'Pending'])
         
     except Exception as e:
@@ -1183,7 +1183,7 @@ def logout():
 @hr2_bp.route('/admin/users')
 @login_required
 def user_list():
-    if not current_user.is_admin() or current_user.subsystem != 'hr2':
+    if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr2'):
         flash('Access denied.', 'danger')
         return redirect(url_for('hr2.dashboard'))
     
@@ -1198,7 +1198,7 @@ def user_list():
 @hr2_bp.route('/admin/users/add', methods=['GET', 'POST'])
 @login_required
 def add_user():
-    if not current_user.is_admin() or current_user.subsystem != 'hr2':
+    if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr2'):
         flash('Access denied.', 'danger')
         return redirect(url_for('hr2.dashboard'))
     
@@ -1262,7 +1262,7 @@ def add_user():
 @hr2_bp.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_user(user_id):
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr2':
+    if not current_user.is_super_admin() and (current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr2'):
         flash('Access denied.', 'danger')
         return redirect(url_for('hr2.dashboard'))
     
@@ -1334,7 +1334,7 @@ def edit_user(user_id):
 @hr2_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
 @login_required
 def delete_user(user_id):
-    if not current_user.is_admin() or current_user.subsystem != 'hr2':
+    if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr2'):
         flash('Access denied.', 'danger')
         return redirect(url_for('hr2.dashboard'))
     
@@ -1357,7 +1357,7 @@ def delete_user(user_id):
 @hr2_bp.route('/admin/approvals')
 @login_required
 def pending_approvals():
-    if not current_user.is_admin() or current_user.subsystem != 'hr2':
+    if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr2'):
         flash('Access denied.', 'danger')
         return redirect(url_for('hr2.dashboard'))
     
@@ -1380,7 +1380,7 @@ def pending_approvals():
 @hr2_bp.route('/admin/approvals/<int:user_id>/<action>')
 @login_required
 def process_approval(user_id, action):
-    if not current_user.is_admin() or current_user.subsystem != 'hr2':
+    if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr2'):
         flash('Access denied.', 'danger')
         return redirect(url_for('hr2.dashboard'))
     
@@ -1404,7 +1404,7 @@ def process_approval(user_id, action):
 @hr2_bp.route('/admin/users/<int:user_id>/toggle')
 @login_required
 def toggle_user_status(user_id):
-    if not current_user.is_admin() or current_user.subsystem != 'hr2':
+    if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr2'):
         flash('Access denied.', 'danger')
         return redirect(url_for('hr2.dashboard'))
     
@@ -1429,7 +1429,7 @@ def toggle_user_status(user_id):
 @hr2_bp.route('/admin/users/<int:user_id>/reset-password')
 @login_required
 def reset_user_password(user_id):
-    if not current_user.is_admin() or current_user.subsystem != 'hr2':
+    if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr2'):
         flash('Access denied.', 'danger')
         return redirect(url_for('hr2.dashboard'))
     
@@ -1450,7 +1450,7 @@ def reset_user_password(user_id):
 @hr2_bp.route('/admin/users/<int:user_id>/change-password', methods=['POST'])
 @login_required
 def admin_change_password(user_id):
-    if not current_user.is_admin() or current_user.subsystem != 'hr2':
+    if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr2'):
         flash('Access denied.', 'danger')
         return redirect(url_for('hr2.dashboard'))
     

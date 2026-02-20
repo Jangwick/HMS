@@ -364,7 +364,7 @@ def clock_out():
 @hr3_bp.route('/attendance/force-clock-out/<int:log_id>', methods=['POST'])
 @login_required
 def force_clock_out(log_id):
-    if not current_user.is_admin() or current_user.subsystem != 'hr3':
+    if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr3'):
         flash('Unauthorized: Administrative access required.', 'danger')
         return hr3_redirect_fallback()
 
@@ -606,7 +606,7 @@ def list_attendance():
     query = client.table('attendance_logs').select('*, users(username, avatar_url, full_name)')
     
     # Non-admins only see their own logs
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+    if not current_user.is_super_admin() and (current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3'):
         query = query.eq('user_id', current_user.id)
         
     response = query.order('clock_in', desc=True).execute()
@@ -616,7 +616,7 @@ def list_attendance():
     missing_staff = []
     users_list = []
     sched_map = {}
-    if current_user.is_admin() and current_user.subsystem == 'hr3':
+    if current_user.is_super_admin() or (current_user.is_admin() and current_user.subsystem == 'hr3'):
         try:
             today = datetime.now().strftime('%Y-%m-%d')
             day_name = datetime.now().strftime('%A')
@@ -748,7 +748,7 @@ def list_leaves():
     query = client.table('leave_requests').select('*, users:users!leave_requests_user_id_fkey(username)')
     
     # Non-admins only see their own requests
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+    if not current_user.is_super_admin() and (current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3'):
         query = query.eq('user_id', current_user.id)
         
     response = query.order('created_at', desc=True).execute()
@@ -763,7 +763,7 @@ def list_leaves():
 @hr3_bp.route('/leaves/approve', methods=['POST'])
 @login_required
 def approve_leave():
-    if current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3':
+    if not current_user.is_super_admin() and (current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3'):
         flash('Access denied.', 'danger')
         return redirect(url_for('hr3.dashboard'))
     

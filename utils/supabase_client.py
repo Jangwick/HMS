@@ -123,7 +123,8 @@ class User(UserMixin):
             'Staff': 1,
             'Manager': 2,
             'Admin': 3,
-            'Administrator': 3
+            'Administrator': 3,
+            'SuperAdmin': 99
         }
         return levels.get(self.role, 1)
 
@@ -135,6 +136,10 @@ class User(UserMixin):
 
     def is_admin(self):
         return self.role_level >= 3
+
+    def is_super_admin(self):
+        """Check if user has system-wide SuperAdmin authority."""
+        return self.role == 'SuperAdmin' or self.role_level == 99
 
     def check_password(self, password: str) -> bool:
         """Verify password against stored hash."""
