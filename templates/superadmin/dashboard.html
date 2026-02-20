@@ -258,8 +258,13 @@
             'financials': 'purple'
             } %}
             {% for code, config in subsystem_config.items() %}
-            <a href="{{ url_for('portal.logout_switch', target=url_for(code + '.login')) }}"
+            <a href="{{ url_for(code + '.dashboard') }}"
                 class="group relative bg-gray-50 hover:bg-white p-5 rounded-2xl border border-gray-100 hover:border-{{ sub_colors.get(code, 'gray') }}-200 hover:shadow-xl transition-all duration-300 text-center">
+                <!-- Shadow Mode Badge -->
+                <div class="absolute -top-1.5 -right-1.5 w-6 h-6 bg-violet-600 rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Shadow Access">
+                    <i class="bi bi-eye-fill text-white text-[9px]"></i>
+                </div>
                 <div
                     class="w-12 h-12 mx-auto rounded-xl bg-{{ sub_colors.get(code, 'gray') }}-100 flex items-center justify-center mb-3 group-hover:bg-{{ sub_colors.get(code, 'gray') }}-500 transition-colors">
                     <i
