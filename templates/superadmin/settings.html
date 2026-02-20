@@ -1,0 +1,175 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block header_title %}System Governance Settings{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+    <!-- Settings Header -->
+    <div
+        class="relative overflow-hidden bg-gradient-to-br from-slate-900 to-violet-950 rounded-[2.5rem] p-10 text-white shadow-2xl">
+        <div class="absolute -top-20 -right-20 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl"></div>
+        <div class="relative z-10">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/10">
+                    <i class="bi bi-sliders text-white text-xl"></i>
+                </div>
+                <span
+                    class="text-[10px] font-black text-violet-400 uppercase tracking-[0.2em] bg-violet-500/10 px-3 py-1.5 rounded-full border border-violet-500/20">
+                    Global Policy Manager
+                </span>
+            </div>
+            <h1 class="text-4xl font-black tracking-tight">System Configuration</h1>
+            <p class="text-slate-400 mt-2 text-lg">Define enterprise-wide security thresholds and operational
+                parameters.</p>
+        </div>
+    </div>
+
+    <form action="#" method="POST" class="space-y-8">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <!-- Security Policies -->
+        <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+            <div class="flex items-center gap-3 mb-8">
+                <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center border border-rose-100">
+                    <i class="bi bi-shield-lock-fill text-rose-600"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-black text-gray-900">Security Thresholds</h3>
+                    <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Authentication & Access Rules
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="space-y-2">
+                    <label class="block text-[11px] font-black text-gray-500 uppercase tracking-widest">Password Expiry
+                        (Days)</label>
+                    <div class="relative">
+                        <input type="number" name="password_expiry_days" value="{{ settings.password_expiry_days }}"
+                            class="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all">
+                        <span
+                            class="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 uppercase">Days</span>
+                    </div>
+                    <p class="text-[9px] text-gray-400 font-medium px-1 italic">Force users to rotate credentials
+                        periodically.</p>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-[11px] font-black text-gray-500 uppercase tracking-widest">Max Login
+                        Attempts</label>
+                    <div class="relative">
+                        <input type="number" name="max_login_attempts" value="{{ settings.max_login_attempts }}"
+                            class="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all">
+                        <span
+                            class="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 uppercase">Attempts</span>
+                    </div>
+                    <p class="text-[9px] text-gray-400 font-medium px-1 italic">Account lockout threshold for
+                        brute-force protection.</p>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-[11px] font-black text-gray-500 uppercase tracking-widest">Lockout
+                        Duration</label>
+                    <div class="relative">
+                        <input type="number" name="lockout_duration_mins" value="{{ settings.lockout_duration_mins }}"
+                            class="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all">
+                        <span
+                            class="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 uppercase">Minutes</span>
+                    </div>
+                    <p class="text-[9px] text-gray-400 font-medium px-1 italic">Time before a locked IP/Account is
+                        automatically released.</p>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-[11px] font-black text-gray-500 uppercase tracking-widest">Session
+                        TTL</label>
+                    <div class="relative">
+                        <input type="number" name="session_timeout_mins" value="{{ settings.session_timeout_mins }}"
+                            class="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all">
+                        <span
+                            class="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 uppercase">Minutes</span>
+                    </div>
+                    <p class="text-[9px] text-gray-400 font-medium px-1 italic">Maximum idle time before session
+                        invalidation.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- System-wide Services -->
+        <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-100">
+                        <i class="bi bi-hdd-network-fill text-amber-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-gray-900">Service Reliability</h3>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Enterprise Connectivity</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="flex items-center justify-between p-6 bg-gray-50 rounded-[2rem] border border-gray-100">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+                            <i class="bi bi-envelope-at text-xl text-violet-500"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-black text-gray-900">Enterprise Mailer Status</div>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span class="text-[10px] font-black text-emerald-600 uppercase">Active (SMTP)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button"
+                        class="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all">Test
+                        Relay</button>
+                </div>
+
+                <div class="flex items-center justify-between p-6 bg-slate-900 rounded-[2rem] text-white">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shadow-sm border border-white/10">
+                            <i class="bi bi-power text-xl text-emerald-400"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-black">Global Maintenance Mode</div>
+                            <div class="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-wider">All user
+                                traffic intercepted</div>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="maintenance_global" class="sr-only peer" {{ 'checked' if
+                            settings.maintenance_global }}>
+                        <div
+                            class="w-14 h-8 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500">
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="sticky bottom-8 z-20">
+            <div
+                class="bg-white/80 backdrop-blur-xl p-4 rounded-3xl border border-gray-100 shadow-2xl flex items-center justify-between">
+                <div class="flex items-center gap-2 px-4">
+                    <i class="bi bi-check-circle-fill text-emerald-500"></i>
+                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Unsaved Changes
+                        Detected</span>
+                </div>
+                <div class="flex gap-3">
+                    <button type="reset"
+                        class="px-8 py-3 bg-gray-50 text-gray-500 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-100 transition-all">Reset</button>
+                    <button type="submit"
+                        class="px-10 py-3 bg-violet-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-200 hover:bg-violet-700 transition-all">Commit
+                        Policies</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

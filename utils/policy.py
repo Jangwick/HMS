@@ -24,6 +24,15 @@ class HMSFundamentalsPolicy:
         if current_user.status != 'Active':
             return False, f"Your account status is currently '{current_user.status}'. Access to functional modules is restricted."
 
+        # Policy Rule 3: Service Reliability (Maintenance Mode)
+        # Prevent access during system updates, except for SuperAdmins.
+        from utils import config_manager
+        is_maintenance = config_manager.is_subsystem_maintenance(subsystem_code)
+        is_global_maintenance = config_manager.is_global_maintenance()
+        
+        if (is_maintenance or is_global_maintenance) and not current_user.is_super_admin():
+            return False, f"System Alert: {subsystem_code.upper()} is currently undergoing scheduled maintenance. Please try again later."
+
         # Global Administrator Privilege (HR2 Legacy or SuperAdmin)
         if (current_user.subsystem == 'hr2' and current_user.role in ['Admin', 'Administrator']) or current_user.is_super_admin():
             return True, None
@@ -62,6 +71,10 @@ def policy_required(subsystem_code):
         def decorated_function(*args, **kwargs):
             authorized, message = HMSFundamentalsPolicy.check_access(subsystem_code)
             if not authorized:
+                # Special Handle for Maintenance Mode
+                if "undergoing scheduled maintenance" in (message or ""):
+                    return redirect(url_for('superadmin.maintenance_mode_splash', subsystem=subsystem_code))
+                
                 flash(message, 'danger')
                 # Smart redirect: if user belongs to another subsystem, send them to their own dashboard
                 if current_user.is_authenticated and current_user.subsystem and current_user.subsystem != subsystem_code:

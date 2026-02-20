@@ -8,11 +8,14 @@ Implements password requirements including:
 
 import re
 from werkzeug.security import check_password_hash
+from utils import config_manager
 
 # Configuration
-MIN_LENGTH = 8
-MAX_LENGTH = 14
 SPECIAL_CHARACTERS = r'$!@#$%^&*()_+\-=\[\]{}|;:\'",.\/<>?~`'
+
+def get_constraints():
+    policy = config_manager.get_password_policy()
+    return policy['min_length'], policy['max_length']
 
 class PasswordValidationError(Exception):
     """Custom exception for password validation errors."""
@@ -24,12 +27,13 @@ class PasswordValidationError(Exception):
 
 def validate_password_length(password):
     """
-    Validate password length (8-14 characters).
+    Validate password length based on system policy.
     Returns: (is_valid, error_message or None)
     """
+    min_l, max_l = get_constraints()
     length = len(password)
-    if length < MIN_LENGTH or length > MAX_LENGTH:
-        return False, f'Password must be 8-14 characters long. Currently {length} characters.'
+    if length < min_l or length > max_l:
+        return False, f'Password must be {min_l}-{max_l} characters long. Currently {length} characters.'
     return True, None
 
 
@@ -157,9 +161,10 @@ def get_password_requirements():
     """
     Return a dictionary of password requirements for display purposes.
     """
+    min_l, max_l = get_constraints()
     return {
-        'min_length': MIN_LENGTH,
-        'max_length': MAX_LENGTH,
+        'min_length': min_l,
+        'max_length': max_l,
         'requires_uppercase': True,
         'requires_number': True,
         'requires_special': True,

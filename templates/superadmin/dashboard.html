@@ -153,266 +153,319 @@
             </div>
         </div>
 
-        <!-- Role Breakdown -->
-        <div class="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden">
-            <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-violet-500/20 blur-3xl rounded-full"></div>
-
-            <h3 class="text-lg font-black mb-6 flex items-center gap-2">
-                <i class="bi bi-people-fill text-violet-400"></i>
-                Role Distribution
-            </h3>
-
-            <div class="space-y-5">
-                {% if stats.role_counts %}
-                {% for role, count in stats.role_counts.items() %}
-                <div class="bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/10">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-xs font-black uppercase tracking-wider text-slate-300">{{ role }}</span>
-                        <span class="text-lg font-black">{{ count }}</span>
-                    </div>
-                    {% set role_pct = (count / stats.total_users * 100)|round if stats.total_users > 0 else 0 %}
-                    <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                        <div class="bg-violet-500 h-full rounded-full" style="width: {{ role_pct }}%"></div>
-                    </div>
-                </div>
-                {% endfor %}
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Subsystem Overview -->
-    <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
-        <div class="flex items-center justify-between mb-8">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-                    <i class="bi bi-diagram-3-fill text-indigo-600"></i>
-                </div>
-                <div>
-                    <h3 class="text-lg font-black text-gray-900">Subsystem Navigator</h3>
-                    <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Quick jump to any subsystem</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {% set sub_icons = {
-            'hr1': 'bi-megaphone', 'hr2': 'bi-mortarboard', 'hr3': 'bi-activity', 'hr4': 'bi-graph-up',
-            'ct1': 'bi-person-badge', 'ct2': 'bi-hospital', 'ct3': 'bi-file-medical',
-            'log1': 'bi-box-seam', 'log2': 'bi-truck',
-            'financials': 'bi-cash-coin'
-            } %}
-            {% set sub_colors = {
-            'hr1': 'blue', 'hr2': 'blue', 'hr3': 'blue', 'hr4': 'blue',
-            'ct1': 'emerald', 'ct2': 'emerald', 'ct3': 'emerald',
-            'log1': 'amber', 'log2': 'amber',
-            'financials': 'purple'
-            } %}
-            {% for code, config in subsystem_config.items() %}
-            <a href="{{ url_for('portal.logout_switch', target=url_for(code + '.login')) }}"
-                class="group relative bg-gray-50 hover:bg-white p-5 rounded-2xl border border-gray-100 hover:border-{{ sub_colors.get(code, 'gray') }}-200 hover:shadow-xl transition-all duration-300 text-center">
-                <div
-                    class="w-12 h-12 mx-auto rounded-xl bg-{{ sub_colors.get(code, 'gray') }}-100 flex items-center justify-center mb-3 group-hover:bg-{{ sub_colors.get(code, 'gray') }}-500 transition-colors">
-                    <i
-                        class="bi {{ sub_icons.get(code, 'bi-grid') }} text-xl text-{{ sub_colors.get(code, 'gray') }}-500 group-hover:text-white transition-colors"></i>
-                </div>
-                <div class="text-xs font-black text-gray-900 uppercase tracking-wider">{{ code|upper }}</div>
-                <div class="text-[10px] text-gray-400 font-medium mt-0.5 truncate">{{ config.name }}</div>
-                <div class="text-[10px] font-black text-{{ sub_colors.get(code, 'gray') }}-500 mt-2">
-                    {{ stats.subsystems.get(code, 0) }} users
-                </div>
-            </a>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- Bottom Row: Recent Logins + Broadcast -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <!-- Recent Logins -->
-        <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center">
-                    <i class="bi bi-clock-history text-sky-600"></i>
-                </div>
-                <div>
-                    <h3 class="text-lg font-black text-gray-900">Recent Logins</h3>
-                    <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Latest authentication events</p>
-                </div>
-            </div>
-
-            <div class="space-y-3">
-                {% for user in stats.recent_logins %}
-                <div
-                    class="flex items-center gap-4 p-3 bg-gray-50/50 rounded-xl hover:bg-gray-50 transition-colors group">
-                    {% if user.avatar_url %}
-                    <img src="{{ user.avatar_url }}" alt="" class="w-10 h-10 rounded-xl object-cover shadow-sm">
-                    {% else %}
-                    <div
-                        class="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center text-slate-500 font-black text-xs">
-                        {{ user.username[0]|upper }}
-                    </div>
-                    {% endif %}
-                    <div class="flex-1 min-w-0">
-                        <div class="text-sm font-black text-gray-900 truncate">{{ user.full_name or user.username }}
+        <!-- Bottom Row: Recent Logins + Broadcast -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Security Intelligence -->
+            <div class="bg-indigo-950 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl"></div>
+                <div class="relative z-10">
+                    <h3 class="text-sm font-black uppercase tracking-[0.2em] text-indigo-400 mb-6 font-mono">Sentinel
+                        Intelligence</h3>
+                    <div class="flex items-end justify-between mb-8">
+                        <div>
+                            <div class="text-xs font-bold text-indigo-300 uppercase tracking-widest mb-1">Security
+                                Health</div>
+                            <div class="text-5xl font-black text-white">{{ stats.health_score }}%</div>
                         </div>
-                        <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                            {{ user.subsystem|upper }} · {{ user.role }}
+                        <div
+                            class="w-16 h-16 rounded-2xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/20">
+                            <i class="bi bi-shield-check text-2xl text-indigo-400"></i>
                         </div>
                     </div>
-                    <div class="text-[10px] text-gray-400 font-medium whitespace-nowrap">
-                        {{ user.last_login|datetime if user.last_login else 'Never' }}
+
+                    <div class="space-y-4">
+                        <div class="bg-white/5 rounded-2xl p-4 border border-white/5">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[10px] font-bold text-indigo-300 uppercase tracking-wider">Integrity
+                                    Level</span>
+                                <span class="text-[10px] font-black text-emerald-400">STABLE</span>
+                            </div>
+                            <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                                <div class="bg-emerald-500 h-full rounded-full"
+                                    style="width: {{ stats.health_score }}%"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                                <div class="text-[9px] font-bold text-indigo-300 uppercase tracking-widest">Failed
+                                    Logins</div>
+                                <div class="text-lg font-black mt-1">{{ stats.recent_failures|default(0) }}</div>
+                            </div>
+                            <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                                <div class="text-[9px] font-bold text-indigo-300 uppercase tracking-widest">Storage
+                                </div>
+                                <div class="text-lg font-black mt-1">Optimal</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                {% else %}
-                <div class="text-center py-8 text-gray-400">
-                    <i class="bi bi-inbox text-3xl"></i>
-                    <p class="text-sm font-medium mt-2">No login data available.</p>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <!-- Broadcast Notification -->
-        <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
-                    <i class="bi bi-megaphone-fill text-violet-600"></i>
-                </div>
-                <div>
-                    <h3 class="text-lg font-black text-gray-900">System Broadcast</h3>
-                    <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Send notifications to all
-                        subsystems</p>
-                </div>
             </div>
 
-            <form action="{{ url_for('superadmin.broadcast_notification') }}" method="POST" class="space-y-5">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <!-- Role Breakdown -->
+            <div class="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden lg:col-span-2">
+                <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-violet-500/20 blur-3xl rounded-full"></div>
 
-                <div>
-                    <label
-                        class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Title</label>
-                    <input type="text" name="title" placeholder="System Announcement" required
-                        class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all">
+                <div class="flex items-center justify-between mb-8">
+                    <h3 class="text-lg font-black flex items-center gap-2">
+                        <i class="bi bi-people-fill text-violet-400"></i>
+                        Enterprise Role Matrix
+                    </h3>
                 </div>
 
-                <div>
-                    <label
-                        class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Message</label>
-                    <textarea name="message" rows="3" placeholder="Enter your broadcast message..." required
-                        class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all resize-none"></textarea>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label
-                            class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Scope</label>
-                        <select name="scope" id="broadcastScope" onchange="toggleScopeTarget()"
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all cursor-pointer">
-                            <option value="all">All Subsystems</option>
-                            <option value="department">Department</option>
-                            <option value="subsystem">Subsystem</option>
-                        </select>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {% if stats.role_counts %}
+                    {% for role, count in stats.role_counts.items() %}
+                    <div class="bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/10">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-black uppercase tracking-wider text-slate-300">{{ role }}</span>
+                            <span class="text-lg font-black">{{ count }}</span>
+                        </div>
+                        {% set role_pct = (count / stats.total_users * 100)|round if stats.total_users > 0 else 0 %}
+                        <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-violet-500 h-full rounded-full" style="width: {{ role_pct }}%"></div>
+                        </div>
                     </div>
-                    <div>
-                        <label
-                            class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Type</label>
-                        <select name="type"
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all cursor-pointer">
-                            <option value="info">Info</option>
-                            <option value="warning">Warning</option>
-                            <option value="success">Success</option>
-                            <option value="danger">Critical</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div id="scopeTargetContainer" class="hidden">
-                    <label
-                        class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Target</label>
-                    <select name="target_value"
-                        class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all cursor-pointer">
-                        <option value="">-- Select --</option>
-                        <optgroup label="Departments">
-                            <option value="HR">Human Resources</option>
-                            <option value="CORE_TRANSACTION">Core Transaction</option>
-                            <option value="LOGISTICS">Logistics</option>
-                            <option value="FINANCIALS">Financials</option>
-                        </optgroup>
-                        <optgroup label="Subsystems">
-                            {% for code, config in subsystem_config.items() %}
-                            <option value="{{ code }}">{{ code|upper }}: {{ config.name }}</option>
-                            {% endfor %}
-                        </optgroup>
-                    </select>
-                </div>
-
-                <button type="submit"
-                    class="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-violet-200 hover:shadow-violet-300 flex items-center justify-center gap-2">
-                    <i class="bi bi-send-fill"></i>
-                    Send Broadcast
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Recent Audit Logs -->
-    <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
-        <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center">
-                    <i class="bi bi-shield-check text-white"></i>
-                </div>
-                <div>
-                    <h3 class="text-lg font-black text-gray-900">Audit Trail</h3>
-                    <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Latest system operations</p>
-                </div>
-            </div>
-            <a href="{{ url_for('superadmin.audit_logs') }}"
-                class="text-[10px] font-black text-violet-500 uppercase tracking-widest hover:text-violet-700 transition-colors">
-                View All <i class="bi bi-arrow-right ml-1"></i>
-            </a>
-        </div>
-
-        <div class="overflow-x-auto">
-            <table class="w-full text-left">
-                <thead
-                    class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
-                    <tr>
-                        <th class="px-6 py-4">Action</th>
-                        <th class="px-6 py-4">Subsystem</th>
-                        <th class="px-6 py-4">User</th>
-                        <th class="px-6 py-4">Timestamp</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    {% for log in stats.recent_audit[:10] %}
-                    <tr class="hover:bg-gray-50/50 transition-colors">
-                        <td class="px-6 py-4 text-sm font-bold text-gray-900">{{ log.action }}</td>
-                        <td class="px-6 py-4">
-                            <span
-                                class="text-[10px] font-black text-gray-500 uppercase tracking-wider bg-gray-100 px-2 py-1 rounded-lg">{{
-                                log.subsystem|upper }}</span>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-gray-500">{{ log.user_id }}</td>
-                        <td class="px-6 py-4 text-xs text-gray-400">{{ log.created_at|datetime }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4" class="px-6 py-10 text-center text-gray-400 text-sm">No audit logs available.
-                        </td>
-                    </tr>
                     {% endfor %}
-                </tbody>
-            </table>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Subsystem Overview -->
+        <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                        <i class="bi bi-diagram-3-fill text-indigo-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-black text-gray-900">Subsystem Navigator</h3>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Quick jump to any subsystem
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {% set sub_icons = {
+                'hr1': 'bi-megaphone', 'hr2': 'bi-mortarboard', 'hr3': 'bi-activity', 'hr4': 'bi-graph-up',
+                'ct1': 'bi-person-badge', 'ct2': 'bi-hospital', 'ct3': 'bi-file-medical',
+                'log1': 'bi-box-seam', 'log2': 'bi-truck',
+                'financials': 'bi-cash-coin'
+                } %}
+                {% set sub_colors = {
+                'hr1': 'blue', 'hr2': 'blue', 'hr3': 'blue', 'hr4': 'blue',
+                'ct1': 'emerald', 'ct2': 'emerald', 'ct3': 'emerald',
+                'log1': 'amber', 'log2': 'amber',
+                'financials': 'purple'
+                } %}
+                {% for code, config in subsystem_config.items() %}
+                <a href="{{ url_for('portal.logout_switch', target=url_for(code + '.login')) }}"
+                    class="group relative bg-gray-50 hover:bg-white p-5 rounded-2xl border border-gray-100 hover:border-{{ sub_colors.get(code, 'gray') }}-200 hover:shadow-xl transition-all duration-300 text-center">
+                    <div
+                        class="w-12 h-12 mx-auto rounded-xl bg-{{ sub_colors.get(code, 'gray') }}-100 flex items-center justify-center mb-3 group-hover:bg-{{ sub_colors.get(code, 'gray') }}-500 transition-colors">
+                        <i
+                            class="bi {{ sub_icons.get(code, 'bi-grid') }} text-xl text-{{ sub_colors.get(code, 'gray') }}-500 group-hover:text-white transition-colors"></i>
+                    </div>
+                    <div class="text-xs font-black text-gray-900 uppercase tracking-wider">{{ code|upper }}</div>
+                    <div class="text-[10px] text-gray-400 font-medium mt-0.5 truncate">{{ config.name }}</div>
+                    <div class="text-[10px] font-black text-{{ sub_colors.get(code, 'gray') }}-500 mt-2">
+                        {{ stats.subsystems.get(code, 0) }} users
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Bottom Row: Recent Logins + Broadcast -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Recent Logins -->
+            <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center">
+                        <i class="bi bi-clock-history text-sky-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-black text-gray-900">Recent Logins</h3>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Latest authentication events
+                        </p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    {% for user in stats.recent_logins %}
+                    <div
+                        class="flex items-center gap-4 p-3 bg-gray-50/50 rounded-xl hover:bg-gray-50 transition-colors group">
+                        {% if user.avatar_url %}
+                        <img src="{{ user.avatar_url }}" alt="" class="w-10 h-10 rounded-xl object-cover shadow-sm">
+                        {% else %}
+                        <div
+                            class="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center text-slate-500 font-black text-xs">
+                            {{ user.username[0]|upper }}
+                        </div>
+                        {% endif %}
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-black text-gray-900 truncate">{{ user.full_name or user.username }}
+                            </div>
+                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                                {{ user.subsystem|upper }} · {{ user.role }}
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+                            {{ user.last_login|datetime if user.last_login else 'Never' }}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-8 text-gray-400">
+                        <i class="bi bi-inbox text-3xl"></i>
+                        <p class="text-sm font-medium mt-2">No login data available.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Broadcast Notification -->
+            <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
+                        <i class="bi bi-megaphone-fill text-violet-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-black text-gray-900">System Broadcast</h3>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Send notifications to all
+                            subsystems</p>
+                    </div>
+                </div>
+
+                <form action="{{ url_for('superadmin.broadcast_notification') }}" method="POST" class="space-y-5">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div>
+                        <label
+                            class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Title</label>
+                        <input type="text" name="title" placeholder="System Announcement" required
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all">
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Message</label>
+                        <textarea name="message" rows="3" placeholder="Enter your broadcast message..." required
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all resize-none"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Scope</label>
+                            <select name="scope" id="broadcastScope" onchange="toggleScopeTarget()"
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all cursor-pointer">
+                                <option value="all">All Subsystems</option>
+                                <option value="department">Department</option>
+                                <option value="subsystem">Subsystem</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Type</label>
+                            <select name="type"
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all cursor-pointer">
+                                <option value="info">Info</option>
+                                <option value="warning">Warning</option>
+                                <option value="success">Success</option>
+                                <option value="danger">Critical</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="scopeTargetContainer" class="hidden">
+                        <label
+                            class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Target</label>
+                        <select name="target_value"
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all cursor-pointer">
+                            <option value="">-- Select --</option>
+                            <optgroup label="Departments">
+                                <option value="HR">Human Resources</option>
+                                <option value="CORE_TRANSACTION">Core Transaction</option>
+                                <option value="LOGISTICS">Logistics</option>
+                                <option value="FINANCIALS">Financials</option>
+                            </optgroup>
+                            <optgroup label="Subsystems">
+                                {% for code, config in subsystem_config.items() %}
+                                <option value="{{ code }}">{{ code|upper }}: {{ config.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-violet-200 hover:shadow-violet-300 flex items-center justify-center gap-2">
+                        <i class="bi bi-send-fill"></i>
+                        Send Broadcast
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Recent Audit Logs -->
+        <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center">
+                        <i class="bi bi-shield-check text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-black text-gray-900">Audit Trail</h3>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-wider">Latest system operations</p>
+                    </div>
+                </div>
+                <a href="{{ url_for('superadmin.audit_logs') }}"
+                    class="text-[10px] font-black text-violet-500 uppercase tracking-widest hover:text-violet-700 transition-colors">
+                    View All <i class="bi bi-arrow-right ml-1"></i>
+                </a>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead
+                        class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
+                        <tr>
+                            <th class="px-6 py-4">Action</th>
+                            <th class="px-6 py-4">Subsystem</th>
+                            <th class="px-6 py-4">User</th>
+                            <th class="px-6 py-4">Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for log in stats.recent_audit[:10] %}
+                        <tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="px-6 py-4 text-sm font-bold text-gray-900">{{ log.action }}</td>
+                            <td class="px-6 py-4">
+                                <span
+                                    class="text-[10px] font-black text-gray-500 uppercase tracking-wider bg-gray-100 px-2 py-1 rounded-lg">{{
+                                    log.subsystem|upper }}</span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500">{{ log.user_id }}</td>
+                            <td class="px-6 py-4 text-xs text-gray-400">{{ log.created_at|datetime }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-10 text-center text-gray-400 text-sm">No audit logs
+                                available.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    function toggleScopeTarget() {
-        const scope = document.getElementById('broadcastScope').value;
-        const container = document.getElementById('scopeTargetContainer');
-        container.classList.toggle('hidden', scope === 'all');
-    }
-</script>
-{% endblock %}
+    <script>
+        function toggleScopeTarget() {
+            const scope = document.getElementById('broadcastScope').value;
+            const container = document.getElementById('scopeTargetContainer');
+            container.classList.toggle('hidden', scope === 'all');
+        }
+    </script>
+    {% endblock %}

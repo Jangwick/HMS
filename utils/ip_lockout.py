@@ -16,15 +16,16 @@ from datetime import datetime, timedelta
 from threading import Lock
 from flask import request
 import pytz
+from utils import config_manager
 
 # Thread-safe storage for IP-based lockout tracking
 _ip_attempts = {}
 _ip_lockouts = {}
 _lock = Lock()
 
-# Configuration
-MAX_ATTEMPTS_BEFORE_LOCKOUT = 5
-BASE_LOCKOUT_MINUTES = 5
+def get_lockout_config():
+    policy = config_manager.get_lockout_policy()
+    return policy['max_attempts'], policy['duration_mins']
 
 
 def get_client_ip():
@@ -103,11 +104,12 @@ def register_failed_attempt(subsystem=None, ip_address=None):
         _ip_attempts[key] += 1
         
         attempts = _ip_attempts[key]
+        max_att, base_mins = get_lockout_config()
         
         # Check if we should lock
-        if attempts >= MAX_ATTEMPTS_BEFORE_LOCKOUT:
-            # Incremental lockout: (attempts - 4) * 5 minutes
-            lockout_minutes = (attempts - MAX_ATTEMPTS_BEFORE_LOCKOUT + 1) * BASE_LOCKOUT_MINUTES
+        if attempts >= max_att:
+            # Incremental lockout: (attempts - (max_att-1)) * base_mins minutes
+            lockout_minutes = (attempts - max_att + 1) * base_mins
             locked_until = datetime.utcnow() + timedelta(minutes=lockout_minutes)
             _ip_lockouts[key] = locked_until
             
@@ -121,7 +123,7 @@ def register_failed_attempt(subsystem=None, ip_address=None):
             
             return True, 0, remaining_seconds, unlock_time_str
         else:
-            remaining = MAX_ATTEMPTS_BEFORE_LOCKOUT - attempts
+            remaining = max_att - attempts
             return False, remaining, 0, None
 
 
