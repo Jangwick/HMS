@@ -4,6 +4,10 @@
 
 {% block extra_css %}
 <style>
+    html {
+        scroll-behavior: smooth;
+    }
+
     @keyframes fade-in-up {
         from {
             opacity: 0;
@@ -73,15 +77,15 @@
 
             <!-- Absolute Centered Links -->
             <div
-                class="hidden md:flex absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 items-center space-x-6 mt-[4px]">
-                <a href="#features"
-                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 hover:text-emerald-600 transition-all uppercase tracking-[0.15em] whitespace-nowrap">
+                class="hidden md:flex absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 items-center space-x-10 mt-[4px]">
+                <a href="{{ url_for('patient.landing') }}#features"
+                    class="group flex items-center space-x-2 text-[11px] font-black text-gray-400 hover:text-emerald-600 transition-all uppercase tracking-[0.2em] whitespace-nowrap">
                     <i class="bi bi-grid text-sm opacity-50 group-hover:opacity-100 transition-opacity"></i>
                     <span>Capabilities</span>
                 </a>
-                <div class="w-1 h-1 rounded-full bg-gray-200"></div>
-                <a href="#stats"
-                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 hover:text-emerald-600 transition-all uppercase tracking-[0.15em] whitespace-nowrap">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-600/20"></div>
+                <a href="{{ url_for('patient.landing') }}#stats"
+                    class="group flex items-center space-x-2 text-[11px] font-black text-gray-400 hover:text-emerald-600 transition-all uppercase tracking-[0.2em] whitespace-nowrap">
                     <i class="bi bi-activity text-sm opacity-50 group-hover:opacity-100 transition-opacity"></i>
                     <span>Facility Status</span>
                 </a>
@@ -125,7 +129,7 @@
             </div>
         </div>
 
-        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-36 pb-32 text-center">
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-44 pb-32 text-center">
             <div
                 class="inline-flex items-center space-x-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100 mb-8 animate-fade-in-up">
                 <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -160,7 +164,7 @@
     </div>
 
     <!-- Departments Grid (HMS Standard) -->
-    <div id="features" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 pb-24 relative z-10">
+    <div id="features" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pb-32 relative z-10 scroll-mt-32">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch auto-rows-fr">
             <!-- Facility Stay -->
             <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('patient.dashboard') }}#stays{% else %}{{ url_for('patient.login', next=url_for('patient.dashboard') + '#stays') }}{% endif %}"
@@ -262,7 +266,7 @@
     </div>
 
     <!-- Stats Bar (HMS Facility Intelligence) -->
-    <div id="stats" class="bg-white border-y border-gray-100 py-24 relative overflow-hidden">
+    <div id="stats" class="bg-white border-y border-gray-100 py-32 relative overflow-hidden scroll-mt-32">
         <div class="absolute inset-0 bg-gradient-to-r from-emerald-50/20 via-transparent to-blue-50/20"></div>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div class="text-center mb-16">
