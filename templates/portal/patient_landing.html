@@ -60,7 +60,7 @@
     <div class="blob bg-blue-100 -bottom-48 -right-48" style="animation-delay: -5s;"></div>
 
     <!-- Portal Header (HMS Uniform) -->
-    <nav class="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
+    <nav class="bg-white/95 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-[100] shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center">
                 <div
@@ -111,26 +111,35 @@
             </div>
         </div>
 
-        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 text-center">
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-48 pb-32 text-center">
+            <div
+                class="inline-flex items-center space-x-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100 mb-8 animate-fade-in-up">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-[9px] font-black text-emerald-700 uppercase tracking-[0.2em]">Operational Status:
+                    Normal</span>
+            </div>
+
             <h1
-                class="text-4xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 tracking-tight mb-6 animate-fade-in-up delay-100 px-4">
-                Care Without <span
-                    class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-blue-600">Boundaries.</span>
+                class="text-5xl md:text-7xl lg:text-8xl font-black text-gray-900 tracking-tighter mb-8 animate-fade-in-up delay-100 px-4 leading-[0.9]">
+                Care Without <br>
+                <span
+                    class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-teal-500 to-blue-600">Boundaries.</span>
             </h1>
 
-            <p class="mt-4 max-w-2xl mx-auto text-lg md:text-xl text-gray-500 animate-fade-in-up delay-200 px-6">
-                A centralized, secure, and intelligent gateway for HMS patients. Access your Clinical Journey, Facility
-                Stay, and Financials in real-time.
+            <p
+                class="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-gray-400 font-medium animate-fade-in-up delay-200 px-6 leading-relaxed">
+                The HMS Patient Portal is your unified care companion. Real-time diagnostic streams, digital specialist
+                booking, and facility stay management—all in one secure hub.
             </p>
 
-            <div class="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up delay-200">
+            <div class="mt-16 flex flex-col sm:flex-row items-center justify-center gap-6 animate-fade-in-up delay-200">
                 <a href="{{ url_for('patient.login') }}"
-                    class="w-full sm:w-auto px-10 py-4 bg-gray-950 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all shadow-2xl">
+                    class="w-full sm:w-auto px-12 py-5 bg-gray-950 text-white rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-emerald-600 hover:-translate-y-1 transition-all shadow-2xl">
                     Launch Care Hub
                 </a>
                 <a href="#features"
-                    class="w-full sm:w-auto px-10 py-4 bg-white text-gray-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] border border-gray-100 hover:border-emerald-200 transition-all shadow-sm">
-                    Explore Features
+                    class="w-full sm:w-auto px-12 py-5 bg-white text-gray-900 rounded-2xl font-black text-xs uppercase tracking-[0.3em] border border-gray-100 hover:border-emerald-200 transition-all shadow-sm">
+                    Explore Capabilities
                 </a>
             </div>
         </div>
@@ -138,7 +147,7 @@
 
     <!-- Departments Grid (HMS Standard) -->
     <div id="features" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 pb-24 relative z-10">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch auto-rows-fr">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch auto-rows-fr">
             <!-- Facility Stay -->
             <div
                 class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden h-full flex flex-col">
@@ -149,15 +158,39 @@
                         <i
                             class="bi bi-door-open text-3xl text-emerald-600 group-hover:text-white transition-colors duration-300"></i>
                     </div>
-                    <h2 class="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Facility Stay</h2>
-                    <p class="text-gray-500 mb-8 text-sm leading-relaxed">Direct visibility into your ward location, bed
+                    <h2 class="text-xl font-bold text-gray-900 mb-2 tracking-tight">Facility Stay</h2>
+                    <p class="text-gray-500 mb-8 text-xs leading-relaxed">Direct visibility into your ward location, bed
                         assignment, and attending staff units.</p>
 
                     <div class="flex items-center justify-between pt-6 border-t border-gray-50 mt-auto">
-                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">CT1 Subsystem</span>
+                        <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Facility Care</span>
                         <div
-                            class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                            <i class="bi bi-arrow-right text-lg"></i>
+                            class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                            <i class="bi bi-arrow-right text-sm"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Specialist Direct -->
+            <div
+                class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden h-full flex flex-col">
+                <div class="h-3 bg-gradient-to-r from-teal-400 to-teal-600"></div>
+                <div class="p-8 flex flex-col h-full">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center mb-6 group-hover:bg-teal-600 transition-colors duration-300 shadow-sm">
+                        <i
+                            class="bi bi-calendar-check text-3xl text-teal-600 group-hover:text-white transition-colors duration-300"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2 tracking-tight">Specialist Direct</h2>
+                    <p class="text-gray-500 mb-8 text-xs leading-relaxed">Skip the lines with instant digital booking
+                        for specialists and diagnostic consultations.</p>
+
+                    <div class="flex items-center justify-between pt-6 border-t border-gray-50 mt-auto">
+                        <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Digital Entry</span>
+                        <div
+                            class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-all duration-300">
+                            <i class="bi bi-arrow-right text-sm"></i>
                         </div>
                     </div>
                 </div>
@@ -173,15 +206,15 @@
                         <i
                             class="bi bi-activity text-3xl text-blue-600 group-hover:text-white transition-colors duration-300"></i>
                     </div>
-                    <h2 class="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Clinical Insights</h2>
-                    <p class="text-gray-500 mb-8 text-sm leading-relaxed">Real-time laboratory results, prescriptions,
-                        and your health timeline.</p>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2 tracking-tight">Clinical Insights</h2>
+                    <p class="text-gray-500 mb-8 text-xs leading-relaxed">Real-time laboratory results, pharmacy
+                        prescriptions, and your health timeline.</p>
 
                     <div class="flex items-center justify-between pt-6 border-t border-gray-50 mt-auto">
-                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">CT2 Subsystem</span>
+                        <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Health Data</span>
                         <div
-                            class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
-                            <i class="bi bi-arrow-right text-lg"></i>
+                            class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                            <i class="bi bi-arrow-right text-sm"></i>
                         </div>
                     </div>
                 </div>
@@ -197,15 +230,16 @@
                         <i
                             class="bi bi-wallet2 text-3xl text-purple-600 group-hover:text-white transition-colors duration-300"></i>
                     </div>
-                    <h2 class="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Financial Clarity</h2>
-                    <p class="text-gray-500 mb-8 text-sm leading-relaxed">Transparent billing ledgers, insurance
-                        verification, and chronological payment history.</p>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2 tracking-tight">Financial Clarity</h2>
+                    <p class="text-gray-500 mb-8 text-xs leading-relaxed">Transparent billing ledgers, insurance
+                        verification, and chronological history.</p>
 
                     <div class="flex items-center justify-between pt-6 border-t border-gray-50 mt-auto">
-                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">CT3 Subsystem</span>
+                        <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Secure
+                            Payments</span>
                         <div
-                            class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-all duration-300">
-                            <i class="bi bi-arrow-right text-lg"></i>
+                            class="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-all duration-300">
+                            <i class="bi bi-arrow-right text-sm"></i>
                         </div>
                     </div>
                 </div>
@@ -213,26 +247,48 @@
         </div>
     </div>
 
-    <!-- Stats Bar (HMS Uniform) -->
-    <div id="stats" class="bg-white border-y border-gray-100 py-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-sm">
-                <div>
-                    <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] mb-2">Ward Capacity</p>
-                    <p class="text-3xl font-black text-gray-900 tracking-tighter">{{ stats.occupied_beds }}/{{
+    <!-- Stats Bar (HMS Facility Intelligence) -->
+    <div id="stats" class="bg-white border-y border-gray-100 py-24 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-emerald-50/20 via-transparent to-blue-50/20"></div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="text-center mb-16">
+                <h2 class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.4em] mb-4">Facility
+                    Intelligence</h2>
+                <p class="text-3xl font-black text-gray-900 tracking-tighter">Real-Time Operational Pulse</p>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
+                <div class="group">
+                    <div
+                        class="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mx-auto mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-sm">
+                        <i class="bi bi-door-open-fill"></i>
+                    </div>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Ward Capacity</p>
+                    <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ stats.occupied_beds }}/{{
                         stats.total_beds }}</p>
                 </div>
-                <div>
-                    <p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em] mb-2">ER Wait Time</p>
-                    <p class="text-3xl font-black text-gray-900 tracking-tighter">{{ stats.er_wait_time }}</p>
+                <div class="group">
+                    <div
+                        class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mx-auto mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">ER Wait Time</p>
+                    <p class="text-4xl font-black text-gray-900 tracking-tighter">{{ stats.er_wait_time }}</p>
                 </div>
-                <div>
-                    <p class="text-[10px] font-black text-purple-600 uppercase tracking-[0.3em] mb-2">System Uptime</p>
-                    <p class="text-3xl font-black text-gray-900 tracking-tighter">99.9%</p>
+                <div class="group">
+                    <div
+                        class="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 mx-auto mb-6 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-sm">
+                        <i class="bi bi-cpu"></i>
+                    </div>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">System Uptime</p>
+                    <p class="text-4xl font-black text-gray-900 tracking-tighter">99.9<span class="text-xl">%</span></p>
                 </div>
-                <div>
-                    <p class="text-[10px] font-black text-amber-600 uppercase tracking-[0.3em] mb-2">Facility Ops</p>
-                    <p class="text-3xl font-black text-gray-900 tracking-tighter">24/7</p>
+                <div class="group">
+                    <div
+                        class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 mx-auto mb-6 group-hover:bg-amber-600 group-hover:text-white transition-all shadow-sm">
+                        <i class="bi bi-check2-circle"></i>
+                    </div>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Global Access</p>
+                    <p class="text-4xl font-black text-gray-900 tracking-tighter">24/7</p>
                 </div>
             </div>
         </div>
