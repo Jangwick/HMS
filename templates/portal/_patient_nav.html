@@ -292,7 +292,7 @@
                     <div class="bg-gray-50 px-4 py-3 border-b flex items-center justify-between">
                         <span class="text-xs font-bold text-gray-600 uppercase tracking-wider">Notifications</span>
                         {% if unread_notifications_count > 0 %}
-                        <form action="{{ url_for('portal.mark_notifications_read') }}" method="POST"
+                        <form action="{{ url_for('portal.mark_all_notifications_read') }}" method="POST"
                             style="display:inline;">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit"
