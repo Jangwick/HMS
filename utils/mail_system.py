@@ -50,25 +50,25 @@ def send_otp(email, otp):
     """
     msg.add_alternative(html_content, subtype='html')
 
-    # Attempt 1: Port 587 with STARTTLS
+    # Attempt 1: Port 465 with SSL (Faster, preferable for Vercel 10s limit)
+    try:
+        print(f"INFO: Attempting SMTP_SSL (Port 465) to {server_addr}...")
+        with smtplib.SMTP_SSL(server_addr, 465, timeout=4) as server:
+            server.login(user, password)
+            server.send_message(msg)
+            print("SUCCESS: Delivered via Port 465")
+            return True
+    except Exception as e:
+        print(f"WARN: Port 465 failed: {str(e)}. Retrying with STARTTLS on Port 587...")
+
+    # Attempt 2: Port 587 with STARTTLS
     try:
         print(f"INFO: Attempting SMTP (Port 587) to {server_addr}...")
-        with smtplib.SMTP(server_addr, 587, timeout=10) as server:
+        with smtplib.SMTP(server_addr, 587, timeout=4) as server:
             server.starttls()
             server.login(user, password)
             server.send_message(msg)
             print("SUCCESS: Delivered via Port 587")
-            return True
-    except Exception as e:
-        print(f"WARN: Port 587 failed: {str(e)}. Retrying with SSL on Port 465...")
-
-    # Attempt 2: Port 465 with SSL
-    try:
-        print(f"INFO: Attempting SMTP_SSL (Port 465) to {server_addr}...")
-        with smtplib.SMTP_SSL(server_addr, 465, timeout=10) as server:
-            server.login(user, password)
-            server.send_message(msg)
-            print("SUCCESS: Delivered via Port 465")
             return True
     except Exception as e:
         print(f"CRITICAL: All SMTP attempts failed. Error: {str(e)}")
