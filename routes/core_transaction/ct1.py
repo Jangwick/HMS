@@ -516,9 +516,27 @@ def bed_management():
         response = client.table('beds').select('*').order('room_number').execute()
         beds = response.data if response.data else []
         
-        # Fetch patients for any future admission logic
-        patients_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt').execute()
+        # Fetch all patients who have a bed assignment in their insurance_info JSONB
+        # We fetch all patients here to build our lookup map
+        patients_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt, insurance_info').execute()
         patients_list = patients_resp.data if patients_resp.data else []
+        
+        # Build inverse lookup: bed_id -> patient_info
+        # Workaround: patient_id is missing from beds table, so we use insurance_info on patients as the source of truth
+        bed_to_patient = {}
+        for p in patients_list:
+            info = p.get('insurance_info') or {}
+            b_id = info.get('current_bed_id')
+            if b_id:
+                bed_to_patient[int(b_id)] = p
+        
+        for bed in beds:
+            bed['patient_info'] = bed_to_patient.get(bed['id'])
+            # Ensure status logic matches actual assignment
+            if bed['patient_info'] and bed['status'] != 'Occupied':
+                # Self-correction: if a patient is in it, it should be occupied
+                bed['status'] = 'Occupied'
+                
     except Exception as e:
         flash(f'Error fetching bed data: {str(e)}', 'danger')
         beds = []
@@ -543,10 +561,99 @@ def update_bed(bed_id):
     new_status = request.form.get('status')
     try:
         client.table('beds').update({'status': new_status}).eq('id', bed_id).execute()
+        
+        # If transitioning away from Occupied, clear any patient assignment via JSONB
+        if new_status != 'Occupied':
+            assigned = client.table('patients').select('id, insurance_info').contains('insurance_info', {'current_bed_id': bed_id}).execute()
+            if assigned.data:
+                for p in assigned.data:
+                    insurance = p.get('insurance_info') or {}
+                    if 'current_bed_id' in insurance:
+                        del insurance['current_bed_id']
+                    client.table('patients').update({'insurance_info': insurance}).eq('id', p['id']).execute()
+        
         flash(f'Bed status updated to {new_status}.', 'success')
     except Exception as e:
         flash(f'Error updating bed: {str(e)}', 'danger')
         
+    return redirect(url_for('ct1.bed_management'))
+
+@ct1_bp.route('/beds/assign/<int:bed_id>', methods=['POST'])
+@login_required
+def assign_patient_to_bed(bed_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can assign patients.', 'error')
+        return redirect(url_for('ct1.bed_management'))
+    
+    client = get_supabase_client()
+    patient_id = request.form.get('patient_id')
+    
+    if not patient_id:
+        flash('Please select a patient to assign.', 'warning')
+        return redirect(url_for('ct1.bed_management'))
+    
+    try:
+        # 1. Verify patient exists and get their current insurance_info
+        p_res = client.table('patients').select('id, insurance_info').eq('id', int(patient_id)).single().execute()
+        if not p_res.data:
+            flash('Patient not found.', 'danger')
+            return redirect(url_for('ct1.bed_management'))
+            
+        patient = p_res.data
+        insurance = patient.get('insurance_info') or {}
+        
+        # 2. Check if patient is already assigned elsewhere (Workaround query)
+        existing = client.table('patients').select('id').contains('insurance_info', {'current_bed_id': bed_id}).execute()
+        if existing.data and any(e['id'] != int(patient_id) for e in existing.data):
+             flash('This bed is already claimed by another patient record (metadata sync issue). Try clearing it first.', 'warning')
+             # Note: We'll force clear the bed in step 4 anyway, but good to warn.
+
+        # 3. Update Patient record with the bed assignment
+        insurance['current_bed_id'] = bed_id
+        client.table('patients').update({'insurance_info': insurance}).eq('id', int(patient_id)).execute()
+        
+        # 4. Update Bed status
+        client.table('beds').update({'status': 'Occupied'}).eq('id', bed_id).execute()
+        
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Assign Patient to Bed", BLUEPRINT_NAME, {"bed_id": bed_id, "patient_id": patient_id})
+        flash('Patient assigned to bed successfully!', 'success')
+    except Exception as e:
+        flash(f'Error assigning patient: {str(e)}', 'danger')
+    
+    return redirect(url_for('ct1.bed_management'))
+
+@ct1_bp.route('/beds/unassign/<int:bed_id>', methods=['POST'])
+@login_required
+def unassign_patient_from_bed(bed_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can unassign patients.', 'error')
+        return redirect(url_for('ct1.bed_management'))
+    
+    client = get_supabase_client()
+    
+    try:
+        # 1. Find the patient currently assigned to this bed via insurance_info
+        assigned = client.table('patients').select('id, insurance_info').contains('insurance_info', {'current_bed_id': bed_id}).execute()
+        
+        if assigned.data:
+            for p in assigned.data:
+                insurance = p.get('insurance_info') or {}
+                if 'current_bed_id' in insurance:
+                    del insurance['current_bed_id']
+                client.table('patients').update({'insurance_info': insurance}).eq('id', p['id']).execute()
+        
+        # 2. Mark bed for cleaning
+        client.table('beds').update({
+            'status': 'Cleaning'
+        }).eq('id', bed_id).execute()
+        
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Unassign Patient from Bed", BLUEPRINT_NAME, {"bed_id": bed_id})
+        flash('Patient unassigned. Bed marked for cleaning.', 'success')
+    except Exception as e:
+        flash(f'Error unassigning patient: {str(e)}', 'danger')
+    
     return redirect(url_for('ct1.bed_management'))
 
 @ct1_bp.route('/beds/add', methods=['POST'])
