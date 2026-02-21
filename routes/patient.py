@@ -269,6 +269,124 @@ def journey():
 
     return render_template('portal/patient_journey.html', **data)
 
+@patient_bp.route('/stay')
+@login_required
+def stay():
+    if current_user.role != 'Patient' or not current_user.patient_id:
+        flash('Access restricted to registered patients.', 'warning')
+        return redirect(url_for('portal.index'))
+    
+    client = get_supabase_client()
+    patient_id = current_user.patient_id
+    
+    data = {
+        'patient': None,
+        'bed_info': None,
+        'diet': None,
+        'meals': [],
+        'assessments': []
+    }
+    
+    try:
+        # Fetch Patient Info
+        patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
+        data['patient'] = patient_resp.data
+        
+        # Fetch Bed Info
+        bed_resp = client.table('beds').select('*').eq('patient_id', patient_id).execute()
+        data['bed_info'] = bed_resp.data[0] if bed_resp.data else None
+        
+        # Fetch Nutrition Info
+        diet_resp = client.table('diet_plans').select('*, users(full_name)').eq('patient_id', patient_id).eq('status', 'Active').order('created_at', desc=True).execute()
+        data['diet'] = diet_resp.data[0] if diet_resp.data else None
+        
+        meals_resp = client.table('meal_tracking').select('*, users(full_name)').eq('patient_id', patient_id).order('created_at', desc=True).limit(10).execute()
+        data['meals'] = meals_resp.data
+        
+        assess_resp = client.table('nutritional_assessments').select('*').eq('patient_id', patient_id).order('created_at', desc=True).limit(5).execute()
+        data['assessments'] = assess_resp.data
+
+    except Exception as e:
+        print(f"Error fetching stay data: {e}")
+        flash('Some facility details could not be synchronized.', 'warning')
+
+    return render_template('portal/patient_stay.html', **data)
+
+@patient_bp.route('/inventory')
+@login_required
+def inventory():
+    if current_user.role != 'Patient' or not current_user.patient_id:
+        flash('Access restricted to registered patients.', 'warning')
+        return redirect(url_for('portal.index'))
+    
+    client = get_supabase_client()
+    patient_id = current_user.patient_id
+    
+    data = {
+        'patient': None,
+        'active_prescriptions': [],
+        'past_prescriptions': [],
+        'dispensing_history': []
+    }
+    
+    try:
+        patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
+        data['patient'] = patient_resp.data
+        
+        rx_resp = client.table('prescriptions').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
+        
+        if rx_resp.data:
+            for rx in rx_resp.data:
+                if rx.get('status') in ['Active', 'Pending']:
+                    data['active_prescriptions'].append(rx)
+                else:
+                    data['past_prescriptions'].append(rx)
+
+        dispense_resp = client.table('dispensing_history').select('*, inventory(item_name)').eq('patient_id', patient_id).order('dispensed_at', desc=True).limit(20).execute()
+        data['dispensing_history'] = dispense_resp.data
+
+    except Exception as e:
+        print(f"Error fetching inventory data: {e}")
+        flash('Some pharmacy details could not be synchronized.', 'warning')
+
+    return render_template('portal/patient_inventory.html', **data)
+
+@patient_bp.route('/ledger')
+@login_required
+def ledger():
+    if current_user.role != 'Patient' or not current_user.patient_id:
+        flash('Access restricted to registered patients.', 'warning')
+        return redirect(url_for('portal.index'))
+    
+    client = get_supabase_client()
+    patient_id = current_user.patient_id
+    
+    data = {
+        'patient': None,
+        'bills': [],
+        'total_due': 0.0,
+        'recent_payments': []
+    }
+    
+    try:
+        patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
+        data['patient'] = patient_resp.data
+        
+        # Fetch Billing Records
+        billing_resp = client.table('billing_records').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
+        data['bills'] = billing_resp.data
+        
+        if billing_resp.data:
+            data['total_due'] = sum(float(b['total_amount']) for b in billing_resp.data if b.get('status') != 'Paid')
+            # Assuming 'Paid' records act as recent payments for this view
+            data['recent_payments'] = [b for b in billing_resp.data if b.get('status') == 'Paid']
+
+    except Exception as e:
+        print(f"Error fetching ledger data: {e}")
+        flash('Some financial details could not be synchronized.', 'warning')
+
+    return render_template('portal/patient_ledger.html', **data)
+
 @patient_bp.route('/logout')
 @login_required
 def logout():

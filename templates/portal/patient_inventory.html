@@ -1,0 +1,270 @@
+{% extends "base/base.html" %}
+
+{% block title %}Medication Inventory - {{ patient.first_name }} {{ patient.last_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+    body {
+        font-family: 'Inter', sans-serif;
+    }
+
+    .inventory-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid rgba(229, 231, 235, 0.5);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .inventory-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.08);
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .status-badge {
+        font-size: 8px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 4px 10px;
+        border-radius: 8px;
+        border: 1px solid currentColor;
+    }
+
+    .noise-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        opacity: 0.03;
+        pointer-events: none;
+        background-image: url('https://grainy-gradients.vercel.app/noise.svg');
+    }
+
+    .blob {
+        position: fixed;
+        width: 600px;
+        height: 600px;
+        border-radius: 50%;
+        filter: blur(100px);
+        z-index: 0;
+        opacity: 0.3;
+        pointer-events: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 flex flex-col relative">
+    <div class="noise-overlay"></div>
+    <div class="blob bg-emerald-100 -top-24 -left-24"></div>
+    <div class="blob bg-blue-100 -bottom-24 -right-24" style="animation-delay: -3s;"></div>
+
+    <!-- Navigation -->
+    <nav class="bg-white/95 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-[100] shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between relative">
+            <div class="flex items-center">
+                <a href="{{ url_for('patient.landing') }}" class="flex items-center group">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center mr-4 text-white shadow-lg group-hover:scale-110 transition-transform">
+                        <i class="bi bi-heart-pulse-fill text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="font-black text-xl text-gray-900 tracking-tighter uppercase leading-none">HMS
+                            Portal</span>
+                        <span
+                            class="text-[8px] font-black text-emerald-600/60 uppercase tracking-[0.2em] block mt-0.5">Care
+                            Hub Interface</span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center space-x-8">
+                <a href="{{ url_for('patient.dashboard') }}"
+                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
+                    <i class="bi bi-grid-1x2 text-sm"></i>
+                    <span>Overview</span>
+                </a>
+                <a href="{{ url_for('patient.journey') }}"
+                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
+                    <i class="bi bi-activity text-sm"></i>
+                    <span>Journey</span>
+                </a>
+                <a href="{{ url_for('patient.stay') }}"
+                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
+                    <i class="bi bi-door-open text-sm"></i>
+                    <span>Stay</span>
+                </a>
+                <a href="{{ url_for('patient.inventory') }}"
+                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-900 uppercase tracking-widest px-4 py-2 bg-gray-50 rounded-full border border-gray-100 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-700">
+                    <i class="bi bi-capsule text-sm"></i>
+                    <span>Inventory</span>
+                </a>
+                <a href="{{ url_for('patient.ledger') }}"
+                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
+                    <i class="bi bi-wallet2 text-sm"></i>
+                    <span>Ledger</span>
+                </a>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <div class="hidden sm:flex flex-col text-right mr-2">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">
+                        Authenticated As</p>
+                    <p class="text-xs font-black text-gray-900 leading-none">{{ patient.first_name }} {{
+                        patient.last_name }}</p>
+                </div>
+                <div
+                    class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center font-black text-sm shadow-xl ring-4 ring-gray-900/5">
+                    {{ patient.first_name[0] }}{{ patient.last_name[0] }}
+                </div>
+                <a href="{{ url_for('patient.logout') }}"
+                    class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-600 hover:text-white transition-all shadow-sm">
+                    <i class="bi bi-power text-lg"></i>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 relative z-10">
+        <header class="mb-12 flex items-end justify-between">
+            <div>
+                <h1 class="text-4xl font-black text-gray-900 tracking-tighter uppercase mb-2">My Inventory</h1>
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em]">Digital Medication Cabinet
+                    (HMS-DMC-T4)</p>
+            </div>
+            <button onclick="requestRefill()"
+                class="px-8 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-emerald-500 transition-all">Request
+                Refill</button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Active Prescriptions -->
+            <div class="lg:col-span-2 space-y-8">
+                <h3 class="text-xl font-black text-gray-900 tracking-tight uppercase flex items-center gap-2">
+                    <i class="bi bi-capsule-pill text-emerald-600"></i> Active Scripts
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {% for rx in active_prescriptions %}
+                    <div class="inventory-card rounded-[2rem] p-8 relative overflow-hidden group">
+                        <div
+                            class="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-emerald-500/10 transition-colors">
+                        </div>
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h4 class="text-xl font-bold text-gray-900 uppercase tracking-tight">{{
+                                    rx.medication_name }}</h4>
+                                <span class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">{{
+                                    rx.dosage }}</span>
+                            </div>
+                            <span class="status-badge bg-emerald-50 text-emerald-700 border-emerald-100">{{ rx.status
+                                }}</span>
+                        </div>
+                        <p class="text-xs text-gray-600 font-medium leading-relaxed italic mb-8">"{{ rx.instructions }}"
+                        </p>
+
+                        <div class="flex items-center justify-between pt-6 border-t border-gray-100">
+                            <div
+                                class="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                <i class="bi bi-calendar-event"></i> Issued: {{ rx.created_at | datetime }}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div
+                        class="md:col-span-2 py-16 text-center bg-gray-50/50 rounded-[3rem] border border-dashed border-gray-200">
+                        <i class="bi bi-shield-check text-5xl text-gray-200 block mb-4"></i>
+                        <h3 class="text-xl font-black text-gray-400 uppercase">No Active Scripts</h3>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Your medication
+                            cabinet is clear</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if past_prescriptions %}
+                <div class="mt-16">
+                    <h3
+                        class="text-xl font-black text-gray-900 tracking-tight uppercase flex items-center gap-2 mb-8 opacity-60">
+                        <i class="bi bi-archive"></i> Prescription History
+                    </h3>
+                    <div class="space-y-4">
+                        {% for rx in past_prescriptions %}
+                        <div
+                            class="inventory-card rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 opacity-75">
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500">
+                                    <i class="bi bi-capsule"></i>
+                                </div>
+                                <div>
+                                    <h5 class="text-sm font-bold text-gray-900 uppercase tracking-tight">{{
+                                        rx.medication_name }} <span class="text-gray-400 text-xs ml-2">{{ rx.dosage
+                                            }}</span></h5>
+                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">{{
+                                        rx.created_at | datetime }}</p>
+                                </div>
+                            </div>
+                            <span class="status-badge bg-gray-100 text-gray-500 border-gray-200">{{ rx.status }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Dispensing History -->
+            <div class="lg:col-span-1">
+                <div class="inventory-card rounded-[3rem] p-8 h-full bg-white relative overflow-hidden">
+                    <h3
+                        class="text-lg font-black text-gray-900 tracking-tight uppercase flex items-center justify-between mb-8">
+                        Fulfillment Log
+                        <i class="bi bi-receipt text-gray-300 text-2xl"></i>
+                    </h3>
+
+                    <div class="space-y-6">
+                        {% for item in dispensing_history %}
+                        <div class="relative pl-6 border-l-2 border-emerald-100 pb-2">
+                            <div class="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-emerald-500"></div>
+                            <p class="text-xs font-bold text-gray-900 uppercase tracking-tight">{{
+                                item.inventory.item_name if item.inventory else 'Pharmacy Item' }}</p>
+                            <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{{
+                                item.dispensed_at | datetime }}</p>
+                            <p class="text-[10px] font-medium text-gray-600 bg-gray-50 inline-block px-2 py-1 rounded">
+                                Qty Dispensed: {{ item.quantity }}</p>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-12 opacity-50">
+                            <i class="bi bi-clock-history text-3xl block mb-2"></i>
+                            <p class="text-[9px] font-black uppercase tracking-widest">No Recent Dispensing</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 pt-20 pb-12 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="flex items-center justify-center gap-2 mb-6">
+                <div class="w-6 h-6 rounded-md bg-emerald-600 flex items-center justify-center text-white text-[10px]">
+                    <i class="bi bi-heart-pulse-fill"></i>
+                </div>
+                <span class="font-black text-gray-900 tracking-tighter text-sm uppercase">HMS Patient Network</span>
+            </div>
+            <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Digital Cabinet Node P3 Active •
+                Bi-Level Encryption Enabled</p>
+        </div>
+    </footer>
+</div>
+
+<script>
+    function requestRefill() {
+        alert("Refill request forwarded to attending pharmacy. You will be notified when ready for pickup.");
+    }
+</script>
+{% endblock %}

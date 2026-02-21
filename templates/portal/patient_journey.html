@@ -113,17 +113,17 @@
                     <i class="bi bi-activity text-sm"></i>
                     <span>Journey</span>
                 </a>
-                <a href="{{ url_for('patient.dashboard', _anchor='stays') }}"
+                <a href="{{ url_for('patient.stay') }}"
                     class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
                     <i class="bi bi-door-open text-sm"></i>
                     <span>Stay</span>
                 </a>
-                <a href="{{ url_for('patient.dashboard', _anchor='pharmacy') }}"
+                <a href="{{ url_for('patient.inventory') }}"
                     class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
                     <i class="bi bi-capsule text-sm"></i>
                     <span>Inventory</span>
                 </a>
-                <a href="{{ url_for('patient.dashboard', _anchor='financials') }}"
+                <a href="{{ url_for('patient.ledger') }}"
                     class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
                     <i class="bi bi-wallet2 text-sm"></i>
                     <span>Ledger</span>
