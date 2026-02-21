@@ -107,19 +107,21 @@
     </nav>
 
     <!-- Hero Section (HMS Uniform) -->
-    <div class="relative bg-white overflow-hidden">
+    <div class="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+        <!-- Background Image with Overlay -->
         <div class="absolute inset-0">
-            <div class="absolute inset-0 bg-gradient-to-br from-emerald-50 to-blue-50 opacity-70"></div>
-            <div
-                class="absolute top-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20">
+            <img src="https://images.unsplash.com/photo-1512678080530-7760d81faba6?auto=format&fit=crop&q=80&w=2000"
+                class="w-full h-full object-cover" alt="Modern Medical Center">
+            <div class="absolute inset-0 bg-gradient-to-br from-white/95 via-white/80 to-emerald-50/60 shadow-inner">
             </div>
+            <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
         </div>
 
-        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-36 pb-32 text-center text-balance">
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-32 text-center text-balance">
             <div
-                class="inline-flex items-center space-x-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100 mb-8 animate-fade-in-up">
+                class="inline-flex items-center space-x-2 px-3 py-1 bg-emerald-50/80 backdrop-blur-md rounded-full border border-emerald-100 mb-8 animate-fade-in-up">
                 <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span class="text-[9px] font-black text-emerald-700 uppercase tracking-[0.2em]">Operational Status:
+                <span class="text-[9px] font-black text-emerald-700 uppercase tracking-[0.2em]">Live Operational Status:
                     Normal</span>
             </div>
 
@@ -131,7 +133,7 @@
             </h1>
 
             <p
-                class="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-gray-400 font-medium animate-fade-in-up delay-200 px-6 leading-relaxed">
+                class="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-gray-600 font-medium animate-fade-in-up delay-200 px-6 leading-relaxed">
                 The HMS Patient Portal is your unified care companion. Real-time diagnostic streams, digital specialist
                 booking, and facility stay management—all in one secure hub.
             </p>
@@ -145,6 +147,99 @@
                     class="w-full sm:w-auto px-12 py-5 bg-white/80 backdrop-blur-md text-gray-900 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] border border-gray-100 hover:border-emerald-200 hover:-translate-y-1 transition-all shadow-sm">
                     Explore Capabilities
                 </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Showcase (HMS Premium Layout) -->
+    <div class="py-24 bg-gray-50/50 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col lg:flex-row items-center gap-16">
+                <div class="lg:w-1/2">
+                    <div class="relative group">
+                        <div
+                            class="absolute -inset-4 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-[2.5rem] blur-2xl opacity-10 group-hover:opacity-20 transition-all duration-500">
+                        </div>
+                        <img src="https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80&w=1200"
+                            class="relative rounded-[2rem] shadow-2xl border border-white"
+                            alt="Professional Healthcare">
+
+                        <div
+                            class="absolute -bottom-10 -right-10 bg-white p-6 rounded-3xl shadow-2xl border border-gray-100 hidden md:block animate-fade-in-up delay-300">
+                            <div class="flex items-center space-x-4 mb-4">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                                    <i class="bi bi-shield-check text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-black text-gray-900 uppercase tracking-widest">Global Safety
+                                    </p>
+                                    <p class="text-[10px] text-gray-500">Tier 4 Data Center</p>
+                                </div>
+                            </div>
+                            <div class="h-1.5 w-32 bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-emerald-500 w-[94%]"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:w-1/2">
+                    <h2 class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.4em] mb-4">Digital
+                        Advantage</h2>
+                    <p class="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter mb-8">Clinical Excellence
+                        <br> Meet Digital Simplicity.
+                    </p>
+                    <p class="text-gray-500 text-lg mb-10 leading-relaxed font-medium">
+                        Forget traditional patient paperwork. Our unified care hub orchestrates every aspect of your
+                        clinical journey, from digital entry to financial resolution.
+                    </p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                        <div class="flex items-start space-x-4">
+                            <div
+                                class="mt-1 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                                <i class="bi bi-check2 text-xs"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-900 text-sm mb-1">24/7 Monitoring</h4>
+                                <p class="text-[11px] text-gray-500 leading-relaxed">Continuous stream of your vital
+                                    indicators.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div
+                                class="mt-1 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                                <i class="bi bi-check2 text-xs"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-900 text-sm mb-1">Encrypted Data</h4>
+                                <p class="text-[11px] text-gray-500 leading-relaxed">Full HIPAA and GDPR compliance.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div
+                                class="mt-1 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                                <i class="bi bi-check2 text-xs"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-900 text-sm mb-1">Instant Results</h4>
+                                <p class="text-[11px] text-gray-500 leading-relaxed">Zero-lag diagnostic timeline.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div
+                                class="mt-1 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                                <i class="bi bi-check2 text-xs"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-900 text-sm mb-1">Global Access</h4>
+                                <p class="text-[11px] text-gray-500 leading-relaxed">Access your care hub from anywhere.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
