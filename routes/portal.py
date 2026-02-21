@@ -15,7 +15,7 @@ def index():
         subsystem_color = subsystem_info.get('color', 'blue')
         return render_template('portal/index.html', subsystem_color=subsystem_color)
     
-    return redirect(url_for('patient.landing'))
+    return render_template('portal/index.html', subsystem_color='blue')
 
 @portal_bp.route('/erp')
 def erp():
