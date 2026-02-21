@@ -1,0 +1,379 @@
+{% extends "base/base.html" %}
+
+{% block title %}My Care Hub - {% if patient.first_name %}{{ patient.first_name }} {{ patient.last_name }}{% else
+%}Patient{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .care-sidebar {
+        background: linear-gradient(180deg, #10B981 0%, #064E3B 100%);
+    }
+
+    .hub-card {
+        background: white;
+        border: 1px solid #F1F5F9;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .hub-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    .status-badge {
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 4px 12px;
+        border-radius: 9999px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#F8FAFC] flex font-sans">
+    <!-- Sidebar -->
+    <aside class="w-80 care-sidebar flex flex-col p-8 fixed h-full z-20 text-white">
+        <div class="flex items-center mb-16 px-2">
+            <a href="{{ url_for('patient.landing') }}" class="flex items-center group">
+                <div
+                    class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center mr-4 shadow-xl text-emerald-600 transition-transform group-hover:scale-110">
+                    <i class="bi bi-heart-pulse-fill text-2xl"></i>
+                </div>
+                <div>
+                    <span class="font-black text-2xl tracking-tight block leading-none">CareLink</span>
+                    <span class="text-[10px] font-black text-emerald-300 uppercase tracking-widest mt-1 block">Patient
+                        Hub</span>
+                </div>
+            </a>
+        </div>
+
+        <nav class="flex-1 space-y-2">
+            <a href="#"
+                class="flex items-center space-x-4 px-6 py-4 bg-white/10 rounded-2xl border border-white/10 font-black text-xs uppercase tracking-widest transition-all">
+                <i class="bi bi-grid-1x2 text-xl"></i>
+                <span>Wellness Oasis</span>
+            </a>
+            <a href="#clinical-timeline"
+                class="flex items-center space-x-4 px-6 py-4 hover:bg-white/5 rounded-2xl font-black text-xs uppercase tracking-widest text-emerald-100 transition-all">
+                <i class="bi bi-activity text-xl"></i>
+                <span>Clinical Journey</span>
+            </a>
+            <a href="#stays"
+                class="flex items-center space-x-4 px-6 py-4 hover:bg-white/5 rounded-2xl font-black text-xs uppercase tracking-widest text-emerald-100 transition-all">
+                <i class="bi bi-door-open text-xl"></i>
+                <span>My Hospital Stay</span>
+            </a>
+            <a href="#pharmacy"
+                class="flex items-center space-x-4 px-6 py-4 hover:bg-white/5 rounded-2xl font-black text-xs uppercase tracking-widest text-emerald-100 transition-all">
+                <i class="bi bi-capsule text-xl"></i>
+                <span>Medication Desk</span>
+            </a>
+            <a href="#financials"
+                class="flex items-center space-x-4 px-6 py-4 hover:bg-white/5 rounded-2xl font-black text-xs uppercase tracking-widest text-emerald-100 transition-all">
+                <i class="bi bi-wallet2 text-xl"></i>
+                <span>Financial Clarity</span>
+            </a>
+        </nav>
+
+        <div class="mt-auto">
+            <div class="bg-white/5 p-6 rounded-[2rem] border border-white/5 mb-8">
+                <p class="text-[10px] font-black text-emerald-300 uppercase tracking-widest mb-2">Support Line</p>
+                <p class="text-lg font-bold">24/7 Care Center</p>
+                <p class="text-xs text-emerald-200 mt-1">Dial: 1-800-Care-HMS</p>
+            </div>
+
+            <a href="{{ url_for('patient.logout') }}"
+                class="flex items-center justify-center space-x-3 w-full py-4 bg-rose-500/10 text-rose-300 hover:bg-rose-500 hover:text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all">
+                <i class="bi bi-power"></i>
+                <span>Disconnect Hub</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 ml-80 p-12">
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-16">
+            <div>
+                <h1 class="text-4xl font-black text-gray-900 tracking-tight flex items-center gap-4">
+                    Welcome back, {{ patient.first_name if patient.first_name else 'Patient' }}
+                    <span class="text-emerald-500"><i class="bi bi-patch-check-fill"></i></span>
+                </h1>
+                <p class="text-gray-500 font-medium mt-1">Unified Care Hub ID: <span class="font-bold text-gray-900">{{
+                        patient.patient_id_alt if patient.patient_id_alt else 'TBD' }}</span></p>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <div class="bg-white p-2 rounded-2xl border border-gray-100 flex items-center space-x-4 shadow-sm">
+                    <div
+                        class="w-12 h-12 rounded-xl care-sidebar flex items-center justify-center text-white font-black text-lg">
+                        {% if patient.first_name and patient.last_name %}
+                        {{ patient.first_name[0] }}{{ patient.last_name[0] }}
+                        {% else %}
+                        PH
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Top Widgets: Vital Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+            <!-- Stay Status -->
+            <div class="hub-card p-10 rounded-[2.5rem] relative overflow-hidden group">
+                <div
+                    class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform">
+                </div>
+                <h3 class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-6">Current Accommodation
+                </h3>
+                {% if bed_info %}
+                <div class="text-3xl font-black text-gray-900 mb-2">Ward {{ bed_info.ward_id }}</div>
+                <div class="flex items-center gap-3">
+                    <span class="status-badge bg-emerald-100 text-emerald-700">Bed {{ bed_info.bed_number }}</span>
+                    <span class="text-xs font-bold text-gray-400">Station Active</span>
+                </div>
+                {% else %}
+                <div class="text-3xl font-black text-gray-400 mb-2 italic">Outpatient</div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">No active stay recorded</p>
+                {% endif %}
+                <i class="bi bi-door-open absolute bottom-8 right-8 text-6xl text-emerald-50 cursor-pointer"></i>
+            </div>
+
+            <!-- Financials -->
+            <div class="hub-card p-10 rounded-[2.5rem] relative overflow-hidden group">
+                <div
+                    class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform">
+                </div>
+                <h3 class="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-6">Financial Ledger</h3>
+                <div class="text-3xl font-black text-gray-900 mb-2">${{ "{:,.2f}".format(total_due) }}</div>
+                <div class="flex items-center gap-3">
+                    {% if total_due > 0 %}
+                    <span class="status-badge bg-rose-100 text-rose-700">Action Required</span>
+                    <a href="#financials"
+                        class="text-[10px] font-black text-indigo-600 hover:underline uppercase tracking-widest">Settle
+                        Balance</a>
+                    {% else %}
+                    <span class="status-badge bg-blue-100 text-blue-700">Account Clear</span>
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">No due payments</span>
+                    {% endif %}
+                </div>
+                <i class="bi bi-wallet2 absolute bottom-8 right-8 text-6xl text-indigo-50"></i>
+            </div>
+
+            <!-- Next Appointment -->
+            <div class="hub-card p-10 rounded-[2.5rem] relative overflow-hidden group">
+                <div
+                    class="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform">
+                </div>
+                <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-6">Next Consultation</h3>
+                {% if appointments %}
+                <div class="text-2xl font-black text-gray-900 mb-1">{{ appointments[0].appointment_date | datetime('%b
+                    %d, %H:%M') }}</div>
+                <p class="text-sm font-bold text-gray-500 mb-4">Dr. {{ appointments[0].users.username }}</p>
+                <span class="status-badge bg-amber-100 text-amber-800 uppercase">{{ appointments[0].type }}</span>
+                {% else %}
+                <div class="text-2xl font-black text-gray-400 mb-2 italic">Zero Scheduled</div>
+                <a href="#"
+                    class="text-[10px] font-black text-amber-600 hover:underline uppercase tracking-widest">Request
+                    Booking</a>
+                {% endif %}
+                <i class="bi bi-calendar-check absolute bottom-8 right-8 text-6xl text-amber-50"></i>
+            </div>
+        </div>
+
+        <!-- Clinical Timeline & Records -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Timeline (Combined Results) -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Records: Lab Highlights -->
+                <section id="clinical-timeline">
+                    <div class="flex items-center justify-between mb-8 px-4">
+                        <div>
+                            <h2 class="text-2xl font-black text-gray-900 tracking-tight uppercase">Health Insights</h2>
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Compressed
+                                Diagnostic Lab Data (CT2)</p>
+                        </div>
+                        <button
+                            class="px-6 py-3 bg-white border border-gray-100 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm hover:bg-gray-50 transition-all">Download
+                            All Records</button>
+                    </div>
+
+                    <div class="space-y-4">
+                        {% for lab in labs %}
+                        <div
+                            class="hub-card p-8 rounded-[2rem] flex items-center justify-between group hover:border-emerald-200">
+                            <div class="flex items-center gap-6">
+                                <div
+                                    class="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                                    <i class="bi bi-microscope text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-bold text-gray-900">{{ lab.test_name }}</h4>
+                                    <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">{{
+                                        lab.created_at | datetime }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-6">
+                                <div class="text-right">
+                                    <span
+                                        class="status-badge {% if lab.status == 'Ready' %}bg-emerald-100 text-emerald-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                                        {{ lab.status }}
+                                    </span>
+                                    {% if lab.critical_alert %}
+                                    <span
+                                        class="block text-[8px] font-black text-rose-600 uppercase mt-1 animate-pulse">Critical
+                                        Flag</span>
+                                    {% endif %}
+                                </div>
+                                <i class="bi bi-chevron-right text-gray-300"></i>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="p-12 text-center bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-100">
+                            <i class="bi bi-file-earmark-medical text-3xl text-gray-300 block mb-4"></i>
+                            <p class="text-sm font-bold text-gray-400 uppercase tracking-widest">No laboratory
+                                diagnostics found</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <!-- Stays / Ward Info -->
+                <section id="stays">
+                    <div class="mb-8 px-4">
+                        <h2 class="text-2xl font-black text-gray-900 tracking-tight uppercase">Stay History</h2>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Facility &
+                            Accommodation Tracking (CT1)</p>
+                    </div>
+                    {% if not bed_info %}
+                    <div class="hub-card p-10 rounded-[2.5rem] bg-emerald-600 text-white shadow-xl shadow-emerald-200">
+                        <div class="flex items-center justify-between mb-8">
+                            <i class="bi bi-hospital text-4xl"></i>
+                            <span
+                                class="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-white/20 rounded-full">Facility
+                                Status</span>
+                        </div>
+                        <h3 class="text-2xl font-black mb-2 tracking-tight">Need to request a stay?</h3>
+                        <p class="text-emerald-50 mb-8 font-medium">If you are feeling unwell or have a scheduled
+                            surgery, contact your doctor for ward pre-allocation.</p>
+                        <button
+                            class="w-full py-4 bg-white text-emerald-700 font-black rounded-2xl uppercase tracking-widest text-xs hover:bg-emerald-50 transition-all shadow-lg">
+                            Request Ward Admission
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="hub-card p-10 rounded-[2.5rem] bg-indigo-900 text-white">
+                        <div class="grid grid-cols-2 gap-10">
+                            <div>
+                                <h4 class="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-2">My
+                                    Ward Location</h4>
+                                <p class="text-2xl font-black tracking-tighter">WARD {{ bed_info.ward_id }}</p>
+                                <p class="text-xs text-indigo-300 mt-1 uppercase font-bold">Standard Patient Suite</p>
+                            </div>
+                            <div>
+                                <h4 class="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-2">
+                                    Attending Management</h4>
+                                <p class="text-xl font-bold">CT STAFF UNIT</p>
+                                <p class="text-xs text-indigo-100 mt-1">Contact via Nurse Call System</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </section>
+            </div>
+
+            <!-- Right Column Widgets -->
+            <div class="space-y-8">
+                <!-- Pharmacy Cabinet -->
+                <section id="pharmacy" class="hub-card p-10 rounded-[2.5rem]">
+                    <div class="flex items-center justify-between mb-8">
+                        <h3 class="text-xl font-black text-gray-900 tracking-tight uppercase">My Cabinet</h3>
+                        <i class="bi bi-capsule text-2xl text-rose-500"></i>
+                    </div>
+                    <div class="space-y-6">
+                        {% for rx in prescriptions %}
+                        <div class="pb-6 border-b border-gray-50 last:border-0 last:pb-0">
+                            <div class="flex justify-between items-start mb-1">
+                                <h5 class="font-black text-gray-900 tracking-tight">{{ rx.medication_name }}</h5>
+                                <span class="status-badge bg-gray-50 text-gray-400">{{ rx.dosage }}</span>
+                            </div>
+                            <p class="text-xs text-gray-500 font-medium italic mb-2">{{ rx.instructions }}</p>
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-black text-rose-600 uppercase tracking-widest">Active
+                                    Cycle</span>
+                                <button
+                                    class="text-[10px] font-black text-emerald-600 uppercase hover:underline">Request
+                                    Refill</button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-8">
+                            <p class="text-xs font-black text-gray-300 uppercase tracking-widest">Cabinet is empty</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <!-- Nutritional Concierge -->
+                <div
+                    class="hub-card p-10 rounded-[2.5rem] bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100">
+                    <div class="flex items-center justify-between mb-8">
+                        <h3 class="text-xl font-black text-gray-900 tracking-tight uppercase">Nutrition</h3>
+                        <div
+                            class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-amber-600 shadow-sm">
+                            <i class="bi bi-egg-fried"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs font-black text-amber-700 uppercase tracking-[0.2em] mb-4">Prescribed Diet</p>
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-amber-100 mb-6">
+                        <p class="text-lg font-black text-gray-900">Standard Post-Op</p>
+                        <p class="text-xs text-gray-500 mt-1 font-medium italic">Managed by CT2 DNMS Unit</p>
+                    </div>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-center gap-3 text-xs font-bold text-amber-900">
+                            <i class="bi bi-check-circle-fill text-amber-500"></i> Low Sodium
+                        </li>
+                        <li class="flex items-center gap-3 text-xs font-bold text-amber-900">
+                            <i class="bi bi-check-circle-fill text-amber-500"></i> Hydration Focused
+                        </li>
+                    </ul>
+                    <button
+                        class="w-full py-4 bg-amber-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-amber-200 hover:bg-amber-700 transition-all">
+                        Confirm Meal Receipt
+                    </button>
+                </div>
+
+                <!-- Billing & Financials -->
+                <section id="financials" class="hub-card p-10 rounded-[2.5rem]">
+                    <div class="flex items-center justify-between mb-8">
+                        <h3 class="text-xl font-black text-gray-900 tracking-tight uppercase">Billing</h3>
+                        <i class="bi bi-credit-card text-2xl text-indigo-600"></i>
+                    </div>
+                    <div class="space-y-4">
+                        {% for bill in bills %}
+                        <div class="p-4 rounded-2xl bg-gray-50 flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-black text-gray-900 tracking-tight">${{
+                                    "{:,.2f}".format(bill.total_amount) }}</p>
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{
+                                    bill.billing_date | datetime('%b %d') }}</p>
+                            </div>
+                            <span
+                                class="status-badge {% if bill.status == 'Paid' %}bg-emerald-100 text-emerald-700{% else %}bg-rose-100 text-rose-700{% endif %}">
+                                {{ bill.status }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button
+                        class="w-full py-4 mt-8 bg-indigo-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">
+                        Access Payment Gateway
+                    </button>
+                </section>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

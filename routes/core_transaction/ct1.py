@@ -294,6 +294,29 @@ def register_patient():
             }
             patient = Patient.create(patient_data)
             if patient:
+                # Handle Portal Account Creation
+                if request.form.get('create_portal_account') == 'yes':
+                    portal_username = request.form.get('portal_username')
+                    portal_password = request.form.get('portal_password')
+                    try:
+                        # Create User with 'Patient' role and 'patient' subsystem
+                        User.create(
+                            username=portal_username,
+                            email=f"{portal_username}@hms-patient.com",
+                            password=portal_password,
+                            subsystem='patient',
+                            department='PATIENT_PORTAL',
+                            role='Patient',
+                            status='Active',
+                            full_name=f"{patient.first_name} {patient.last_name}",
+                            patient_id=patient.id, # Link directly during creation
+                            skip_validation=True
+                        )
+                        
+                        flash(f'Portal account created for {portal_username}!', 'success')
+                    except Exception as portal_err:
+                        flash(f'Patient registered, but portal account failed: {str(portal_err)}', 'warning')
+
                 from utils.hms_models import AuditLog
                 AuditLog.log(current_user.id, "Register Patient", BLUEPRINT_NAME, {"patient_id": patient.id, "name": f"{patient.first_name} {patient.last_name}"})
                 flash(f'Patient {patient.first_name} {patient.last_name} registered successfully! ID: {patient.patient_id_alt}', 'success')

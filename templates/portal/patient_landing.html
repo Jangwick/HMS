@@ -1,0 +1,225 @@
+{% extends "base/base.html" %}
+
+{% block title %}HMS CareLink - Your Health, Accelerated{% endblock %}
+
+{% block extra_css %}
+<style>
+    .glass-effect {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .text-gradient {
+        background: linear-gradient(135deg, #10B981 0%, #3B82F6 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .bg-grid {
+        background-size: 100px 100px;
+        background-image:
+            linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+    }
+
+    .blob {
+        position: absolute;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+        filter: blur(80px);
+        border-radius: 50%;
+        z-index: -1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div
+    class="min-h-screen bg-[#F8FAFC] font-sans selection:bg-emerald-100 selection:text-emerald-900 flex flex-col relative overflow-hidden bg-grid">
+    <!-- Blobs -->
+    <div class="blob" style="top: -200px; right: -200px;"></div>
+    <div class="blob" style="bottom: -200px; left: -200px;"></div>
+
+    <!-- Navigation -->
+    <nav class="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-[100]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center">
+                <div
+                    class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-indigo-600 flex items-center justify-center mr-4 shadow-lg text-white">
+                    <i class="bi bi-heart-pulse-fill text-2xl"></i>
+                </div>
+                <div>
+                    <span class="font-extrabold text-2xl text-gray-900 tracking-tight">CareLink</span>
+                    <span
+                        class="text-[10px] font-black text-emerald-600 block uppercase tracking-widest leading-none mt-1">Patient
+                        Portal</span>
+                </div>
+            </div>
+
+            <div class="hidden md:flex items-center space-x-10">
+                <a href="#features"
+                    class="text-sm font-bold text-gray-500 hover:text-emerald-600 transition-colors uppercase tracking-widest">Capabilities</a>
+                <a href="#stats"
+                    class="text-sm font-bold text-gray-500 hover:text-emerald-600 transition-colors uppercase tracking-widest">Facility
+                    Status</a>
+                {% if current_user.is_authenticated and current_user.role == 'Patient' %}
+                <a href="{{ url_for('patient.dashboard') }}"
+                    class="px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200">Go
+                    to Hub</a>
+                {% else %}
+                <a href="{{ url_for('patient.login') }}"
+                    class="px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200">Patient
+                    Login</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="relative pt-24 pb-32 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto text-center">
+            <div
+                class="inline-flex items-center px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 mb-8 animate-fade-in-down">
+                <span class="flex h-2 w-2 rounded-full bg-emerald-500 mr-3 animate-pulse"></span>
+                <span class="text-xs font-black text-emerald-700 uppercase tracking-widest">HMS Eco-System Active</span>
+            </div>
+            <h1 class="text-6xl md:text-8xl font-black text-gray-900 tracking-tighter mb-8 leading-[0.9]">
+                Care Without <br />
+                <span class="text-gradient">Boundaries.</span>
+            </h1>
+            <p class="text-xl text-gray-500 max-w-2xl mx-auto font-medium mb-12 leading-relaxed">
+                A unified gateway for HMS patients. Access your Clinical Journey, Ward Accommodation, and Financials in
+                one high-performance interface.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-6">
+                <a href="{{ url_for('patient.login') }}"
+                    class="w-full sm:w-auto px-10 py-5 bg-gray-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all shadow-2xl">
+                    Launch Care Hub
+                </a>
+                <a href="#features"
+                    class="w-full sm:w-auto px-10 py-5 glass-effect rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] text-gray-900 border border-gray-100 hover:bg-white transition-all">
+                    Explore Features
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Capabilities Grid -->
+    <section id="features" class="py-24 bg-white/50 backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-20">
+                <h2 class="text-xs font-black text-emerald-600 uppercase tracking-[0.3em] mb-4">Core Compression</h2>
+                <h3 class="text-4xl font-black text-gray-900 tracking-tight">The Unified Patient Stream</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <!-- CT1 Focus -->
+                <div class="glass-effect p-10 rounded-[3rem] border border-white hover:shadow-2xl transition-all group">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 mb-8 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                        <i class="bi bi-door-open text-3xl"></i>
+                    </div>
+                    <h4 class="text-2xl font-black text-gray-900 mb-4 tracking-tight">Hospital Stay</h4>
+                    <p class="text-gray-500 font-medium mb-8">Direct visibility into your ward location, bed assignment,
+                        and attending staff units. Full stay history at your fingertips.</p>
+                    <ul class="space-y-4">
+                        <li class="flex items-center text-xs font-black text-gray-400 uppercase tracking-widest">
+                            <i class="bi bi-check-circle-fill text-emerald-500 mr-3"></i> Ward Navigation
+                        </li>
+                        <li class="flex items-center text-xs font-black text-gray-400 uppercase tracking-widest">
+                            <i class="bi bi-check-circle-fill text-emerald-500 mr-3"></i> Nutrition Concierge
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- CT2 Focus -->
+                <div class="glass-effect p-10 rounded-[3rem] border border-white hover:shadow-2xl transition-all group">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mb-8 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                        <i class="bi bi-activity text-3xl"></i>
+                    </div>
+                    <h4 class="text-2xl font-black text-gray-900 mb-4 tracking-tight">Clinical Journey</h4>
+                    <p class="text-gray-500 font-medium mb-8">Real-time access to laboratory results, pharmacy cabinet
+                        refills, and your chronological health timeline.</p>
+                    <ul class="space-y-4">
+                        <li class="flex items-center text-xs font-black text-gray-400 uppercase tracking-widest">
+                            <i class="bi bi-check-circle-fill text-blue-500 mr-3"></i> Lab Insight
+                        </li>
+                        <li class="flex items-center text-xs font-black text-gray-400 uppercase tracking-widest">
+                            <i class="bi bi-check-circle-fill text-blue-500 mr-3"></i> Med Tracker
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- CT3 Focus -->
+                <div class="glass-effect p-10 rounded-[3rem] border border-white hover:shadow-2xl transition-all group">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 mb-8 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                        <i class="bi bi-wallet2 text-3xl"></i>
+                    </div>
+                    <h4 class="text-2xl font-black text-gray-900 mb-4 tracking-tight">Financial Clarity</h4>
+                    <p class="text-gray-500 font-medium mb-8">Transparent billing ledgers and insurance verification.
+                        View and settle balances via our premium gateway.</p>
+                    <ul class="space-y-4">
+                        <li class="flex items-center text-xs font-black text-gray-400 uppercase tracking-widest">
+                            <i class="bi bi-check-circle-fill text-indigo-500 mr-3"></i> Live Ledger
+                        </li>
+                        <li class="flex items-center text-xs font-black text-gray-400 uppercase tracking-widest">
+                            <i class="bi bi-check-circle-fill text-indigo-500 mr-3"></i> Claims Tracking
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Facility Stats -->
+    <section id="stats" class="py-24 bg-gray-900 text-white relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 text-center">
+                <div>
+                    <div class="text-5xl font-black mb-2 text-emerald-400">{{ stats.occupied_beds }}/{{ stats.total_beds
+                        }}</div>
+                    <div class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Ward Capacity</div>
+                </div>
+                <div>
+                    <div class="text-5xl font-black mb-2 text-blue-400">{{ stats.er_wait_time }}</div>
+                    <div class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">ER Wait Time</div>
+                </div>
+                <div>
+                    <div class="text-5xl font-black mb-2 text-indigo-400">99.8%</div>
+                    <div class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Service Uptime</div>
+                </div>
+                <div>
+                    <div class="text-5xl font-black mb-2 text-amber-400">24/7</div>
+                    <div class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Care Support</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-white py-16 border-t border-gray-100 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between">
+            <div class="flex items-center mb-8 md:mb-0">
+                <div class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center mr-4 text-white">
+                    <i class="bi bi-heart-pulse-fill"></i>
+                </div>
+                <span class="font-extrabold text-xl text-gray-900">CareLink</span>
+            </div>
+            <p class="text-sm font-bold text-gray-400 uppercase tracking-widest">© 2026 HMS Unified Care Hub. All Rights
+                Reserved.</p>
+            <div class="flex space-x-8 mt-8 md:mt-0">
+                <a href="#"
+                    class="text-xs font-black text-gray-400 hover:text-emerald-600 transition-colors uppercase tracking-widest">Privacy</a>
+                <a href="#"
+                    class="text-xs font-black text-gray-400 hover:text-emerald-600 transition-colors uppercase tracking-widest">Legal</a>
+            </div>
+        </div>
+    </footer>
+</div>
+{% endblock %}

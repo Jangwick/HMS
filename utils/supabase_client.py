@@ -78,6 +78,7 @@ class User(UserMixin):
             self.subsystem = data.get('subsystem')
             self.department = data.get('department')
             self.role = data.get('role', 'Staff')
+            self.patient_id = data.get('patient_id')
             self.avatar_url = data.get('avatar_url')
             self.password_created_at = self._parse_datetime(data.get('password_created_at'))
             self.password_expires_at = self._parse_datetime(data.get('password_expires_at'))
@@ -247,7 +248,7 @@ class User(UserMixin):
     @staticmethod
     def create(username: str, email: str, password: str, subsystem: str, 
                department: str, role: str = 'Staff', status: str = 'Pending', 
-               full_name: str = None, skip_validation: bool = False) -> 'User':
+               full_name: str = None, patient_id: int = None, skip_validation: bool = False) -> 'User':
         """
         Create a new user in the database.
         
@@ -285,6 +286,7 @@ class User(UserMixin):
             'subsystem': subsystem,
             'department': department,
             'role': role,
+            'patient_id': patient_id,
             'password_created_at': now.isoformat(),
             'password_expires_at': (now + timedelta(days=PASSWORD_EXPIRY_DAYS)).isoformat(),
             'password_history': [password_hash],
@@ -396,4 +398,5 @@ SUBSYSTEM_CONFIG = {
     'log1': {'department': 'LOGISTICS', 'name': 'Inventory Management', 'color': 'amber'},
     'log2': {'department': 'LOGISTICS', 'name': 'Procurement', 'color': 'amber'},
     'financials': {'department': 'FINANCIALS', 'name': 'Financial Management System', 'color': 'purple'},
+    'patient': {'department': 'PATIENT_PORTAL', 'name': 'CareLink Portal', 'color': 'teal'},
 }

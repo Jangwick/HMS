@@ -69,6 +69,10 @@ def create_app(config_class=Config):
     from routes.financials.main import financials_bp
     app.register_blueprint(financials_bp, url_prefix='/financials')
 
+    # Patient Portal (Unified)
+    from routes.patient import patient_bp
+    app.register_blueprint(patient_bp, url_prefix='/carehub')
+
     # User Loader for Flask-Login using Supabase
     @login_manager.user_loader
     def load_user(user_id):
