@@ -312,36 +312,114 @@
         </div>
     </div>
 
-    <!-- Standardized Footer (HMS Uniform) -->
-    <footer class="mt-auto max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-12 border-t border-gray-100 no-print">
-        <div
-            class="flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0 text-sm text-gray-500">
-            <div class="flex items-center">
-                <div
-                    class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center mr-3 text-white shadow-md">
-                    <i class="bi bi-heart-pulse text-sm"></i>
+    <!-- Premium Footer (HMS Uniform) -->
+    <footer class="bg-gray-50 border-t border-gray-200 pt-24 pb-12 relative overflow-hidden no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-20">
+                <!-- Brand Column -->
+                <div class="lg:col-span-1">
+                    <div class="flex items-center mb-8">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center mr-4 text-white shadow-xl">
+                            <i class="bi bi-heart-pulse text-xl"></i>
+                        </div>
+                        <span class="font-black text-xl text-gray-900 tracking-tighter uppercase">HMS Portal</span>
+                    </div>
+                    <p class="text-sm text-gray-500 leading-relaxed max-w-xs mb-8">
+                        The unified gateway for digital health orchestration. Empowering patients with real-time
+                        diagnostic transparency and seamless facility management.
+                    </p>
+                    <div class="flex items-center space-x-4">
+                        <a href="#"
+                            class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:border-emerald-200 hover:-translate-y-1 transition-all shadow-sm">
+                            <i class="bi bi-twitter-x"></i>
+                        </a>
+                        <a href="#"
+                            class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:border-emerald-200 hover:-translate-y-1 transition-all shadow-sm">
+                            <i class="bi bi-linkedin"></i>
+                        </a>
+                        <a href="#"
+                            class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:border-emerald-200 hover:-translate-y-1 transition-all shadow-sm">
+                            <i class="bi bi-github"></i>
+                        </a>
+                    </div>
                 </div>
-                <span>© 2026 <span class="font-bold text-gray-900 tracking-tight">HMS PATIENT PORTAL</span>. All rights
-                    reserved.</span>
+
+                <!-- Navigation -->
+                <div>
+                    <h4 class="text-[11px] font-black text-gray-900 uppercase tracking-[0.3em] mb-8">Ecosystem</h4>
+                    <ul class="space-y-4">
+                        <li><a href="{{ url_for('patient.landing') }}#features"
+                                class="text-sm text-gray-500 hover:text-emerald-600 transition-colors font-medium">Capabilities</a>
+                        </li>
+                        <li><a href="{{ url_for('patient.landing') }}#stats"
+                                class="text-sm text-gray-500 hover:text-emerald-600 transition-colors font-medium">Facility
+                                Status</a></li>
+                        <li><a href="{{ url_for('patient.login') }}"
+                                class="text-sm text-gray-500 hover:text-emerald-600 transition-colors font-medium">Patient
+                                Access</a></li>
+                        <li><a href="{{ url_for('ct1.register_patient') }}"
+                                class="text-sm text-gray-500 hover:text-emerald-600 transition-colors font-medium">Create
+                                Account</a></li>
+                    </ul>
+                </div>
+
+                <!-- Support -->
+                <div>
+                    <h4 class="text-[11px] font-black text-gray-900 uppercase tracking-[0.3em] mb-8">Care Network</h4>
+                    <ul class="space-y-4">
+                        <li><a href="#"
+                                class="text-sm text-gray-500 hover:text-emerald-600 transition-colors font-medium">Privacy
+                                Protocol</a></li>
+                        <li><a href="#"
+                                class="text-sm text-gray-500 hover:text-emerald-600 transition-colors font-medium">Terms
+                                of Service</a></li>
+                        <li><a href="#"
+                                class="text-sm text-gray-500 hover:text-emerald-600 transition-colors font-medium">Facility
+                                Locations</a></li>
+                        <li><a href="#"
+                                class="text-sm text-gray-500 hover:text-emerald-600 transition-colors font-medium">Staff
+                                Directory</a></li>
+                    </ul>
+                </div>
+
+                <!-- Contact/Status -->
+                <div>
+                    <h4 class="text-[11px] font-black text-gray-900 uppercase tracking-[0.3em] mb-8">Crisis Center</h4>
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm mb-6">
+                        <div class="flex items-center mb-4">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse mr-3"></span>
+                            <span class="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Normal
+                                Systems</span>
+                        </div>
+                        <p class="text-xs text-gray-500 font-medium mb-4">Central Dispatch Active</p>
+                        <a href="tel:18002273467"
+                            class="flex items-center text-sm font-black text-gray-900 hover:text-emerald-600 transition-colors">
+                            <i class="bi bi-telephone-outbound mr-3 text-lg"></i>
+                            1-800-CARE-HMS
+                        </a>
+                    </div>
+                </div>
             </div>
 
-            <div class="flex items-center space-x-8 h-8">
-                <a href="#"
-                    class="inline-flex items-center hover:text-emerald-600 transition-colors font-medium">Terms</a>
-                <a href="#"
-                    class="inline-flex items-center hover:text-emerald-600 transition-colors font-medium">Privacy</a>
-                <a href="#"
-                    class="inline-flex items-center text-gray-900 font-bold hover:text-emerald-600 transition-colors group">
-                    <i class="bi bi-headset mr-2 text-emerald-600 text-lg"></i>
-                    <span>Patient Support</span>
-                </a>
+            <!-- Bottom Bar -->
+            <div class="pt-12 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-6">
+                <p class="text-xs text-gray-400 font-medium">
+                    © 2026 HMS Health Management System. A Unified Care Initiative.
+                </p>
+                <div class="flex items-center space-x-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <span>Secured by HMS Core</span>
+                    <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+                    <span>GDPR Compliant</span>
+                    <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+                    <span>HIPAA Ready</span>
+                </div>
             </div>
         </div>
 
-        <div class="mt-8 pt-8 border-t border-gray-50 text-center">
-            <p class="text-[11px] text-gray-400 uppercase tracking-widest font-bold">
-                Secured by HMS Core Authentication & Access Control
-            </p>
+        <!-- Subtle noise and glow -->
+        <div
+            class="absolute bottom-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none">
         </div>
     </footer>
 </div>
