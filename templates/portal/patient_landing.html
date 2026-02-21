@@ -163,7 +163,7 @@
     <div id="features" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 pb-24 relative z-10">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch auto-rows-fr">
             <!-- Facility Stay -->
-            <div
+            <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('patient.dashboard') }}#stays{% else %}{{ url_for('patient.login', next=url_for('patient.dashboard') + '#stays') }}{% endif %}"
                 class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden h-full flex flex-col">
                 <div class="h-3 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
                 <div class="p-8 flex flex-col h-full">
@@ -184,10 +184,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </a>
 
             <!-- Specialist Direct -->
-            <div
+            <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('patient.dashboard') }}#clinical-timeline{% else %}{{ url_for('patient.login', next=url_for('patient.dashboard') + '#clinical-timeline') }}{% endif %}"
                 class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden h-full flex flex-col">
                 <div class="h-3 bg-gradient-to-r from-teal-400 to-teal-600"></div>
                 <div class="p-8 flex flex-col h-full">
@@ -208,10 +208,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </a>
 
             <!-- Clinical insights -->
-            <div
+            <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('patient.dashboard') }}#clinical-timeline{% else %}{{ url_for('patient.login', next=url_for('patient.dashboard') + '#clinical-timeline') }}{% endif %}"
                 class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden h-full flex flex-col">
                 <div class="h-3 bg-gradient-to-r from-blue-400 to-blue-600"></div>
                 <div class="p-8 flex flex-col h-full">
@@ -232,10 +232,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </a>
 
             <!-- Financial Clarity -->
-            <div
+            <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('patient.dashboard') }}#financials{% else %}{{ url_for('patient.login', next=url_for('patient.dashboard') + '#financials') }}{% endif %}"
                 class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden h-full flex flex-col">
                 <div class="h-3 bg-gradient-to-r from-purple-400 to-purple-600"></div>
                 <div class="p-8 flex flex-col h-full">
@@ -257,7 +257,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 

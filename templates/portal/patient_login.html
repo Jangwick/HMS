@@ -80,6 +80,9 @@
         <div class="glass-login rounded-[2.5rem] p-10 border border-white/50">
             <form method="POST" class="space-y-6">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if next %}
+                <input type="hidden" name="next" value="{{ next }}">
+                {% endif %}
 
                 <div>
                     <label

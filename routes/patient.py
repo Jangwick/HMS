@@ -35,9 +35,12 @@ def login():
     if current_user.is_authenticated and current_user.role == 'Patient':
         return redirect(url_for('patient.dashboard'))
     
+    next_page = request.args.get('next')
+    
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        next_page = request.form.get('next')
         
         # Patients are in a specific 'patient' subsystem to isolate them
         user = User.get_by_username(username, 'patient')
@@ -45,16 +48,16 @@ def login():
         if user and user.check_password(password):
             if user.status != 'Active':
                 flash('Your account is awaiting activation.', 'info')
-                return render_template('portal/patient_login.html')
+                return render_template('portal/patient_login.html', next=next_page)
             
             if login_user(user):
                 register_successful_login(subsystem='patient')
-                return redirect(url_for('patient.dashboard'))
+                return redirect(next_page if next_page else url_for('patient.dashboard'))
         
         flash('Invalid credentials.', 'danger')
         register_failed_attempt(subsystem='patient')
         
-    return render_template('portal/patient_login.html')
+    return render_template('portal/patient_login.html', next=next_page)
 
 @patient_bp.route('/dashboard')
 @login_required
