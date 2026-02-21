@@ -808,8 +808,9 @@
 
                             <div class="max-h-96 overflow-y-auto" id="notificationList">
                                 {% for n in sys_notifications %}
-                                <div class="p-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer {% if not n.is_read %}bg-accent/5{% endif %}"
-                                    onclick="markAsRead('{{ n.id }}', this, '{{ n.target_url if n.target_url else '' }}')">
+                                <a href="{{ n.target_url if n.target_url else '#' }}"
+                                    class="p-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer block {% if not n.is_read %}bg-accent/5{% endif %}"
+                                    onclick='handleNotificationClick(event, "{{ n.id }}", this, "{{ n.target_url if n.target_url else "" }}")'>
                                     <div class="flex items-start">
                                         <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 
                                             {% if n.type == 'danger' %}bg-red-50 text-red-600
@@ -833,7 +834,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </a>
                                 {% endfor %}
 
                                 {% if not sys_notifications %}
@@ -927,24 +928,27 @@
             }
         }
 
-        async function markAsRead(id, element, url = null) {
+        async function handleNotificationClick(event, id, element, url = null) {
+            // If it's a real link and user clicked it, we might want to let the browser handle it
+            // but we want to mark it as read first.
+            if (url && url !== '#' && url !== '') {
+                event.preventDefault(); // Stop immediate navigation
+            }
+
             try {
-                const response = await fetch(`/notifications/read/${id}`, {
+                // Try to mark as read in the background
+                await fetch(`/notifications/read/${id}`, {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': '{{ csrf_token() }}'
                     }
                 });
-                if (response.ok) {
-                    element.classList.remove('bg-accent/5');
-                    // Optional: update unread counter in UI
-                    if (url) {
-                        window.location.href = url;
-                    }
-                }
+                element.classList.remove('bg-accent/5');
             } catch (err) {
                 console.error('Failed to mark notification as read:', err);
-                if (url) {
+            } finally {
+                // Always redirect if a URL is provided
+                if (url && url !== '#' && url !== '') {
                     window.location.href = url;
                 }
             }

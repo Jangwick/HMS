@@ -112,7 +112,7 @@ def register():
                     message=f"A new patient ({first_name} {last_name}) has registered via the portal and is awaiting clinical onboarding.",
                     n_type="info",
                     sender_subsystem='patient',
-                    target_url=url_for('ct1.list_patients')
+                    target_url=url_for('ct1.list_patients', _external=True)
                 )
                 
                 flash('Account created successfully! You can now log in.', 'success')
