@@ -649,14 +649,30 @@ def discharge():
     client = get_supabase_client()
     
     try:
-        # Get all patients who are currently admitted (using beds as a proxy for admission)
-        beds_resp = client.table('beds').select('*, patients(*)').eq('status', 'Occupied').execute()
-        admitted = beds_resp.data if beds_resp.data else []
+        # Get all occupied beds
+        beds_resp = client.table('beds').select('*').eq('status', 'Occupied').execute()
+        occupied_beds = beds_resp.data if beds_resp.data else []
         
-        # For each admitted patient, check clearance status
-        for record in admitted:
-            p_id = record.get('patient_id')
-            if not p_id: continue
+        # Get all patients who have a current_bed_id in insurance_info
+        patients_resp = client.table('patients').select('*').execute()
+        all_patients = patients_resp.data if patients_resp.data else []
+        
+        # Build bed_id -> patient map from JSONB
+        bed_to_patient = {}
+        for p in all_patients:
+            info = p.get('insurance_info') or {}
+            b_id = info.get('current_bed_id')
+            if b_id:
+                bed_to_patient[int(b_id)] = p
+        
+        admitted = []
+        for bed in occupied_beds:
+            patient = bed_to_patient.get(bed['id'])
+            if not patient:
+                continue
+            
+            record = {**bed, 'patients': patient, 'patient_id': patient['id']}
+            p_id = patient['id']
             
             # 1. Check Billing Status (Integration Point: Finance)
             bills_resp = client.table('billing_records').select('status').eq('patient_id', p_id).execute()
@@ -674,6 +690,7 @@ def discharge():
             record['pharm_cleared'] = (len(pharm_resp.data) == 0 or len(pending_meds) == 0)
             
             record['fully_cleared'] = record['billing_cleared'] and record['labs_cleared'] and record['pharm_cleared']
+            admitted.append(record)
             
     except Exception as e:
         flash(f'Error fetching discharge data: {str(e)}', 'danger')
@@ -702,8 +719,17 @@ def clear_for_discharge(patient_id):
              flash('Cannot discharge: Outstanding balance exists or no bill record found.', 'danger')
              return redirect(url_for('ct3.discharge'))
              
-        # Free up the bed
-        client.table('beds').update({'status': 'Available', 'patient_id': None}).eq('patient_id', patient_id).execute()
+        # Free up the bed - find it via JSONB workaround
+        p_res = client.table('patients').select('id, insurance_info').eq('id', patient_id).single().execute()
+        if p_res.data:
+            insurance = p_res.data.get('insurance_info') or {}
+            bed_id = insurance.get('current_bed_id')
+            if bed_id:
+                client.table('beds').update({'status': 'Available'}).eq('id', int(bed_id)).execute()
+            # Clear the bed assignment from patient
+            if 'current_bed_id' in insurance:
+                del insurance['current_bed_id']
+            client.table('patients').update({'insurance_info': insurance}).eq('id', patient_id).execute()
         
         flash('Patient discharged and bed cleared successfully.', 'success')
     except Exception as e:

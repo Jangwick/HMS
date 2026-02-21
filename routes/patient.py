@@ -90,9 +90,12 @@ def dashboard():
         patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
         data['patient'] = patient_resp.data
         
-        # 2. Fetch Stay Info (CT1/CT3)
-        bed_resp = client.table('beds').select('*').eq('patient_id', patient_id).execute()
-        data['bed_info'] = bed_resp.data[0] if bed_resp.data else None
+        # 2. Fetch Stay Info (CT1/CT3) - Use JSONB workaround since beds table has no patient_id column
+        patient_insurance = data['patient'].get('insurance_info') or {}
+        current_bed_id = patient_insurance.get('current_bed_id')
+        if current_bed_id:
+            bed_resp = client.table('beds').select('*').eq('id', int(current_bed_id)).execute()
+            data['bed_info'] = bed_resp.data[0] if bed_resp.data else None
         
         # 3. Fetch Clinical Data (CT2)
         labs_resp = client.table('lab_orders').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
@@ -292,9 +295,12 @@ def stay():
         patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
         data['patient'] = patient_resp.data
         
-        # Fetch Bed Info
-        bed_resp = client.table('beds').select('*').eq('patient_id', patient_id).execute()
-        data['bed_info'] = bed_resp.data[0] if bed_resp.data else None
+        # Fetch Bed Info - Use JSONB workaround since beds table has no patient_id column
+        patient_insurance = data['patient'].get('insurance_info') or {}
+        current_bed_id = patient_insurance.get('current_bed_id')
+        if current_bed_id:
+            bed_resp = client.table('beds').select('*').eq('id', int(current_bed_id)).execute()
+            data['bed_info'] = bed_resp.data[0] if bed_resp.data else None
         
         # Fetch Nutrition Info
         diet_resp = client.table('diet_plans').select('*, users(full_name)').eq('patient_id', patient_id).eq('status', 'Active').order('created_at', desc=True).execute()
