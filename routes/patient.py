@@ -152,6 +152,123 @@ def dashboard():
 
     return render_template('portal/patient_dashboard.html', **data)
 
+@patient_bp.route('/journey')
+@login_required
+def journey():
+    if current_user.role != 'Patient' or not current_user.patient_id:
+        flash('Access restricted to registered patients.', 'warning')
+        return redirect(url_for('portal.index'))
+    
+    client = get_supabase_client()
+    patient_id = current_user.patient_id
+    
+    data = {
+        'patient': None,
+        'labs': [],
+        'radiology': [],
+        'medical_records': [],
+        'appointments': [],
+        'prescriptions': [],
+        'bills': [],
+        'timeline': []
+    }
+    
+    try:
+        # Fetch Patient Info
+        patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
+        data['patient'] = patient_resp.data
+        
+        # Fetch detailed clinical data
+        labs_resp = client.table('lab_orders').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
+        data['labs'] = labs_resp.data
+        
+        radio_resp = client.table('radiology_orders').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
+        data['radiology'] = radio_resp.data
+        
+        records_resp = client.table('medical_records').select('*, users(full_name)').eq('patient_id', patient_id).order('visit_date', desc=True).execute()
+        data['medical_records'] = records_resp.data
+        
+        appt_resp = client.table('appointments').select('*, users(full_name)').eq('patient_id', patient_id).order('appointment_date', desc=True).execute()
+        data['appointments'] = appt_resp.data
+
+        prescriptions_resp = client.table('prescriptions').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
+        data['prescriptions'] = prescriptions_resp.data
+
+        billing_resp = client.table('billing_records').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
+        data['bills'] = billing_resp.data
+
+        # Construct Unified Timeline for Journey (More detailed)
+        timeline = []
+        for lab in data['labs']:
+            timeline.append({
+                'type': 'lab',
+                'title': lab['test_name'],
+                'date': lab['created_at'],
+                'status': lab['status'],
+                'details': lab.get('results'),
+                'icon': 'bi-microscope',
+                'category': 'Diagnostics'
+            })
+        for rad in data['radiology']:
+            timeline.append({
+                'type': 'radiology',
+                'title': rad['imaging_type'],
+                'date': rad['created_at'],
+                'status': rad['status'],
+                'details': rad.get('findings'),
+                'icon': 'bi-camera',
+                'category': 'Imaging'
+            })
+        for record in data['medical_records']:
+            timeline.append({
+                'type': 'medical_record',
+                'title': f"Clinic Visit: {record['diagnosis']}",
+                'date': record['visit_date'],
+                'status': 'Finalized',
+                'details': record.get('treatment'),
+                'doctor': record['users']['full_name'] if record.get('users') else 'Attending Physician',
+                'icon': 'bi-file-earmark-medical',
+                'category': 'Clinical Visit'
+            })
+        for appt in data['appointments']:
+            timeline.append({
+                'type': 'appointment',
+                'title': f"Consultation: {appt['type']}",
+                'date': appt['appointment_date'],
+                'status': appt['status'],
+                'doctor': appt['users']['full_name'] if appt.get('users') else 'Staff',
+                'icon': 'bi-calendar2-check',
+                'category': 'Schedule'
+            })
+        for rx in data['prescriptions']:
+            timeline.append({
+                'type': 'prescription',
+                'title': f"Prescription: {rx['medication_name']}",
+                'date': rx['created_at'],
+                'status': rx['status'],
+                'details': f"Dosage: {rx['dosage']} - {rx['instructions']}",
+                'icon': 'bi-capsule',
+                'category': 'Medication'
+            })
+        for bill in data['bills']:
+            timeline.append({
+                'type': 'billing',
+                'title': f"Billing: {bill['description'] or 'Service Charge'}",
+                'date': bill['created_at'],
+                'status': bill['status'],
+                'details': f"Amount: ${bill['total_amount']}",
+                'icon': 'bi-wallet2',
+                'category': 'Financial'
+            })
+        
+        data['timeline'] = sorted(timeline, key=lambda x: x['date'], reverse=True)
+
+    except Exception as e:
+        print(f"Error fetching journey data: {e}")
+        flash('Some journey details could not be synchronized.', 'warning')
+
+    return render_template('portal/patient_journey.html', **data)
+
 @patient_bp.route('/logout')
 @login_required
 def logout():

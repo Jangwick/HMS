@@ -96,12 +96,12 @@
 
             <!-- Centered Desktop Links -->
             <div class="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center space-x-8">
-                <a href="#"
+                <a href="{{ url_for('patient.dashboard') }}"
                     class="group flex items-center space-x-2 text-[10px] font-black text-gray-900 uppercase tracking-widest px-4 py-2 bg-gray-50 rounded-full border border-gray-100 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-700">
                     <i class="bi bi-grid-1x2 text-sm"></i>
                     <span>Overview</span>
                 </a>
-                <a href="#clinical-timeline"
+                <a href="{{ url_for('patient.journey') }}"
                     class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
                     <i class="bi bi-activity text-sm"></i>
                     <span>Journey</span>
@@ -299,6 +299,9 @@
                             <p class="text-[9px] font-black text-gray-400 uppercase tracking-[0.3em] mt-1">Unified
                                 Diagnostic & Interaction Stream</p>
                         </div>
+                        <a href="{{ url_for('patient.journey') }}"
+                            class="px-6 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all">View
+                            Full History</a>
                     </div>
 
                     <div class="relative pl-8 border-l-2 border-gray-100 space-y-8 ml-4">
