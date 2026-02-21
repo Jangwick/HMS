@@ -104,6 +104,17 @@ def register():
                     skip_validation=True
                 )
                 
+                # 3. Notify CT1 (Patient Access) of new registration
+                from utils.hms_models import Notification
+                Notification.create(
+                    subsystem='ct1',
+                    title="New Digital Registration",
+                    message=f"A new patient ({first_name} {last_name}) has registered via the portal and is awaiting clinical onboarding.",
+                    n_type="info",
+                    sender_subsystem='patient',
+                    target_url=url_for('ct1.list_patients')
+                )
+                
                 flash('Account created successfully! You can now log in.', 'success')
                 return redirect(url_for('patient.login'))
             else:
