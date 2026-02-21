@@ -69,46 +69,88 @@ def dashboard():
     client = get_supabase_client()
     patient_id = current_user.patient_id
     
+    # Initialize data structures
+    data = {
+        'patient': None,
+        'bed_info': None,
+        'labs': [],
+        'radiology': [],
+        'prescriptions': [],
+        'bills': [],
+        'appointments': [],
+        'vitals': None,
+        'diet': None,
+        'meals': [],
+        'total_due': 0.0,
+        'timeline': []
+    }
+    
     try:
-        # 1. Fetch Patient Info & Stay (CT1)
+        # 1. Fetch Patient Info
         patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
-        patient = patient_resp.data
+        data['patient'] = patient_resp.data
         
+        # 2. Fetch Stay Info (CT1/CT3)
         bed_resp = client.table('beds').select('*').eq('patient_id', patient_id).execute()
-        bed_info = bed_resp.data[0] if bed_resp.data else None
+        data['bed_info'] = bed_resp.data[0] if bed_resp.data else None
         
-        # 2. Fetch Clinical Data (CT2)
+        # 3. Fetch Clinical Data (CT2)
         labs_resp = client.table('lab_orders').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
+        data['labs'] = labs_resp.data
+        
+        radio_resp = client.table('radiology_orders').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
+        data['radiology'] = radio_resp.data
+        
         prescriptions_resp = client.table('prescriptions').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
+        data['prescriptions'] = prescriptions_resp.data
         
-        # 3. Fetch Billing (CT3 / Financials)
+        # 4. Fetch Vitals & Medical Records (CT3)
+        records_resp = client.table('medical_records').select('*').eq('patient_id', patient_id).order('visit_date', desc=True).execute()
+        if records_resp.data:
+            # Find most recent vitals
+            for record in records_resp.data:
+                if record.get('vitals'):
+                    data['vitals'] = record['vitals']
+                    break
+        
+        # 5. Fetch Nutrition (CT2 - DNMS)
+        diet_resp = client.table('diet_plans').select('*').eq('patient_id', patient_id).eq('status', 'Active').order('created_at', desc=True).execute()
+        data['diet'] = diet_resp.data[0] if diet_resp.data else None
+        
+        meals_resp = client.table('meal_tracking').select('*').eq('patient_id', patient_id).order('created_at', desc=True).limit(5).execute()
+        data['meals'] = meals_resp.data
+        
+        # 6. Fetch Billing (CT3 / Financials)
         billing_resp = client.table('billing_records').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
-        total_due = sum(float(b['total_amount']) for b in billing_resp.data if b['status'] != 'Paid') if billing_resp.data else 0.0
+        data['bills'] = billing_resp.data
+        data['total_due'] = sum(float(b['total_amount']) for b in billing_resp.data if b['status'] != 'Paid') if billing_resp.data else 0.0
         
-        # 4. Fetch Appointments (CT1)
-        appt_resp = client.table('appointments').select('*, users(username)').eq('patient_id', patient_id).order('appointment_date').execute()
+        # 7. Fetch Appointments (CT1)
+        appt_resp = client.table('appointments').select('*, users(full_name)').eq('patient_id', patient_id).order('appointment_date').execute()
+        data['appointments'] = appt_resp.data
+
+        # 8. Construct Unified Timeline
+        # Combine different events into a single sorted list
+        timeline = []
+        for lab in data['labs']:
+            timeline.append({'type': 'lab', 'title': lab['test_name'], 'date': lab['created_at'], 'status': lab['status']})
+        for rad in data['radiology']:
+            timeline.append({'type': 'radiology', 'title': rad['imaging_type'], 'date': rad['created_at'], 'status': rad['status']})
+        for appt in data['appointments']:
+            timeline.append({'type': 'appointment', 'title': f"Consultation: {appt['type']}", 'date': appt['appointment_date'], 'status': appt['status']})
         
+        # Sort timeline by date descending
+        data['timeline'] = sorted(timeline, key=lambda x: x['date'], reverse=True)[:10]
+
     except Exception as e:
         import traceback
-        print(f"Error fetching care hub data for patient {patient_id}: {e}")
+        print(f"Error fetching unified care data: {e}")
         traceback.print_exc()
-        flash('Some health data could not be synchronized. Please contact support if this persists.', 'warning')
-        patient = {'first_name': 'Patient', 'last_name': 'User'} # Fallback to prevent crash
-        bed_info = None
-        labs_resp = type('obj', (object,), {'data': []})
-        prescriptions_resp = type('obj', (object,), {'data': []})
-        billing_resp = type('obj', (object,), {'data': []})
-        appt_resp = type('obj', (object,), {'data': []})
-        total_due = 0.0
+        flash('Data synchronization partial. Some modules may be unavailable.', 'warning')
+        if not data['patient']:
+            data['patient'] = {'first_name': 'Patient', 'last_name': 'User'}
 
-    return render_template('portal/patient_dashboard.html',
-                           patient=patient,
-                           bed_info=bed_info,
-                           labs=labs_resp.data,
-                           prescriptions=prescriptions_resp.data,
-                           bills=billing_resp.data,
-                           appointments=appt_resp.data,
-                           total_due=total_due)
+    return render_template('portal/patient_dashboard.html', **data)
 
 @patient_bp.route('/logout')
 @login_required
