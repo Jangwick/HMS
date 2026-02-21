@@ -53,8 +53,15 @@ def login():
             if send_otp(target_email, otp):
                 flash(f'Verification code sent to {target_email}. Please check your inbox.', 'info')
             else:
-                flash('Security Alert: Failed to send verification code. Please contact system admin.', 'danger')
-                # Keep printing to console for emergency backup
+                # Emergency Backup: Log to database so admin can retrieve it from Supabase
+                AuditLog.log(
+                    user.id, 
+                    "MFA_EMERGENCY_BACKUP", 
+                    "superadmin", 
+                    {"otp_fallback": otp, "reason": "Mail delivery failed"}
+                )
+                flash('Security Alert: Failed to connect to mail server. Emergency backup code has been generated. System administrator can retrieve it from the Secure Audit Vault.', 'danger')
+                # Keep printing to console for emergency backup (visible in Vercel logs)
                 print(f"DEBUG: SuperAdmin OTP (Fallback): {otp}")
             
             return redirect(url_for('superadmin.verify_otp'))

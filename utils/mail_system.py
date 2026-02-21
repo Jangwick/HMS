@@ -15,47 +15,65 @@ def send_otp(email, otp):
         sender = current_app.config.get('MAIL_DEFAULT_SENDER') or user
         
         if not user or not password:
-            print("CRITICAL MAIL ERROR: Missing MAIL_USERNAME or MAIL_PASSWORD in config.")
+            print(f"CRITICAL MAIL ERROR: Missing MAIL_USERNAME or MAIL_PASSWORD. Config values: USER={user is not None}, PASS={password is not None}")
             return False
 
         msg = EmailMessage()
-        msg['Subject'] = "HMS Security Verification"
+        msg['Subject'] = "HMS Security Verification [MFA]"
         # Format as "Display Name <email@address.com>"
         msg['From'] = f"HMS Security Center <{sender}>"
         msg['To'] = email
         msg.set_content(f"Your HMS SuperAdmin verification code is: {otp}\n\nThis code will expire in 5 minutes.")
         
-        # HTML version
+        # HTML version with improved design
         html_content = f"""
-        <div style="font-family: 'Inter', sans-serif; max-width: 480px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0;">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <div style="display: inline-block; padding: 12px; background: #7C3AED; border-radius: 12px;">
-                    <span style="color: #ffffff; font-size: 24px;">🛡️</span>
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 0 auto; padding: 40px; background-color: #ffffff; border-radius: 24px; border: 1px solid #edf2f7; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+            <div style="text-align: center; margin-bottom: 32px;">
+                <div style="display: inline-block; padding: 16px; background: linear-gradient(135deg, #7C3AED, #4c1d95); border-radius: 20px; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);">
+                    <span style="color: #ffffff; font-size: 32px;">🛡️</span>
                 </div>
             </div>
-            <h2 style="color: #1e293b; text-align: center; font-size: 24px; font-weight: 800; margin-bottom: 8px;">Security Check</h2>
-            <p style="color: #64748b; text-align: center; font-size: 14px; margin-bottom: 30px;">Enter the code below to complete your sign-in to the Global Command Center.</p>
-            <div style="background-color: #f8fafc; padding: 24px; border-radius: 16px; text-align: center; border: 2px dashed #e2e8f0;">
-                <span style="font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #7C3AED;">{otp}</span>
+            <h2 style="color: #1a202c; text-align: center; font-size: 26px; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.025em;">Security Verification</h2>
+            <p style="color: #4a5568; text-align: center; font-size: 15px; margin-bottom: 36px; line-height: 1.6;">
+                A sign-in attempt was detected for the <strong>Global Command Center</strong>. Use the secure code below to verify your identity.
+            </p>
+            <div style="background-color: #f7fafc; padding: 32px; border-radius: 20px; text-align: center; border: 2px solid #e2e8f0; position: relative; overflow: hidden;">
+                <span style="font-family: 'Courier New', Courier, monospace; font-size: 42px; font-weight: 900; letter-spacing: 12px; color: #7C3AED; position: relative; z-index: 1;">{otp}</span>
             </div>
-            <p style="color: #94a3b8; text-align: center; font-size: 12px; margin-top: 30px;">
-                This code expires in 5 minutes.<br>
-                HMS Sentinel Security Core v2.4
+            <p style="color: #718096; text-align: center; font-size: 13px; margin-top: 36px; line-height: 1.5;">
+                This code expires in <strong>5 minutes</strong>.<br>
+                If you didn't request this, please secure your account immediately.
+            </p>
+            <hr style="border: 0; border-top: 1px solid #edf2f7; margin: 32px 0;">
+            <p style="color: #a0aec0; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">
+                HMS Sentinel Security Architecture v2.4.1
             </p>
         </div>
         """
         msg.add_alternative(html_content, subtype='html')
 
-        print(f"INFO: Attempting to send OTP to {email} via {server_addr}:{port}...")
+        print(f"INFO: SMTP Handshake - {server_addr}:{port} (Auth: {user})")
         
-        with smtplib.SMTP(server_addr, port) as server:
+        # Use a longer timeout for SMTP connection
+        connection_timeout = 15 
+        
+        with smtplib.SMTP(server_addr, port, timeout=connection_timeout) as server:
+            print("INFO: SMTP Connection established. Starting TLS...")
             server.starttls()
+            print("INFO: TLS secure. Attempting login...")
             server.login(user, password)
+            print("INFO: Login successful. Dispatching message...")
             server.send_message(msg)
             
-        print(f"SUCCESS: OTP successfully delivered to {email}")
+        print(f"SUCCESS: OTP delivered to {email}")
         return True
 
+    except smtplib.SMTPAuthenticationError:
+        print("CRITICAL MAIL ERROR: Authentication failed. Please check MAIL_USERNAME and MAIL_PASSWORD (App Password).")
+        return False
+    except smtplib.SMTPConnectError:
+        print(f"CRITICAL MAIL ERROR: Could not connect to {server_addr}:{port}. Network or firewall issue.")
+        return False
     except Exception as e:
         import traceback
         print(f"CRITICAL MAIL ERROR: {str(e)}")
