@@ -398,5 +398,5 @@ SUBSYSTEM_CONFIG = {
     'log1': {'department': 'LOGISTICS', 'name': 'Inventory Management', 'color': 'amber'},
     'log2': {'department': 'LOGISTICS', 'name': 'Procurement', 'color': 'amber'},
     'financials': {'department': 'FINANCIALS', 'name': 'Financial Management System', 'color': 'purple'},
-    'patient': {'department': 'PATIENT_PORTAL', 'name': 'CareLink Portal', 'color': 'teal'},
+    'patient': {'department': 'PATIENT_PORTAL', 'name': 'HMS Patient Portal', 'color': 'teal'},
 }
