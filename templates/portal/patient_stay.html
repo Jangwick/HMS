@@ -1,344 +1,179 @@
-{% extends "base/base.html" %}
+{% extends "portal/_patient_layout.html" %}
+{% set active_page = 'stay' %}
 
-{% block title %}Facility Stay - {{ patient.first_name }} {{ patient.last_name }}{% endblock %}
+{% block title %}Hospital Stay - {{ patient.first_name }} {{ patient.last_name }}{% endblock %}
 
-{% block extra_css %}
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+{% block patient_content %}
+<div class="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 
-    body {
-        font-family: 'Inter', sans-serif;
-    }
+    <div class="page-header-banner !from-indigo-600 !to-indigo-800">
+        <div class="relative z-10">
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2">My Hospital Stay</h1>
+            <p class="text-indigo-100/80 text-sm max-w-lg">Information regarding your ward, accommodation details, and
+                nutritional care.</p>
+        </div>
+    </div>
 
-    .stay-card {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(20px) saturate(180%);
-        border: 1px solid rgba(229, 231, 235, 0.5);
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
 
-    .stay-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.08);
-        border-color: rgba(16, 185, 129, 0.3);
-    }
-
-    .status-badge {
-        font-size: 8px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        padding: 4px 10px;
-        border-radius: 8px;
-        border: 1px solid currentColor;
-    }
-
-    .noise-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 1;
-        opacity: 0.03;
-        pointer-events: none;
-        background-image: url('https://grainy-gradients.vercel.app/noise.svg');
-    }
-
-    .blob {
-        position: fixed;
-        width: 600px;
-        height: 600px;
-        border-radius: 50%;
-        filter: blur(100px);
-        z-index: 0;
-        opacity: 0.3;
-        pointer-events: none;
-    }
-
-    .facility-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 2rem;
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="min-h-screen bg-gray-50 flex flex-col relative">
-    <div class="noise-overlay"></div>
-    <div class="blob bg-emerald-100 -top-24 -left-24"></div>
-    <div class="blob bg-orange-100 -bottom-24 -right-24" style="animation-delay: -3s;"></div>
-
-    <!-- Navigation -->
-    <nav class="bg-white/95 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-[100] shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between relative">
-            <div class="flex items-center">
-                <a href="{{ url_for('patient.landing') }}" class="flex items-center group">
-                    <div
-                        class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center mr-4 text-white shadow-lg group-hover:scale-110 transition-transform">
-                        <i class="bi bi-heart-pulse-fill text-xl"></i>
-                    </div>
+        <!-- Main Stay Card -->
+        <div class="lg:col-span-2">
+            <div class="dash-card !p-8 h-full">
+                <div class="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
                     <div>
-                        <span class="font-black text-xl text-gray-900 tracking-tighter uppercase leading-none">HMS
-                            Portal</span>
-                        <span
-                            class="text-[8px] font-black text-emerald-600/60 uppercase tracking-[0.2em] block mt-0.5">Care
-                            Hub Interface</span>
+                        <p class="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Current Room
+                            Assignment</p>
+                        <h2 class="text-2xl font-extrabold text-gray-900">Accommodation Details</h2>
                     </div>
-                </a>
-            </div>
-
-            <div class="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center space-x-8">
-                <a href="{{ url_for('patient.dashboard') }}"
-                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
-                    <i class="bi bi-grid-1x2 text-sm"></i>
-                    <span>Overview</span>
-                </a>
-                <a href="{{ url_for('patient.journey') }}"
-                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
-                    <i class="bi bi-activity text-sm"></i>
-                    <span>Journey</span>
-                </a>
-                <a href="{{ url_for('patient.stay') }}"
-                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-900 uppercase tracking-widest px-4 py-2 bg-gray-50 rounded-full border border-gray-100 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-700">
-                    <i class="bi bi-door-open text-sm"></i>
-                    <span>Stay</span>
-                </a>
-                <a href="{{ url_for('patient.inventory') }}"
-                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
-                    <i class="bi bi-capsule text-sm"></i>
-                    <span>Inventory</span>
-                </a>
-                <a href="{{ url_for('patient.ledger') }}"
-                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
-                    <i class="bi bi-wallet2 text-sm"></i>
-                    <span>Ledger</span>
-                </a>
-            </div>
-
-            <div class="flex items-center space-x-4">
-                <div class="hidden sm:flex flex-col text-right mr-2">
-                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">
-                        Authenticated As</p>
-                    <p class="text-xs font-black text-gray-900 leading-none">{{ patient.first_name }} {{
-                        patient.last_name }}</p>
+                    <div class="card-icon bg-emerald-50 text-emerald-600 !w-14 !h-14 !text-3xl">
+                        <i class="bi bi-building"></i>
+                    </div>
                 </div>
+
+                {% if bed_info %}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Ward</p>
+                        <p class="text-xl font-extrabold text-gray-900">{{ bed_info.ward_name }}</p>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Room / Bed</p>
+                        <p class="text-xl font-extrabold text-gray-900">{{ bed_info.room_number }}</p>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Room Type</p>
+                        <p class="text-xl font-extrabold text-emerald-600">{{ bed_info.type }}</p>
+                    </div>
+                </div>
+
                 <div
-                    class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center font-black text-sm shadow-xl ring-4 ring-gray-900/5">
-                    {{ patient.first_name[0] }}{{ patient.last_name[0] }}
+                    class="bg-gray-900 rounded-2xl p-6 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-xl text-emerald-400">
+                            <i class="bi bi-person-badge"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 font-medium">Attending Care Team</p>
+                            <p class="text-base font-bold">Nursing Station {{ bed_info.ward_name }}</p>
+                        </div>
+                    </div>
+                    <button
+                        class="px-6 py-3 bg-white text-gray-900 rounded-xl text-sm font-bold shadow-md hover:bg-gray-100 transition-all w-full sm:w-auto">
+                        Call Nurse Station
+                    </button>
                 </div>
-                <a href="{{ url_for('patient.logout') }}"
-                    class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-600 hover:text-white transition-all shadow-sm">
-                    <i class="bi bi-power text-lg"></i>
-                </a>
+                {% else %}
+                <div class="py-16 text-center rounded-3xl border border-dashed border-gray-200">
+                    <i class="bi bi-house-door text-5xl text-gray-300 block mb-4"></i>
+                    <h3 class="text-xl font-extrabold text-gray-900 mb-2">Outpatient Status</h3>
+                    <p class="text-sm font-medium text-gray-500">You are not currently admitted to a hospital ward.</p>
+                </div>
+                {% endif %}
             </div>
         </div>
-    </nav>
 
-    <!-- Main Content -->
-    <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 relative z-10">
-        <header class="mb-12">
-            <h1 class="text-4xl font-black text-gray-900 tracking-tighter uppercase mb-2">Hospital Stay</h1>
-            <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em]">Integrated Facilities & Comfort
-                Management (HMS-IFCM-T4)</p>
-        </header>
-
-        <div class="facility-grid">
-            <!-- Bed & Ward Info -->
-            <div class="lg:col-span-2">
-                <div class="stay-card rounded-[3rem] p-10 relative overflow-hidden h-full">
-                    <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -mr-32 -mt-32">
+        <!-- Meals Card -->
+        <div class="lg:col-span-1">
+            <div class="dash-card !p-8 h-full !bg-orange-50 !border-orange-100 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-48 h-48 bg-white/40 rounded-full blur-3xl -mr-20 -mt-20"></div>
+                <div class="relative z-10 flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-8 pb-4 border-b border-orange-200/50">
+                        <div>
+                            <h2 class="text-xl font-extrabold text-orange-900">Patient Diet Plan</h2>
+                        </div>
+                        <div class="card-icon bg-orange-100 text-orange-600 !w-12 !h-12 !text-2xl">
+                            <i class="bi bi-egg-fried"></i>
+                        </div>
                     </div>
 
-                    <div class="relative z-10">
-                        <div class="flex items-center justify-between mb-12">
-                            <div>
-                                <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-2">
-                                    Current Assignment</p>
-                                <h2 class="text-3xl font-black text-gray-900 tracking-tighter uppercase">Accommodation
-                                    Details</h2>
-                            </div>
-                            <div
-                                class="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-3xl">
-                                <i class="bi bi-building"></i>
-                            </div>
-                        </div>
+                    {% if diet %}
+                    <div class="mb-6">
+                        <p class="text-sm font-bold text-orange-800/60 uppercase tracking-widest mb-1">Prescribed Diet
+                        </p>
+                        <p class="text-2xl font-black text-orange-950 mb-2">{{ diet.diet_type }}</p>
+                        <p class="text-sm font-medium text-orange-800/80 leading-relaxed italic">{{ diet.instruction }}
+                        </p>
+                    </div>
 
-                        {% if bed_info %}
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                            <div class="bg-white/50 p-8 rounded-[2rem] border border-white/50">
-                                <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Ward</p>
-                                <p class="text-2xl font-black text-gray-900 uppercase">{{ bed_info.ward_name }}</p>
-                            </div>
-                            <div class="bg-white/50 p-8 rounded-[2rem] border border-white/50">
-                                <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Room / Bed
-                                </p>
-                                <p class="text-2xl font-black text-gray-900 uppercase">{{ bed_info.room_number }}</p>
-                            </div>
-                            <div class="bg-white/50 p-8 rounded-[2rem] border border-white/50">
-                                <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                                    Classification</p>
-                                <p class="text-2xl font-black text-emerald-600 uppercase">{{ bed_info.type }}</p>
-                            </div>
-                        </div>
-
-                        <div class="bg-gray-900 rounded-[2.5rem] p-8 text-white flex items-center justify-between">
-                            <div class="flex items-center gap-6">
-                                <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-xl">
-                                    <i class="bi bi-person-badge"></i>
+                    <div class="flex-1 space-y-3">
+                        <p class="text-xs font-bold uppercase tracking-widest text-orange-800/60">Recent Meals</p>
+                        {% for meal in meals[:4] %}
+                        <div
+                            class="flex items-center justify-between p-3 bg-white/60 rounded-xl border border-orange-100/50">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
+                                    {% if meal.meal_type == 'Breakfast' %}<i class="bi bi-cup-hot"></i>
+                                    {% elif meal.meal_type == 'Lunch' %}<i class="bi bi-sun"></i>
+                                    {% elif meal.meal_type == 'Dinner' %}<i class="bi bi-moon-stars"></i>
+                                    {% else %}<i class="bi bi-apple"></i>{% endif %}
                                 </div>
                                 <div>
-                                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Attending
-                                        Case Manager</p>
-                                    <p class="text-lg font-bold">Nursing Station {{ bed_info.ward_name }}</p>
+                                    <p class="text-sm font-bold text-orange-950">{{ meal.meal_type }}</p>
+                                    <p class="text-[10px] text-orange-800/60">{{ meal.delivered_at|datetime if
+                                        meal.delivered_at else 'Pending Delivery' }}</p>
                                 </div>
                             </div>
-                            <button
-                                class="px-6 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all">Request
-                                Service</button>
+                            <span
+                                class="status-pill text-[10px] {% if meal.delivery_status == 'Delivered' %}bg-orange-200 text-orange-800{% else %}bg-orange-100 text-orange-600{% endif %}">
+                                {{ meal.delivery_status }}
+                            </span>
                         </div>
-                        {% else %}
-                        <div
-                            class="py-20 text-center bg-gray-50/50 rounded-[3rem] border border-dashed border-gray-200">
-                            <i class="bi bi-house-door text-5xl text-gray-200 block mb-4"></i>
-                            <h3 class="text-xl font-black text-gray-400 uppercase">Outpatient Status</h3>
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">No active
-                                ward stay recorded</p>
-                        </div>
-                        {% endif %}
+                        {% endfor %}
                     </div>
-                </div>
-            </div>
-
-            <!-- Nutritional Concierge -->
-            <div class="lg:col-span-1">
-                <div class="stay-card rounded-[3rem] p-10 bg-orange-600 text-white relative overflow-hidden h-full">
-                    <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
-
-                    <div class="relative z-10 flex flex-col h-full">
-                        <div class="flex items-center justify-between mb-12">
-                            <div>
-                                <p class="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] mb-2">
-                                    Nutritional Concierge</p>
-                                <h2 class="text-3xl font-black tracking-tighter uppercase whitespace-nowrap">Care Dining
-                                </h2>
-                            </div>
-                            <div class="w-16 h-16 rounded-3xl bg-black/10 flex items-center justify-center text-3xl">
-                                <i class="bi bi-egg-fried"></i>
-                            </div>
-                        </div>
-
-                        {% if diet %}
-                        <div class="mb-8 p-8 bg-white/10 rounded-[2.5rem] border border-white/10">
-                            <div class="flex items-center gap-2 mb-4">
-                                <span
-                                    class="text-[8px] font-black uppercase tracking-widest bg-white/20 px-2 py-0.5 rounded">Prescribed</span>
-                                <span
-                                    class="text-[8px] font-black uppercase tracking-widest bg-white/20 px-2 py-0.5 rounded">Dr.
-                                    {{ diet.users.full_name if diet.users else 'Attending' }}</span>
-                            </div>
-                            <p class="text-4xl font-black tracking-tighter uppercase mb-4">{{ diet.diet_type }}</p>
-                            <p class="text-sm font-medium opacity-80 leading-relaxed italic">{{ diet.instruction }}</p>
-                        </div>
-
-                        <div class="flex-1 space-y-4 overflow-y-auto pr-2 max-h-[400px]">
-                            <p class="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Meal History &
-                                Schedule</p>
-                            {% for meal in meals %}
-                            <div
-                                class="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                                        {% if meal.meal_type == 'Breakfast' %}<i class="bi bi-cup-hot"></i>
-                                        {% elif meal.meal_type == 'Lunch' %}<i class="bi bi-sun"></i>
-                                        {% elif meal.meal_type == 'Dinner' %}<i class="bi bi-moon-stars"></i>
-                                        {% else %}<i class="bi bi-apple"></i>{% endif %}
-                                    </div>
-                                    <div>
-                                        <p class="text-xs font-bold uppercase tracking-widest">{{ meal.meal_type }}</p>
-                                        <p class="text-[9px] opacity-60 uppercase">{{ meal.delivered_at|datetime if
-                                            meal.delivered_at else 'Provisioning...' }}</p>
-                                    </div>
-                                </div>
-                                <span class="status-badge bg-white/20 text-white">{{ meal.delivery_status }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-
-                        <button onclick="confirmMeal()"
-                            class="w-full mt-8 py-5 bg-white text-orange-600 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl hover:scale-105 active:scale-95 transition-all">Confirm
-                            Last Arrival</button>
-                        {% else %}
-                        <div class="flex-1 flex flex-col items-center justify-center py-12 opacity-60">
-                            <i class="bi bi-cup-hot text-5xl block mb-6"></i>
-                            <h3 class="text-xl font-black uppercase">Standard Diet</h3>
-                            <p class="text-[10px] font-black uppercase tracking-widest mt-2">No unique dietary
-                                restrictions active</p>
-                        </div>
-                        {% endif %}
+                    {% else %}
+                    <div class="flex-1 flex flex-col items-center justify-center py-8 opacity-60">
+                        <i class="bi bi-cup-hot text-5xl block mb-4 text-orange-300"></i>
+                        <h3 class="text-lg font-bold text-orange-900">Standard Diet</h3>
+                        <p class="text-sm font-medium text-orange-800 mt-2 text-center">No dietary restrictions
+                            recorded.</p>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Secondary Modules: Comfort & Environment (Placeholders) -->
-        <div class="mt-12 grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div class="stay-card rounded-[2rem] p-8 flex items-center gap-6">
-                <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
-                    <i class="bi bi-thermometer-half"></i>
-                </div>
-                <div>
-                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Room Climate</p>
-                    <p class="text-lg font-bold">22.5°C</p>
-                </div>
-            </div>
-            <div class="stay-card rounded-[2rem] p-8 flex items-center gap-6 opacity-50 cursor-not-allowed">
-                <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
-                    <i class="bi bi-lightbulb"></i>
-                </div>
-                <div>
-                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Smart Lighting</p>
-                    <p class="text-lg font-bold">Auto-Mode</p>
-                </div>
-            </div>
-            <div class="stay-card rounded-[2rem] p-8 flex items-center gap-6">
-                <div
-                    class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">
-                    <i class="bi bi-wifi"></i>
-                </div>
-                <div>
-                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Patient Wi-Fi</p>
-                    <p class="text-lg font-bold text-emerald-600">Connected</p>
-                </div>
-            </div>
-            <div class="stay-card rounded-[2rem] p-8 flex items-center gap-6">
-                <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
-                    <i class="bi bi-megaphone"></i>
-                </div>
-                <div>
-                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Feedback Loop</p>
-                    <p class="text-lg font-bold text-rose-600">Speak Up</p>
-                </div>
-            </div>
-        </div>
-    </main>
+    </div>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t border-gray-200 pt-20 pb-12 mt-20">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div class="flex items-center justify-center gap-2 mb-6">
-                <div class="w-6 h-6 rounded-md bg-emerald-600 flex items-center justify-center text-white text-[10px]">
-                    <i class="bi bi-heart-pulse-fill"></i>
-                </div>
-                <span class="font-black text-gray-900 tracking-tighter text-sm uppercase">HMS Patient Network</span>
+    <!-- Smart Room Features -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="dash-card flex items-center gap-4 !p-5">
+            <div class="card-icon bg-blue-50 text-blue-600">
+                <i class="bi bi-thermometer-half"></i>
             </div>
-            <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Facility Node S7 Active • Bi-Level
-                Encryption Enabled</p>
+            <div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Room Climate</p>
+                <p class="text-base font-bold text-gray-900 mt-0.5">22.5°C</p>
+            </div>
         </div>
-    </footer>
+        <div class="dash-card flex items-center gap-4 !p-5 opacity-60">
+            <div class="card-icon bg-amber-50 text-amber-600">
+                <i class="bi bi-lightbulb"></i>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Lighting</p>
+                <p class="text-base font-bold text-gray-900 mt-0.5">Auto-Mode</p>
+            </div>
+        </div>
+        <div class="dash-card flex items-center gap-4 !p-5">
+            <div class="card-icon bg-indigo-50 text-indigo-600">
+                <i class="bi bi-wifi"></i>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Patient Wi-Fi</p>
+                <p class="text-base font-bold text-emerald-600 mt-0.5">Connected</p>
+            </div>
+        </div>
+        <div class="dash-card flex items-center gap-4 !p-5">
+            <div class="card-icon bg-rose-50 text-rose-600">
+                <i class="bi bi-megaphone"></i>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Feedback</p>
+                <p class="text-base font-bold text-rose-600 mt-0.5">Submit Form</p>
+            </div>
+        </div>
+    </div>
 </div>
-
-<script>
-    function confirmMeal() {
-        alert("Meal delivery confirmed. Thank you for notifying the care team.");
-    }
-</script>
 {% endblock %}
