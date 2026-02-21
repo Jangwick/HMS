@@ -95,7 +95,7 @@
                     </div>
                 </a>
                 {% else %}
-                <a href="#"
+                <a href="{{ url_for('patient.register') }}"
                     class="hidden sm:block text-[10px] font-black text-gray-400 hover:text-emerald-600 transition-all uppercase tracking-[0.15em] whitespace-nowrap px-4 py-2 border border-transparent hover:border-gray-100 rounded-full">
                     Create Account
                 </a>
@@ -458,7 +458,7 @@
                         <li><a href="{{ url_for('patient.login') }}"
                                 class="text-sm text-gray-500 hover:text-emerald-600 transition-colors font-medium">Patient
                                 Access</a></li>
-                        <li><a href="{{ url_for('ct1.register_patient') }}"
+                        <li><a href="{{ url_for('patient.register') }}"
                                 class="text-sm text-gray-500 hover:text-emerald-600 transition-colors font-medium">Create
                                 Account</a></li>
                     </ul>

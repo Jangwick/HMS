@@ -32,32 +32,86 @@ def landing():
 
 @patient_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated and current_user.role == 'Patient':
+    if current_user.is_authenticated:
         return redirect(url_for('patient.dashboard'))
-    
-    next_page = request.args.get('next')
-    
+        
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        next_page = request.form.get('next')
+        next_url = request.form.get('next')
         
-        # Patients are in a specific 'patient' subsystem to isolate them
         user = User.get_by_username(username, 'patient')
-        
         if user and user.check_password(password):
-            if user.status != 'Active':
-                flash('Your account is awaiting activation.', 'info')
-                return render_template('portal/patient_login.html', next=next_page)
-            
             if login_user(user):
-                register_successful_login(subsystem='patient')
-                return redirect(next_page if next_page else url_for('patient.dashboard'))
+                flash('Welcome back to the HMS Patient Portal.', 'success')
+                return redirect(next_url or url_for('patient.dashboard'))
         
-        flash('Invalid credentials.', 'danger')
-        register_failed_attempt(subsystem='patient')
+        flash('Invalid credentials. Please try again.', 'danger')
         
-    return render_template('portal/patient_login.html', next=next_page)
+    return render_template('portal/patient_login.html', next=request.args.get('next'))
+
+@patient_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('patient.dashboard'))
+        
+    if request.method == 'POST':
+        from utils.hms_models import Patient
+        
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        dob = request.form.get('dob')
+        gender = request.form.get('gender')
+        contact_number = request.form.get('contact_number')
+        address = request.form.get('address')
+        username = request.form.get('username')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if password != confirm_password:
+            flash('Passwords do not match.', 'danger')
+            return render_template('portal/patient_register.html')
+            
+        # Check if username exists
+        if User.get_by_username(username):
+            flash('Username already exists. Please choose another.', 'danger')
+            return render_template('portal/patient_register.html')
+            
+        try:
+            # 1. Create Patient record
+            patient_data = {
+                'first_name': first_name,
+                'last_name': last_name,
+                'dob': dob,
+                'gender': gender,
+                'contact_number': contact_number,
+                'address': address
+            }
+            patient = Patient.create(patient_data)
+            
+            if patient:
+                # 2. Create User account
+                User.create(
+                    username=username,
+                    email=f"{username.lower()}@hms-patient.com",
+                    password=password,
+                    subsystem='patient',
+                    department='PATIENT_PORTAL',
+                    role='Patient',
+                    status='Active',
+                    full_name=f"{first_name} {last_name}",
+                    patient_id=patient.id,
+                    skip_validation=True
+                )
+                
+                flash('Account created successfully! You can now log in.', 'success')
+                return redirect(url_for('patient.login'))
+            else:
+                flash('Failed to create patient record. Please contact support.', 'danger')
+        except Exception as e:
+            flash(f'Registration error: {str(e)}', 'danger')
+            
+    return render_template('portal/patient_register.html')
 
 @patient_bp.route('/dashboard')
 @login_required
