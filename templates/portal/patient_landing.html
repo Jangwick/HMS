@@ -27,11 +27,38 @@
     .delay-200 {
         animation-delay: 0.2s;
     }
+
+    .blob {
+        position: absolute;
+        width: 600px;
+        height: 600px;
+        border-radius: 50%;
+        filter: blur(100px);
+        z-index: 0;
+        opacity: 0.2;
+        pointer-events: none;
+        animation: float 20s infinite alternate;
+    }
+
+    @keyframes float {
+        from {
+            transform: translate(0, 0) scale(1);
+        }
+
+        to {
+            transform: translate(100px, 100px) scale(1.1);
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 font-sans selection:bg-emerald-100 selection:text-emerald-900 flex flex-col">
+<div
+    class="min-h-screen bg-gray-50 font-sans selection:bg-emerald-100 selection:text-emerald-900 flex flex-col relative overflow-hidden">
+    <!-- Floating Blobs (HMS Uniform) -->
+    <div class="blob bg-emerald-100 -top-48 -left-48"></div>
+    <div class="blob bg-blue-100 -bottom-48 -right-48" style="animation-delay: -5s;"></div>
+
     <!-- Portal Header (HMS Uniform) -->
     <nav class="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
