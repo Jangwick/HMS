@@ -815,7 +815,7 @@
                                 {% for n in sys_notifications %}
                                 <a href="{{ n.target_url if n.target_url else '#' }}"
                                     class="p-4 border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer block {% if not n.is_read %}bg-accent/5{% endif %}"
-                                    onclick='handleNotificationClick(event, "{{ n.id }}", this, "{{ n.target_url if n.target_url else "" }}")'>
+                                    onclick="handleNotificationClick(event, '{{ n.id }}', this, '{{ n.target_url if n.target_url else \'#\' }}')">
                                     <div class="flex items-start">
                                         <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 
                                             {% if n.type == 'danger' %}bg-red-50 text-red-600

@@ -344,6 +344,25 @@ def update_lab_order(order_id):
         AuditLog.log(current_user.id, "Update Lab Order", BLUEPRINT_NAME, 
                      {"order_id": order_id, "status": status, "is_critical": critical})
                      
+        if status == 'Completed':
+            # Notify the Patient
+            client = get_supabase_client()
+            lab_order_res = client.table('lab_orders').select('patient_id, test_name').eq('id', order_id).execute()
+            if lab_order_res.data:
+                patient_id = lab_order_res.data[0]['patient_id']
+                test_name = lab_order_res.data[0]['test_name']
+                portal_user_res = client.table('users').select('id').eq('patient_id', patient_id).execute()
+                if portal_user_res.data:
+                    from utils.hms_models import Notification
+                    Notification.create(
+                        user_id=portal_user_res.data[0]['id'],
+                        subsystem='patient',
+                        title="Lab Results Available",
+                        message=f"Your {test_name} results are now available for review.",
+                        n_type="info",
+                        sender_subsystem=BLUEPRINT_NAME,
+                        target_url=url_for('patient.journey')
+                    )
         flash('Lab order updated.', 'success')
     except Exception as e:
         flash(f'Update failed: {str(e)}', 'danger')
@@ -414,6 +433,26 @@ def update_radiology_order(order_id):
         AuditLog.log(current_user.id, "Update Radiology Order", BLUEPRINT_NAME, 
                      {"order_id": order_id, "status": status})
                      
+        if status == 'Completed':
+            # Notify the Patient
+            client = get_supabase_client()
+            radio_order_res = client.table('radiology_orders').select('patient_id, imaging_type').eq('id', order_id).execute()
+            if radio_order_res.data:
+                patient_id = radio_order_res.data[0]['patient_id']
+                imaging_type = radio_order_res.data[0]['imaging_type']
+                portal_user_res = client.table('users').select('id').eq('patient_id', patient_id).execute()
+                if portal_user_res.data:
+                    from utils.hms_models import Notification
+                    Notification.create(
+                        user_id=portal_user_res.data[0]['id'],
+                        subsystem='patient',
+                        title="Radiology Results Available",
+                        message=f"Your {imaging_type} results are now available for review.",
+                        n_type="info",
+                        sender_subsystem=BLUEPRINT_NAME,
+                        target_url=url_for('patient.journey')
+                    )
+                     
         flash('Radiology order updated.', 'success')
     except Exception as e:
         flash(f'Update failed: {str(e)}', 'danger')
@@ -476,6 +515,33 @@ def new_surgery():
         surgery_base_fee = 15000.0
         Billing.post_charge(data['patient_id'], surgery_base_fee, f"Surgery Scheduled: {data['surgery_name']}", "Surgery (CT2)")
         
+        # Notify the Patient
+        client = get_supabase_client()
+        portal_user_res = client.table('users').select('id').eq('patient_id', data['patient_id']).execute()
+        if portal_user_res.data:
+            from utils.hms_models import Notification
+            portal_user_id = portal_user_res.data[0]['id']
+            # safely parse surgery date
+            try:
+                date_val = data['surgery_date']
+                if 'T' in date_val:
+                    date_obj = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                else:
+                    date_obj = datetime.strptime(date_val, '%Y-%m-%d')
+                date_str = date_obj.strftime('%b %d, %Y')
+            except:
+                date_str = data['surgery_date']
+                
+            Notification.create(
+                user_id=portal_user_id,
+                subsystem='patient',
+                title="Surgery Scheduled",
+                message=f"Your surgery ({data['surgery_name']}) has been scheduled for {date_str}.",
+                n_type="warning",
+                sender_subsystem=BLUEPRINT_NAME,
+                target_url=url_for('patient.dashboard')
+            )
+            
         flash('Surgery scheduled successfully!', 'success')
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
@@ -690,6 +756,21 @@ def dispense_meds():
             from utils.hms_models import AuditLog
             AuditLog.log(current_user.id, "Dispense Medication", BLUEPRINT_NAME, 
                          {"medication": med_name, "quantity": qty, "patient_id": patient_id})
+                         
+            # Notify the Patient
+            portal_user_res = client.table('users').select('id').eq('patient_id', patient_id).execute()
+            if portal_user_res.data:
+                from utils.hms_models import Notification
+                portal_user_id = portal_user_res.data[0]['id']
+                Notification.create(
+                    user_id=portal_user_id,
+                    subsystem='patient',
+                    title="Medication Dispensed",
+                    message=f"Your medication ({med_name}, qty: {qty}) has been dispensed.",
+                    n_type="success",
+                    sender_subsystem=BLUEPRINT_NAME,
+                    target_url=url_for('patient.dashboard')
+                )
             
             return redirect(url_for('ct2.pharmacy_inventory'))
             

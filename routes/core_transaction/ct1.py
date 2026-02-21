@@ -464,6 +464,24 @@ def book_appointment():
                     target_url=url_for('ct2.dashboard')
                 )
                 
+                # Notify the Patient
+                client = get_supabase_client()
+                portal_user_res = client.table('users').select('id').eq('patient_id', appointment.patient_id).execute()
+                if portal_user_res.data:
+                    portal_user_id = portal_user_res.data[0]['id']
+                    date_obj = datetime.fromisoformat(appointment_data['appointment_date'].replace('Z', '+00:00')) if 'T' in appointment_data['appointment_date'] else datetime.strptime(appointment_data['appointment_date'], '%Y-%m-%d')
+                    date_str = date_obj.strftime('%b %d, %Y')
+                    t = appointment_data.get('type') or 'Consultation'
+                    Notification.create(
+                        user_id=portal_user_id,
+                        subsystem='patient',
+                        title="Appointment Confirmed",
+                        message=f"Your appointment ({t}) has been scheduled for {date_str}.",
+                        n_type="info",
+                        sender_subsystem=BLUEPRINT_NAME,
+                        target_url=url_for('patient.dashboard')
+                    )
+                
                 flash('Appointment booked successfully!', 'success')
                 return redirect(url_for('ct1.dashboard'))
             else:
