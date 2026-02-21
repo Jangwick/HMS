@@ -192,6 +192,73 @@
         scroll-behavior: smooth;
     }
 
+    .notification-btn {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: #F3F4F6;
+        color: #4B5563;
+        transition: all 0.2s;
+    }
+
+    .notification-btn:hover {
+        background-color: #E5E7EB;
+        color: #111827;
+    }
+
+    .notification-badge {
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        background-color: #EF4444;
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        min-width: 16px;
+        height: 16px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 4px;
+        border: 2px solid #ffffff;
+    }
+
+    .notification-dropdown {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 12px);
+        width: 320px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        z-index: 999;
+        overflow: hidden;
+    }
+
+    .notification-dropdown.show {
+        display: block;
+        animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
         {
         % block patient_css %
     }
@@ -235,13 +302,67 @@
                     <i class="bi bi-receipt"></i> Billing
                 </a>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 relative">
                 <div class="hidden sm:block text-right mr-1">
                     <p class="text-sm font-bold text-gray-900 leading-none">{{ patient.first_name }} {{
                         patient.last_name }}</p>
                     <p class="text-[10px] text-gray-400 font-medium mt-0.5">{{ patient.patient_id_alt or 'Patient' }}
                     </p>
                 </div>
+
+                <!-- Notification Bell -->
+                <div class="relative">
+                    <button id="notificationBtn" class="notification-btn" title="Notifications">
+                        <i class="bi bi-bell-fill"></i>
+                        {% if unread_notifications_count > 0 %}
+                        <span class="notification-badge">{{ unread_notifications_count }}</span>
+                        {% endif %}
+                    </button>
+
+                    <!-- Notification Dropdown Menu -->
+                    <div id="notificationDropdown" class="notification-dropdown">
+                        <div class="bg-gray-50 px-4 py-3 border-b flex items-center justify-between">
+                            <span class="text-xs font-bold text-gray-600 uppercase tracking-wider">Notifications</span>
+                            {% if unread_notifications_count > 0 %}
+                            <form action="{{ url_for('portal.mark_notifications_read') }}" method="POST"
+                                style="display:inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit"
+                                    class="text-[10px] font-semibold text-emerald-600 hover:text-emerald-800">
+                                    Mark all read
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        <div class="max-h-[300px] overflow-y-auto w-full">
+                            {% if sys_notifications %}
+                            {% for n in sys_notifications[:5] %}
+                            <div class="p-4 border-b last:border-0 hover:bg-gray-50 transition-colors cursor-pointer w-full {% if not n.is_read %}bg-emerald-50/30{% endif %}"
+                                {% if n.target_url %}onclick="window.location.href='{{ n.target_url }}'" {% endif %}>
+                                <div class="flex items-start gap-3 w-full">
+                                    <div
+                                        class="mt-1 w-2 h-2 rounded-full flex-shrink-0 mt-1.5 {% if n.type == 'danger' %}bg-red-500{% elif n.type == 'warning' %}bg-amber-500{% elif n.type == 'success' %}bg-emerald-500{% else %}bg-blue-500{% endif %}">
+                                    </div>
+                                    <div class="flex-1 w-full truncate space-y-1">
+                                        <p class="text-sm font-bold text-gray-900 truncate">{{ n.title }}</p>
+                                        <p class="text-xs text-gray-500 line-clamp-2 w-full whitespace-normal">{{
+                                            n.message }}</p>
+                                        <p class="text-[10px] text-gray-400 font-medium pt-1 w-full">{{
+                                            n.created_at|datetime }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <div class="p-6 text-center text-gray-500 text-sm w-full">
+                                <i class="bi bi-bell-slash text-2xl text-gray-300 mb-2 block"></i>
+                                You're all caught up!
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
                 <div
                     class="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-md">
                     {{ patient.first_name[0] }}{{ patient.last_name[0] }}
@@ -289,4 +410,24 @@
         </div>
     </footer>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const notificationBtn = document.getElementById('notificationBtn');
+        const notificationDropdown = document.getElementById('notificationDropdown');
+
+        if (notificationBtn && notificationDropdown) {
+            notificationBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                notificationDropdown.classList.toggle('show');
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!notificationDropdown.contains(e.target) && e.target !== notificationBtn) {
+                    notificationDropdown.classList.remove('show');
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}
