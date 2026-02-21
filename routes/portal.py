@@ -17,6 +17,10 @@ def index():
     
     return redirect(url_for('patient.landing'))
 
+@portal_bp.route('/erp')
+def erp():
+    return render_template('portal/index.html', subsystem_color='blue')
+
 @portal_bp.route('/profile')
 @login_required
 def profile():
