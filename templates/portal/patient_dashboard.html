@@ -5,168 +5,186 @@
 
 {% block extra_css %}
 <style>
-    .care-sidebar {
-        background: #064E3B;
-        position: relative;
-        overflow: hidden;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-    .care-sidebar::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background-image: url('https://grainy-gradients.vercel.app/noise.svg');
-        opacity: 0.05;
-        pointer-events: none;
+    body {
+        font-family: 'Inter', sans-serif;
     }
 
     .hub-card {
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid rgba(229, 231, 235, 0.5);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .hub-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        border-color: rgba(16, 185, 129, 0.2);
+        transform: translateY(-8px);
+        box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.08), 0 18px 36px -18px rgba(0, 0, 0, 0.05);
+        border-color: rgba(16, 185, 129, 0.3);
+        background: rgba(255, 255, 255, 0.9);
     }
 
     .status-badge {
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 900;
         text-transform: uppercase;
         letter-spacing: 0.15em;
-        padding: 4px 12px;
-        border-radius: 9999px;
+        padding: 6px 14px;
+        border-radius: 12px;
+        border: 1px solid currentColor;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
     }
 
     .noise-overlay {
         position: fixed;
         inset: 0;
         z-index: 1;
-        opacity: 0.15;
+        opacity: 0.03;
         pointer-events: none;
         background-image: url('https://grainy-gradients.vercel.app/noise.svg');
     }
 
     .blob {
         position: fixed;
-        width: 600px;
-        height: 600px;
+        width: 800px;
+        height: 800px;
         border-radius: 50%;
-        filter: blur(100px);
+        filter: blur(120px);
         z-index: 0;
-        opacity: 0.3;
+        opacity: 0.4;
         pointer-events: none;
+    }
+
+    .tracking-tighter {
+        letter-spacing: -0.05em;
+    }
+
+    .glass-nav {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(15px);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-[#F8FAFC] flex font-sans relative overflow-hidden">
+<div
+    class="min-h-screen bg-gray-50 font-sans selection:bg-emerald-100 selection:text-emerald-900 flex flex-col relative scroll-smooth">
     <div class="noise-overlay"></div>
     <div class="blob bg-emerald-100 -top-48 -left-48"></div>
-    <div class="blob bg-blue-100 -bottom-48 -right-48"></div>
+    <div class="blob bg-blue-100 -bottom-48 -right-48" style="animation-delay: -5s;"></div>
 
-    <!-- Sidebar (HMS Uniform) -->
-    <aside class="w-80 care-sidebar flex flex-col p-8 fixed h-full z-20 text-white shadow-2xl">
-        <div class="flex items-center mb-16 px-2 relative z-10">
-            <a href="{{ url_for('patient.landing') }}" class="flex items-center group">
+    <!-- Top Navigation (HMS Uniform) -->
+    <nav class="bg-white/95 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-[100] shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between relative">
+            <!-- Brand -->
+            <div class="flex items-center">
+                <a href="{{ url_for('patient.landing') }}" class="flex items-center group">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center mr-4 text-white shadow-lg group-hover:scale-110 transition-transform">
+                        <i class="bi bi-heart-pulse-fill text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="font-black text-xl text-gray-900 tracking-tighter uppercase leading-none">HMS
+                            Portal</span>
+                        <span
+                            class="text-[8px] font-black text-emerald-600/60 uppercase tracking-[0.2em] block mt-0.5">Care
+                            Hub Interface</span>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Centered Desktop Links -->
+            <div class="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center space-x-8">
+                <a href="#"
+                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-900 uppercase tracking-widest px-4 py-2 bg-gray-50 rounded-full border border-gray-100 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-700">
+                    <i class="bi bi-grid-1x2 text-sm"></i>
+                    <span>Overview</span>
+                </a>
+                <a href="#clinical-timeline"
+                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
+                    <i class="bi bi-activity text-sm"></i>
+                    <span>Journey</span>
+                </a>
+                <a href="#stays"
+                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
+                    <i class="bi bi-door-open text-sm"></i>
+                    <span>Stay</span>
+                </a>
+                <a href="#pharmacy"
+                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
+                    <i class="bi bi-capsule text-sm"></i>
+                    <span>Inventory</span>
+                </a>
+                <a href="#financials"
+                    class="group flex items-center space-x-2 text-[10px] font-black text-gray-400 uppercase tracking-widest transition-all hover:text-emerald-600">
+                    <i class="bi bi-wallet2 text-sm"></i>
+                    <span>Ledger</span>
+                </a>
+            </div>
+
+            <!-- Profile / Logout -->
+            <div class="flex items-center space-x-4">
+                <div class="hidden sm:flex flex-col text-right mr-2">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">
+                        Authenticated As</p>
+                    <p class="text-xs font-black text-gray-900 leading-none">{{ patient.first_name }} {{
+                        patient.last_name }}</p>
+                </div>
                 <div
-                    class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center mr-4 shadow-xl text-emerald-600 transition-transform group-hover:scale-110">
-                    <i class="bi bi-heart-pulse-fill text-2xl"></i>
+                    class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center font-black text-sm shadow-xl ring-4 ring-gray-900/5">
+                    {{ patient.first_name[0] }}{{ patient.last_name[0] }}
                 </div>
-                <div>
-                    <span class="font-black text-2xl tracking-tighter block leading-none uppercase">HMS</span>
-                    <span class="text-[9px] font-black text-emerald-300 uppercase tracking-[0.2em] mt-1 block">Patient
-                        Portal</span>
-                </div>
-            </a>
+                <a href="{{ url_for('patient.logout') }}"
+                    class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-600 hover:text-white transition-all shadow-sm">
+                    <i class="bi bi-power text-lg"></i>
+                </a>
+            </div>
         </div>
+    </nav>
 
-        <nav class="flex-1 space-y-2 relative z-10">
-            <a href="#"
-                class="flex items-center space-x-4 px-6 py-4 bg-white/10 rounded-2xl border border-white/10 font-bold text-[11px] uppercase tracking-[0.2em] transition-all">
-                <i class="bi bi-grid-1x2 text-xl"></i>
-                <span>Wellness Oasis</span>
-            </a>
-            <a href="#clinical-timeline"
-                class="flex items-center space-x-4 px-6 py-4 hover:bg-white/5 rounded-2xl font-bold text-[11px] uppercase tracking-[0.2em] text-emerald-100 transition-all opacity-70 hover:opacity-100">
-                <i class="bi bi-activity text-xl"></i>
-                <span>Clinical Journey</span>
-            </a>
-            <a href="#stays"
-                class="flex items-center space-x-4 px-6 py-4 hover:bg-white/5 rounded-2xl font-bold text-[11px] uppercase tracking-[0.2em] text-emerald-100 transition-all opacity-70 hover:opacity-100">
-                <i class="bi bi-door-open text-xl"></i>
-                <span>Hospital Stay</span>
-            </a>
-            <a href="#pharmacy"
-                class="flex items-center space-x-4 px-6 py-4 hover:bg-white/5 rounded-2xl font-bold text-[11px] uppercase tracking-[0.2em] text-emerald-100 transition-all opacity-70 hover:opacity-100">
-                <i class="bi bi-capsule text-xl"></i>
-                <span>Medication Desk</span>
-            </a>
-            <a href="#financials"
-                class="flex items-center space-x-4 px-6 py-4 hover:bg-white/5 rounded-2xl font-bold text-[11px] uppercase tracking-[0.2em] text-emerald-100 transition-all opacity-70 hover:opacity-100">
-                <i class="bi bi-wallet2 text-xl"></i>
-                <span>Financial Clarity</span>
-            </a>
-        </nav>
-
-        <div class="mt-auto relative z-10">
-            <div class="bg-white/5 p-6 rounded-[2rem] border border-white/5 mb-8">
-                <p class="text-[10px] font-black text-emerald-300 uppercase tracking-[0.3em] mb-2">Support Unit</p>
-                <p class="text-lg font-black tracking-tight tracking-tighter">24/7 Care Center</p>
-                <p class="text-[10px] text-emerald-200 mt-1 font-bold uppercase tracking-widest">Dial: 1-800-Care-HMS
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12 relative z-10">
+        <!-- Dashboard Welcome -->
+        <header class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+            <div>
+                <div class="flex items-center gap-3 mb-4">
+                    <span
+                        class="px-3 py-1 bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-[0.2em] rounded-full border border-emerald-200 animate-pulse">Live
+                        Link Active</span>
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">ID: {{
+                        patient.patient_id_alt if patient.patient_id_alt else 'PROVISIONING...' }}</span>
+                </div>
+                <h1 class="text-4xl md:text-6xl font-black text-gray-900 tracking-tighter leading-none">
+                    Welcome back, {{ patient.first_name }}
+                    <span class="text-emerald-500"><i class="bi bi-patch-check-fill text-3xl"></i></span>
+                </h1>
+                <p class="text-gray-400 font-medium mt-4 text-base max-w-xl">
+                    Your unified health journey is synchronized. Monitoring real-time streams from Facility Units and
+                    Clinical Chambers.
                 </p>
             </div>
 
-            <a href="{{ url_for('patient.logout') }}"
-                class="flex items-center justify-center space-x-3 w-full py-4 bg-rose-500/10 text-rose-300 hover:bg-rose-500 hover:text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] transition-all">
-                <i class="bi bi-power text-lg"></i>
-                <span>Disconnect Hub</span>
-            </a>
-        </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="flex-1 ml-80 p-12 relative z-10">
-        <!-- Header (HMS Uniform) -->
-        <header class="flex items-center justify-between mb-16">
-            <div>
-                <h1 class="text-5xl font-black text-gray-900 tracking-tighter flex items-center gap-4">
-                    Welcome back, {{ patient.first_name if patient.first_name else 'Patient' }}
-                    <span class="text-emerald-500"><i class="bi bi-patch-check-fill text-3xl"></i></span>
-                </h1>
-                <p class="text-gray-400 font-bold mt-2 text-xs uppercase tracking-[0.2em]">Care Hub Identifier: <span
-                        class="text-gray-900 px-2 py-0.5 bg-white border border-gray-100 rounded-md ml-2">{{
-                        patient.patient_id_alt if patient.patient_id_alt else 'PROVISIONING...' }}</span></p>
-            </div>
-
-            <div class="flex items-center gap-6">
-                <div
-                    class="bg-white/50 backdrop-blur-md p-2 rounded-2xl border border-white flex items-center space-x-4 shadow-sm">
-                    <div
-                        class="w-12 h-12 rounded-xl care-sidebar flex items-center justify-center text-white font-black text-lg shadow-lg">
-                        {% if patient.first_name and patient.last_name %}
-                        {{ patient.first_name[0] }}{{ patient.last_name[0] }}
-                        {% else %}
-                        PH
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+            <button
+                class="px-8 py-4 bg-white border border-gray-200 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-sm hover:shadow-md transition-all active:scale-95 group flex items-center gap-3">
+                <i
+                    class="bi bi-arrow-repeat text-lg text-emerald-600 group-hover:rotate-180 transition-transform duration-500"></i>
+                Sync Care Records
+            </button>
         </header>
 
-        <!-- Top Widgets: Vital Stats (HMS Cards) -->
+        <!-- Dynamic Widgets Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
             <!-- Stay Status -->
-            <div class="hub-card p-10 rounded-[2.5rem] relative overflow-hidden group">
+            <div
+                class="hub-card p-10 rounded-[2.5rem] relative overflow-hidden group border border-gray-100 bg-white/50 backdrop-blur-xl">
                 <div
-                    class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform">
+                    class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform opacity-70">
                 </div>
-                <h3 class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] mb-8">Accommodation</h3>
+                <h3
+                    class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] mb-8 flex items-center gap-2">
+                    <i class="bi bi-building"></i> Accommodation
+                </h3>
                 {% if bed_info %}
                 <div class="text-4xl font-black text-gray-900 tracking-tighter mb-2 uppercase">Ward {{ bed_info.ward_id
                     }}</div>
@@ -183,11 +201,15 @@
             </div>
 
             <!-- Financials -->
-            <div class="hub-card p-10 rounded-[2.5rem] relative overflow-hidden group">
+            <div
+                class="hub-card p-10 rounded-[2.5rem] relative overflow-hidden group border border-gray-100 bg-white/50 backdrop-blur-xl">
                 <div
-                    class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform">
+                    class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform opacity-70">
                 </div>
-                <h3 class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-8">Account Ledger</h3>
+                <h3
+                    class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-8 flex items-center gap-2">
+                    <i class="bi bi-bank"></i> Account Ledger
+                </h3>
                 <div class="text-4xl font-black text-gray-900 tracking-tighter mb-2">${{ "{:,.2f}".format(total_due) }}
                 </div>
                 <div class="flex items-center gap-3">
@@ -204,11 +226,15 @@
             </div>
 
             <!-- Next Appointment -->
-            <div class="hub-card p-10 rounded-[2.5rem] relative overflow-hidden group">
+            <div
+                class="hub-card p-10 rounded-[2.5rem] relative overflow-hidden group border border-gray-100 bg-white/50 backdrop-blur-xl">
                 <div
-                    class="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform">
+                    class="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform opacity-70">
                 </div>
-                <h3 class="text-[10px] font-black text-amber-600 uppercase tracking-[0.3em] mb-8">Consultations</h3>
+                <h3
+                    class="text-[10px] font-black text-amber-600 uppercase tracking-[0.3em] mb-8 flex items-center gap-2">
+                    <i class="bi bi-calendar-event"></i> Consultations
+                </h3>
                 {% if appointments %}
                 <div class="text-3xl font-black text-gray-900 tracking-tighter mb-1">{{ appointments[0].appointment_date
                     | datetime('%b %d, %H:%M') }}</div>
@@ -224,210 +250,224 @@
             </div>
         </div>
 
-        <!-- Clinical Timeline & Records (HMS Layout) -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            <!-- Timeline (CT2 Integration) -->
-            <div class="lg:col-span-2 space-y-8">
-                <section id="clinical-timeline">
-                    <div class="flex items-center justify-between mb-10 px-4">
+        <!-- Secondary Information Sections -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+            <!-- Left Column: Records & Timeline -->
+            <div class="lg:col-span-8 space-y-12">
+                <!-- Clinical Journey -->
+                <section id="clinical-timeline" class="scroll-mt-24">
+                    <div class="flex items-center justify-between mb-8 px-2">
                         <div>
                             <h2 class="text-3xl font-black text-gray-900 tracking-tighter uppercase">Clinical Journey
                             </h2>
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mt-2">Laboratory
+                            <p class="text-[9px] font-black text-gray-400 uppercase tracking-[0.3em] mt-1">Laboratory
                                 Diagnostic Stream (CT2)</p>
                         </div>
-                        <button
-                            class="px-6 py-3 bg-white border border-gray-100 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm hover:shadow-md transition-all active:scale-95">Sync
-                            Records</button>
                     </div>
 
-                    <div class="space-y-4">
+                    <div class="grid gap-4">
                         {% for lab in labs %}
-                        <div class="hub-card p-8 rounded-[2rem] flex items-center justify-between group">
+                        <div
+                            class="group bg-white rounded-3xl p-6 border border-gray-100 hover:border-emerald-200 hover:shadow-xl transition-all duration-300 flex items-center justify-between">
                             <div class="flex items-center gap-6">
                                 <div
-                                    class="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-sm">
+                                    class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center transition-colors group-hover:bg-emerald-600 group-hover:text-white">
                                     <i class="bi bi-microscope text-2xl"></i>
                                 </div>
                                 <div>
-                                    <h4 class="text-xl font-bold text-gray-900 tracking-tight">{{ lab.test_name }}</h4>
-                                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{{
+                                    <h4 class="font-bold text-gray-900 text-lg leading-none mb-1">{{ lab.test_name }}
+                                    </h4>
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{
                                         lab.created_at | datetime }}</p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-10">
-                                <div class="text-right">
+                            <div class="text-right flex items-center gap-8">
+                                <div class="hidden sm:block">
                                     <span
                                         class="status-badge {% if lab.status == 'Ready' %}bg-emerald-100 text-emerald-700{% else %}bg-amber-100 text-amber-700{% endif %}">
                                         {{ lab.status }}
                                     </span>
-                                    {% if lab.critical_alert %}
-                                    <span
-                                        class="block text-[9px] font-black text-rose-600 uppercase mt-2 tracking-widest animate-pulse">Critical
-                                        Flag</span>
-                                    {% endif %}
                                 </div>
                                 <i
-                                    class="bi bi-chevron-right text-gray-200 group-hover:translate-x-1 transition-transform"></i>
+                                    class="bi bi-chevron-right text-gray-200 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all"></i>
                             </div>
                         </div>
                         {% else %}
-                        <div
-                            class="p-20 text-center bg-white/50 backdrop-blur-md rounded-[2.5rem] border-2 border-dashed border-gray-100">
-                            <i class="bi bi-file-earmark-medical text-5xl text-gray-200 block mb-6"></i>
-                            <p class="text-xs font-black text-gray-300 uppercase tracking-widest">No diagnostics
-                                detected in stream</p>
+                        <div class="py-20 text-center bg-gray-50 rounded-[3rem] border border-dashed border-gray-200">
+                            <i class="bi bi-file-earmark-medical-fill text-5xl text-gray-100 block mb-4"></i>
+                            <p class="text-[10px] font-black text-gray-300 uppercase tracking-widest">No records
+                                synchronized</p>
                         </div>
                         {% endfor %}
                     </div>
                 </section>
 
-                <!-- Stays (CT1 Integration) -->
-                <section id="stays">
-                    <div class="mb-10 px-4">
-                        <h2 class="text-3xl font-black text-gray-900 tracking-tighter uppercase">Stay History</h2>
-                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mt-2">Facility & Ward
-                            Management (CT1)</p>
+                <!-- Stay History Section -->
+                <section id="stays" class="scroll-mt-24">
+                    <div class="mb-8 px-2">
+                        <h2 class="text-3xl font-black text-gray-900 tracking-tighter uppercase">Facility Assignment
+                        </h2>
+                        <p class="text-[9px] font-black text-gray-400 uppercase tracking-[0.3em] mt-1">Ward Management
+                            Protocol (CT1)</p>
                     </div>
-                    {% if not bed_info %}
+                    {% if bed_info %}
                     <div
-                        class="hub-card p-12 rounded-[3rem] bg-gray-900 text-white relative overflow-hidden group shadow-2xl">
+                        class="bg-gray-900 rounded-[3.5rem] p-12 text-white relative overflow-hidden shadow-2xl border border-gray-800">
                         <div
-                            class="absolute inset-0 bg-gradient-to-br from-emerald-600/20 to-blue-600/20 group-hover:rotate-12 transition-transform duration-700">
+                            class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-blue-500/5 rotate-12 scale-150">
                         </div>
-                        <div class="relative z-10">
-                            <h3 class="text-3xl font-black mb-4 tracking-tighter uppercase">Initialize Stay?</h3>
-                            <p class="text-gray-400 mb-10 font-medium max-w-md leading-relaxed">No active ward
-                                assignment detected. If you are scheduled for admission, please contact the Facility
-                                Management Unit (CT1).</p>
-                            <button
-                                class="px-10 py-5 bg-white text-gray-900 font-black rounded-2xl uppercase tracking-widest text-[11px] hover:bg-emerald-600 hover:text-white transition-all shadow-xl">Connect
-                                to Intake</button>
+                        <div class="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-12">
+                            <div>
+                                <p class="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-4">
+                                    Current Unit</p>
+                                <p class="text-5xl font-black tracking-tighter uppercase">WARD {{ bed_info.ward_id }}
+                                </p>
+                                <p class="text-xs text-emerald-500/80 font-bold mt-2 uppercase tracking-widest">Station
+                                    Registered</p>
+                            </div>
+                            <div class="md:col-span-2 flex flex-col justify-end">
+                                <div class="flex items-center gap-6 p-6 bg-white/5 rounded-3xl border border-white/5">
+                                    <div
+                                        class="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white text-2xl shadow-lg">
+                                        <i class="bi bi-person-badge"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                            Attending Unit</p>
+                                        <p class="text-xl font-bold tracking-tight">Core Nursing Cluster A</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     {% else %}
-                    <div
-                        class="hub-card p-12 rounded-[3.5rem] bg-white text-gray-900 shadow-xl border-l-[12px] border-emerald-500">
-                        <div class="grid grid-cols-2 gap-16">
-                            <div>
-                                <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-4">
-                                    Location Unit</h4>
-                                <p class="text-4xl font-black tracking-tighter uppercase">WARD {{ bed_info.ward_id }}
-                                </p>
-                                <p class="text-xs text-emerald-600 mt-2 uppercase font-bold tracking-widest">Active Stay
-                                </p>
-                            </div>
-                            <div>
-                                <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-4">
-                                    Assigned Unit</h4>
-                                <p class="text-2xl font-black tracking-tight tracking-tighter uppercase">CORE STAFF UNIT
-                                </p>
-                                <p class="text-xs text-gray-400 mt-2 font-medium tracking-tight">Managed via HMS Care
-                                    Protocol</p>
-                            </div>
+                    <div class="bg-white rounded-[3rem] border border-gray-100 p-12 shadow-sm text-center">
+                        <div
+                            class="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 mx-auto mb-6">
+                            <i class="bi bi-hospital text-3xl"></i>
                         </div>
+                        <h3 class="text-2xl font-black text-gray-900 tracking-tight uppercase mb-2">No Active Bed</h3>
+                        <p class="text-gray-500 text-sm max-w-sm mx-auto mb-8 font-medium">You are currently registered
+                            as an outpatient. Ward assignments will appear here once floor intake is complete.</p>
+                        <button
+                            class="px-8 py-3 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-emerald-600 transition-all">Facility
+                            Directory</button>
                     </div>
                     {% endif %}
                 </section>
             </div>
 
-            <!-- Side Panels (HMS Standard) -->
-            <div class="space-y-8">
-                <!-- Pharmacy Cabinet -->
-                <section id="pharmacy" class="hub-card p-10 rounded-[2.5rem]">
-                    <div class="flex items-center justify-between mb-10">
-                        <h3 class="text-xl font-black text-gray-900 tracking-tight uppercase">Cabinet</h3>
-                        <div
-                            class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                            <i class="bi bi-capsule-pill text-xl"></i>
-                        </div>
-                    </div>
-                    <div class="space-y-8">
-                        {% for rx in prescriptions %}
-                        <div class="pb-6 border-b border-gray-100 last:border-0 last:pb-0">
-                            <div class="flex justify-between items-start mb-2">
-                                <h5 class="font-black text-gray-900 tracking-tight uppercase text-sm">{{
-                                    rx.medication_name }}</h5>
-                                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">{{
-                                    rx.dosage }}</span>
-                            </div>
-                            <p class="text-xs text-gray-500 font-medium italic mb-4 leading-relaxed">{{ rx.instructions
-                                }}</p>
-                            <div class="flex items-center justify-between">
-                                <span class="status-badge bg-emerald-50 text-emerald-700">Active</span>
-                                <button
-                                    class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.1em] hover:text-emerald-800 transition-colors">Refill
-                                    History</button>
+            <!-- Right Column: Medication & Billing -->
+            <div class="lg:col-span-4 space-y-12">
+                <!-- Cabinet Section -->
+                <section id="pharmacy" class="scroll-mt-24">
+                    <div class="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
+                        <div class="flex items-center justify-between mb-8">
+                            <h3 class="text-xl font-black text-gray-900 tracking-tight uppercase">Cabinet</h3>
+                            <div
+                                class="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                                <i class="bi bi-capsule-pill text-xl"></i>
                             </div>
                         </div>
-                        {% else %}
-                        <div class="text-center py-10 opacity-30">
-                            <i class="bi bi-slash-circle text-2xl block mb-2"></i>
-                            <p class="text-[10px] font-black uppercase tracking-widest">Inventory Empty</p>
+
+                        <div class="space-y-6">
+                            {% for rx in prescriptions %}
+                            <div class="group relative pb-6 border-b border-gray-50 last:border-0 last:pb-0">
+                                <div
+                                    class="flex justify-between items-start mb-2 group-hover:translate-x-1 transition-transform">
+                                    <h5 class="font-bold text-gray-900 text-sm tracking-tight uppercase">{{
+                                        rx.medication_name }}</h5>
+                                    <span
+                                        class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase tracking-widest">{{
+                                        rx.dosage }}</span>
+                                </div>
+                                <p class="text-[11px] text-gray-400 font-medium leading-relaxed italic">{{
+                                    rx.instructions }}</p>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-8 opacity-20">
+                                <i class="bi bi-slash-circle text-2xl block mb-2"></i>
+                                <p class="text-[9px] font-black uppercase tracking-widest">No Prescriptions</p>
+                            </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
+
+                        <button
+                            class="w-full mt-8 py-4 bg-gray-50 text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-gray-100 transition-all">Refill
+                            Gateway</button>
                     </div>
                 </section>
 
-                <!-- Nutrition (CT2 Unit) -->
-                <div class="hub-card p-10 rounded-[2.5rem] bg-gradient-to-br from-white to-orange-50/30">
-                    <div class="flex items-center justify-between mb-10">
-                        <h3 class="text-xl font-black text-gray-900 tracking-tight uppercase">Dietary</h3>
-                        <div class="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                <!-- Billing Gateway -->
+                <section id="financials" class="scroll-mt-24">
+                    <div class="bg-gray-950 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden group">
+                        <div
+                            class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent">
+                        </div>
+                        <div class="flex items-center justify-between mb-10 relative z-10">
+                            <h3 class="text-lg font-black tracking-tight uppercase">Billing Ledger</h3>
+                            <div
+                                class="w-10 h-10 rounded-xl bg-white/5 text-emerald-400 flex items-center justify-center shadow-inner">
+                                <i class="bi bi-credit-card-2-front text-xl"></i>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4 relative z-10">
+                            {% for bill in bills[:3] %}
+                            <div
+                                class="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer">
+                                <div>
+                                    <p class="text-base font-black tracking-tighter">${{
+                                        "{:,.2f}".format(bill.total_amount) }}</p>
+                                    <p class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">{{
+                                        bill.billing_date | datetime('%b %d') }}</p>
+                                </div>
+                                <i class="bi bi-chevron-right text-gray-700"></i>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <button
+                            class="w-full mt-10 py-5 bg-white text-gray-950 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:bg-emerald-500 hover:text-white transition-all">Settle
+                            Statement</button>
+                    </div>
+                </section>
+
+                <!-- Nutrition Alert -->
+                <div class="bg-orange-500 rounded-[2.5rem] p-8 text-white relative overflow-hidden group">
+                    <div
+                        class="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform">
+                    </div>
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-3 mb-6">
                             <i class="bi bi-egg-fried text-xl"></i>
+                            <h3 class="text-lg font-black tracking-tight uppercase">Nutrition Intake</h3>
                         </div>
-                    </div>
-                    <p class="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mb-4">Unit Prescription
-                    </p>
-                    <div class="bg-white p-6 rounded-3xl border border-orange-100 mb-8 shadow-sm">
-                        <p class="text-xl font-black text-gray-900 tracking-tight uppercase">Standard Post-Op</p>
-                        <p class="text-[10px] text-gray-400 mt-1 font-bold uppercase tracking-widest">Managed by CT2
-                            Unit</p>
-                    </div>
-                    <ul class="space-y-4 mb-10">
-                        <li class="flex items-center gap-3 text-xs font-bold text-gray-700">
-                            <i class="bi bi-dot text-2xl text-orange-500"></i> Low Sodium Restriction
-                        </li>
-                        <li class="flex items-center gap-3 text-xs font-bold text-gray-700">
-                            <i class="bi bi-dot text-2xl text-orange-500"></i> Hydration Focused
-                        </li>
-                    </ul>
-                    <button
-                        class="w-full py-5 bg-gray-950 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-orange-600 transition-all active:scale-95">Confirm
-                        Receipt</button>
-                </div>
-
-                <!-- Financials (CT3 Integration) -->
-                <section id="financials" class="hub-card p-10 rounded-[2.5rem]">
-                    <div class="flex items-center justify-between mb-10">
-                        <h3 class="text-xl font-black text-gray-900 tracking-tight uppercase">Billing</h3>
-                        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                            <i class="bi bi-credit-card-2-front text-xl"></i>
-                        </div>
-                    </div>
-                    <div class="space-y-4">
-                        {% for bill in bills %}
+                        <p class="text-sm font-bold leading-relaxed mb-6 opacity-90">Your "Low Sodium Post-Op" meal plan
+                            is active.</p>
                         <div
-                            class="p-5 rounded-2xl bg-gray-50 flex items-center justify-between border border-gray-100/50">
-                            <div>
-                                <p class="text-sm font-black text-gray-900 tracking-tight tracking-tighter">${{
-                                    "{:,.2f}".format(bill.total_amount) }}</p>
-                                <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">{{
-                                    bill.billing_date | datetime('%b %d') }}</p>
-                            </div>
-                            <span
-                                class="status-badge {% if bill.status == 'Paid' %}bg-emerald-100 text-emerald-700{% else %}bg-rose-100 text-rose-700{% endif %}">
-                                {{ bill.status }}
-                            </span>
+                            class="flex items-center justify-between p-4 bg-black/10 rounded-2xl border border-white/10">
+                            <span class="text-[10px] font-black uppercase tracking-widest">Next Meal</span>
+                            <span class="text-sm font-black tracking-tighter uppercase">12:30 PM</span>
                         </div>
-                        {% endfor %}
                     </div>
-                    <button
-                        class="w-full py-5 mt-10 bg-indigo-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">Statement
-                        Gateway</button>
-                </section>
+                </div>
             </div>
         </div>
     </main>
+
+    <!-- Standard HMS Premium Footer -->
+    <footer class="bg-white border-t border-gray-200 pt-20 pb-12 mt-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="flex items-center justify-center gap-2 mb-6">
+                <div class="w-6 h-6 rounded-md bg-emerald-600 flex items-center justify-center text-white text-[10px]">
+                    <i class="bi bi-heart-pulse-fill"></i>
+                </div>
+                <span class="font-black text-gray-900 tracking-tighter text-sm uppercase">HMS Patient Network</span>
+            </div>
+            <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Secure Care Hub Tier 4 Status •
+                Encryption Active</p>
+        </div>
+    </footer>
 </div>
 {% endblock %}
