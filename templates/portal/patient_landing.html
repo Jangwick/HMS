@@ -67,40 +67,42 @@
 
     <!-- Portal Header (HMS Uniform) -->
     <nav class="bg-white/95 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-[100] shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between relative gap-2">
             <!-- Brand -->
-            <div class="flex items-center">
+            <div class="flex items-center flex-1 min-w-0 pr-2">
                 <div
-                    class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center mr-3 text-white shadow-md">
+                    class="w-8 h-8 shrink-0 rounded-lg bg-emerald-600 flex items-center justify-center mr-2 sm:mr-3 text-white shadow-md">
                     <i class="bi bi-heart-pulse text-sm"></i>
                 </div>
-                <span class="font-bold text-gray-900 tracking-tight">HMS PATIENT PORTAL</span>
+                <span class="font-bold text-gray-900 tracking-tight text-[11px] sm:text-base leading-tight truncate">HMS
+                    PATIENT PORTAL</span>
             </div>
 
 
 
             <!-- CTA -->
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center gap-2 sm:gap-4 shrink-0">
                 {% if current_user.is_authenticated and current_user.role == 'Patient' %}
                 <a href="{{ url_for('patient.dashboard') }}"
-                    class="flex items-center space-x-3 p-1 pr-4 bg-emerald-50/50 rounded-full border border-emerald-100/50 hover:border-emerald-200 hover:bg-emerald-50 transition-all group">
+                    class="flex items-center space-x-2 sm:space-x-3 p-1 pr-3 sm:pr-4 bg-emerald-50/50 rounded-full border border-emerald-100/50 hover:border-emerald-200 hover:bg-emerald-50 transition-all group">
                     <div
-                        class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-sm group-hover:scale-110 transition-transform">
+                        class="w-8 h-8 shrink-0 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-sm group-hover:scale-110 transition-transform">
                         {{ current_user.username[0] | upper }}
                     </div>
-                    <div class="hidden sm:block">
-                        <p class="text-[9px] font-bold text-gray-400 uppercase tracking-[0.15em] leading-none mb-0.5">
+                    <div class="sm:block text-left">
+                        <p
+                            class="hidden sm:block text-[9px] font-bold text-gray-400 uppercase tracking-[0.15em] leading-none mb-0.5">
                             Control Center</p>
-                        <p class="text-xs font-bold text-gray-900 leading-tight">Your Dashboard</p>
+                        <p class="text-[10px] sm:text-xs font-bold text-gray-900 leading-tight">Your Dashboard</p>
                     </div>
                 </a>
                 {% else %}
                 <a href="{{ url_for('patient.register') }}"
-                    class="hidden sm:block text-[10px] font-black text-gray-400 hover:text-emerald-600 transition-all uppercase tracking-[0.15em] whitespace-nowrap px-4 py-2 border border-transparent hover:border-gray-100 rounded-full">
+                    class="hidden md:block text-[10px] font-black text-gray-400 hover:text-emerald-600 transition-all uppercase tracking-[0.15em] whitespace-nowrap px-4 py-2 border border-transparent hover:border-gray-100 rounded-full">
                     Create Account
                 </a>
                 <a href="{{ url_for('patient.login') }}"
-                    class="px-6 py-2.5 bg-gray-950 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-xl shadow-gray-200/50 active:scale-95 border border-gray-800 hover:border-emerald-500">
+                    class="px-4 sm:px-6 py-2 sm:py-2.5 bg-gray-950 text-white rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-xl shadow-gray-200/50 active:scale-95 border border-gray-800 hover:border-emerald-500 whitespace-nowrap">
                     Patient Login
                 </a>
                 {% endif %}
@@ -186,10 +188,11 @@
                     </div>
                 </div>
 
-                <div class="lg:w-1/2">
+                <div class="lg:w-1/2 text-center md:text-left flex flex-col items-center md:items-start">
                     <h2 class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.4em] mb-4">Digital
                         Advantage</h2>
-                    <p class="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter mb-8">Clinical Excellence
+                    <p class="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter mb-8 max-w-xl">Clinical
+                        Excellence
                         <br> Meet Digital Simplicity.
                     </p>
                     <p class="text-gray-500 text-lg mb-10 leading-relaxed font-medium">
@@ -370,7 +373,7 @@
                     Intelligence</h2>
                 <p class="text-3xl font-black text-gray-900 tracking-tighter">Real-Time Operational Pulse</p>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-12 text-center">
                 <div class="group">
                     <div
                         class="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mx-auto mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-sm">
@@ -413,23 +416,24 @@
     </div>
 
     <!-- Premium Footer (HMS Uniform) -->
-    <footer class="bg-gray-50 border-t border-gray-200 pt-24 pb-12 relative overflow-hidden no-print">
+    <footer class="bg-gray-50 border-t border-gray-200 pt-16 md:pt-24 pb-12 relative overflow-hidden no-print">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-20">
+            <div
+                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-12 mb-16 md:mb-20 text-center md:text-left">
                 <!-- Brand Column -->
-                <div class="lg:col-span-1">
-                    <div class="flex items-center mb-8">
+                <div class="lg:col-span-1 flex flex-col items-center md:items-start">
+                    <div class="flex items-center mb-8 justify-center md:justify-start">
                         <div
                             class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center mr-4 text-white shadow-xl">
                             <i class="bi bi-heart-pulse text-xl"></i>
                         </div>
                         <span class="font-black text-xl text-gray-900 tracking-tighter uppercase">HMS Portal</span>
                     </div>
-                    <p class="text-sm text-gray-500 leading-relaxed max-w-xs mb-8">
+                    <p class="text-sm text-gray-500 leading-relaxed max-w-xs mb-8 mx-auto md:mx-0">
                         The unified gateway for digital health orchestration. Empowering patients with real-time
                         diagnostic transparency and seamless facility management.
                     </p>
-                    <div class="flex items-center space-x-4">
+                    <div class="flex items-center justify-center md:justify-start space-x-4">
                         <a href="#"
                             class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:border-emerald-200 hover:-translate-y-1 transition-all shadow-sm">
                             <i class="bi bi-twitter-x"></i>
@@ -488,18 +492,18 @@
                 </div>
 
                 <!-- Contact/Status -->
-                <div>
+                <div class="flex flex-col items-center md:items-start">
                     <h4 class="text-[11px] font-black text-gray-900 uppercase tracking-[0.3em] mb-8">Crisis Center
                     </h4>
-                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm mb-6">
-                        <div class="flex items-center mb-4">
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm mb-6 w-full max-w-[280px]">
+                        <div class="flex items-center justify-center md:justify-start mb-4">
                             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse mr-3"></span>
                             <span class="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Normal
                                 Systems</span>
                         </div>
                         <p class="text-xs text-gray-500 font-medium mb-4">Central Dispatch Active</p>
                         <a href="tel:18002273467"
-                            class="flex items-center text-sm font-black text-gray-900 hover:text-emerald-600 transition-colors">
+                            class="flex items-center justify-center md:justify-start text-sm font-black text-gray-900 hover:text-emerald-600 transition-colors">
                             <i class="bi bi-telephone-outbound mr-3 text-lg"></i>
                             1-800-CARE-HMS
                         </a>
@@ -508,15 +512,17 @@
             </div>
 
             <!-- Bottom Bar -->
-            <div class="pt-12 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-6">
-                <p class="text-xs text-gray-400 font-medium">
+            <div
+                class="pt-8 md:pt-12 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
+                <p class="text-[10px] sm:text-xs text-gray-400 font-medium leading-relaxed">
                     © 2026 HMS Health Management System. A Unified Care Initiative.
                 </p>
-                <div class="flex items-center space-x-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                <div
+                    class="flex flex-wrap justify-center md:justify-end items-center gap-x-4 gap-y-2 text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest">
                     <span>Secured by HMS Core</span>
-                    <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+                    <span class="hidden sm:block w-1 h-1 rounded-full bg-gray-300"></span>
                     <span>GDPR Compliant</span>
-                    <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+                    <span class="hidden sm:block w-1 h-1 rounded-full bg-gray-300"></span>
                     <span>HIPAA Ready</span>
                 </div>
             </div>
