@@ -178,12 +178,20 @@
                                 <form action="{{ url_for('superadmin.toggle_user_status', user_id=user.id) }}"
                                     method="POST" class="inline">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    {% if user.status == 'Active' %}
+                                    {% set btn_style = 'bg-rose-50 text-rose-500 hover:bg-rose-500' %}
+                                    {% set btn_title = 'Suspend' %}
+                                    {% set btn_icon = 'pause-fill' %}
+                                    {% else %}
+                                    {% set btn_style = 'bg-emerald-50 text-emerald-500 hover:bg-emerald-500' %}
+                                    {% set btn_title = 'Activate' %}
+                                    {% set btn_icon = 'play-fill' %}
+                                    {% endif %}
                                     <button type="submit"
-                                        class="w-9 h-9 rounded-xl {{ 'bg-rose-50 text-rose-500 hover:bg-rose-500' if user.status == 'Active' else 'bg-emerald-50 text-emerald-500 hover:bg-emerald-500' }} hover:text-white flex items-center justify-center transition-all"
-                                        title="{{ 'Suspend' if user.status == 'Active' else 'Activate' }}"
-                                        onclick="return confirm('{{ 'Suspend' if user.status == 'Active' else 'Activate' }} user {{ user.username }}?')">
-                                        <i
-                                            class="bi bi-{{ 'pause-fill' if user.status == 'Active' else 'play-fill' }} text-xs"></i>
+                                        class="w-9 h-9 rounded-xl {{ btn_style }} hover:text-white flex items-center justify-center transition-all"
+                                        title="{{ btn_title }}"
+                                        onclick="return confirm('{{ btn_title }} user {{ user.username }}?')">
+                                        <i class="bi bi-{{ btn_icon }} text-xs"></i>
                                     </button>
                                 </form>
 
