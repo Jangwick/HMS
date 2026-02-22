@@ -98,25 +98,6 @@ else %}Patient{% endif %}{% endblock %}
 {% block patient_content %}
 <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="mb-6 space-y-2">
-        {% for category, message in messages %}
-        <div class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
-            {% if category == 'danger' %}bg-red-50 text-red-700 border border-red-100
-            {% elif category == 'warning' %}bg-amber-50 text-amber-700 border border-amber-100
-            {% elif category == 'success' %}bg-emerald-50 text-emerald-700 border border-emerald-100
-            {% else %}bg-blue-50 text-blue-700 border border-blue-100{% endif %}">
-            <i
-                class="bi {% if category == 'danger' %}bi-exclamation-circle{% elif category == 'warning' %}bi-info-circle{% elif category == 'success' %}bi-check-circle{% else %}bi-info-circle{% endif %}"></i>
-            {{ message }}
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-    {% endwith %}
-
     <!-- Welcome Banner -->
     <div class="welcome-banner">
         <div class="relative z-10">
@@ -131,7 +112,8 @@ else %}Patient{% endif %}{% endblock %}
 
     <!-- Quick Status Row -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="dash-card flex items-center gap-4">
+        <div
+            class="dash-card flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 text-center sm:text-left">
             <div
                 class="card-icon {% if bed_info %}bg-emerald-50 text-emerald-600{% else %}bg-gray-50 text-gray-400{% endif %}">
                 <i class="bi bi-door-open-fill"></i>
@@ -147,7 +129,8 @@ else %}Patient{% endif %}{% endblock %}
             </div>
         </div>
 
-        <a href="{{ url_for('patient.ledger') }}" class="dash-card flex items-center gap-4 cursor-pointer group">
+        <a href="{{ url_for('patient.ledger') }}"
+            class="dash-card flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 cursor-pointer group text-center sm:text-left">
             <div
                 class="card-icon {% if total_due > 0 %}bg-rose-50 text-rose-500{% else %}bg-blue-50 text-blue-500{% endif %}">
                 <i class="bi bi-wallet2"></i>
@@ -161,7 +144,8 @@ else %}Patient{% endif %}{% endblock %}
             </div>
         </a>
 
-        <div class="dash-card flex items-center gap-4">
+        <div
+            class="dash-card flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 text-center sm:text-left">
             <div
                 class="card-icon {% if appointments %}bg-amber-50 text-amber-500{% else %}bg-gray-50 text-gray-400{% endif %}">
                 <i class="bi bi-calendar-event"></i>
@@ -179,7 +163,8 @@ else %}Patient{% endif %}{% endblock %}
             </div>
         </div>
 
-        <a href="{{ url_for('patient.inventory') }}" class="dash-card flex items-center gap-4 cursor-pointer group">
+        <a href="{{ url_for('patient.inventory') }}"
+            class="dash-card flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 cursor-pointer group text-center sm:text-left">
             <div class="card-icon bg-purple-50 text-purple-500">
                 <i class="bi bi-capsule"></i>
             </div>
