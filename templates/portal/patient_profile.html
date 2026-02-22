@@ -95,6 +95,62 @@
     .profile-avatar:hover .avatar-overlay {
         opacity: 1;
     }
+
+    /* Modal Styles */
+    #editProfileModal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(8px);
+    }
+
+    .modal-content {
+        animation: modalScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes modalScale {
+        from {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    .form-input {
+        width: 100%;
+        background: #F9FAFB;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #111827;
+        transition: all 0.2s;
+    }
+
+    .form-input:focus {
+        background: white;
+        border-color: #10B981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        outline: none;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #6B7280;
+        margin-bottom: 6px;
+        margin-left: 4px;
+    }
 </style>
 {% endblock %}
 
@@ -131,7 +187,7 @@
             </div>
         </div>
         <div class="flex gap-3">
-            <button
+            <button onclick="openModal()"
                 class="px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-sm font-bold transition-all">
                 Edit Profile
             </button>
@@ -296,4 +352,95 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Profile Modal -->
+<div id="editProfileModal" class="flex items-center justify-center p-4">
+    <div class="modal-content w-full max-w-2xl bg-white rounded-[32px] shadow-2xl overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h2 class="text-xl font-black text-gray-900">Edit Profile</h2>
+                <p class="text-sm text-gray-500 font-medium">Update your personal and contact information</p>
+            </div>
+            <button onclick="closeModal()"
+                class="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center transition-all">
+                <i class="bi bi-x-lg text-gray-400"></i>
+            </button>
+        </div>
+
+        <form action="{{ url_for('patient.update_profile') }}" method="POST" class="p-8">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="form-label">First Name</label>
+                    <input type="text" name="first_name" value="{{ patient.first_name }}" class="form-input" required>
+                </div>
+                <div>
+                    <label class="form-label">Last Name</label>
+                    <input type="text" name="last_name" value="{{ patient.last_name }}" class="form-input" required>
+                </div>
+                <div>
+                    <label class="form-label">Date of Birth</label>
+                    <input type="date" name="dob" value="{{ patient.dob }}" class="form-input" required>
+                </div>
+                <div>
+                    <label class="form-label">Gender</label>
+                    <select name="gender" class="form-input" required>
+                        <option value="Male" {% if patient.gender=='Male' %}selected{% endif %}>Male</option>
+                        <option value="Female" {% if patient.gender=='Female' %}selected{% endif %}>Female</option>
+                        <option value="Other" {% if patient.gender|default('Other')=='Other' %}selected{% endif %}>Other
+                        </option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Contact Number</label>
+                    <input type="tel" name="contact_number" value="{{ patient.contact_number }}" class="form-input"
+                        required>
+                </div>
+                <div>
+                    <label class="form-label">Patient ID Ref (Read-only)</label>
+                    <input type="text" value="{{ patient.patient_id_alt }}" class="form-input bg-gray-50 text-gray-400"
+                        readonly>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label">Home Address</label>
+                    <textarea name="address" class="form-input min-h-[100px]" required>{{ patient.address }}</textarea>
+                </div>
+            </div>
+
+            <div class="mt-8 flex gap-4 pt-6 border-t border-gray-100">
+                <button type="button" onclick="closeModal()"
+                    class="flex-1 px-6 py-3 border border-gray-200 rounded-2xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-sm font-bold shadow-lg shadow-emerald-200 transition-all">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openModal() {
+        const modal = document.getElementById('editProfileModal');
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('editProfileModal');
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    // Close on outside click
+    window.onclick = function (event) {
+        const modal = document.getElementById('editProfileModal');
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+</script>
 {% endblock %}

@@ -543,6 +543,51 @@ def upload_avatar():
             
     return redirect(url_for('patient.profile'))
 
+@patient_bp.route('/profile/update', methods=['POST'])
+@login_required
+def update_profile():
+    if current_user.role != 'Patient' or not current_user.patient_id:
+        flash('Unauthorized action.', 'danger')
+        return redirect(url_for('portal.index'))
+    
+    patient_id = current_user.patient_id
+    first_name = request.form.get('first_name')
+    last_name = request.form.get('last_name')
+    dob = request.form.get('dob')
+    gender = request.form.get('gender')
+    contact_number = request.form.get('contact_number')
+    address = request.form.get('address')
+    
+    try:
+        client = get_supabase_client()
+        
+        # 1. Update Patients Table
+        update_data = {
+            'first_name': first_name,
+            'last_name': last_name,
+            'dob': dob,
+            'gender': gender,
+            'contact_number': contact_number,
+            'address': address
+        }
+        client.table('patients').update(update_data).eq('id', patient_id).execute()
+        
+        # 2. Update Users Table (for full_name consistency)
+        client.table('users').update({
+            'full_name': f"{first_name} {last_name}"
+        }).eq('id', current_user.id).execute()
+        
+        # 3. Log Action
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "PROFILE_UPDATE", "patient", f"Updated personal details for {first_name} {last_name}")
+        
+        flash('Profile updated successfully!', 'success')
+    except Exception as e:
+        print(f"Error updating profile: {e}")
+        flash('Failed to update profile. Please try again.', 'danger')
+        
+    return redirect(url_for('patient.profile'))
+
 @patient_bp.route('/logout')
 @login_required
 def logout():
