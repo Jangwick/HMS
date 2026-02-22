@@ -262,13 +262,15 @@
                 <div class="my-4 mx-6 border-t border-gray-100"></div>
                 {% endif %}
 
+                {% if blueprint_name != 'superadmin' %}
                 <a href="{{ url_for(blueprint_name + '.dashboard') }}"
-                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint.endswith('.dashboard') and blueprint_name != 'superadmin' }}">
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint.endswith('.dashboard') }}">
                     <i class="bi bi-grid mr-3"></i>
                     <span>Dashboard</span>
                 </a>
 
                 <div class="my-4 mx-6 border-t border-gray-100"></div>
+                {% endif %}
 
                 <!-- HR Subsystems -->
                 {% if blueprint_name.startswith('hr') %}
@@ -631,9 +633,11 @@
                 {% endif %}
 
                 <!-- Department Modules (Quick Switch) -->
+                {% if blueprint_name != 'superadmin' and blueprint_name != 'financials' %}
                 <div
                     class="mt-4 px-6 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-50 pt-4">
                     Department Modules</div>
+                {% endif %}
                 {% if blueprint_name.startswith('hr') %}
                 {% if blueprint_name != 'hr1' %}<a
                     href="{{ url_for('portal.logout_switch', target=url_for('hr1.login')) }}"
@@ -732,17 +736,19 @@
             class="flex-1 flex flex-col min-h-0 overflow-hidden relative transition-all duration-300 lg:ml-72">
             <!-- Top Header -->
             <header
-                class="bg-white/80 backdrop-blur-md shadow-sm h-20 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50 border-b border-gray-100 no-print">
-                <div class="flex items-center">
+                class="bg-white/80 backdrop-blur-md shadow-sm h-auto min-h-[5rem] py-3 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50 border-b border-gray-100 no-print">
+                <div class="flex items-center flex-1 min-w-0 pr-4">
                     <!-- Sidebar Toggle Button -->
                     <button onclick="toggleSidebar()"
-                        class="p-2 mr-4 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+                        class="p-2 mr-2 md:mr-4 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors shrink-0">
                         <i class="bi bi-list text-2xl"></i>
                     </button>
-                    <h2 class="text-xl md:text-2xl font-bold text-gray-800 tracking-tight">{% block header_title %}{{
+                    <h2
+                        class="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 tracking-tight leading-tight line-clamp-2 sm:line-clamp-1">
+                        {% block header_title %}{{
                         subsystem_name }}{% endblock %}</h2>
                 </div>
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center gap-2 sm:gap-4 shrink-0">
                     <!-- Attendance Clock In/Out (hide for SuperAdmin) -->
                     {% if blueprint_name != 'superadmin' %}
                     <div class="hidden sm:flex items-center border-r border-gray-100 pr-4 mr-2">
@@ -859,9 +865,14 @@
                             </div>
                         </div>
                     </div>
-                    <div class="h-8 w-px bg-gray-200 mx-2"></div>
-                    <span class="text-sm font-medium text-gray-500">{{ now().strftime('%B %d, %Y') if now else ''
-                        }}</span>
+                    <div class="hidden sm:block h-8 w-px bg-gray-200 mx-2 sm:mx-0 shrink-0"></div>
+                    <div
+                        class="text-[10px] sm:text-sm font-medium text-gray-500 text-right leading-tight whitespace-nowrap">
+                        {% if now %}
+                        <div class="sm:inline">{{ now().strftime('%B') }} <span class="block sm:inline text-gray-800">{{
+                                now().strftime('%d, %Y') }}</span></div>
+                        {% endif %}
+                    </div>
                 </div>
             </header>
 

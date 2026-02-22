@@ -3,7 +3,7 @@
 {% block header_title %}Edit User — {{ user.username }}{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-8">
+<div class="max-w-3xl mx-auto space-y-6 lg:space-y-8">
     <!-- Header -->
     <div class="flex items-center gap-4">
         <a href="{{ url_for('superadmin.user_list') }}"
@@ -32,8 +32,9 @@
     {% endwith %}
 
     <!-- Edit Form -->
-    <div class="bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-sm">
-        <form method="POST" action="{{ url_for('superadmin.edit_user', user_id=user.id) }}" class="space-y-8">
+    <div class="bg-white rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-10 border border-gray-100 shadow-sm">
+        <form method="POST" action="{{ url_for('superadmin.edit_user', user_id=user.id) }}"
+            class="space-y-6 lg:space-y-8">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <!-- User Identity -->

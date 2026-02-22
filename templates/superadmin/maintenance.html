@@ -3,10 +3,10 @@
 {% block header_title %}System Maintenance & Recovery{% endblock %}
 
 {% block content %}
-<div class="space-y-8">
+<div class="space-y-6 lg:space-y-8">
     <!-- Maintenance Header -->
     <div
-        class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-[2.5rem] p-10 text-white shadow-2xl">
+        class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-10 text-white shadow-2xl">
         <div class="absolute -top-20 -right-20 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div class="relative z-10">
             <div class="flex items-center gap-3 mb-4">
@@ -24,10 +24,10 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
         <!-- Backup & Restoration Section -->
         <div class="lg:col-span-2 space-y-6">
-            <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+            <div class="bg-white rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 border border-gray-100 shadow-sm">
                 <div class="flex items-center gap-3 mb-8">
                     <div
                         class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
@@ -80,7 +80,7 @@
                 </form>
             </div>
 
-            <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+            <div class="bg-white rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 border border-gray-100 shadow-sm">
                 <div class="flex items-center gap-3 mb-8">
                     <div
                         class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center border border-violet-100">
@@ -153,7 +153,8 @@
 
         <!-- System Reset & Security -->
         <div class="space-y-6">
-            <div class="bg-white rounded-[2.5rem] p-8 border border-red-100 shadow-sm relative overflow-hidden">
+            <div
+                class="bg-white rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 border border-red-100 shadow-sm relative overflow-hidden">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-red-500/5 rounded-full blur-2xl"></div>
                 <div class="flex items-center gap-3 mb-8">
                     <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center border border-red-100">
@@ -203,7 +204,8 @@
             </div>
 
             <!-- System Integrity Scan -->
-            <div class="bg-indigo-950 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl">
+            <div
+                class="bg-indigo-950 rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 text-white relative overflow-hidden shadow-2xl">
                 <div class="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
                 <div class="relative z-10">
                     <h3 class="text-lg font-black mb-6 flex items-center gap-2">
@@ -227,7 +229,7 @@
                 </div>
             </div>
 
-            <div class="bg-slate-900 rounded-[2.5rem] p-8 text-white">
+            <div class="bg-slate-900 rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 text-white">
                 <h3 class="text-lg font-black mb-6 flex items-center gap-2">
                     <i class="bi bi-toggle-on text-emerald-400"></i>
                     System Availability
@@ -286,7 +288,8 @@
     </div>
 
     <!-- Backup Audit Logs -->
-    <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm overflow-hidden">
+    <div
+        class="bg-white rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 border border-gray-100 shadow-sm overflow-hidden">
         <div class="flex items-center justify-between mb-8">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center">

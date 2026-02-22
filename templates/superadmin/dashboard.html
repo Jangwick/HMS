@@ -3,14 +3,14 @@
 {% block header_title %}Global Command Center{% endblock %}
 
 {% block content %}
-<div class="space-y-8">
+<div class="space-y-6 lg:space-y-8">
     <!-- Welcome Header -->
     <div
-        class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-violet-950 to-indigo-950 rounded-[2.5rem] p-10 text-white">
+        class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-violet-950 to-indigo-950 rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-10 text-white">
         <div class="absolute -top-20 -right-20 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl"></div>
         <div class="absolute -bottom-20 -left-20 w-60 h-60 bg-indigo-500/10 rounded-full blur-3xl"></div>
 
-        <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div class="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
             <div>
                 <div class="flex items-center gap-3 mb-3">
                     <div
@@ -22,26 +22,29 @@
                         SuperAdmin
                     </span>
                 </div>
-                <h1 class="text-4xl font-black tracking-tight">Global Command Center</h1>
-                <p class="text-slate-400 mt-2 text-lg">System-wide operations and management dashboard.</p>
+                <h1 class="text-3xl lg:text-4xl font-black tracking-tight">Global Command Center</h1>
+                <p class="text-slate-400 mt-2 text-base lg:text-lg">System-wide operations and management dashboard.</p>
             </div>
 
             <!-- Quick Stats -->
-            <div class="flex gap-4">
+            <div class="grid grid-cols-3 gap-3 w-full xl:w-auto">
                 <div
-                    class="bg-white/5 backdrop-blur-sm px-6 py-4 rounded-2xl border border-white/10 min-w-[130px] text-center">
-                    <div class="text-3xl font-black">{{ stats.total_users }}</div>
-                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Total Users</div>
+                    class="bg-white/5 backdrop-blur-sm px-3 lg:px-6 py-4 rounded-xl lg:rounded-2xl border border-white/10 text-center flex-1">
+                    <div class="text-2xl lg:text-3xl font-black">{{ stats.total_users }}</div>
+                    <div class="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Total
+                        Users</div>
                 </div>
                 <div
-                    class="bg-white/5 backdrop-blur-sm px-6 py-4 rounded-2xl border border-white/10 min-w-[130px] text-center">
-                    <div class="text-3xl font-black text-emerald-400">{{ stats.active_users }}</div>
-                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Active</div>
+                    class="bg-white/5 backdrop-blur-sm px-3 lg:px-6 py-4 rounded-xl lg:rounded-2xl border border-white/10 text-center flex-1">
+                    <div class="text-2xl lg:text-3xl font-black text-emerald-400">{{ stats.active_users }}</div>
+                    <div class="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Active
+                    </div>
                 </div>
                 <div
-                    class="bg-white/5 backdrop-blur-sm px-6 py-4 rounded-2xl border border-white/10 min-w-[130px] text-center">
-                    <div class="text-3xl font-black text-amber-400">{{ stats.pending_users }}</div>
-                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Pending</div>
+                    class="bg-white/5 backdrop-blur-sm px-3 lg:px-6 py-4 rounded-xl lg:rounded-2xl border border-white/10 text-center flex-1">
+                    <div class="text-2xl lg:text-3xl font-black text-amber-400">{{ stats.pending_users }}</div>
+                    <div class="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+                        Pending</div>
                 </div>
             </div>
         </div>
@@ -113,9 +116,10 @@
     </div>
 
     <!-- Middle Row: Departments + Roles -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
         <!-- Department Distribution -->
-        <div class="lg:col-span-2 bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+        <div
+            class="lg:col-span-2 bg-white rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 border border-gray-100 shadow-sm overflow-x-auto">
             <div class="flex items-center justify-between mb-8">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
@@ -155,7 +159,8 @@
         </div>
 
         <!-- Security Intelligence -->
-        <div class="bg-indigo-950 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl">
+        <div
+            class="bg-indigo-950 rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 text-white relative overflow-hidden shadow-2xl">
             <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl"></div>
             <div class="relative z-10">
                 <h3 class="text-sm font-black uppercase tracking-[0.15em] text-indigo-400 mb-6 font-mono">Sentinel
@@ -200,7 +205,7 @@
         </div>
 
         <!-- Role Breakdown -->
-        <div class="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden">
+        <div class="bg-slate-900 rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 text-white relative overflow-hidden">
             <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-violet-500/20 blur-3xl rounded-full"></div>
 
             <div class="flex items-center justify-between mb-8">
@@ -230,7 +235,7 @@
     </div>
 
     <!-- Subsystem Overview -->
-    <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+    <div class="bg-white rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 border border-gray-100 shadow-sm">
         <div class="flex items-center justify-between mb-8">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
@@ -281,9 +286,9 @@
     </div>
 
     <!-- Bottom Row: Recent Logins + Broadcast -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
         <!-- Recent Logins -->
-        <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+        <div class="bg-white rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 border border-gray-100 shadow-sm">
             <div class="flex items-center gap-3 mb-6">
                 <div class="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center">
                     <i class="bi bi-clock-history text-sky-600"></i>
@@ -328,7 +333,7 @@
         </div>
 
         <!-- Broadcast Notification -->
-        <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+        <div class="bg-white rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 border border-gray-100 shadow-sm">
             <div class="flex items-center gap-3 mb-6">
                 <div class="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
                     <i class="bi bi-megaphone-fill text-violet-600"></i>
@@ -411,7 +416,8 @@
     </div>
 
     <!-- Recent Audit Logs -->
-    <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+    <div
+        class="bg-white rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 border border-gray-100 shadow-sm overflow-x-auto">
         <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center">

@@ -3,10 +3,10 @@
 {% block header_title %}System Governance Settings{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-8">
+<div class="max-w-4xl mx-auto space-y-6 lg:space-y-8">
     <!-- Settings Header -->
     <div
-        class="relative overflow-hidden bg-gradient-to-br from-slate-900 to-violet-950 rounded-[2.5rem] p-10 text-white shadow-2xl">
+        class="relative overflow-hidden bg-gradient-to-br from-slate-900 to-violet-950 rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-10 text-white shadow-2xl">
         <div class="absolute -top-20 -right-20 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl"></div>
         <div class="relative z-10">
             <div class="flex items-center gap-3 mb-4">
@@ -28,7 +28,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <!-- Security Policies -->
-        <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+        <div class="bg-white rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 border border-gray-100 shadow-sm">
             <div class="flex items-center gap-3 mb-8">
                 <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center border border-rose-100">
                     <i class="bi bi-shield-lock-fill text-rose-600"></i>
@@ -40,7 +40,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
                 <div class="space-y-2">
                     <label class="block text-[11px] font-black text-gray-500 uppercase tracking-widest">Password Expiry
                         (Days)</label>
@@ -96,7 +96,7 @@
         </div>
 
         <!-- System-wide Services -->
-        <div class="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+        <div class="bg-white rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-8 border border-gray-100 shadow-sm">
             <div class="flex items-center justify-between mb-8">
                 <div class="flex items-center gap-3">
                     <div
@@ -153,19 +153,20 @@
         </div>
 
         <!-- Action Bar -->
-        <div class="sticky bottom-8 z-20">
+        <div class="sticky bottom-4 lg:bottom-8 z-20">
             <div
-                class="bg-white/80 backdrop-blur-xl p-4 rounded-3xl border border-gray-100 shadow-2xl flex items-center justify-between">
-                <div class="flex items-center gap-2 px-4">
+                class="bg-white/80 backdrop-blur-xl p-3 lg:p-4 rounded-3xl border border-gray-100 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-3 lg:gap-0">
+                <div class="flex items-center gap-2 px-2 lg:px-4">
                     <i class="bi bi-check-circle-fill text-emerald-500"></i>
-                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Unsaved Changes
+                    <span class="text-[9px] lg:text-[10px] font-black text-gray-400 uppercase tracking-widest">Unsaved
+                        Changes
                         Detected</span>
                 </div>
-                <div class="flex gap-3">
+                <div class="flex gap-2 lg:gap-3 w-full md:w-auto">
                     <button type="reset"
-                        class="px-8 py-3 bg-gray-50 text-gray-500 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gray-100 transition-all">Reset</button>
+                        class="flex-1 md:flex-none px-4 lg:px-8 py-3 lg:py-3 bg-gray-50 text-gray-500 rounded-2xl font-black text-[9px] lg:text-[10px] uppercase tracking-[0.2em] hover:bg-gray-100 transition-all">Reset</button>
                     <button type="submit"
-                        class="px-10 py-3 bg-violet-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-200 hover:bg-violet-700 transition-all">Commit
+                        class="flex-1 md:flex-none px-4 lg:px-10 py-3 lg:py-3 bg-violet-600 text-white rounded-2xl font-black text-[9px] lg:text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-200 hover:bg-violet-700 transition-all whitespace-nowrap">Commit
                         Policies</button>
                 </div>
             </div>
