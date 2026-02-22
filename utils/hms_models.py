@@ -13,6 +13,8 @@ class Patient:
             self.contact_number = data.get('contact_number')
             self.address = data.get('address')
             self.insurance_info = data.get('insurance_info') or {}
+            self.blood_group = data.get('blood_group') or self.insurance_info.get('blood_group')
+            self.allergies = data.get('allergies')
             self.created_at = data.get('created_at')
 
     @staticmethod

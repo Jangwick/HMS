@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+import os
 from flask_login import login_user, logout_user, login_required, current_user
 from utils.supabase_client import User, get_supabase_client, format_db_error
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
@@ -457,6 +458,90 @@ def ledger():
         flash('Some financial details could not be synchronized.', 'warning')
 
     return render_template('portal/patient_ledger.html', **data)
+
+@patient_bp.route('/profile')
+@login_required
+def profile():
+    if current_user.role != 'Patient' or not current_user.patient_id:
+        flash('Access restricted to registered patients.', 'warning')
+        return redirect(url_for('portal.index'))
+    
+    client = get_supabase_client()
+    patient_id = current_user.patient_id
+    
+    try:
+        patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
+        patient = patient_resp.data
+        
+        # Calculate consistency metrics/stats for profile
+        stats = {
+            'records_count': 0,
+            'active_rx': 0,
+            'next_appt': None
+        }
+        
+        # Fetch counts/stats
+        records_resp = client.table('medical_records').select('id', count='exact').eq('patient_id', patient_id).execute()
+        stats['records_count'] = len(records_resp.data) if records_resp.data else 0
+        
+        rx_resp = client.table('prescriptions').select('id').eq('patient_id', patient_id).eq('status', 'Active').execute()
+        stats['active_rx'] = len(rx_resp.data) if rx_resp.data else 0
+        
+        appt_resp = client.table('appointments').select('*').eq('patient_id', patient_id).gte('appointment_date', datetime.now().isoformat()).order('appointment_date').limit(1).execute()
+        stats['next_appt'] = appt_resp.data[0] if appt_resp.data else None
+
+        return render_template('portal/patient_profile.html', patient=patient, stats=stats)
+    except Exception as e:
+        print(f"Error fetching profile data: {e}")
+        flash('Error loading profile information.', 'danger')
+        return redirect(url_for('patient.dashboard'))
+
+@patient_bp.route('/profile/upload-avatar', methods=['POST'])
+@login_required
+def upload_avatar():
+    if 'avatar' not in request.files:
+        flash('No file part', 'danger')
+        return redirect(url_for('patient.profile'))
+    
+    file = request.files['avatar']
+    if file.filename == '':
+        flash('No selected file', 'danger')
+        return redirect(url_for('patient.profile'))
+    
+    if file:
+        try:
+            client = get_supabase_client()
+            
+            # File extension
+            ext = os.path.splitext(file.filename)[1].lower()
+            if ext not in ['.jpg', '.jpeg', '.png', '.gif']:
+                flash('Invalid file type. Please upload an image.', 'danger')
+                return redirect(url_for('patient.profile'))
+
+            # Read file content
+            file_content = file.read()
+            # Unique filename
+            file_path = f"avatars/patient_{current_user.id}_{int(datetime.now().timestamp())}{ext}"
+            
+            # Upload to Supabase Storage
+            bucket_name = 'profiles'
+            client.storage.from_(bucket_name).upload(
+                path=file_path,
+                file=file_content,
+                file_options={"content-type": file.content_type, "x-upsert": "true"}
+            )
+            
+            # Get public URL
+            avatar_url = client.storage.from_(bucket_name).get_public_url(file_path)
+            
+            # Update user record
+            current_user.update(avatar_url=avatar_url)
+            
+            flash('Profile picture updated successfully!', 'success')
+        except Exception as e:
+            flash(f'Error uploading image: {str(e)}', 'danger')
+            
+    return redirect(url_for('patient.profile'))
 
 @patient_bp.route('/logout')
 @login_required

@@ -389,10 +389,10 @@
                     </div>
                 </div>
 
-                <div
-                    class="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-md">
+                <a href="{{ url_for('patient.profile') }}"
+                    class="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-md hover:ring-2 hover:ring-emerald-500 hover:ring-offset-2 transition-all">
                     {{ patient.first_name[0] }}{{ patient.last_name[0] }}
-                </div>
+                </a>
                 <a href="{{ url_for('patient.logout') }}" title="Sign Out"
                     class="w-9 h-9 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all">
                     <i class="bi bi-box-arrow-right text-base"></i>
@@ -416,6 +416,9 @@
         </a>
         <a href="{{ url_for('patient.ledger') }}" {% if active_page=='billing' %}class="active" {% endif %}>
             <i class="bi bi-receipt"></i> Bills
+        </a>
+        <a href="{{ url_for('patient.profile') }}" {% if active_page=='profile' %}class="active" {% endif %}>
+            <i class="bi bi-person-fill"></i> Profile
         </a>
     </div>
 

@@ -1,0 +1,299 @@
+{% extends "portal/_patient_layout.html" %}
+{% set active_page = 'profile' %}
+
+{% block title %}My Profile - HMS Patient Portal{% endblock %}
+
+{% block patient_css %}
+<style>
+    .profile-header {
+        background: linear-gradient(135deg, #059669 0%, #047857 50%, #065F46 100%);
+        border-radius: 24px;
+        padding: 48px 32px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 32px;
+    }
+
+    .profile-header::after {
+        content: '';
+        position: absolute;
+        top: -20%;
+        right: -5%;
+        width: 350px;
+        height: 350px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .info-card {
+        background: white;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        border-radius: 20px;
+        padding: 24px;
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .info-card:hover {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+        border-color: #10B981;
+    }
+
+    .label-tag {
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #9CA3AF;
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .stat-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        margin-bottom: 16px;
+    }
+
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 30px;
+        background: white;
+        color: #059669;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 40px;
+        font-weight: 900;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        position: relative;
+        cursor: pointer;
+        overflow: hidden;
+    }
+
+    .avatar-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        color: white;
+        font-size: 14px;
+    }
+
+    .profile-avatar:hover .avatar-overlay {
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block patient_content %}
+<div class="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Profile Header -->
+    <div class="profile-header flex flex-col md:flex-row items-center gap-8">
+        <div class="profile-avatar shrink-0" onclick="document.getElementById('avatar-input').click()">
+            {% if current_user.avatar_url %}
+            <img src="{{ current_user.avatar_url }}" class="w-full h-full object-cover rounded-[30px]" alt="Avatar">
+            {% else %}
+            {{ patient.first_name[0] }}{{ patient.last_name[0] }}
+            {% endif %}
+            <div class="avatar-overlay">
+                <i class="bi bi-camera-fill"></i>
+            </div>
+        </div>
+        <!-- Hidden Upload Form -->
+        <form id="avatar-form" action="{{ url_for('patient.upload_avatar') }}" method="POST"
+            enctype="multipart/form-data" class="hidden">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="file" id="avatar-input" name="avatar" accept="image/*"
+                onchange="document.getElementById('avatar-form').submit()">
+        </form>
+        <div class="text-center md:text-left flex-1">
+            <h1 class="text-3xl md:text-4xl font-black tracking-tight mb-2">{{ patient.first_name }} {{
+                patient.last_name }}</h1>
+            <div class="flex flex-wrap justify-center md:justify-start gap-4 text-emerald-50 text-sm font-medium">
+                <span class="flex items-center gap-1.5"><i class="bi bi-fingerprint"></i> ID: {{ patient.id }}</span>
+                <span class="flex items-center gap-1.5"><i class="bi bi-calendar-event"></i> Joined {{
+                    patient.created_at|datetime('%B %Y') }}</span>
+                <span class="flex items-center gap-1.5"><i class="bi bi-shield-check"></i> Account Verified</span>
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <button
+                class="px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-sm font-bold transition-all">
+                Edit Profile
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+        <div class="info-card">
+            <div class="stat-circle bg-blue-50 text-blue-600">
+                <i class="bi bi-file-earmark-medical"></i>
+            </div>
+            <p class="text-2xl font-black text-gray-900">{{ stats.records_count }}</p>
+            <p class="text-sm font-bold text-gray-400">Clinical Records</p>
+        </div>
+        <div class="info-card">
+            <div class="stat-circle bg-emerald-50 text-emerald-600">
+                <i class="bi bi-capsule"></i>
+            </div>
+            <p class="text-2xl font-black text-gray-900">{{ stats.active_rx }}</p>
+            <p class="text-sm font-bold text-gray-400">Active Prescriptions</p>
+        </div>
+        <div class="info-card">
+            <div class="stat-circle bg-amber-50 text-amber-600">
+                <i class="bi bi-calendar-check"></i>
+            </div>
+            <p class="text-lg font-black text-gray-900">
+                {% if stats.next_appt %}
+                {{ stats.next_appt.appointment_date|datetime('%b %d, %H:%M') }}
+                {% else %}
+                None Scheduled
+                {% endif %}
+            </p>
+            <p class="text-sm font-bold text-gray-400">Next Appointment</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Sidebar: Personal Info -->
+        <div class="lg:col-span-1 space-y-6">
+            <div class="info-card">
+                <h3 class="font-black text-gray-900 mb-6 uppercase tracking-wider text-xs">Personal Details</h3>
+                <div class="space-y-5">
+                    <div>
+                        <span class="label-tag">Full Legal Name</span>
+                        <p class="text-sm font-bold text-gray-800">{{ patient.first_name }} {{ patient.last_name }}</p>
+                    </div>
+                    <div>
+                        <span class="label-tag">Date of Birth</span>
+                        <p class="text-sm font-bold text-gray-800">{{ patient.dob }}</p>
+                    </div>
+                    <div>
+                        <span class="label-tag">Gender</span>
+                        <p class="text-sm font-bold text-gray-800">{{ patient.gender }}</p>
+                    </div>
+                    <div>
+                        <span class="label-tag">Contact Number</span>
+                        <p class="text-sm font-bold text-gray-800">{{ patient.contact_number }}</p>
+                    </div>
+                    <div class="pt-2">
+                        <span class="label-tag">Home Address</span>
+                        <p class="text-sm font-medium text-gray-600 leading-relaxed">{{ patient.address }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-card bg-gray-50/50">
+                <h3 class="font-black text-gray-900 mb-6 uppercase tracking-wider text-xs">Security Settings</h3>
+                <button
+                    class="w-full flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl hover:border-emerald-500 transition-all group">
+                    <span class="text-sm font-bold text-gray-700">Change Password</span>
+                    <i class="bi bi-chevron-right text-gray-300 group-hover:text-emerald-500"></i>
+                </button>
+                <button
+                    class="w-full flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl hover:border-emerald-500 transition-all group mt-3">
+                    <span class="text-sm font-bold text-gray-700">Login Activity</span>
+                    <i class="bi bi-chevron-right text-gray-300 group-hover:text-emerald-500"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Area: Medical Profile Extras -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="info-card">
+                <h3 class="font-black text-gray-900 mb-6 flex items-center gap-2">
+                    <i class="bi bi-shield-plus text-emerald-600"></i>
+                    Clinical Summary
+                </h3>
+
+                <div class="space-y-6">
+                    <div class="p-4 bg-emerald-50/30 border border-emerald-100/50 rounded-2xl">
+                        <div class="flex items-center gap-3 mb-2">
+                            <i class="bi bi-info-circle-fill text-emerald-600"></i>
+                            <span class="text-xs font-black uppercase tracking-widest text-emerald-700">Current Health
+                                Status</span>
+                        </div>
+                        <p class="text-sm text-gray-600 leading-relaxed">
+                            Active outpatient status monitored by HMS Core. Primary care managed via Digital Patient ID
+                            {{ patient.patient_id_alt or 'HMS-P-' ~ patient.id }}.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div class="p-4 border border-gray-100 rounded-2xl">
+                            <span class="label-tag">Blood Group</span>
+                            <p class="font-black text-gray-900">{{ patient.blood_group|default('Not Recorded') }}</p>
+                        </div>
+                        <div class="p-4 border border-gray-100 rounded-2xl">
+                            <span class="label-tag">Allergies</span>
+                            <p class="font-black text-rose-600">{{ patient.allergies|default('No known records') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-gray-100">
+                        <h4 class="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Patient Vault
+                            Access</h4>
+                        <div class="flex flex-col gap-2">
+                            <div
+                                class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-all">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
+                                        <i class="bi bi-file-earmark-pdf"></i>
+                                    </div>
+                                    <span class="text-sm font-bold text-gray-700">Complete Medical History.pdf</span>
+                                </div>
+                                <button class="text-emerald-600 hover:text-emerald-700"><i
+                                        class="bi bi-download"></i></button>
+                            </div>
+                            <div
+                                class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-all">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
+                                        <i class="bi bi-file-earmark-pdf"></i>
+                                    </div>
+                                    <span class="text-sm font-bold text-gray-700">Insurance Policy Details.pdf</span>
+                                </div>
+                                <button class="text-emerald-600 hover:text-emerald-700"><i
+                                        class="bi bi-download"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Support/Help -->
+            <div class="info-card bg-rose-50 border-rose-100 flex flex-col md:flex-row items-center gap-6">
+                <div class="stat-circle bg-white text-rose-500 shrink-0 shadow-sm border border-rose-100">
+                    <i class="bi bi-telephone-outbound"></i>
+                </div>
+                <div class="text-center md:text-left">
+                    <h3 class="font-black text-rose-900 mb-1">Emergency Support</h3>
+                    <p class="text-sm text-rose-700/80">If you notice inaccuracies in your legal records or need urgent
+                        assistance, please contact our support team immediately.</p>
+                </div>
+                <button
+                    class="px-6 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-full text-sm transition-all whitespace-nowrap">
+                    Report Issue
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

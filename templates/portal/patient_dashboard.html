@@ -256,6 +256,15 @@ else %}Patient{% endif %}{% endblock %}
                             <p class="text-xs text-gray-400">Prescriptions & refills</p>
                         </div>
                     </a>
+                    <a href="{{ url_for('patient.profile') }}" class="quick-action">
+                        <div class="qa-icon bg-blue-50 text-blue-600">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-900">My Profile</p>
+                            <p class="text-xs text-gray-400">Account & info</p>
+                        </div>
+                    </a>
                 </div>
             </div>
 
