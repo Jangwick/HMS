@@ -7,13 +7,18 @@
 <div class="space-y-8">
     <!-- Welcome Card -->
     <div class="rounded-3xl shadow-xl p-8 text-white relative overflow-hidden"
-         style="background: linear-gradient(to right, {{ accent_color or '#F59E0B' }}, #1F2937);">
-        <div class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
-        <div class="absolute bottom-0 left-0 w-48 h-48 bg-black opacity-10 rounded-full transform -translate-x-1/2 translate-y-1/2 blur-2xl"></div>
+        style="background: linear-gradient(to right, {{ accent_color or '#F59E0B' }}, #1F2937);">
+        <div
+            class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl">
+        </div>
+        <div
+            class="absolute bottom-0 left-0 w-48 h-48 bg-black opacity-10 rounded-full transform -translate-x-1/2 translate-y-1/2 blur-2xl">
+        </div>
 
         <div class="relative z-10">
             <h3 class="responsive-h3 mb-2">Welcome back, {{ current_user.username }}!</h3>
-            <p class="text-white/80 text-base md:text-lg max-w-2xl">Manage warehouse inventory and hospital supplies.</p>
+            <p class="text-white/80 text-base md:text-lg max-w-2xl">Manage warehouse inventory and hospital supplies.
+            </p>
 
             <div class="welcome-card-actions">
                 <a href="{{ url_for('log1.list_inventory') }}"
@@ -30,7 +35,7 @@
     </div>
 
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
                 <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Total Items</h4>
@@ -74,6 +79,17 @@
             <p class="text-3xl font-bold text-gray-900">{{ total_docs }}</p>
             <p class="text-gray-400 text-sm font-medium mt-2">In digital archive</p>
         </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Projects</h4>
+                <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
+                    <i class="bi bi-clipboard2-data"></i>
+                </div>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">{{ total_projects }}</p>
+            <p class="text-purple-600 text-sm font-medium mt-2">{{ active_projects }} active</p>
+        </div>
     </div>
 
     <!-- Analytics Charts -->
@@ -114,6 +130,12 @@
                     class="bi bi-truck text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
                 <span class="text-sm font-bold text-gray-700">Asset Management</span>
             </a>
+            <a href="{{ url_for('log1.list_projects') }}"
+                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
+                <i
+                    class="bi bi-clipboard2-data text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm font-bold text-gray-700">Project Tracker</span>
+            </a>
             {% if current_user.is_admin() %}
             <a href="{{ url_for('log1.add_inventory_item') }}"
                 class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group">
@@ -127,7 +149,8 @@
                     class="bi bi-file-earmark-text text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
                 <span class="text-sm font-bold text-gray-700">Digital Archive</span>
             </a>
-            <a href="#" class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group border border-amber-100">
+            <a href="#"
+                class="p-4 bg-gray-50 rounded-xl text-center hover:bg-gray-100 transition-colors group border border-amber-100">
                 <i
                     class="bi bi-file-earmark-bar-graph text-2xl text-[#F59E0B] mb-2 block group-hover:scale-110 transition-transform"></i>
                 <span class="text-sm font-bold text-gray-700">Master Audit</span>
@@ -152,18 +175,18 @@
         type: 'pie',
         data: {
             labels: {{ cat_labels | tojson }},
-            datasets: [{
-                data: {{ cat_values | tojson }},
-                backgroundColor: ['#F59E0B', '#10B981', '#6366F1', '#EF4444', '#8B5CF6']
+        datasets: [{
+            data: {{ cat_values | tojson }},
+        backgroundColor: ['#F59E0B', '#10B981', '#6366F1', '#EF4444', '#8B5CF6']
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom' }
-            }
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom' }
         }
+    }
     });
 
     // Consumption Chart
@@ -172,25 +195,25 @@
         type: 'line',
         data: {
             labels: {{ consumption_labels | tojson }},
-            datasets: [{
-                label: 'Consumption',
-                data: {{ consumption_values | tojson }},
-                borderColor: '#F59E0B',
-                tension: 0.3,
-                fill: true,
-                backgroundColor: 'rgba(245, 158, 11, 0.1)'
+        datasets: [{
+            label: 'Consumption',
+            data: {{ consumption_values | tojson }},
+        borderColor: '#F59E0B',
+        tension: 0.3,
+        fill: true,
+        backgroundColor: 'rgba(245, 158, 11, 0.1)'
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: { beginAtZero: true }
-            }
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            y: { beginAtZero: true }
         }
+    }
     });
 </script>
 {% endblock %}

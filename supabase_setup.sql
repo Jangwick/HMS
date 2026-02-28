@@ -602,6 +602,97 @@ CREATE TABLE IF NOT EXISTS log_documents (
 );
 
 -- =====================================================
+-- PROJECT LOGISTICS TRACKER (PLT)
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS logistics_projects (
+    id SERIAL PRIMARY KEY,
+    project_name VARCHAR(200) NOT NULL,
+    project_code VARCHAR(50),
+    description TEXT,
+    priority VARCHAR(20) DEFAULT 'Normal', -- Normal, Medium, High, Critical
+    status VARCHAR(50) DEFAULT 'Planning', -- Planning, In Progress, On Hold, Completed, Cancelled
+    progress INTEGER DEFAULT 0, -- 0-100
+    start_date DATE,
+    end_date DATE,
+    category VARCHAR(100) DEFAULT 'Other', -- Equipment Relocation, Facility Setup, Supply Chain, etc.
+    budget DECIMAL(12, 2) DEFAULT 0.00,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS project_milestones (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES logistics_projects(id) ON DELETE CASCADE,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    due_date DATE,
+    status VARCHAR(50) DEFAULT 'Pending', -- Pending, In Progress, Completed
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS project_tasks (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES logistics_projects(id) ON DELETE CASCADE,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    assigned_to VARCHAR(100),
+    priority VARCHAR(20) DEFAULT 'Normal', -- Normal, Medium, High, Critical
+    status VARCHAR(50) DEFAULT 'To Do', -- To Do, In Progress, Done
+    due_date DATE,
+    created_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS project_expenses (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES logistics_projects(id) ON DELETE CASCADE,
+    description VARCHAR(200) NOT NULL,
+    amount DECIMAL(12, 2) NOT NULL,
+    category VARCHAR(100), -- Labor, Materials, Equipment, Transport, Other
+    date_incurred DATE DEFAULT CURRENT_DATE,
+    recorded_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS project_activities (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES logistics_projects(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id),
+    action VARCHAR(200) NOT NULL,
+    details TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- RLS for PLT
+ALTER TABLE IF EXISTS logistics_projects ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on logistics_projects" ON logistics_projects;
+CREATE POLICY "Allow all on logistics_projects" ON logistics_projects FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS project_milestones ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on project_milestones" ON project_milestones;
+CREATE POLICY "Allow all on project_milestones" ON project_milestones FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS project_tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on project_tasks" ON project_tasks;
+CREATE POLICY "Allow all on project_tasks" ON project_tasks FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS project_expenses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on project_expenses" ON project_expenses;
+CREATE POLICY "Allow all on project_expenses" ON project_expenses FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS project_activities ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on project_activities" ON project_activities;
+CREATE POLICY "Allow all on project_activities" ON project_activities FOR ALL USING (true) WITH CHECK (true);
+
+-- Indexes for PLT
+CREATE INDEX IF NOT EXISTS idx_logistics_projects_status ON logistics_projects(status);
+CREATE INDEX IF NOT EXISTS idx_project_milestones_project_id ON project_milestones(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_tasks_project_id ON project_tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_expenses_project_id ON project_expenses(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_activities_project_id ON project_activities(project_id);
+
+-- =====================================================
 -- FINANCIAL TABLES
 -- =====================================================
 

@@ -1,0 +1,792 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}{{ project.project_name }} - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Project Details{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Back Button & Project Header -->
+    <div class="flex items-center gap-4 mb-2">
+        <a href="{{ url_for('log1.list_projects') }}"
+            class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-gray-500">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div class="flex-1">
+            <div class="flex items-center gap-3 flex-wrap">
+                <h3 class="text-2xl font-bold text-gray-900">{{ project.project_name }}</h3>
+                <span class="px-2.5 py-1 text-[10px] font-bold rounded-full uppercase
+                    {% if project.status == 'Completed' %}bg-emerald-100 text-emerald-700
+                    {% elif project.status == 'In Progress' %}bg-blue-100 text-blue-700
+                    {% elif project.status == 'Planning' %}bg-amber-100 text-amber-700
+                    {% elif project.status == 'On Hold' %}bg-gray-100 text-gray-600
+                    {% else %}bg-red-100 text-red-700{% endif %}">
+                    {{ project.status }}
+                </span>
+                <span class="px-2.5 py-1 text-[10px] font-bold rounded-full uppercase
+                    {% if project.priority == 'Critical' %}bg-red-100 text-red-700
+                    {% elif project.priority == 'High' %}bg-orange-100 text-orange-700
+                    {% elif project.priority == 'Medium' %}bg-amber-100 text-amber-700
+                    {% else %}bg-gray-100 text-gray-600{% endif %}">
+                    {{ project.priority or 'Normal' }} Priority
+                </span>
+            </div>
+            <p class="text-sm text-gray-500 mt-1">{{ project.project_code or 'No code assigned' }} · {{ project.category
+                or 'Uncategorized' }}</p>
+        </div>
+    </div>
+
+    <!-- Overview Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Progress</span>
+                <div class="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                    <i class="bi bi-pie-chart text-xs"></i>
+                </div>
+            </div>
+            {% set progress = project.progress or 0 %}
+            <p class="text-2xl font-bold text-gray-900">{{ progress }}%</p>
+            <div class="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden mt-2">
+                <div class="h-full rounded-full transition-all duration-500
+                    {% if progress >= 100 %}bg-emerald-500
+                    {% elif progress >= 60 %}bg-blue-500
+                    {% elif progress >= 30 %}bg-amber-500
+                    {% else %}bg-gray-400{% endif %}" style="width: {{ progress }}%"></div>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Timeline</span>
+                <div class="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+                    <i class="bi bi-calendar3 text-xs"></i>
+                </div>
+            </div>
+            <p class="text-sm font-bold text-gray-900">{{ project.start_date or 'Not set' }}</p>
+            <p class="text-xs text-gray-400 mt-1">to {{ project.end_date or 'Not set' }}</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Budget</span>
+                <div class="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <i class="bi bi-wallet2 text-xs"></i>
+                </div>
+            </div>
+            <p class="text-xl font-bold text-gray-900">${{ '{:,.2f}'.format(project.budget or 0) }}</p>
+            {% set budget = project.budget or 0 %}
+            {% if budget > 0 %}
+            <p
+                class="text-xs {% if total_spent > budget %}text-red-500{% else %}text-emerald-500{% endif %} mt-1 font-bold">
+                ${{ '{:,.2f}'.format(total_spent) }} spent</p>
+            {% endif %}
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Tasks</span>
+                <div class="w-7 h-7 rounded-full bg-violet-50 flex items-center justify-center text-violet-600">
+                    <i class="bi bi-check2-square text-xs"></i>
+                </div>
+            </div>
+            {% set done_tasks = tasks | selectattr('status', 'equalto', 'Done') | list | length %}
+            <p class="text-2xl font-bold text-gray-900">{{ done_tasks }}/{{ tasks | length }}</p>
+            <p class="text-xs text-gray-400 mt-1">Completed</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Milestones</span>
+                <div class="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                    <i class="bi bi-flag text-xs"></i>
+                </div>
+            </div>
+            {% set completed_milestones = milestones | selectattr('status', 'equalto', 'Completed') | list | length %}
+            <p class="text-2xl font-bold text-gray-900">{{ completed_milestones }}/{{ milestones | length }}</p>
+            <p class="text-xs text-gray-400 mt-1">Completed</p>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="flex items-center gap-1 bg-white rounded-xl p-1 shadow-sm border border-gray-100 overflow-x-auto">
+        <button onclick="switchTab('overview')" id="tab-overview"
+            class="tab-btn px-5 py-2.5 text-sm font-bold rounded-lg bg-[#F59E0B] text-white transition-all whitespace-nowrap">
+            <i class="bi bi-grid mr-1"></i> Overview
+        </button>
+        <button onclick="switchTab('tasks')" id="tab-tasks"
+            class="tab-btn px-5 py-2.5 text-sm font-bold rounded-lg text-gray-500 hover:bg-gray-50 transition-all whitespace-nowrap">
+            <i class="bi bi-check2-square mr-1"></i> Tasks <span
+                class="ml-1 px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px]">{{ tasks | length
+                }}</span>
+        </button>
+        <button onclick="switchTab('expenses')" id="tab-expenses"
+            class="tab-btn px-5 py-2.5 text-sm font-bold rounded-lg text-gray-500 hover:bg-gray-50 transition-all whitespace-nowrap">
+            <i class="bi bi-receipt mr-1"></i> Expenses <span
+                class="ml-1 px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px]">{{ expenses | length
+                }}</span>
+        </button>
+        <button onclick="switchTab('activity')" id="tab-activity"
+            class="tab-btn px-5 py-2.5 text-sm font-bold rounded-lg text-gray-500 hover:bg-gray-50 transition-all whitespace-nowrap">
+            <i class="bi bi-clock-history mr-1"></i> Activity
+        </button>
+    </div>
+
+    <!-- ==================== OVERVIEW TAB ==================== -->
+    <div id="panel-overview" class="tab-panel space-y-6">
+        <!-- Description -->
+        {% if project.description %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">Project Description</h4>
+            <p class="text-gray-700 leading-relaxed">{{ project.description }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Milestones -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <h4 class="text-lg font-bold text-gray-900">
+                    <i class="bi bi-flag text-[#F59E0B] mr-2"></i>Milestones
+                </h4>
+                {% if current_user.is_admin() %}
+                <button onclick="document.getElementById('addMilestoneModal').classList.remove('hidden')"
+                    class="px-4 py-2 bg-[#F59E0B] text-white text-sm font-bold rounded-xl hover:bg-amber-600 transition-colors">
+                    <i class="bi bi-plus-lg mr-1"></i> Add
+                </button>
+                {% endif %}
+            </div>
+            <div class="p-6">
+                {% if milestones %}
+                <div class="space-y-3">
+                    {% for milestone in milestones %}
+                    <div
+                        class="flex items-start gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100/80 transition-colors group">
+                        <div class="mt-0.5">
+                            {% if milestone.status == 'Completed' %}
+                            <div class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                                <i class="bi bi-check text-white text-xs"></i>
+                            </div>
+                            {% elif milestone.status == 'In Progress' %}
+                            <div class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                                <i class="bi bi-play-fill text-white text-xs"></i>
+                            </div>
+                            {% else %}
+                            <div class="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center">
+                                <i class="bi bi-circle text-white text-xs"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h5 class="font-bold text-gray-900">{{ milestone.title }}</h5>
+                            {% if milestone.description %}
+                            <p class="text-sm text-gray-500 mt-1">{{ milestone.description }}</p>
+                            {% endif %}
+                            <div class="flex items-center gap-4 mt-2">
+                                {% if milestone.due_date %}
+                                <span class="text-xs text-gray-400"><i class="bi bi-calendar3 mr-1"></i>{{
+                                    milestone.due_date }}</span>
+                                {% endif %}
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full uppercase
+                                    {% if milestone.status == 'Completed' %}bg-emerald-100 text-emerald-700
+                                    {% elif milestone.status == 'In Progress' %}bg-blue-100 text-blue-700
+                                    {% else %}bg-gray-200 text-gray-500{% endif %}">
+                                    {{ milestone.status }}
+                                </span>
+                            </div>
+                        </div>
+                        {% if current_user.is_admin() %}
+                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {% if milestone.status != 'Completed' %}
+                            <a href="{{ url_for('log1.update_milestone_status', milestone_id=milestone.id, status='Completed', project_id=project.id) }}"
+                                class="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 transition-colors text-xs"
+                                title="Complete">
+                                <i class="bi bi-check-lg"></i>
+                            </a>
+                            {% endif %}
+                            {% if milestone.status == 'Pending' %}
+                            <a href="{{ url_for('log1.update_milestone_status', milestone_id=milestone.id, status='In Progress', project_id=project.id) }}"
+                                class="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors text-xs"
+                                title="Start">
+                                <i class="bi bi-play-fill"></i>
+                            </a>
+                            {% endif %}
+                            <a href="{{ url_for('log1.delete_milestone', milestone_id=milestone.id, project_id=project.id) }}"
+                                onclick="return confirm('Delete this milestone?')"
+                                class="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-xs"
+                                title="Delete">
+                                <i class="bi bi-trash3"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-10">
+                    <i class="bi bi-flag text-4xl text-gray-300 mb-3 block"></i>
+                    <h5 class="font-bold text-gray-700">No milestones yet</h5>
+                    <p class="text-sm text-gray-400 mt-1">Add milestones to track key deliverables</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Status Update -->
+        {% if current_user.is_admin() %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Quick Status Update</h4>
+            <div class="flex flex-wrap gap-3">
+                {% if project.status != 'Planning' %}
+                <a href="{{ url_for('log1.update_project_status', project_id=project.id, status='Planning') }}"
+                    class="px-4 py-2 bg-amber-50 text-amber-700 text-sm font-bold rounded-xl hover:bg-amber-100 transition-colors">
+                    <i class="bi bi-pencil-square mr-1"></i> Planning
+                </a>
+                {% endif %}
+                {% if project.status != 'In Progress' %}
+                <a href="{{ url_for('log1.update_project_status', project_id=project.id, status='In Progress') }}"
+                    class="px-4 py-2 bg-blue-50 text-blue-700 text-sm font-bold rounded-xl hover:bg-blue-100 transition-colors">
+                    <i class="bi bi-play-circle mr-1"></i> In Progress
+                </a>
+                {% endif %}
+                {% if project.status != 'On Hold' %}
+                <a href="{{ url_for('log1.update_project_status', project_id=project.id, status='On Hold') }}"
+                    class="px-4 py-2 bg-gray-50 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-100 transition-colors">
+                    <i class="bi bi-pause-circle mr-1"></i> On Hold
+                </a>
+                {% endif %}
+                {% if project.status != 'Completed' %}
+                <a href="{{ url_for('log1.update_project_status', project_id=project.id, status='Completed') }}"
+                    class="px-4 py-2 bg-emerald-50 text-emerald-700 text-sm font-bold rounded-xl hover:bg-emerald-100 transition-colors">
+                    <i class="bi bi-check-circle mr-1"></i> Completed
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ==================== TASKS TAB ==================== -->
+    <div id="panel-tasks" class="tab-panel hidden space-y-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <h4 class="text-lg font-bold text-gray-900">
+                    <i class="bi bi-check2-square text-[#F59E0B] mr-2"></i>Project Tasks
+                </h4>
+                {% if current_user.is_admin() %}
+                <button onclick="document.getElementById('addTaskModal').classList.remove('hidden')"
+                    class="px-4 py-2 bg-[#F59E0B] text-white text-sm font-bold rounded-xl hover:bg-amber-600 transition-colors">
+                    <i class="bi bi-plus-lg mr-1"></i> Add Task
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Task Columns -->
+            <div class="p-6">
+                {% if tasks %}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- To Do -->
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2 px-1 mb-2">
+                            <div class="w-3 h-3 rounded-full bg-gray-400"></div>
+                            <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider">To Do</h5>
+                            <span class="ml-auto text-xs font-bold text-gray-400">{{ tasks | selectattr('status',
+                                'equalto', 'To Do') | list | length }}</span>
+                        </div>
+                        {% for task in tasks %}
+                        {% if task.status == 'To Do' %}
+                        <div
+                            class="p-4 bg-gray-50 rounded-xl border border-gray-100 group hover:shadow-sm transition-all">
+                            <div class="flex items-start justify-between mb-2">
+                                <span class="px-2 py-0.5 text-[9px] font-bold rounded-full uppercase
+                                    {% if task.priority == 'Critical' %}bg-red-100 text-red-700
+                                    {% elif task.priority == 'High' %}bg-orange-100 text-orange-700
+                                    {% elif task.priority == 'Medium' %}bg-amber-100 text-amber-700
+                                    {% else %}bg-gray-100 text-gray-500{% endif %}">
+                                    {{ task.priority }}
+                                </span>
+                                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <a href="{{ url_for('log1.update_task_status', task_id=task.id, status='In Progress', project_id=project.id) }}"
+                                        class="p-1 bg-blue-100 text-blue-600 rounded text-[10px]" title="Start"><i
+                                            class="bi bi-play-fill"></i></a>
+                                    <a href="{{ url_for('log1.update_task_status', task_id=task.id, status='Done', project_id=project.id) }}"
+                                        class="p-1 bg-emerald-100 text-emerald-600 rounded text-[10px]" title="Done"><i
+                                            class="bi bi-check-lg"></i></a>
+                                    {% if current_user.is_admin() %}
+                                    <a href="{{ url_for('log1.delete_task', task_id=task.id, project_id=project.id) }}"
+                                        onclick="return confirm('Delete this task?')"
+                                        class="p-1 bg-red-100 text-red-600 rounded text-[10px]" title="Delete"><i
+                                            class="bi bi-trash3"></i></a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <h6 class="font-bold text-gray-900 text-sm">{{ task.title }}</h6>
+                            {% if task.description %}
+                            <p class="text-xs text-gray-400 mt-1 line-clamp-2">{{ task.description }}</p>
+                            {% endif %}
+                            <div class="flex items-center gap-3 mt-3">
+                                {% if task.assigned_to %}
+                                <span class="text-[10px] text-gray-400"><i class="bi bi-person mr-1"></i>{{
+                                    task.assigned_to }}</span>
+                                {% endif %}
+                                {% if task.due_date %}
+                                <span class="text-[10px] text-gray-400"><i class="bi bi-calendar3 mr-1"></i>{{
+                                    task.due_date }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- In Progress -->
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2 px-1 mb-2">
+                            <div class="w-3 h-3 rounded-full bg-blue-500"></div>
+                            <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider">In Progress</h5>
+                            <span class="ml-auto text-xs font-bold text-gray-400">{{ tasks | selectattr('status',
+                                'equalto', 'In Progress') | list | length }}</span>
+                        </div>
+                        {% for task in tasks %}
+                        {% if task.status == 'In Progress' %}
+                        <div
+                            class="p-4 bg-blue-50/50 rounded-xl border border-blue-100 group hover:shadow-sm transition-all">
+                            <div class="flex items-start justify-between mb-2">
+                                <span class="px-2 py-0.5 text-[9px] font-bold rounded-full uppercase
+                                    {% if task.priority == 'Critical' %}bg-red-100 text-red-700
+                                    {% elif task.priority == 'High' %}bg-orange-100 text-orange-700
+                                    {% elif task.priority == 'Medium' %}bg-amber-100 text-amber-700
+                                    {% else %}bg-gray-100 text-gray-500{% endif %}">
+                                    {{ task.priority }}
+                                </span>
+                                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <a href="{{ url_for('log1.update_task_status', task_id=task.id, status='Done', project_id=project.id) }}"
+                                        class="p-1 bg-emerald-100 text-emerald-600 rounded text-[10px]" title="Done"><i
+                                            class="bi bi-check-lg"></i></a>
+                                    <a href="{{ url_for('log1.update_task_status', task_id=task.id, status='To Do', project_id=project.id) }}"
+                                        class="p-1 bg-gray-100 text-gray-600 rounded text-[10px]" title="Move Back"><i
+                                            class="bi bi-arrow-left"></i></a>
+                                    {% if current_user.is_admin() %}
+                                    <a href="{{ url_for('log1.delete_task', task_id=task.id, project_id=project.id) }}"
+                                        onclick="return confirm('Delete this task?')"
+                                        class="p-1 bg-red-100 text-red-600 rounded text-[10px]" title="Delete"><i
+                                            class="bi bi-trash3"></i></a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <h6 class="font-bold text-gray-900 text-sm">{{ task.title }}</h6>
+                            {% if task.description %}
+                            <p class="text-xs text-gray-400 mt-1 line-clamp-2">{{ task.description }}</p>
+                            {% endif %}
+                            <div class="flex items-center gap-3 mt-3">
+                                {% if task.assigned_to %}
+                                <span class="text-[10px] text-gray-400"><i class="bi bi-person mr-1"></i>{{
+                                    task.assigned_to }}</span>
+                                {% endif %}
+                                {% if task.due_date %}
+                                <span class="text-[10px] text-gray-400"><i class="bi bi-calendar3 mr-1"></i>{{
+                                    task.due_date }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- Done -->
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2 px-1 mb-2">
+                            <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                            <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Done</h5>
+                            <span class="ml-auto text-xs font-bold text-gray-400">{{ tasks | selectattr('status',
+                                'equalto', 'Done') | list | length }}</span>
+                        </div>
+                        {% for task in tasks %}
+                        {% if task.status == 'Done' %}
+                        <div
+                            class="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100 group hover:shadow-sm transition-all">
+                            <div class="flex items-start justify-between mb-2">
+                                <span
+                                    class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-emerald-100 text-emerald-700 uppercase">Done</span>
+                                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <a href="{{ url_for('log1.update_task_status', task_id=task.id, status='To Do', project_id=project.id) }}"
+                                        class="p-1 bg-gray-100 text-gray-600 rounded text-[10px]" title="Reopen"><i
+                                            class="bi bi-arrow-counterclockwise"></i></a>
+                                    {% if current_user.is_admin() %}
+                                    <a href="{{ url_for('log1.delete_task', task_id=task.id, project_id=project.id) }}"
+                                        onclick="return confirm('Delete this task?')"
+                                        class="p-1 bg-red-100 text-red-600 rounded text-[10px]" title="Delete"><i
+                                            class="bi bi-trash3"></i></a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <h6 class="font-bold text-gray-900 text-sm line-through opacity-60">{{ task.title }}</h6>
+                            <div class="flex items-center gap-3 mt-2">
+                                {% if task.assigned_to %}
+                                <span class="text-[10px] text-gray-400"><i class="bi bi-person mr-1"></i>{{
+                                    task.assigned_to }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-12">
+                    <i class="bi bi-check2-square text-4xl text-gray-300 mb-3 block"></i>
+                    <h5 class="font-bold text-gray-700">No tasks yet</h5>
+                    <p class="text-sm text-gray-400 mt-1">Add tasks to break down this project into actionable work
+                        items</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== EXPENSES TAB ==================== -->
+    <div id="panel-expenses" class="tab-panel hidden space-y-6">
+        <!-- Budget Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Budget</span>
+                <p class="text-2xl font-bold text-gray-900 mt-2">${{ '{:,.2f}'.format(project.budget or 0) }}</p>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Spent</span>
+                <p
+                    class="text-2xl font-bold {% if total_spent > (project.budget or 0) %}text-red-600{% else %}text-gray-900{% endif %} mt-2">
+                    ${{ '{:,.2f}'.format(total_spent) }}</p>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Remaining</span>
+                {% set remaining = (project.budget or 0) - total_spent %}
+                <p
+                    class="text-2xl font-bold {% if remaining < 0 %}text-red-600{% else %}text-emerald-600{% endif %} mt-2">
+                    ${{ '{:,.2f}'.format(remaining) }}</p>
+            </div>
+        </div>
+
+        {% if (project.budget or 0) > 0 %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-bold text-gray-700">Budget Utilization</span>
+                {% set util_pct = ((total_spent / (project.budget or 1)) * 100) | round(1) %}
+                <span
+                    class="text-sm font-bold {% if util_pct > 100 %}text-red-600{% elif util_pct > 80 %}text-amber-600{% else %}text-emerald-600{% endif %}">{{
+                    util_pct }}%</span>
+            </div>
+            <div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500
+                    {% if util_pct > 100 %}bg-red-500{% elif util_pct > 80 %}bg-amber-500{% else %}bg-emerald-500{% endif %}"
+                    style="width: {{ [util_pct, 100] | min }}%"></div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Expense Table -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <h4 class="text-lg font-bold text-gray-900">
+                    <i class="bi bi-receipt text-[#F59E0B] mr-2"></i>Expense Records
+                </h4>
+                {% if current_user.is_admin() %}
+                <button onclick="document.getElementById('addExpenseModal').classList.remove('hidden')"
+                    class="px-4 py-2 bg-[#F59E0B] text-white text-sm font-bold rounded-xl hover:bg-amber-600 transition-colors">
+                    <i class="bi bi-plus-lg mr-1"></i> Add Expense
+                </button>
+                {% endif %}
+            </div>
+            <div class="overflow-x-auto">
+                {% if expenses %}
+                <table class="min-w-full">
+                    <thead>
+                        <tr class="border-b border-gray-100 bg-gray-50/50">
+                            <th class="text-left py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                Description</th>
+                            <th class="text-left py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                Category</th>
+                            <th class="text-left py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                Date</th>
+                            <th class="text-right py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                Amount</th>
+                            <th class="text-right py-3 px-6 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for expense in expenses %}
+                        <tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                            <td class="py-3 px-6 text-sm font-medium text-gray-900">{{ expense.description }}</td>
+                            <td class="py-3 px-6">
+                                <span
+                                    class="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-full uppercase">{{
+                                    expense.category or 'Other' }}</span>
+                            </td>
+                            <td class="py-3 px-6 text-sm text-gray-500">{{ expense.date_incurred or '—' }}</td>
+                            <td class="py-3 px-6 text-sm font-bold text-gray-900 text-right">${{
+                                '{:,.2f}'.format(expense.amount or 0) }}</td>
+                            <td class="py-3 px-6 text-right">
+                                {% if current_user.is_admin() %}
+                                <a href="{{ url_for('log1.delete_expense', expense_id=expense.id, project_id=project.id) }}"
+                                    onclick="return confirm('Delete this expense?')"
+                                    class="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors text-xs">
+                                    <i class="bi bi-trash3"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="bg-gray-50">
+                            <td colspan="3" class="py-3 px-6 text-sm font-bold text-gray-700 uppercase">Total</td>
+                            <td class="py-3 px-6 text-sm font-bold text-gray-900 text-right">${{
+                                '{:,.2f}'.format(total_spent) }}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                {% else %}
+                <div class="text-center py-12">
+                    <i class="bi bi-receipt text-4xl text-gray-300 mb-3 block"></i>
+                    <h5 class="font-bold text-gray-700">No expenses recorded</h5>
+                    <p class="text-sm text-gray-400 mt-1">Track project spending by adding expense records</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== ACTIVITY TAB ==================== -->
+    <div id="panel-activity" class="tab-panel hidden space-y-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-100">
+                <h4 class="text-lg font-bold text-gray-900">
+                    <i class="bi bi-clock-history text-[#F59E0B] mr-2"></i>Activity Log
+                </h4>
+            </div>
+            <div class="p-6">
+                {% if activities %}
+                <div class="space-y-4">
+                    {% for activity in activities %}
+                    <div class="flex items-start gap-4">
+                        <div
+                            class="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 flex-shrink-0 mt-0.5">
+                            {% if 'Created' in activity.action %}
+                            <i class="bi bi-plus-circle text-xs"></i>
+                            {% elif 'Status' in activity.action %}
+                            <i class="bi bi-arrow-repeat text-xs"></i>
+                            {% elif 'Updated' in activity.action %}
+                            <i class="bi bi-pencil text-xs"></i>
+                            {% elif 'Added' in activity.action %}
+                            <i class="bi bi-plus text-xs"></i>
+                            {% elif 'Deleted' in activity.action or 'Removed' in activity.action %}
+                            <i class="bi bi-trash3 text-xs"></i>
+                            {% elif 'Expense' in activity.action %}
+                            <i class="bi bi-receipt text-xs"></i>
+                            {% elif 'Task' in activity.action %}
+                            <i class="bi bi-check2-square text-xs"></i>
+                            {% else %}
+                            <i class="bi bi-activity text-xs"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1 pb-4 border-b border-gray-50">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-bold text-gray-900">{{ activity.action }}</span>
+                            </div>
+                            {% if activity.details %}
+                            <p class="text-sm text-gray-500 mt-0.5">{{ activity.details }}</p>
+                            {% endif %}
+                            <p class="text-xs text-gray-400 mt-1">
+                                <i class="bi bi-clock mr-1"></i>{{ activity.created_at }}
+                            </p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-12">
+                    <i class="bi bi-clock-history text-4xl text-gray-300 mb-3 block"></i>
+                    <h5 class="font-bold text-gray-700">No activity yet</h5>
+                    <p class="text-sm text-gray-400 mt-1">Activities will appear here as changes are made to the project
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- Add Milestone Modal -->
+<div id="addMilestoneModal"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+            <h4 class="text-xl font-bold text-gray-900">Add Milestone</h4>
+            <button onclick="document.getElementById('addMilestoneModal').classList.add('hidden')"
+                class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('log1.add_milestone', project_id=project.id) }}" method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Title</label>
+                <input type="text" name="title" required placeholder="e.g. Equipment Delivery Confirmed"
+                    class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Description</label>
+                <textarea name="description" rows="2" placeholder="Describe the milestone..."
+                    class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Due Date</label>
+                <input type="date" name="due_date"
+                    class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+            </div>
+            <div class="pt-2 flex gap-3">
+                <button type="button" onclick="document.getElementById('addMilestoneModal').classList.add('hidden')"
+                    class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">Cancel</button>
+                <button type="submit"
+                    class="flex-1 py-3 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-all">Add
+                    Milestone</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Task Modal -->
+<div id="addTaskModal"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+            <h4 class="text-xl font-bold text-gray-900">Add Task</h4>
+            <button onclick="document.getElementById('addTaskModal').classList.add('hidden')"
+                class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('log1.add_task', project_id=project.id) }}" method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Task Title</label>
+                <input type="text" name="title" required placeholder="e.g. Coordinate with vendor for delivery"
+                    class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Description</label>
+                <textarea name="description" rows="2" placeholder="Task details..."
+                    class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Assigned
+                        To</label>
+                    <input type="text" name="assigned_to" placeholder="Person name"
+                        class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Priority</label>
+                    <select name="priority"
+                        class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+                        <option value="Normal">Normal</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Critical">Critical</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Due Date</label>
+                <input type="date" name="due_date"
+                    class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+            </div>
+            <div class="pt-2 flex gap-3">
+                <button type="button" onclick="document.getElementById('addTaskModal').classList.add('hidden')"
+                    class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">Cancel</button>
+                <button type="submit"
+                    class="flex-1 py-3 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-all">Add
+                    Task</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Expense Modal -->
+<div id="addExpenseModal"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+            <h4 class="text-xl font-bold text-gray-900">Record Expense</h4>
+            <button onclick="document.getElementById('addExpenseModal').classList.add('hidden')"
+                class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form action="{{ url_for('log1.add_expense', project_id=project.id) }}" method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Description</label>
+                <input type="text" name="description" required placeholder="e.g. Transportation costs for equipment"
+                    class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Amount</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                        <input type="number" step="0.01" name="amount" required placeholder="0.00"
+                            class="w-full pl-10 pr-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Category</label>
+                    <select name="category"
+                        class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+                        <option value="Labor">Labor</option>
+                        <option value="Materials">Materials</option>
+                        <option value="Equipment">Equipment</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Date
+                    Incurred</label>
+                <input type="date" name="date_incurred"
+                    class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+            </div>
+            <div class="pt-2 flex gap-3">
+                <button type="button" onclick="document.getElementById('addExpenseModal').classList.add('hidden')"
+                    class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">Cancel</button>
+                <button type="submit"
+                    class="flex-1 py-3 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-all">Record
+                    Expense</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function switchTab(tabName) {
+        // Hide all panels
+        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+        // Deactivate all buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('bg-[#F59E0B]', 'text-white');
+            btn.classList.add('text-gray-500', 'hover:bg-gray-50');
+        });
+        // Show selected panel
+        document.getElementById('panel-' + tabName).classList.remove('hidden');
+        // Activate selected button
+        const activeBtn = document.getElementById('tab-' + tabName);
+        activeBtn.classList.add('bg-[#F59E0B]', 'text-white');
+        activeBtn.classList.remove('text-gray-500', 'hover:bg-gray-50');
+    }
+</script>
+{% endblock %}

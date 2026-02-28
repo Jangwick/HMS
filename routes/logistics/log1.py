@@ -188,11 +188,23 @@ def dashboard():
         doc_resp = client.table('log_documents').select('id', count='exact').execute()
         total_docs = doc_resp.count or 0
 
+        # Project stats
+        try:
+            proj_resp = client.table('logistics_projects').select('id', count='exact').execute()
+            total_projects = proj_resp.count or 0
+            active_projects_resp = client.table('logistics_projects').select('id', count='exact').eq('status', 'In Progress').execute()
+            active_projects = active_projects_resp.count or 0
+        except Exception:
+            total_projects = 0
+            active_projects = 0
+
     except Exception as e:
         print(f"Error fetching dashboard stats: {e}")
         total_assets = 0
         pending_pos = 0
         total_docs = 0
+        total_projects = 0
+        active_projects = 0
 
     # Placeholder values for trend chart
     consumption_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
@@ -213,6 +225,8 @@ def dashboard():
                            cat_values=cat_values,
                            consumption_labels=consumption_labels,
                            consumption_values=consumption_values,
+                           total_projects=total_projects,
+                           active_projects=active_projects,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -861,6 +875,495 @@ def delete_doc(doc_id):
         flash(f'Error deleting document: {str(e)}', 'danger')
         
     return redirect(url_for('log1.list_documents'))
+
+# =============================================
+# PROJECT LOGISTICS TRACKER (PLT) MODULE
+# =============================================
+
+@log1_bp.route('/projects')
+@login_required
+def list_projects():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    # Get filter parameters
+    status_filter = request.args.get('status', '')
+    priority_filter = request.args.get('priority', '')
+    category_filter = request.args.get('category', '')
+    search_query = request.args.get('q', '')
+    
+    try:
+        query = client.table('logistics_projects').select('*').order('created_at', desc=True)
+        
+        if status_filter:
+            query = query.eq('status', status_filter)
+        if priority_filter:
+            query = query.eq('priority', priority_filter)
+        if category_filter:
+            query = query.eq('category', category_filter)
+        
+        response = query.execute()
+        projects = response.data if response.data else []
+        
+        # Client-side search filter (Supabase free tier may not support ilike well)
+        if search_query:
+            search_lower = search_query.lower()
+            projects = [p for p in projects if 
+                        search_lower in (p.get('project_name', '') or '').lower() or
+                        search_lower in (p.get('project_code', '') or '').lower() or
+                        search_lower in (p.get('description', '') or '').lower()]
+    except Exception as e:
+        print(f"Error fetching projects: {e}")
+        projects = []
+    
+    return render_template('subsystems/logistics/log1/projects.html',
+                           projects=projects,
+                           status_filter=status_filter,
+                           priority_filter=priority_filter,
+                           category_filter=category_filter,
+                           search_query=search_query,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+@log1_bp.route('/projects/add', methods=['POST'])
+@login_required
+def add_project():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_projects'))
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        project_data = {
+            'project_name': request.form.get('project_name'),
+            'project_code': request.form.get('project_code') or None,
+            'description': request.form.get('description') or None,
+            'priority': request.form.get('priority', 'Normal'),
+            'status': 'Planning',
+            'progress': 0,
+            'start_date': request.form.get('start_date') or None,
+            'end_date': request.form.get('end_date') or None,
+            'category': request.form.get('category', 'Other'),
+            'budget': float(request.form.get('budget') or 0),
+            'created_by': current_user.id
+        }
+        
+        result = client.table('logistics_projects').insert(project_data).execute()
+        
+        # Log activity
+        if result.data:
+            log_project_activity(client, result.data[0]['id'], current_user.id, 
+                               "Project Created", f"Created project '{project_data['project_name']}'")
+        
+        AuditLog.log(current_user.id, "Create Logistics Project", BLUEPRINT_NAME, 
+                     {"project": project_data['project_name']})
+        
+        flash('Logistics project created successfully!', 'success')
+    except Exception as e:
+        flash(f'Error creating project: {str(e)}', 'danger')
+    
+    return redirect(url_for('log1.list_projects'))
+
+@log1_bp.route('/projects/<int:project_id>')
+@login_required
+def view_project(project_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        project_resp = client.table('logistics_projects').select('*').eq('id', project_id).single().execute()
+        if not project_resp.data:
+            flash('Project not found.', 'danger')
+            return redirect(url_for('log1.list_projects'))
+        
+        # Fetch milestones
+        try:
+            milestones_resp = client.table('project_milestones').select('*').eq('project_id', project_id).order('due_date').execute()
+            milestones = milestones_resp.data if milestones_resp.data else []
+        except Exception:
+            milestones = []
+        
+        # Fetch tasks
+        try:
+            tasks_resp = client.table('project_tasks').select('*').eq('project_id', project_id).order('created_at', desc=True).execute()
+            tasks = tasks_resp.data if tasks_resp.data else []
+        except Exception:
+            tasks = []
+        
+        # Fetch expenses
+        try:
+            expenses_resp = client.table('project_expenses').select('*').eq('project_id', project_id).order('date_incurred', desc=True).execute()
+            expenses = expenses_resp.data if expenses_resp.data else []
+        except Exception:
+            expenses = []
+        
+        # Calculate total spent
+        total_spent = sum(float(e.get('amount', 0)) for e in expenses)
+        
+        # Fetch activity log
+        try:
+            activities_resp = client.table('project_activities').select('*').eq('project_id', project_id).order('created_at', desc=True).limit(20).execute()
+            activities = activities_resp.data if activities_resp.data else []
+        except Exception:
+            activities = []
+        
+        return render_template('subsystems/logistics/log1/project_detail.html',
+                               project=project_resp.data,
+                               milestones=milestones,
+                               tasks=tasks,
+                               expenses=expenses,
+                               total_spent=total_spent,
+                               activities=activities,
+                               subsystem_name=SUBSYSTEM_NAME,
+                               accent_color=ACCENT_COLOR,
+                               blueprint_name=BLUEPRINT_NAME)
+    except Exception as e:
+        flash(f'Error loading project: {str(e)}', 'danger')
+        return redirect(url_for('log1.list_projects'))
+
+@log1_bp.route('/projects/edit/<int:project_id>', methods=['POST'])
+@login_required
+def edit_project(project_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_projects'))
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        project_data = {
+            'project_name': request.form.get('project_name'),
+            'project_code': request.form.get('project_code') or None,
+            'description': request.form.get('description') or None,
+            'priority': request.form.get('priority', 'Normal'),
+            'status': request.form.get('status', 'Planning'),
+            'progress': int(request.form.get('progress', 0)),
+            'start_date': request.form.get('start_date') or None,
+            'end_date': request.form.get('end_date') or None,
+            'category': request.form.get('category', 'Other'),
+            'budget': float(request.form.get('budget') or 0),
+        }
+        
+        client.table('logistics_projects').update(project_data).eq('id', project_id).execute()
+        
+        log_project_activity(client, project_id, current_user.id, 
+                           "Project Updated", f"Updated project details for '{project_data['project_name']}'")
+        
+        AuditLog.log(current_user.id, "Edit Logistics Project", BLUEPRINT_NAME, 
+                     {"project_id": project_id, "project": project_data['project_name']})
+        
+        flash('Project updated successfully!', 'success')
+    except Exception as e:
+        flash(f'Error updating project: {str(e)}', 'danger')
+    
+    return redirect(url_for('log1.view_project', project_id=project_id))
+
+@log1_bp.route('/projects/delete/<int:project_id>')
+@login_required
+def delete_project(project_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_projects'))
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Delete associated data first
+        for table in ['project_milestones', 'project_tasks', 'project_expenses', 'project_activities']:
+            try:
+                client.table(table).delete().eq('project_id', project_id).execute()
+            except Exception:
+                pass
+        
+        client.table('logistics_projects').delete().eq('id', project_id).execute()
+        
+        AuditLog.log(current_user.id, "Delete Logistics Project", BLUEPRINT_NAME, 
+                     {"project_id": project_id})
+        
+        flash('Project deleted successfully.', 'success')
+    except Exception as e:
+        flash(f'Error deleting project: {str(e)}', 'danger')
+    
+    return redirect(url_for('log1.list_projects'))
+
+@log1_bp.route('/projects/status/<int:project_id>/<string:status>')
+@login_required
+def update_project_status(project_id, status):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_projects'))
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        update_data = {'status': status}
+        if status == 'Completed':
+            update_data['progress'] = 100
+        
+        client.table('logistics_projects').update(update_data).eq('id', project_id).execute()
+        
+        log_project_activity(client, project_id, current_user.id, 
+                           "Status Changed", f"Project status changed to '{status}'")
+        
+        AuditLog.log(current_user.id, "Update Project Status", BLUEPRINT_NAME, 
+                     {"project_id": project_id, "new_status": status})
+        
+        flash(f'Project status updated to {status}.', 'success')
+    except Exception as e:
+        flash(f'Error updating project status: {str(e)}', 'danger')
+    
+    return redirect(url_for('log1.view_project', project_id=project_id))
+
+# --- Milestones ---
+
+@log1_bp.route('/projects/<int:project_id>/milestones/add', methods=['POST'])
+@login_required
+def add_milestone(project_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.view_project', project_id=project_id))
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        milestone_data = {
+            'project_id': project_id,
+            'title': request.form.get('title'),
+            'description': request.form.get('description') or None,
+            'due_date': request.form.get('due_date') or None,
+            'status': 'Pending'
+        }
+        
+        client.table('project_milestones').insert(milestone_data).execute()
+        
+        log_project_activity(client, project_id, current_user.id, 
+                           "Milestone Added", f"Added milestone '{milestone_data['title']}'")
+        
+        flash('Milestone added successfully!', 'success')
+    except Exception as e:
+        flash(f'Error adding milestone: {str(e)}', 'danger')
+    
+    return redirect(url_for('log1.view_project', project_id=project_id))
+
+@log1_bp.route('/milestones/<int:milestone_id>/status/<string:status>')
+@login_required
+def update_milestone_status(milestone_id, status):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_projects'))
+    
+    project_id = request.args.get('project_id', type=int)
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('project_milestones').update({'status': status}).eq('id', milestone_id).execute()
+        
+        if project_id:
+            log_project_activity(client, project_id, current_user.id, 
+                               "Milestone Updated", f"Milestone status changed to '{status}'")
+        
+        flash(f'Milestone status updated to {status}.', 'success')
+    except Exception as e:
+        flash(f'Error updating milestone: {str(e)}', 'danger')
+    
+    if project_id:
+        return redirect(url_for('log1.view_project', project_id=project_id))
+    return redirect(url_for('log1.list_projects'))
+
+@log1_bp.route('/milestones/<int:milestone_id>/delete')
+@login_required
+def delete_milestone(milestone_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_projects'))
+    
+    project_id = request.args.get('project_id', type=int)
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('project_milestones').delete().eq('id', milestone_id).execute()
+        
+        if project_id:
+            log_project_activity(client, project_id, current_user.id, 
+                               "Milestone Deleted", "A milestone was removed")
+        
+        flash('Milestone deleted.', 'success')
+    except Exception as e:
+        flash(f'Error deleting milestone: {str(e)}', 'danger')
+    
+    if project_id:
+        return redirect(url_for('log1.view_project', project_id=project_id))
+    return redirect(url_for('log1.list_projects'))
+
+# --- Tasks ---
+
+@log1_bp.route('/projects/<int:project_id>/tasks/add', methods=['POST'])
+@login_required
+def add_task(project_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.view_project', project_id=project_id))
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        task_data = {
+            'project_id': project_id,
+            'title': request.form.get('title'),
+            'description': request.form.get('description') or None,
+            'assigned_to': request.form.get('assigned_to') or None,
+            'priority': request.form.get('priority', 'Normal'),
+            'due_date': request.form.get('due_date') or None,
+            'status': 'To Do',
+            'created_by': current_user.id
+        }
+        
+        client.table('project_tasks').insert(task_data).execute()
+        
+        log_project_activity(client, project_id, current_user.id, 
+                           "Task Added", f"Added task '{task_data['title']}'")
+        
+        flash('Task added successfully!', 'success')
+    except Exception as e:
+        flash(f'Error adding task: {str(e)}', 'danger')
+    
+    return redirect(url_for('log1.view_project', project_id=project_id))
+
+@log1_bp.route('/tasks/<int:task_id>/status/<string:status>')
+@login_required
+def update_task_status(task_id, status):
+    project_id = request.args.get('project_id', type=int)
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('project_tasks').update({'status': status}).eq('id', task_id).execute()
+        
+        if project_id:
+            log_project_activity(client, project_id, current_user.id, 
+                               "Task Updated", f"Task status changed to '{status}'")
+        
+        flash(f'Task status updated to {status}.', 'success')
+    except Exception as e:
+        flash(f'Error updating task: {str(e)}', 'danger')
+    
+    if project_id:
+        return redirect(url_for('log1.view_project', project_id=project_id))
+    return redirect(url_for('log1.list_projects'))
+
+@log1_bp.route('/tasks/<int:task_id>/delete')
+@login_required
+def delete_task(task_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_projects'))
+    
+    project_id = request.args.get('project_id', type=int)
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('project_tasks').delete().eq('id', task_id).execute()
+        
+        if project_id:
+            log_project_activity(client, project_id, current_user.id, 
+                               "Task Deleted", "A task was removed")
+        
+        flash('Task deleted.', 'success')
+    except Exception as e:
+        flash(f'Error deleting task: {str(e)}', 'danger')
+    
+    if project_id:
+        return redirect(url_for('log1.view_project', project_id=project_id))
+    return redirect(url_for('log1.list_projects'))
+
+# --- Expenses ---
+
+@log1_bp.route('/projects/<int:project_id>/expenses/add', methods=['POST'])
+@login_required
+def add_expense(project_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.view_project', project_id=project_id))
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        expense_data = {
+            'project_id': project_id,
+            'description': request.form.get('description'),
+            'amount': float(request.form.get('amount', 0)),
+            'category': request.form.get('category', 'Other'),
+            'date_incurred': request.form.get('date_incurred') or None,
+            'recorded_by': current_user.id
+        }
+        
+        client.table('project_expenses').insert(expense_data).execute()
+        
+        log_project_activity(client, project_id, current_user.id, 
+                           "Expense Recorded", f"${expense_data['amount']:.2f} - {expense_data['description']}")
+        
+        flash('Expense recorded successfully!', 'success')
+    except Exception as e:
+        flash(f'Error recording expense: {str(e)}', 'danger')
+    
+    return redirect(url_for('log1.view_project', project_id=project_id))
+
+@log1_bp.route('/expenses/<int:expense_id>/delete')
+@login_required
+def delete_expense(expense_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_projects'))
+    
+    project_id = request.args.get('project_id', type=int)
+    
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        client.table('project_expenses').delete().eq('id', expense_id).execute()
+        
+        if project_id:
+            log_project_activity(client, project_id, current_user.id, 
+                               "Expense Deleted", "An expense record was removed")
+        
+        flash('Expense deleted.', 'success')
+    except Exception as e:
+        flash(f'Error deleting expense: {str(e)}', 'danger')
+    
+    if project_id:
+        return redirect(url_for('log1.view_project', project_id=project_id))
+    return redirect(url_for('log1.list_projects'))
+
+# --- Activity Logger Helper ---
+
+def log_project_activity(client, project_id, user_id, action, details=None):
+    """Log an activity entry for a project."""
+    try:
+        client.table('project_activities').insert({
+            'project_id': project_id,
+            'user_id': user_id,
+            'action': action,
+            'details': details
+        }).execute()
+    except Exception as e:
+        print(f"Error logging project activity: {e}")
 
 @log1_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
