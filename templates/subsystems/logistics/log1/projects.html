@@ -206,9 +206,9 @@
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 {% if current_user.is_admin() %}
-                                <button onclick="openEditModal({{ project | tojson }})"
-                                    class="p-2 bg-gray-50 text-gray-500 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                                    title="Edit">
+                                <button
+                                    class="edit-project-btn p-2 bg-gray-50 text-gray-500 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                    data-project='{{ project | tojson }}' title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <a href="{{ url_for('log1.delete_project', project_id=project.id) }}"
@@ -594,23 +594,29 @@
         }
     }
 
-    function openEditModal(project) {
-        const modal = document.getElementById('editProjectModal');
-        const form = document.getElementById('editProjectForm');
+    // Attach edit handlers via event delegation
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.edit-project-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const project = JSON.parse(this.getAttribute('data-project'));
+                const modal = document.getElementById('editProjectModal');
+                const form = document.getElementById('editProjectForm');
 
-        form.action = `/log1/projects/edit/${project.id}`;
-        document.getElementById('edit_project_name').value = project.project_name || '';
-        document.getElementById('edit_project_code').value = project.project_code || '';
-        document.getElementById('edit_priority').value = project.priority || 'Normal';
-        document.getElementById('edit_status').value = project.status || 'Planning';
-        document.getElementById('edit_progress').value = project.progress || 0;
-        document.getElementById('edit_start_date').value = project.start_date || '';
-        document.getElementById('edit_end_date').value = project.end_date || '';
-        document.getElementById('edit_category').value = project.category || 'Other';
-        document.getElementById('edit_budget').value = project.budget || '';
-        document.getElementById('edit_description').value = project.description || '';
+                form.action = `/log1/projects/edit/${project.id}`;
+                document.getElementById('edit_project_name').value = project.project_name || '';
+                document.getElementById('edit_project_code').value = project.project_code || '';
+                document.getElementById('edit_priority').value = project.priority || 'Normal';
+                document.getElementById('edit_status').value = project.status || 'Planning';
+                document.getElementById('edit_progress').value = project.progress || 0;
+                document.getElementById('edit_start_date').value = project.start_date || '';
+                document.getElementById('edit_end_date').value = project.end_date || '';
+                document.getElementById('edit_category').value = project.category || 'Other';
+                document.getElementById('edit_budget').value = project.budget || '';
+                document.getElementById('edit_description').value = project.description || '';
 
-        modal.classList.remove('hidden');
-    }
+                modal.classList.remove('hidden');
+            });
+        });
+    });
 </script>
 {% endblock %}

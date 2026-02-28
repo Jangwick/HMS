@@ -1143,6 +1143,7 @@ def add_milestone(project_id):
         
         client.table('project_milestones').insert(milestone_data).execute()
         
+        recalculate_project_progress(client, project_id)
         log_project_activity(client, project_id, current_user.id, 
                            "Milestone Added", f"Added milestone '{milestone_data['title']}'")
         
@@ -1168,6 +1169,7 @@ def update_milestone_status(milestone_id, status):
         client.table('project_milestones').update({'status': status}).eq('id', milestone_id).execute()
         
         if project_id:
+            recalculate_project_progress(client, project_id)
             log_project_activity(client, project_id, current_user.id, 
                                "Milestone Updated", f"Milestone status changed to '{status}'")
         
@@ -1195,6 +1197,7 @@ def delete_milestone(milestone_id):
         client.table('project_milestones').delete().eq('id', milestone_id).execute()
         
         if project_id:
+            recalculate_project_progress(client, project_id)
             log_project_activity(client, project_id, current_user.id, 
                                "Milestone Deleted", "A milestone was removed")
         
@@ -1232,6 +1235,7 @@ def add_task(project_id):
         
         client.table('project_tasks').insert(task_data).execute()
         
+        recalculate_project_progress(client, project_id)
         log_project_activity(client, project_id, current_user.id, 
                            "Task Added", f"Added task '{task_data['title']}'")
         
@@ -1253,6 +1257,7 @@ def update_task_status(task_id, status):
         client.table('project_tasks').update({'status': status}).eq('id', task_id).execute()
         
         if project_id:
+            recalculate_project_progress(client, project_id)
             log_project_activity(client, project_id, current_user.id, 
                                "Task Updated", f"Task status changed to '{status}'")
         
@@ -1280,6 +1285,7 @@ def delete_task(task_id):
         client.table('project_tasks').delete().eq('id', task_id).execute()
         
         if project_id:
+            recalculate_project_progress(client, project_id)
             log_project_activity(client, project_id, current_user.id, 
                                "Task Deleted", "A task was removed")
         
@@ -1364,6 +1370,48 @@ def log_project_activity(client, project_id, user_id, action, details=None):
         }).execute()
     except Exception as e:
         print(f"Error logging project activity: {e}")
+
+def recalculate_project_progress(client, project_id):
+    """Auto-calculate project progress based on completed tasks and milestones.
+    Tasks contribute 70% weight, milestones contribute 30% weight.
+    If only tasks exist, they count 100%. Same for milestones only."""
+    try:
+        # Fetch tasks
+        tasks_resp = client.table('project_tasks').select('status').eq('project_id', project_id).execute()
+        tasks = tasks_resp.data if tasks_resp.data else []
+        
+        # Fetch milestones
+        milestones_resp = client.table('project_milestones').select('status').eq('project_id', project_id).execute()
+        milestones = milestones_resp.data if milestones_resp.data else []
+        
+        # If no tasks and no milestones, don't auto-update (keep manual value)
+        if not tasks and not milestones:
+            return
+        
+        # Calculate task completion
+        task_progress = 0
+        if tasks:
+            done_tasks = sum(1 for t in tasks if t.get('status') == 'Done')
+            task_progress = (done_tasks / len(tasks)) * 100
+        
+        # Calculate milestone completion
+        milestone_progress = 0
+        if milestones:
+            done_milestones = sum(1 for m in milestones if m.get('status') == 'Completed')
+            milestone_progress = (done_milestones / len(milestones)) * 100
+        
+        # Weighted average (or 100% weight if only one type exists)
+        if tasks and milestones:
+            progress = int((task_progress * 0.7) + (milestone_progress * 0.3))
+        elif tasks:
+            progress = int(task_progress)
+        else:
+            progress = int(milestone_progress)
+        
+        # Update project progress
+        client.table('logistics_projects').update({'progress': progress}).eq('id', project_id).execute()
+    except Exception as e:
+        print(f"Error recalculating project progress: {e}")
 
 @log1_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
