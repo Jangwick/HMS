@@ -679,6 +679,30 @@ def add_asset():
         
     return redirect(url_for('log1.list_assets'))
 
+@log1_bp.route('/assets/edit/<int:asset_id>', methods=['POST'])
+@login_required
+def edit_asset(asset_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_assets'))
+        
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        update_data = {
+            'asset_name': request.form.get('asset_name'),
+            'tag_number': request.form.get('tag_number'),
+            'status': request.form.get('status', 'Active'),
+            'warranty_expiry': request.form.get('warranty_expiry') or None
+        }
+        client.table('assets').update(update_data).eq('id', asset_id).execute()
+        flash('Asset updated successfully!', 'success')
+    except Exception as e:
+        flash(f'Error updating asset: {str(e)}', 'danger')
+        
+    return redirect(url_for('log1.list_assets'))
+
 @log1_bp.route('/assets/maintain/<int:asset_id>', methods=['POST'])
 @login_required
 def record_maintenance(asset_id):
@@ -692,6 +716,7 @@ def record_maintenance(asset_id):
     try:
         notes = request.form.get('notes')
         cost = request.form.get('cost', 0)
+        maintenance_type = request.form.get('maintenance_type', 'Other')
         m_date = datetime.now().date().isoformat()
         
         # Log maintenance record
@@ -700,7 +725,8 @@ def record_maintenance(asset_id):
             'maintenance_date': m_date,
             'performed_by': current_user.id,
             'notes': notes,
-            'cost': cost
+            'cost': cost,
+            'maintenance_type': maintenance_type
         }
         client.table('asset_maintenance_logs').insert(log_data).execute()
         
@@ -734,12 +760,21 @@ def update_asset_status(asset_id, status):
 @log1_bp.route('/assets/delete/<int:asset_id>')
 @login_required
 def delete_asset(asset_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_assets'))
+
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
     try:
+        # Delete maintenance logs first
+        try:
+            client.table('asset_maintenance_logs').delete().eq('asset_id', asset_id).execute()
+        except Exception:
+            pass
         client.table('assets').delete().eq('id', asset_id).execute()
-        flash('Asset removed from registry.', 'success')
+        flash('Asset and all related records removed.', 'success')
     except Exception as e:
         flash(f'Error deleting asset: {str(e)}', 'danger')
         
@@ -755,9 +790,13 @@ def view_asset_history(asset_id):
         asset = client.table('assets').select('*').eq('id', asset_id).single().execute()
         logs = client.table('asset_maintenance_logs').select('*, users(username)').eq('asset_id', asset_id).order('maintenance_date', desc=True).execute()
         
+        logs_data = logs.data if logs.data else []
+        total_cost = sum(float(log.get('cost', 0) or 0) for log in logs_data)
+        
         return render_template('subsystems/logistics/log1/asset_history.html',
                                asset=asset.data,
-                               logs=logs.data if logs.data else [],
+                               logs=logs_data,
+                               total_cost=total_cost,
                                subsystem_name=SUBSYSTEM_NAME,
                                accent_color=ACCENT_COLOR,
                                blueprint_name=BLUEPRINT_NAME)

@@ -1,62 +1,206 @@
 {% extends "base/subsystem_base.html" %}
 
-{% block title %}Asset History - {{ subsystem_name }}{% endblock %}
+{% block title %}{{ asset.asset_name }} History - {{ subsystem_name }}{% endblock %}
 {% block header_title %}Asset Lifecycle History{% endblock %}
 
 {% block content %}
 <div class="space-y-8">
-    <div class="flex items-center justify-between">
-        <div>
-            <h3 class="text-2xl font-bold text-gray-900">{{ asset.asset_name }}</h3>
-            <p class="text-gray-500">Tag: {{ asset.tag_number }} | Status: <span class="font-bold">{{ asset.status }}</span></p>
-        </div>
-        <a href="{{ url_for('log1.list_assets') }}" class="text-gray-500 hover:text-gray-700 font-bold">
-            <i class="bi bi-arrow-left mr-2"></i> Back to Assets
+    <!-- Header with Back Button -->
+    <div class="flex items-center gap-4">
+        <a href="{{ url_for('log1.list_assets') }}"
+            class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-gray-500">
+            <i class="bi bi-arrow-left"></i>
         </a>
+        <div class="flex-1">
+            <div class="flex items-center gap-3 flex-wrap">
+                <h3 class="text-2xl font-bold text-gray-900">{{ asset.asset_name }}</h3>
+                <span class="px-2.5 py-1 text-[10px] font-bold rounded-full uppercase
+                    {% if asset.status == 'Active' %}bg-emerald-100 text-emerald-700
+                    {% elif asset.status == 'Maintenance' %}bg-amber-100 text-amber-700
+                    {% elif asset.status == 'Retired' %}bg-red-100 text-red-700
+                    {% else %}bg-gray-100 text-gray-600{% endif %}">
+                    {{ asset.status }}
+                </span>
+            </div>
+            <p class="text-sm text-gray-500 mt-0.5">Tag: {{ asset.tag_number }}</p>
+        </div>
+        {% if current_user.is_admin() %}
+        <button onclick="openMaintainModal({{ asset.id }}, '{{ asset.asset_name }}')"
+            class="px-5 py-2.5 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-colors flex items-center">
+            <i class="bi bi-wrench mr-2"></i> Record Maintenance
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Asset Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Records</span>
+            <p class="text-2xl font-bold text-gray-900 mt-2">{{ logs | length }}</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Cost</span>
+            <p class="text-2xl font-bold text-gray-900 mt-2">${{ "%.2f" | format(total_cost) }}</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Last Maintenance</span>
+            <p class="text-lg font-bold text-gray-900 mt-2">{{ asset.last_maintenance or 'Never' }}</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Warranty</span>
+            <p class="text-lg font-bold text-gray-900 mt-2">{{ asset.warranty_expiry or 'Lifetime' }}</p>
+        </div>
     </div>
 
     <!-- Maintenance Timeline -->
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-            <h4 class="text-lg font-bold text-gray-900">Maintenance & Events</h4>
+            <h4 class="text-lg font-bold text-gray-900">
+                <i class="bi bi-clock-history text-[#F59E0B] mr-2"></i>Maintenance & Service Log
+            </h4>
             <div class="px-4 py-1.5 bg-gray-50 rounded-lg text-sm font-bold text-gray-500">
-                Total Logs: {{ logs|length }}
+                {{ logs | length }} Records
             </div>
         </div>
-        
+
         <div class="p-8">
             {% if logs %}
             <div class="relative border-l-2 border-gray-100 ml-3 space-y-8">
                 {% for log in logs %}
                 <div class="relative pl-8">
                     <!-- Timeline Dot -->
-                    <div class="absolute -left-[9px] top-1 w-4 w-4 bg-white border-4 border-[#F59E0B] rounded-full"></div>
-                    
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <span class="text-xs font-bold text-[#F59E0B] uppercase tracking-widest">{{ log.maintenance_date }}</span>
-                            <h5 class="text-lg font-bold text-gray-900 mt-1">{{ log.notes }}</h5>
-                            <p class="text-sm text-gray-500 mt-1 flex items-center">
-                                <i class="bi bi-person mr-2"></i> Performed by: {{ log.users.username if log.users else 'System' }}
-                            </p>
-                        </div>
-                        <div class="text-right">
-                            <span class="px-4 py-2 bg-emerald-50 text-emerald-600 font-bold rounded-xl text-sm">
-                                Cost: ${{ "%.2f"|format(log.cost or 0) }}
-                            </span>
+                    <div class="absolute -left-[9px] top-1 w-4 h-4 bg-white border-4 border-[#F59E0B] rounded-full">
+                    </div>
+
+                    <div class="bg-gray-50 rounded-2xl p-5 hover:bg-gray-100/70 transition-colors">
+                        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-xs font-bold text-[#F59E0B] uppercase tracking-widest">{{
+                                        log.maintenance_date }}</span>
+                                    {% if log.maintenance_type %}
+                                    <span class="px-2 py-0.5 text-[9px] font-bold rounded-full uppercase
+                                        {% if log.maintenance_type == 'Corrective' %}bg-red-100 text-red-600
+                                        {% elif log.maintenance_type == 'Preventive' %}bg-blue-100 text-blue-600
+                                        {% elif log.maintenance_type == 'Inspection' %}bg-emerald-100 text-emerald-600
+                                        {% elif log.maintenance_type == 'Calibration' %}bg-violet-100 text-violet-600
+                                        {% elif log.maintenance_type == 'Upgrade' %}bg-indigo-100 text-indigo-600
+                                        {% else %}bg-gray-100 text-gray-500{% endif %}">
+                                        {{ log.maintenance_type }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <h5 class="text-base font-bold text-gray-900">{{ log.notes }}</h5>
+                                <p class="text-sm text-gray-500 mt-2 flex items-center">
+                                    <i class="bi bi-person mr-2"></i> Performed by: {{ log.users.username if log.users
+                                    else 'System' }}
+                                </p>
+                            </div>
+                            <div class="text-right flex-shrink-0">
+                                <span
+                                    class="inline-flex items-center px-4 py-2 bg-emerald-50 text-emerald-600 font-bold rounded-xl text-sm">
+                                    <i class="bi bi-cash-stack mr-1.5"></i> ${{ "%.2f" | format(log.cost or 0) }}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
             {% else %}
-            <div class="py-12 text-center">
+            <div class="py-16 text-center">
                 <i class="bi bi-journal-x text-5xl text-gray-200 mb-4 block"></i>
                 <h4 class="text-lg font-bold text-gray-900">No maintenance history recorded</h4>
                 <p class="text-gray-500 mt-2">All service and repair logs for this asset will appear here.</p>
+                {% if current_user.is_admin() %}
+                <button onclick="openMaintainModal({{ asset.id }}, '{{ asset.asset_name }}')"
+                    class="mt-6 px-6 py-2.5 bg-[#F59E0B] text-white font-bold rounded-xl shadow hover:bg-amber-600 transition-colors inline-flex items-center">
+                    <i class="bi bi-wrench mr-2"></i> Record First Maintenance
+                </button>
+                {% endif %}
             </div>
             {% endif %}
         </div>
     </div>
 </div>
+
+<!-- Maintain Modal (from history page) -->
+{% if current_user.is_admin() %}
+<div id="maintainAssetModal"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+            <h4 class="text-xl font-bold text-gray-900">Record Maintenance</h4>
+            <button onclick="document.getElementById('maintainAssetModal').classList.add('hidden')"
+                class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="maintainForm" action="" method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <h5 id="maintainAssetName"
+                class="text-sm font-bold text-gray-500 bg-gray-50 py-2.5 px-4 rounded-lg flex items-center">
+                <i class="bi bi-box-seam mr-2 text-[#F59E0B]"></i>
+                <span></span>
+            </h5>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Maintenance
+                    Type</label>
+                <select name="maintenance_type"
+                    class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+                    <option value="Preventive">Preventive Maintenance</option>
+                    <option value="Corrective">Corrective / Repair</option>
+                    <option value="Inspection">Routine Inspection</option>
+                    <option value="Calibration">Calibration</option>
+                    <option value="Upgrade">Upgrade / Modification</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Service
+                    Notes</label>
+                <textarea name="notes" rows="3" required placeholder="Describe the maintenance performed..."
+                    class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all"></textarea>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Cost (if
+                    applicable)</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                    <input type="number" step="0.01" name="cost" value="0"
+                        class="w-full pl-10 pr-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#F59E0B] transition-all">
+                </div>
+            </div>
+
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="document.getElementById('maintainAssetModal').classList.add('hidden')"
+                    class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="flex-1 py-3 bg-[#F59E0B] text-white font-bold rounded-xl shadow-lg hover:bg-amber-600 transition-all">
+                    <i class="bi bi-wrench mr-1"></i> Log Maintenance
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openMaintainModal(assetId, assetName) {
+        const modal = document.getElementById('maintainAssetModal');
+        const form = document.getElementById('maintainForm');
+        const nameDisplay = document.getElementById('maintainAssetName');
+
+        nameDisplay.querySelector('span').innerText = assetName;
+        form.action = `/log1/assets/maintain/${assetId}`;
+        modal.classList.remove('hidden');
+    }
+</script>
 {% endblock %}

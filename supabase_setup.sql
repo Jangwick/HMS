@@ -544,6 +544,7 @@ CREATE TABLE IF NOT EXISTS asset_maintenance_logs (
     id SERIAL PRIMARY KEY,
     asset_id INTEGER REFERENCES assets(id) ON DELETE CASCADE,
     maintenance_date DATE DEFAULT CURRENT_DATE,
+    maintenance_type VARCHAR(50) DEFAULT 'Other',
     performed_by INTEGER REFERENCES users(id),
     notes TEXT,
     cost DECIMAL(12, 2) DEFAULT 0.00,
