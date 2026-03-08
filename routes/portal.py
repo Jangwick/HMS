@@ -231,3 +231,74 @@ def logout_switch():
     return redirect(target)
 
 
+@portal_bp.route('/careers')
+def careers():
+    """Public page listing open vacancies for online application."""
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    vacancies = []
+    try:
+        resp = client.table('vacancies').select('*').eq('status', 'Open').order('created_at', desc=True).execute()
+        vacancies = resp.data or []
+    except:
+        pass
+
+    return render_template('portal/careers.html', vacancies=vacancies)
+
+
+@portal_bp.route('/apply', methods=['POST'])
+def apply():
+    """Public job application form submission — data goes to HR1 applicants table."""
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    first_name = request.form.get('first_name', '').strip()
+    last_name = request.form.get('last_name', '').strip()
+    email = request.form.get('email', '').strip()
+    phone = request.form.get('phone', '').strip()
+    vacancy_id = request.form.get('vacancy_id')
+    cover_letter = request.form.get('cover_letter', '').strip()
+
+    if not first_name or not last_name or not email:
+        flash('Please fill in all required fields (First Name, Last Name, Email).', 'danger')
+        return redirect(url_for('portal.careers'))
+
+    data = {
+        'first_name': first_name,
+        'last_name': last_name,
+        'email': email,
+        'phone': phone,
+        'source': 'Online Portal',
+        'status': 'Screening'
+    }
+
+    if vacancy_id:
+        data['vacancy_id'] = int(vacancy_id)
+
+    # Store cover letter in documents JSONB
+    if cover_letter:
+        data['documents'] = [{'type': 'cover_letter', 'content': cover_letter}]
+
+    try:
+        client.table('applicants').insert(data).execute()
+
+        # Notify HR1 admins of new online application
+        try:
+            from utils.hms_models import Notification
+            Notification.create(
+                subsystem='hr1',
+                title="New Online Job Application",
+                message=f"{first_name} {last_name} has submitted an online application via the HMS Careers portal.",
+                n_type="info",
+                sender_subsystem='portal',
+                target_url=url_for('hr1.list_applicants', _external=True)
+            )
+        except:
+            pass
+
+        flash('Your application has been submitted successfully! Our HR team will review your application and get back to you.', 'success')
+    except Exception as e:
+        flash(f'There was an error submitting your application. Please try again later.', 'danger')
+
+    return redirect(url_for('portal.careers'))

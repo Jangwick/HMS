@@ -28,8 +28,16 @@ def landing():
             stats['occupied_beds'] = sum(1 for b in beds_resp.data if b['status'] == 'Occupied')
     except:
         pass
+
+    # Fetch open vacancies for the "Join Our Team" section
+    open_vacancies = []
+    try:
+        vac_resp = client.table('vacancies').select('id, position_name, department').eq('status', 'Open').order('created_at', desc=True).limit(6).execute()
+        open_vacancies = vac_resp.data or []
+    except:
+        pass
         
-    return render_template('portal/patient_landing.html', stats=stats)
+    return render_template('portal/patient_landing.html', stats=stats, open_vacancies=open_vacancies)
 
 @patient_bp.route('/login', methods=['GET', 'POST'])
 def login():
