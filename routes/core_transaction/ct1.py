@@ -96,10 +96,10 @@ def login():
         else:
             # Check if user exists in ANY subsystem to provide better feedback
             try:
-                other_user = User.get_by_username(username)
-                if other_user:
-                    sub = other_user.subsystem.upper()
-                    flash(f'Account found in {sub} department. Please log in through the correct portal.', 'warning')
+                matching_subs = User.find_subsystems_by_username(username)
+                if matching_subs:
+                    subs_display = ', '.join(s.upper() for s in matching_subs)
+                    flash(f'Account found in {subs_display} portal(s). Please log in through the correct portal.', 'warning')
                 else:
                     flash('Invalid credentials.', 'danger')
             except:

@@ -95,12 +95,10 @@ def login():
         else:
             # Check if user exists in ANY subsystem to provide better feedback
             try:
-                from utils.supabase_client import get_supabase_client
-                sb = get_supabase_client()
-                other_user = sb.table('users').select('subsystem').ilike('username', username).execute()
-                if other_user.data:
-                    sub = other_user.data[0]['subsystem'].upper()
-                    flash(f'Account found in {sub} department. Please log in through the correct portal.', 'warning')
+                matching_subs = User.find_subsystems_by_username(username)
+                if matching_subs:
+                    subs_display = ', '.join(s.upper() for s in matching_subs)
+                    flash(f'Account found in {subs_display} portal(s). Please log in through the correct portal.', 'warning')
                 else:
                     flash('Invalid credentials.', 'danger')
             except:

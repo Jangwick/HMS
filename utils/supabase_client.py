@@ -201,6 +201,22 @@ class User(UserMixin):
         except Exception:
             pass
         return None
+
+    @staticmethod
+    def find_subsystems_by_username(username: str) -> list:
+        """
+        Find ALL subsystems where a username exists (case-insensitive).
+        Returns a list of subsystem codes (e.g., ['hr1', 'fin5']).
+        Used by login routes to show the user which portals they can log in through.
+        """
+        try:
+            client = get_supabase_client()
+            response = client.table('users').select('subsystem').ilike('username', username).execute()
+            if response.data:
+                return [row['subsystem'] for row in response.data]
+        except Exception:
+            pass
+        return []
     
     @staticmethod
     def get_by_composite_id(composite_id: str) -> 'User':
