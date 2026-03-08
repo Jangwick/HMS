@@ -907,7 +907,9 @@ def employee_dashboard():
 def announcements():
     client = get_supabase_client()
 
-    if request.method == 'POST' and current_user.is_admin():
+    can_announce = current_user.is_admin() or current_user.role in ['Staff', 'HR_Staff']
+
+    if request.method == 'POST' and can_announce:
         ann_title = request.form.get('title', '').strip()
         ann_content = request.form.get('content', '').strip()
         ann_priority = request.form.get('priority', 'Normal')
@@ -1005,6 +1007,7 @@ def announcements():
                            filter_dept=filter_dept,
                            filter_status=filter_status,
                            search_q=search_q,
+                           can_announce=can_announce,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -1013,10 +1016,13 @@ def announcements():
 @hr1_bp.route('/announcements/<int:ann_id>/update', methods=['POST'])
 @login_required
 def update_announcement(ann_id):
-    if not current_user.is_admin():
-        flash('Unauthorized.', 'danger')
-        return redirect(url_for('hr1.announcements'))
     client = get_supabase_client()
+    # Admins can edit any; Staff can only edit their own
+    if not current_user.is_admin():
+        owner = client.table('announcements').select('published_by').eq('id', ann_id).single().execute()
+        if not owner.data or owner.data.get('published_by') != current_user.id:
+            flash('Unauthorized.', 'danger')
+            return redirect(url_for('hr1.announcements'))
     try:
         client.table('announcements').update({
             'title': request.form.get('title'),
@@ -1033,10 +1039,12 @@ def update_announcement(ann_id):
 @hr1_bp.route('/announcements/<int:ann_id>/toggle', methods=['POST'])
 @login_required
 def toggle_announcement(ann_id):
-    if not current_user.is_admin():
-        flash('Unauthorized.', 'danger')
-        return redirect(url_for('hr1.announcements'))
     client = get_supabase_client()
+    if not current_user.is_admin():
+        owner = client.table('announcements').select('published_by').eq('id', ann_id).single().execute()
+        if not owner.data or owner.data.get('published_by') != current_user.id:
+            flash('Unauthorized.', 'danger')
+            return redirect(url_for('hr1.announcements'))
     try:
         current = client.table('announcements').select('is_active').eq('id', ann_id).single().execute()
         new_state = not current.data.get('is_active', True)
@@ -1050,10 +1058,12 @@ def toggle_announcement(ann_id):
 @hr1_bp.route('/announcements/<int:ann_id>/delete', methods=['POST'])
 @login_required
 def delete_announcement(ann_id):
-    if not current_user.is_admin():
-        flash('Unauthorized.', 'danger')
-        return redirect(url_for('hr1.announcements'))
     client = get_supabase_client()
+    if not current_user.is_admin():
+        owner = client.table('announcements').select('published_by').eq('id', ann_id).single().execute()
+        if not owner.data or owner.data.get('published_by') != current_user.id:
+            flash('Unauthorized.', 'danger')
+            return redirect(url_for('hr1.announcements'))
     try:
         client.table('announcements').delete().eq('id', ann_id).execute()
         flash('Announcement deleted.', 'success')
