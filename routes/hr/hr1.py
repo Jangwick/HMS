@@ -845,12 +845,44 @@ def employee_dashboard():
     except Exception:
         my_recognitions = []
 
-    # Leave balance info
+    # Leave balance info + recent leave requests
     try:
         leave_resp = client.table('leave_requests').select('id', count='exact').eq('user_id', user.id).eq('status', 'Approved').execute()
         leaves_used = leave_resp.count or 0
     except Exception:
         leaves_used = 0
+
+    try:
+        my_leaves_resp = client.table('leave_requests').select('*').eq('user_id', user.id).order('created_at', desc=True).limit(5).execute()
+        my_leaves = my_leaves_resp.data or []
+    except Exception:
+        my_leaves = []
+
+    # Today's attendance status
+    try:
+        today_str = datetime.now().strftime('%Y-%m-%d')
+        today_att_resp = client.table('attendance_logs').select('*').eq('user_id', user.id).gte('clock_in', today_str).order('clock_in', desc=True).limit(1).execute()
+        today_attendance = today_att_resp.data[0] if today_att_resp.data else None
+        is_clocked_in = today_attendance is not None and today_attendance.get('clock_out') is None
+    except Exception:
+        today_attendance = None
+        is_clocked_in = False
+
+    # My schedule for today
+    try:
+        day_name = datetime.now().strftime('%A')
+        sched_resp = client.table('staff_schedules').select('*').eq('user_id', user.id).eq('is_active', True).or_(f"day_of_week.eq.{day_name},day_of_week.eq.Daily").execute()
+        my_schedule = sched_resp.data[0] if sched_resp.data else None
+    except Exception:
+        my_schedule = None
+
+    # Upcoming interviews where user is the interviewer
+    try:
+        interview_now = datetime.now().isoformat()
+        upcoming_interviews_resp = client.table('interviews').select('*, applicants(first_name, last_name)').eq('interviewer_id', user.id).eq('status', 'Scheduled').gte('interview_date', interview_now).order('interview_date').limit(5).execute()
+        my_upcoming_interviews = upcoming_interviews_resp.data or []
+    except Exception:
+        my_upcoming_interviews = []
 
     return render_template('subsystems/hr/hr1/employee_dashboard.html',
                            announcements=announcements,
@@ -859,6 +891,11 @@ def employee_dashboard():
                            my_probation=my_probation,
                            my_recognitions=my_recognitions,
                            leaves_used=leaves_used,
+                           my_leaves=my_leaves,
+                           today_attendance=today_attendance,
+                           is_clocked_in=is_clocked_in,
+                           my_schedule=my_schedule,
+                           my_upcoming_interviews=my_upcoming_interviews,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
