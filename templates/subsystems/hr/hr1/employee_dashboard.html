@@ -1,0 +1,242 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}My Dashboard - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Employee Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Welcome Banner -->
+    <div class="rounded-3xl shadow-xl p-8 text-white relative overflow-hidden"
+        style="background: linear-gradient(135deg, {{ accent_color or '#3B82F6' }}, #1e293b);">
+        <div
+            class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl">
+        </div>
+        <div
+            class="absolute bottom-0 left-0 w-48 h-48 bg-black opacity-10 rounded-full transform -translate-x-1/2 translate-y-1/2 blur-2xl">
+        </div>
+        <div class="relative z-10">
+            <h3 class="text-2xl md:text-3xl font-extrabold mb-2">Welcome back, {{ current_user.full_name or
+                current_user.username }}!</h3>
+            <p class="text-white/70 text-sm md:text-base">{{ current_user.role }} &bull; {{ current_user.department or
+                'HR' }} Department</p>
+            <div class="flex flex-wrap gap-3 mt-6">
+                <a href="{{ url_for('hr1.dashboard') }}"
+                    class="px-5 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors text-sm"
+                    style="color: {{ accent_color or '#3B82F6' }};">
+                    <i class="bi bi-grid mr-1"></i> HR1 Dashboard
+                </a>
+                <a href="{{ url_for('hr1.recognition_wall') }}"
+                    class="px-5 py-2.5 bg-white/15 text-white font-bold rounded-xl hover:bg-white/25 transition-colors backdrop-blur-sm text-sm">
+                    <i class="bi bi-trophy mr-1"></i> Wall of Fame
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Row -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
+            <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mx-auto mb-3">
+                <i class="bi bi-list-task"></i></div>
+            <p class="text-2xl font-bold text-gray-900">{{ pending_tasks|length }}</p>
+            <p class="text-xs text-gray-400 font-medium mt-1">Pending Tasks</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
+            <div
+                class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 mx-auto mb-3">
+                <i class="bi bi-calendar-minus"></i></div>
+            <p class="text-2xl font-bold text-gray-900">{{ leaves_used }}</p>
+            <p class="text-xs text-gray-400 font-medium mt-1">Leaves Used</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
+            <div
+                class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 mx-auto mb-3">
+                <i class="bi bi-trophy"></i></div>
+            <p class="text-2xl font-bold text-gray-900">{{ my_recognitions|length }}</p>
+            <p class="text-xs text-gray-400 font-medium mt-1">Recognitions</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
+            <div
+                class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 mx-auto mb-3">
+                <i class="bi bi-megaphone"></i></div>
+            <p class="text-2xl font-bold text-gray-900">{{ announcements|length }}</p>
+            <p class="text-xs text-gray-400 font-medium mt-1">Announcements</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column: Tasks + Probation -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- Pending Tasks -->
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h4 class="text-xl font-bold text-gray-900"><i class="bi bi-check2-square mr-2"
+                            style="color: {{ accent_color }}"></i>My Pending Tasks</h4>
+                </div>
+                <div class="space-y-3">
+                    {% for task in pending_tasks %}
+                    <div
+                        class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
+                        <div class="flex items-center flex-1 min-w-0">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center mr-4 shrink-0
+                                {% if task.task_type == 'kpi_acknowledge' %}bg-amber-50 text-amber-600
+                                {% elif task.task_type == 'evaluation' %}bg-blue-50 text-blue-600
+                                {% elif task.task_type == 'recognition' %}bg-green-50 text-green-600
+                                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                <i
+                                    class="bi bi-{% if task.task_type == 'kpi_acknowledge' %}hand-thumbs-up{% elif task.task_type == 'evaluation' %}graph-up{% elif task.task_type == 'recognition' %}trophy{% else %}check2-circle{% endif %}"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="font-bold text-gray-900 text-sm truncate">{{ task.title }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">{{ task.description or '' }}</p>
+                            </div>
+                        </div>
+                        <form method="POST" action="{{ url_for('hr1.complete_task', task_id=task.id) }}"
+                            class="ml-3 shrink-0">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit"
+                                class="px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg hover:bg-green-600 transition-colors">Done</button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-10">
+                        <i class="bi bi-check-circle text-4xl text-green-300"></i>
+                        <p class="text-gray-400 font-medium mt-3">All caught up! No pending tasks.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Active Probation Cycle (if any) -->
+            {% if my_probation %}
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h4 class="text-xl font-bold text-gray-900"><i class="bi bi-person-check mr-2"
+                            style="color: {{ accent_color }}"></i>My Probation Status</h4>
+                    <a href="{{ url_for('hr1.probation_detail', cycle_id=my_probation.id) }}"
+                        class="text-sm font-bold hover:underline" style="color: {{ accent_color }};">View Details</a>
+                </div>
+                <div class="bg-gray-50 rounded-2xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-bold text-gray-700">{{ my_probation.cycle_type }}</span>
+                        <span
+                            class="px-3 py-1 rounded-full text-xs font-bold {% if my_probation.status == 'Active' %}bg-blue-100 text-blue-700{% else %}bg-green-100 text-green-700{% endif %}">{{
+                            my_probation.status }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                        <span>{{ my_probation.start_date }}</span>
+                        <span>Stage: {{ my_probation.current_stage.replace('_', ' ').title() }}</span>
+                        <span>{{ my_probation.end_date }}</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        {% set stage_map = {'ASSIGNED': 11, 'KPI_SETUP': 22, 'KPI_ACKNOWLEDGED': 33, 'MONITORING': 44,
+                        'MID_CHECK_IN': 55, 'DOCUMENTATION': 66, 'FINAL_EVALUATION': 77, 'RECOMMENDATION': 88,
+                        'HR_DECISION': 100} %}
+                        <div class="h-2.5 rounded-full transition-all duration-700"
+                            style="width: {{ stage_map.get(my_probation.current_stage, 10) }}%; background: {{ accent_color }};">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Team Overview (Supervisors Only) -->
+            {% if team_data is not none %}
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h4 class="text-xl font-bold text-gray-900"><i class="bi bi-people mr-2"
+                            style="color: {{ accent_color }}"></i>My Team</h4>
+                    <span class="text-sm text-gray-400 font-medium">{{ team_data|length }} members</span>
+                </div>
+                <div class="space-y-3">
+                    {% for member in team_data[:8] %}
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div class="flex items-center">
+                            <div class="w-9 h-9 rounded-lg bg-white flex items-center justify-center font-bold text-sm shadow-sm mr-3"
+                                style="color: {{ accent_color }};">{{ (member.full_name or member.username)[0]|upper }}
+                            </div>
+                            <div>
+                                <p class="font-bold text-gray-900 text-sm">{{ member.full_name or member.username }}</p>
+                                <p class="text-xs text-gray-400">{{ member.role }}</p>
+                            </div>
+                        </div>
+                        <span
+                            class="px-2 py-0.5 rounded-full text-[10px] font-bold {% if member.status == 'Active' %}bg-green-100 text-green-700{% else %}bg-gray-100 text-gray-500{% endif %}">{{
+                            member.status }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column: Announcements + Recognitions -->
+        <div class="space-y-8">
+            <!-- Announcements -->
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h4 class="text-lg font-bold text-gray-900"><i class="bi bi-megaphone mr-2"
+                            style="color: {{ accent_color }}"></i>Announcements</h4>
+                    <a href="{{ url_for('hr1.announcements') }}" class="text-xs font-bold hover:underline"
+                        style="color: {{ accent_color }};">View All</a>
+                </div>
+                <div class="space-y-4">
+                    {% for ann in announcements %}
+                    <div
+                        class="p-4 rounded-2xl border {% if ann.priority == 'Urgent' %}border-red-200 bg-red-50/50{% elif ann.priority == 'Important' %}border-amber-200 bg-amber-50/50{% else %}border-gray-100 bg-gray-50{% endif %}">
+                        <div class="flex items-start justify-between mb-1">
+                            <h5 class="font-bold text-sm text-gray-900">{{ ann.title }}</h5>
+                            {% if ann.priority != 'Normal' %}
+                            <span
+                                class="px-2 py-0.5 rounded text-[10px] font-bold ml-2 shrink-0 {% if ann.priority == 'Urgent' %}bg-red-500 text-white{% else %}bg-amber-400 text-white{% endif %}">{{
+                                ann.priority }}</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-xs text-gray-500 leading-relaxed line-clamp-3">{{ ann.content }}</p>
+                        <p class="text-[10px] text-gray-400 mt-2">{{ ann.created_at[:10] }}</p>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-8">
+                        <i class="bi bi-megaphone text-3xl text-gray-200"></i>
+                        <p class="text-gray-400 text-sm mt-2">No announcements yet.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- My Recognitions -->
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h4 class="text-lg font-bold text-gray-900"><i class="bi bi-trophy mr-2 text-amber-500"></i>My
+                        Awards</h4>
+                    <a href="{{ url_for('hr1.recognition_wall') }}" class="text-xs font-bold hover:underline"
+                        style="color: {{ accent_color }};">Wall of Fame</a>
+                </div>
+                <div class="space-y-3">
+                    {% for rec in my_recognitions %}
+                    <div
+                        class="flex items-center p-3 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-100">
+                        <div
+                            class="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 mr-3 shrink-0">
+                            <i class="bi bi-{{ rec.recognition_types.icon if rec.recognition_types else 'award' }}"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="font-bold text-sm text-gray-900 truncate">{{ rec.recognition_types.name if
+                                rec.recognition_types else 'Recognition' }}</p>
+                            <p class="text-[10px] text-gray-400">{{ rec.created_at[:10] }}</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-6">
+                        <i class="bi bi-star text-3xl text-gray-200"></i>
+                        <p class="text-gray-400 text-sm mt-2">No recognitions yet.</p>
+                        <a href="{{ url_for('hr1.recognition_wall') }}"
+                            class="text-xs font-bold mt-2 inline-block hover:underline"
+                            style="color: {{ accent_color }};">View Wall of Fame</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

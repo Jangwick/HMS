@@ -300,6 +300,47 @@
                     <span>Schedule Interview</span>
                 </a>
 
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Employee
+                    Portal</div>
+                <a href="{{ url_for('hr1.employee_dashboard') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.employee_dashboard' }}">
+                    <i class="bi bi-person-workspace mr-3 text-indigo-500"></i>
+                    <span>My Dashboard</span>
+                </a>
+                <a href="{{ url_for('hr1.announcements') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.announcements' }}">
+                    <i class="bi bi-megaphone mr-3 text-amber-500"></i>
+                    <span>Announcements</span>
+                </a>
+
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Performance
+                </div>
+                <a href="{{ url_for('hr1.probation_list') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint in ['hr1.probation_list', 'hr1.probation_detail'] }}">
+                    <i class="bi bi-clipboard2-data mr-3 text-blue-500"></i>
+                    <span>Probation Cycles</span>
+                </a>
+
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Recognition
+                </div>
+                <a href="{{ url_for('hr1.recognition_wall') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.recognition_wall' }}">
+                    <i class="bi bi-trophy mr-3 text-amber-500"></i>
+                    <span>Wall of Fame</span>
+                </a>
+                <a href="{{ url_for('hr1.recognition_nominate') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.recognition_nominate' }}">
+                    <i class="bi bi-hand-thumbs-up mr-3"></i>
+                    <span>Nominate</span>
+                </a>
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('hr1.recognition_inbox') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr1.recognition_inbox' }}">
+                    <i class="bi bi-inbox mr-3"></i>
+                    <span>Approval Inbox</span>
+                </a>
+                {% endif %}
+
                 <!-- HR2: Talent Development -->
                 {% elif blueprint_name == 'hr2' %}
                 <a href="{{ url_for('hr2.onboarding_pipeline') }}"

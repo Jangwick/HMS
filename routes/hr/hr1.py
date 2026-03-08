@@ -1,10 +1,11 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from utils.supabase_client import User, format_db_error
+from utils.supabase_client import User, format_db_error, get_supabase_client
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
 from utils.policy import policy_required
-from datetime import datetime
+from utils.role_guards import HRRoles, prevent_applicant_access, supervisor_required, validate_interviewer
+from datetime import datetime, timedelta
 
 hr1_bp = Blueprint('hr1', __name__)
 
@@ -456,9 +457,8 @@ def update_interview_status(id):
 
 @hr1_bp.route('/interviews/schedule', methods=['GET', 'POST'])
 @login_required
+@prevent_applicant_access
 def schedule_interview():
-    # ... existing implementation ...
-    from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
     if request.method == 'POST':
@@ -467,6 +467,13 @@ def schedule_interview():
         location = request.form.get('location')
         notes = request.form.get('notes')
         interviewer_id = current_user.id
+        
+        # Validate interviewer role
+        try:
+            validate_interviewer(interviewer_id)
+        except ValueError as e:
+            flash(str(e), 'danger')
+            return redirect(url_for('hr1.schedule_interview'))
         
         data = {
             'applicant_id': applicant_id,
@@ -479,17 +486,15 @@ def schedule_interview():
         
         try:
             client.table('interviews').insert(data).execute()
-            # Update applicant status
             client.table('applicants').update({'status': 'Interview'}).eq('id', applicant_id).execute()
             flash('Interview scheduled successfully!', 'success')
             return redirect(url_for('hr1.list_applicants'))
         except Exception as e:
             flash(f'Error scheduling interview: {str(e)}', 'danger')
             
-    # GET: fetch applicants and potential interviewers
+    # GET: fetch applicants and eligible interviewers (role-filtered)
     applicants = client.table('applicants').select('*').neq('status', 'Handoff').execute().data
-    # For now, interviewers are any HR staff only (excluding admins)
-    interviewers = client.table('users').select('id, username').eq('department', 'HR').eq('role', 'Staff').execute().data
+    interviewers = client.table('users').select('id, username, role').eq('department', 'HR').neq('role', 'Applicant').execute().data
     
     selected_applicant_id = request.args.get('applicant_id')
     
@@ -703,4 +708,724 @@ def logout():
     logout_user()
     return redirect(url_for('hr1.login'))
 
+
+# =====================================================
+# FEATURE 2: EMPLOYEE PORTAL / PERSONAL DASHBOARD
+# =====================================================
+
+@hr1_bp.route('/my-dashboard')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def employee_dashboard():
+    client = get_supabase_client()
+    user = current_user
+
+    # Announcements
+    try:
+        ann_resp = client.table('announcements').select('*').eq('is_active', True).order('created_at', desc=True).limit(5).execute()
+        announcements = ann_resp.data or []
+    except Exception:
+        announcements = []
+
+    # Pending tasks
+    try:
+        tasks_resp = client.table('employee_tasks').select('*').eq('user_id', user.id).eq('status', 'Pending').order('due_date').limit(10).execute()
+        pending_tasks = tasks_resp.data or []
+    except Exception:
+        pending_tasks = []
+
+    # Team data for supervisors
+    team_data = None
+    if user.role in ['Manager', 'Admin', 'Administrator', 'SuperAdmin', 'HR_Staff']:
+        try:
+            team_resp = client.table('users').select('id, full_name, username, role, status, last_login').eq('department', user.department).neq('id', user.id).eq('status', 'Active').execute()
+            team_data = team_resp.data or []
+        except Exception:
+            team_data = []
+
+    # My probation cycles
+    try:
+        prob_resp = client.table('probation_cycles').select('*').eq('employee_id', user.id).eq('status', 'Active').execute()
+        my_probation = prob_resp.data[0] if prob_resp.data else None
+    except Exception:
+        my_probation = None
+
+    # My recognitions
+    try:
+        rec_resp = client.table('recognition_nominations').select('*, recognition_types(name, icon)').eq('nominee_id', user.id).eq('status', 'Approved').order('created_at', desc=True).limit(5).execute()
+        my_recognitions = rec_resp.data or []
+    except Exception:
+        my_recognitions = []
+
+    # Leave balance info
+    try:
+        leave_resp = client.table('leave_requests').select('id', count='exact').eq('user_id', user.id).eq('status', 'Approved').execute()
+        leaves_used = leave_resp.count or 0
+    except Exception:
+        leaves_used = 0
+
+    return render_template('subsystems/hr/hr1/employee_dashboard.html',
+                           announcements=announcements,
+                           pending_tasks=pending_tasks,
+                           team_data=team_data,
+                           my_probation=my_probation,
+                           my_recognitions=my_recognitions,
+                           leaves_used=leaves_used,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr1_bp.route('/announcements', methods=['GET', 'POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def announcements():
+    client = get_supabase_client()
+
+    if request.method == 'POST' and current_user.is_admin():
+        data = {
+            'title': request.form.get('title'),
+            'content': request.form.get('content'),
+            'priority': request.form.get('priority', 'Normal'),
+            'target_department': request.form.get('target_department') or None,
+            'target_subsystem': request.form.get('target_subsystem') or None,
+            'published_by': current_user.id,
+            'is_active': True
+        }
+        try:
+            client.table('announcements').insert(data).execute()
+            flash('Announcement published successfully!', 'success')
+        except Exception as e:
+            flash(f'Error publishing announcement: {str(e)}', 'danger')
+        return redirect(url_for('hr1.announcements'))
+
+    all_ann = client.table('announcements').select('*, users(username)').order('created_at', desc=True).limit(50).execute()
+    return render_template('subsystems/hr/hr1/announcements.html',
+                           announcements=all_ann.data or [],
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr1_bp.route('/tasks/<int:task_id>/complete', methods=['POST'])
+@login_required
+def complete_task(task_id):
+    client = get_supabase_client()
+    try:
+        client.table('employee_tasks').update({'status': 'Completed'}).eq('id', task_id).eq('user_id', current_user.id).execute()
+        flash('Task completed!', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.employee_dashboard'))
+
+
+# =====================================================
+# FEATURE 3: PERFORMANCE MANAGEMENT (PROBATIONARY CYCLE)
+# =====================================================
+
+@hr1_bp.route('/probation')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+@prevent_applicant_access
+def probation_list():
+    client = get_supabase_client()
+    user = current_user
+
+    if user.is_admin() or user.is_super_admin():
+        cycles_resp = client.table('probation_cycles').select('*, users!probation_cycles_employee_id_fkey(id, username, full_name)').order('created_at', desc=True).execute()
+    elif HRRoles.can_supervise(user.role):
+        cycles_resp = client.table('probation_cycles').select('*, users!probation_cycles_employee_id_fkey(id, username, full_name)').eq('supervisor_id', user.id).order('created_at', desc=True).execute()
+    else:
+        cycles_resp = client.table('probation_cycles').select('*, users!probation_cycles_supervisor_id_fkey(id, username, full_name)').eq('employee_id', user.id).order('created_at', desc=True).execute()
+
+    cycles = cycles_resp.data or []
+
+    # Stats
+    stats = {
+        'total': len(cycles),
+        'active': len([c for c in cycles if c['status'] == 'Active']),
+        'completed': len([c for c in cycles if c['status'] == 'Completed']),
+    }
+
+    # Fetch employees for create form
+    employees = []
+    if user.is_admin() or HRRoles.can_supervise(user.role):
+        emp_resp = client.table('users').select('id, username, full_name').eq('department', 'HR').eq('status', 'Active').execute()
+        employees = emp_resp.data or []
+
+    return render_template('subsystems/hr/hr1/probation/list.html',
+                           cycles=cycles,
+                           stats=stats,
+                           employees=employees,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr1_bp.route('/probation/create', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+@supervisor_required
+def probation_create():
+    from utils.probation_engine import create_probation_cycle
+    try:
+        employee_id = int(request.form.get('employee_id'))
+        supervisor_id = int(request.form.get('supervisor_id', current_user.id))
+        cycle_type = request.form.get('cycle_type', 'New Hire')
+        start_date = request.form.get('start_date')
+        duration = int(request.form.get('duration_days', 90))
+
+        cycle = create_probation_cycle(employee_id, supervisor_id, cycle_type, start_date, duration)
+        if cycle:
+            from utils.hms_models import AuditLog
+            AuditLog.log(current_user.id, "Create Probation Cycle", BLUEPRINT_NAME, {"cycle_id": cycle['id'], "employee_id": employee_id})
+            flash('Probation cycle created successfully!', 'success')
+        else:
+            flash('Failed to create probation cycle.', 'danger')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_list'))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+@prevent_applicant_access
+def probation_detail(cycle_id):
+    from utils.probation_engine import ProbationStage, get_stage_progress, get_stage_index
+    client = get_supabase_client()
+
+    cycle_resp = client.table('probation_cycles').select('*').eq('id', cycle_id).single().execute()
+    if not cycle_resp.data:
+        flash('Probation cycle not found.', 'danger')
+        return redirect(url_for('hr1.probation_list'))
+    cycle = cycle_resp.data
+
+    # Fetch related data
+    employee = User.get_by_id(cycle['employee_id'])
+    supervisor = User.get_by_id(cycle['supervisor_id'])
+    kpis = client.table('probation_kpis').select('*').eq('cycle_id', cycle_id).order('created_at').execute().data or []
+    ack_resp = client.table('kpi_acknowledgements').select('*').eq('cycle_id', cycle_id).execute()
+    acknowledgement = ack_resp.data[0] if ack_resp.data else None
+    notes = client.table('performance_notes').select('*, users(username)').eq('cycle_id', cycle_id).order('created_at', desc=True).execute().data or []
+    checkin_resp = client.table('mid_probation_checkins').select('*').eq('cycle_id', cycle_id).execute()
+    checkin = checkin_resp.data[0] if checkin_resp.data else None
+    eval_resp = client.table('final_evaluations').select('*').eq('cycle_id', cycle_id).execute()
+    evaluation = eval_resp.data[0] if eval_resp.data else None
+    rec_resp = client.table('probation_recommendations').select('*').eq('cycle_id', cycle_id).execute()
+    recommendation = rec_resp.data[0] if rec_resp.data else None
+    dec_resp = client.table('hr_decisions').select('*').eq('cycle_id', cycle_id).execute()
+    decision = dec_resp.data[0] if dec_resp.data else None
+
+    # Filter unpublished notes for employees
+    if current_user.id == cycle['employee_id']:
+        notes = [n for n in notes if n.get('is_published', False)]
+
+    progress = get_stage_progress(cycle['current_stage'])
+    current_stage_idx = get_stage_index(cycle['current_stage'])
+
+    return render_template('subsystems/hr/hr1/probation/detail.html',
+                           cycle=cycle,
+                           employee=employee,
+                           supervisor=supervisor,
+                           kpis=kpis,
+                           acknowledgement=acknowledgement,
+                           notes=notes,
+                           checkin=checkin,
+                           evaluation=evaluation,
+                           recommendation=recommendation,
+                           decision=decision,
+                           progress=progress,
+                           current_stage_idx=current_stage_idx,
+                           stages=ProbationStage,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/kpis', methods=['POST'])
+@login_required
+@supervisor_required
+def probation_add_kpi(cycle_id):
+    from utils.probation_engine import advance_stage, ProbationStage
+    client = get_supabase_client()
+    try:
+        data = {
+            'cycle_id': cycle_id,
+            'category': request.form.get('category'),
+            'kpi_name': request.form.get('kpi_name'),
+            'description': request.form.get('description'),
+            'target_value': request.form.get('target_value'),
+            'weight': float(request.form.get('weight', 0)),
+            'created_by': current_user.id
+        }
+        client.table('probation_kpis').insert(data).execute()
+
+        # Auto-advance from ASSIGNED to KPI_SETUP on first KPI creation
+        cycle = client.table('probation_cycles').select('current_stage').eq('id', cycle_id).single().execute()
+        if cycle.data and cycle.data['current_stage'] == ProbationStage.ASSIGNED:
+            advance_stage(cycle_id, ProbationStage.KPI_SETUP, current_user.id)
+
+        flash('KPI added successfully!', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/kpis/finalize', methods=['POST'])
+@login_required
+@supervisor_required
+def probation_finalize_kpis(cycle_id):
+    from utils.probation_engine import advance_stage, ProbationStage
+    try:
+        advance_stage(cycle_id, ProbationStage.KPI_ACKNOWLEDGED, current_user.id)
+        # Create acknowledgement record
+        client = get_supabase_client()
+        cycle = client.table('probation_cycles').select('employee_id').eq('id', cycle_id).single().execute()
+        if cycle.data:
+            client.table('kpi_acknowledgements').insert({
+                'cycle_id': cycle_id,
+                'employee_id': cycle.data['employee_id'],
+                'status': 'Pending'
+            }).execute()
+            # Create a task for the employee
+            client.table('employee_tasks').insert({
+                'user_id': cycle.data['employee_id'],
+                'title': 'Acknowledge your Performance KPIs',
+                'description': 'Review and digitally sign your probation KPIs.',
+                'task_type': 'kpi_acknowledge',
+                'reference_id': cycle_id,
+                'reference_table': 'probation_cycles'
+            }).execute()
+        flash('KPIs finalized. Employee has been notified to acknowledge.', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/acknowledge', methods=['POST'])
+@login_required
+def probation_acknowledge_kpis(cycle_id):
+    from utils.probation_engine import advance_stage, ProbationStage
+    client = get_supabase_client()
+    try:
+        digital_signature = request.form.get('digital_signature')
+        if not digital_signature:
+            flash('Please type your full name as digital signature.', 'danger')
+            return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+        client.table('kpi_acknowledgements').update({
+            'acknowledged_at': datetime.utcnow().isoformat(),
+            'digital_signature': digital_signature,
+            'status': 'Acknowledged'
+        }).eq('cycle_id', cycle_id).eq('employee_id', current_user.id).execute()
+
+        advance_stage(cycle_id, ProbationStage.MONITORING, current_user.id)
+
+        # Complete the task
+        client.table('employee_tasks').update({'status': 'Completed'}).eq('reference_id', cycle_id).eq('task_type', 'kpi_acknowledge').eq('user_id', current_user.id).execute()
+
+        flash('KPIs acknowledged successfully!', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/notes', methods=['POST'])
+@login_required
+@supervisor_required
+def probation_add_note(cycle_id):
+    client = get_supabase_client()
+    try:
+        data = {
+            'cycle_id': cycle_id,
+            'author_id': current_user.id,
+            'note_type': request.form.get('note_type'),
+            'content': request.form.get('content'),
+            'is_published': request.form.get('is_published') == 'on'
+        }
+        client.table('performance_notes').insert(data).execute()
+        flash('Performance note added.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/advance-to-midcheck', methods=['POST'])
+@login_required
+@supervisor_required
+def probation_advance_midcheck(cycle_id):
+    from utils.probation_engine import advance_stage, ProbationStage
+    try:
+        advance_stage(cycle_id, ProbationStage.MID_CHECK_IN, current_user.id)
+        flash('Advanced to Mid-Probation Check-in stage.', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/mid-checkin', methods=['POST'])
+@login_required
+@supervisor_required
+def probation_submit_checkin(cycle_id):
+    from utils.probation_engine import advance_stage, ProbationStage
+    client = get_supabase_client()
+    try:
+        data = {
+            'cycle_id': cycle_id,
+            'supervisor_id': current_user.id,
+            'gap_analysis': request.form.get('gap_analysis'),
+            'improvement_plan': request.form.get('improvement_plan'),
+            'overall_rating': request.form.get('overall_rating')
+        }
+        client.table('mid_probation_checkins').insert(data).execute()
+        advance_stage(cycle_id, ProbationStage.DOCUMENTATION, current_user.id)
+        flash('Mid-probation check-in submitted. Moved to Documentation stage.', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/advance-to-eval', methods=['POST'])
+@login_required
+@supervisor_required
+def probation_advance_eval(cycle_id):
+    from utils.probation_engine import advance_stage, ProbationStage
+    try:
+        advance_stage(cycle_id, ProbationStage.FINAL_EVALUATION, current_user.id)
+        flash('Advanced to Final Evaluation stage.', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/evaluate', methods=['POST'])
+@login_required
+@supervisor_required
+def probation_submit_evaluation(cycle_id):
+    from utils.probation_engine import advance_stage, ProbationStage
+    client = get_supabase_client()
+    try:
+        kpis = client.table('probation_kpis').select('id, kpi_name, weight').eq('cycle_id', cycle_id).execute().data or []
+        kpi_scores = []
+        for kpi in kpis:
+            score = request.form.get(f'kpi_score_{kpi["id"]}', 0)
+            kpi_scores.append({'kpi_id': kpi['id'], 'name': kpi['kpi_name'], 'score': float(score), 'weight': float(kpi['weight'])})
+
+        import json
+        data = {
+            'cycle_id': cycle_id,
+            'evaluator_id': current_user.id,
+            'kpi_scores': json.dumps(kpi_scores),
+            'competency_rating': float(request.form.get('competency_rating', 0)),
+            'conduct_rating': float(request.form.get('conduct_rating', 0)),
+            'attendance_rating': float(request.form.get('attendance_rating', 0)),
+            'overall_score': float(request.form.get('overall_score', 0)),
+            'comments': request.form.get('comments')
+        }
+        client.table('final_evaluations').insert(data).execute()
+        advance_stage(cycle_id, ProbationStage.RECOMMENDATION, current_user.id)
+        flash('Final evaluation submitted. Please submit your recommendation.', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/recommend', methods=['POST'])
+@login_required
+@supervisor_required
+def probation_submit_recommendation(cycle_id):
+    from utils.probation_engine import advance_stage, ProbationStage
+    client = get_supabase_client()
+    try:
+        data = {
+            'cycle_id': cycle_id,
+            'supervisor_id': current_user.id,
+            'recommendation': request.form.get('recommendation'),
+            'justification': request.form.get('justification')
+        }
+        client.table('probation_recommendations').insert(data).execute()
+        advance_stage(cycle_id, ProbationStage.HR_DECISION, current_user.id)
+        flash('Recommendation submitted to HR for final decision.', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/decision', methods=['POST'])
+@login_required
+def probation_submit_decision(cycle_id):
+    if not current_user.is_admin() and not current_user.is_super_admin():
+        flash('Only HR Administrators can submit final decisions.', 'danger')
+        return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+    client = get_supabase_client()
+    try:
+        # Get the supervisor's recommendation
+        rec = client.table('probation_recommendations').select('recommendation').eq('cycle_id', cycle_id).execute()
+        original_rec = rec.data[0]['recommendation'] if rec.data else None
+        decision = request.form.get('decision')
+
+        data = {
+            'cycle_id': cycle_id,
+            'hr_officer_id': current_user.id,
+            'decision': decision,
+            'modified_from': original_rec if original_rec != decision else None,
+            'effective_date': request.form.get('effective_date'),
+            'notes': request.form.get('notes')
+        }
+        client.table('hr_decisions').insert(data).execute()
+
+        # Update cycle status
+        status_map = {'Regularize': 'Completed', 'Extend': 'Extended', 'Terminate': 'Terminated', 'Reassign': 'Completed'}
+        new_status = status_map.get(decision, 'Completed')
+        client.table('probation_cycles').update({'status': new_status, 'updated_at': datetime.utcnow().isoformat()}).eq('id', cycle_id).execute()
+
+        # Notify employee
+        cycle = client.table('probation_cycles').select('employee_id').eq('id', cycle_id).single().execute()
+        if cycle.data:
+            from utils.hms_models import Notification
+            Notification.create(
+                user_id=cycle.data['employee_id'],
+                subsystem='hr1',
+                title=f"Probation Decision: {decision}",
+                message=f"HR has issued a final decision on your probation: {decision}.",
+                n_type="info" if decision == 'Regularize' else "warning",
+                sender_subsystem='hr1'
+            )
+
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "HR Probation Decision", BLUEPRINT_NAME, {"cycle_id": cycle_id, "decision": decision})
+        flash(f'HR Decision recorded: {decision}', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+# =====================================================
+# FEATURE 4: SOCIAL RECOGNITION MODULE
+# =====================================================
+
+@hr1_bp.route('/recognition')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def recognition_wall():
+    client = get_supabase_client()
+
+    # Auto-reject stale nominations (30+ days pending)
+    try:
+        cutoff = (datetime.utcnow() - timedelta(days=30)).isoformat()
+        stale = client.table('recognition_nominations').select('id').eq('status', 'Pending').lt('created_at', cutoff).execute()
+        if stale.data:
+            for nom in stale.data:
+                client.table('recognition_nominations').update({
+                    'status': 'Auto-Rejected',
+                    'reviewed_at': datetime.utcnow().isoformat(),
+                    'review_notes': 'Auto-rejected: No supervisor action within 30 days.'
+                }).eq('id', nom['id']).execute()
+                from utils.hms_models import AuditLog
+                AuditLog.log(None, "Auto-Reject Nomination", BLUEPRINT_NAME, {"nomination_id": nom['id']})
+    except Exception:
+        pass
+
+    # Approved recognitions (Wall of Fame)
+    approved = client.table('recognition_nominations').select(
+        '*, recognition_types(name, icon), nominee:users!recognition_nominations_nominee_id_fkey(username, full_name, department), nominator:users!recognition_nominations_nominator_id_fkey(username, full_name)'
+    ).eq('status', 'Approved').order('reviewed_at', desc=True).limit(50).execute()
+
+    # My nominations
+    my_noms = client.table('recognition_nominations').select(
+        '*, recognition_types(name, icon)'
+    ).eq('nominator_id', current_user.id).order('created_at', desc=True).limit(10).execute()
+
+    # Recognition types
+    types = client.table('recognition_types').select('*').eq('is_active', True).execute()
+
+    return render_template('subsystems/hr/hr1/recognition/wall_of_fame.html',
+                           approved_recognitions=approved.data or [],
+                           my_nominations=my_noms.data or [],
+                           recognition_types=types.data or [],
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr1_bp.route('/recognition/nominate', methods=['GET', 'POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def recognition_nominate():
+    client = get_supabase_client()
+
+    if request.method == 'POST':
+        nominee_id = int(request.form.get('nominee_id'))
+
+        # Self-nomination prevention
+        if nominee_id == current_user.id:
+            flash('You cannot nominate yourself.', 'danger')
+            return redirect(url_for('hr1.recognition_nominate'))
+
+        # Find supervisor for the nominee
+        nominee = User.get_by_id(nominee_id)
+        supervisor_id = None
+        if nominee:
+            sup_resp = client.table('users').select('id').eq('department', nominee.department).in_('role', ['Manager', 'Admin', 'Administrator']).limit(1).execute()
+            supervisor_id = sup_resp.data[0]['id'] if sup_resp.data else None
+
+        data = {
+            'nominee_id': nominee_id,
+            'nominator_id': current_user.id,
+            'recognition_type_id': int(request.form.get('recognition_type_id')),
+            'justification': request.form.get('justification'),
+            'supporting_details': request.form.get('supporting_details'),
+            'status': 'Pending',
+            'supervisor_id': supervisor_id,
+            'auto_reject_date': (datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d')
+        }
+        try:
+            client.table('recognition_nominations').insert(data).execute()
+
+            # Notify supervisor
+            if supervisor_id:
+                from utils.hms_models import Notification
+                Notification.create(
+                    user_id=supervisor_id,
+                    subsystem='hr1',
+                    title="New Recognition Nomination",
+                    message=f"{current_user.username} has nominated {nominee.username if nominee else 'an employee'} for recognition. Please review.",
+                    n_type="info",
+                    sender_subsystem='hr1',
+                    target_url=url_for('hr1.recognition_inbox')
+                )
+
+            flash('Nomination submitted successfully!', 'success')
+            return redirect(url_for('hr1.recognition_wall'))
+        except Exception as e:
+            flash(f'Error: {str(e)}', 'danger')
+
+    # GET: fetch employees and recognition types
+    employees = client.table('users').select('id, username, full_name, department').eq('status', 'Active').neq('id', current_user.id).execute()
+    types = client.table('recognition_types').select('*').eq('is_active', True).execute()
+
+    return render_template('subsystems/hr/hr1/recognition/nominate.html',
+                           employees=employees.data or [],
+                           recognition_types=types.data or [],
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr1_bp.route('/recognition/inbox')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def recognition_inbox():
+    client = get_supabase_client()
+
+    if current_user.is_admin() or current_user.is_super_admin():
+        noms = client.table('recognition_nominations').select(
+            '*, recognition_types(name, icon), nominee:users!recognition_nominations_nominee_id_fkey(username, full_name), nominator:users!recognition_nominations_nominator_id_fkey(username, full_name)'
+        ).order('created_at', desc=True).execute()
+    else:
+        noms = client.table('recognition_nominations').select(
+            '*, recognition_types(name, icon), nominee:users!recognition_nominations_nominee_id_fkey(username, full_name), nominator:users!recognition_nominations_nominator_id_fkey(username, full_name)'
+        ).eq('supervisor_id', current_user.id).order('created_at', desc=True).execute()
+
+    pending = [n for n in (noms.data or []) if n['status'] == 'Pending']
+    reviewed = [n for n in (noms.data or []) if n['status'] != 'Pending']
+
+    return render_template('subsystems/hr/hr1/recognition/inbox.html',
+                           pending_nominations=pending,
+                           reviewed_nominations=reviewed,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr1_bp.route('/recognition/<int:nom_id>/approve', methods=['POST'])
+@login_required
+def recognition_approve(nom_id):
+    client = get_supabase_client()
+    try:
+        client.table('recognition_nominations').update({
+            'status': 'Approved',
+            'reviewed_at': datetime.utcnow().isoformat(),
+            'review_notes': request.form.get('review_notes', '')
+        }).eq('id', nom_id).execute()
+
+        # Notify nominator and nominee
+        nom = client.table('recognition_nominations').select('nominee_id, nominator_id, recognition_type_id').eq('id', nom_id).single().execute()
+        if nom.data:
+            from utils.hms_models import Notification
+            Notification.create(user_id=nom.data['nominee_id'], subsystem='hr1', title="Recognition Approved!", message="Congratulations! You have been recognized for your outstanding work.", n_type="success", sender_subsystem='hr1')
+            Notification.create(user_id=nom.data['nominator_id'], subsystem='hr1', title="Nomination Approved", message="Your recognition nomination has been approved.", n_type="success", sender_subsystem='hr1')
+
+        flash('Nomination approved!', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.recognition_inbox'))
+
+
+@hr1_bp.route('/recognition/<int:nom_id>/reject', methods=['POST'])
+@login_required
+def recognition_reject(nom_id):
+    client = get_supabase_client()
+    try:
+        client.table('recognition_nominations').update({
+            'status': 'Rejected',
+            'reviewed_at': datetime.utcnow().isoformat(),
+            'review_notes': request.form.get('review_notes', '')
+        }).eq('id', nom_id).execute()
+
+        nom = client.table('recognition_nominations').select('nominator_id').eq('id', nom_id).single().execute()
+        if nom.data:
+            from utils.hms_models import Notification
+            Notification.create(user_id=nom.data['nominator_id'], subsystem='hr1', title="Nomination Rejected", message="Your recognition nomination was not approved.", n_type="warning", sender_subsystem='hr1')
+
+        flash('Nomination rejected.', 'info')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.recognition_inbox'))
+
+
+@hr1_bp.route('/recognition/types', methods=['GET', 'POST'])
+@login_required
+def recognition_types_admin():
+    if not current_user.is_admin() and not current_user.is_super_admin():
+        flash('Admin access required.', 'danger')
+        return redirect(url_for('hr1.recognition_wall'))
+
+    client = get_supabase_client()
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'create':
+            data = {
+                'name': request.form.get('name'),
+                'description': request.form.get('description'),
+                'icon': request.form.get('icon', 'award'),
+                'is_active': True
+            }
+            try:
+                client.table('recognition_types').insert(data).execute()
+                flash('Recognition type created!', 'success')
+            except Exception as e:
+                flash(f'Error: {str(e)}', 'danger')
+        elif action == 'toggle':
+            type_id = request.form.get('type_id')
+            is_active = request.form.get('is_active') == 'true'
+            client.table('recognition_types').update({'is_active': not is_active}).eq('id', type_id).execute()
+            flash('Recognition type updated.', 'success')
+        return redirect(url_for('hr1.recognition_types_admin'))
+
+    types = client.table('recognition_types').select('*').order('created_at').execute()
+    return render_template('subsystems/hr/hr1/recognition/types_admin.html',
+                           recognition_types=types.data or [],
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 

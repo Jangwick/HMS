@@ -1,0 +1,481 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Probation Cycle #{{ cycle.id }} - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Probation Cycle Detail{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Back Link + Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <a href="{{ url_for('hr1.probation_list') }}"
+                class="text-sm font-bold text-gray-400 hover:text-gray-600 mb-2 inline-block"><i
+                    class="bi bi-arrow-left mr-1"></i> Back to Probation</a>
+            <h3 class="text-2xl font-bold text-gray-900">{{ cycle.cycle_type }} Probation — {{ employee.full_name or
+                employee.username if employee else 'Employee' }}</h3>
+            <p class="text-gray-500 text-sm mt-1">Supervisor: {{ supervisor.full_name or supervisor.username if
+                supervisor else 'N/A' }} &bull; {{ cycle.start_date }} → {{ cycle.end_date }}</p>
+        </div>
+        <span
+            class="px-4 py-1.5 rounded-full text-xs font-bold uppercase
+            {% if cycle.status == 'Active' %}bg-green-100 text-green-700{% elif cycle.status == 'Completed' %}bg-blue-100 text-blue-700{% elif cycle.status == 'Extended' %}bg-amber-100 text-amber-700{% else %}bg-red-100 text-red-700{% endif %}">{{
+            cycle.status }}</span>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-bold text-gray-700">Workflow Progress</h4>
+            <span class="text-sm font-bold" style="color: {{ accent_color }};">{{ progress }}%</span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-3 mb-4">
+            <div class="h-3 rounded-full transition-all duration-700"
+                style="width: {{ progress }}%; background: {{ accent_color }};"></div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            {% for stage in stages.ALL_STAGES %}
+            {% set idx = loop.index0 %}
+            <div class="flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold
+                {% if idx < current_stage_idx %}bg-green-100 text-green-700
+                {% elif idx == current_stage_idx %}text-white{% else %}bg-gray-50 text-gray-400{% endif %}" {% if
+                idx==current_stage_idx %}style="background: {{ accent_color }};" {% endif %}>
+                <i class="bi bi-{{ stages.ICONS.get(stage, 'circle') }} mr-1"></i>
+                {{ stages.LABELS.get(stage, stage).split('&')[0]|truncate(20) }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- KPI Section -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-lg font-bold text-gray-900"><i class="bi bi-list-check mr-2"
+                            style="color: {{ accent_color }};"></i>Performance KPIs</h4>
+                    {% if cycle.current_stage in ['ASSIGNED', 'KPI_SETUP'] and current_user.id == cycle.supervisor_id %}
+                    <button onclick="document.getElementById('kpiModal').classList.remove('hidden')"
+                        class="px-3 py-1.5 text-xs font-bold text-white rounded-lg"
+                        style="background: {{ accent_color }};">+ Add KPI</button>
+                    {% endif %}
+                </div>
+
+                {% if kpis %}
+                <div class="space-y-3">
+                    {% for kpi in kpis %}
+                    <div class="p-4 bg-gray-50 rounded-xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-bold text-sm text-gray-900">{{ kpi.kpi_name }}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">{{ kpi.category or 'General' }} &bull; Target:
+                                    {{ kpi.target_value or 'N/A' }}</p>
+                            </div>
+                            <span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded">Weight: {{
+                                kpi.weight }}%</span>
+                        </div>
+                        {% if kpi.description %}
+                        <p class="text-xs text-gray-400 mt-2">{{ kpi.description }}</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if cycle.current_stage == 'KPI_SETUP' and current_user.id == cycle.supervisor_id %}
+                <form method="POST" action="{{ url_for('hr1.probation_finalize_kpis', cycle_id=cycle.id) }}"
+                    class="mt-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="w-full py-3 text-white font-bold rounded-xl text-sm"
+                        style="background: {{ accent_color }};">Finalize KPIs & Send for Acknowledgement</button>
+                </form>
+                {% endif %}
+                {% else %}
+                <p class="text-gray-400 text-sm text-center py-6">No KPIs defined yet.</p>
+                {% endif %}
+            </div>
+
+            <!-- KPI Acknowledgement -->
+            {% if acknowledgement and cycle.current_stage == 'KPI_ACKNOWLEDGED' and current_user.id == cycle.employee_id
+            %}
+            <div class="bg-amber-50 rounded-2xl border border-amber-200 p-6">
+                <h4 class="text-lg font-bold text-amber-800 mb-3"><i class="bi bi-hand-thumbs-up mr-2"></i>KPI
+                    Acknowledgement Required</h4>
+                <p class="text-sm text-amber-700 mb-4">Please review the KPIs above and confirm by typing your full name
+                    as digital signature.</p>
+                <form method="POST" action="{{ url_for('hr1.probation_acknowledge_kpis', cycle_id=cycle.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" name="digital_signature" placeholder="Type your full name" required
+                        class="w-full px-4 py-3 border border-amber-200 rounded-xl text-sm mb-3" />
+                    <button type="submit"
+                        class="w-full py-3 bg-amber-600 text-white font-bold rounded-xl text-sm hover:bg-amber-700">I
+                        Acknowledge These KPIs</button>
+                </form>
+            </div>
+            {% elif acknowledgement and acknowledgement.status == 'Acknowledged' %}
+            <div class="bg-green-50 rounded-2xl border border-green-200 p-4 flex items-center">
+                <i class="bi bi-check-circle-fill text-green-600 text-xl mr-3"></i>
+                <div>
+                    <p class="font-bold text-green-800 text-sm">KPIs Acknowledged</p>
+                    <p class="text-xs text-green-600">Signed by: {{ acknowledgement.digital_signature }} on {{
+                        acknowledgement.acknowledged_at[:10] if acknowledgement.acknowledged_at else 'N/A' }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Mid-Probation Check-in -->
+            {% if cycle.current_stage == 'MID_CHECK_IN' and current_user.id == cycle.supervisor_id and not checkin %}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h4 class="text-lg font-bold text-gray-900 mb-4"><i class="bi bi-clipboard2-check mr-2"
+                        style="color: {{ accent_color }};"></i>Mid-Probation Check-in Form</h4>
+                <form method="POST" action="{{ url_for('hr1.probation_submit_checkin', cycle_id=cycle.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-1">Gap Analysis</label>
+                            <textarea name="gap_analysis" rows="3" required
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"
+                                placeholder="Identify gaps between expected and actual performance..."></textarea>
+                        </div>
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-1">Improvement Plan</label>
+                            <textarea name="improvement_plan" rows="3" required
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"
+                                placeholder="Steps to address the gaps..."></textarea>
+                        </div>
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-1">Overall Rating</label>
+                            <select name="overall_rating" required
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm">
+                                <option value="On Track">On Track</option>
+                                <option value="Needs Improvement">Needs Improvement</option>
+                                <option value="At Risk">At Risk</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full mt-4 py-3 text-white font-bold rounded-xl text-sm"
+                        style="background: {{ accent_color }};">Submit Check-in</button>
+                </form>
+            </div>
+            {% elif checkin %}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h4 class="text-lg font-bold text-gray-900 mb-4"><i
+                        class="bi bi-clipboard2-check mr-2 text-green-600"></i>Mid-Probation Check-in (Completed)</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Rating</p>
+                        <p class="font-bold text-sm text-gray-900">{{ checkin.overall_rating }}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4 md:col-span-2">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Gap Analysis</p>
+                        <p class="text-sm text-gray-700">{{ checkin.gap_analysis }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Final Evaluation -->
+            {% if cycle.current_stage == 'FINAL_EVALUATION' and current_user.id == cycle.supervisor_id and not
+            evaluation %}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h4 class="text-lg font-bold text-gray-900 mb-4"><i class="bi bi-graph-up-arrow mr-2"
+                        style="color: {{ accent_color }};"></i>Final Evaluation Form</h4>
+                <form method="POST" action="{{ url_for('hr1.probation_submit_evaluation', cycle_id=cycle.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="space-y-4">
+                        {% for kpi in kpis %}
+                        <div class="bg-gray-50 rounded-xl p-4">
+                            <label class="text-sm font-bold text-gray-700 block mb-1">{{ kpi.kpi_name }} ({{ kpi.weight
+                                }}%)</label>
+                            <input type="number" name="kpi_score_{{ kpi.id }}" min="0" max="5" step="0.1" required
+                                class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm"
+                                placeholder="Score (0-5)">
+                        </div>
+                        {% endfor %}
+                        <div class="grid grid-cols-3 gap-4">
+                            <div><label class="text-xs font-bold text-gray-700 block mb-1">Competency</label><input
+                                    type="number" name="competency_rating" min="0" max="5" step="0.1" required
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"></div>
+                            <div><label class="text-xs font-bold text-gray-700 block mb-1">Conduct</label><input
+                                    type="number" name="conduct_rating" min="0" max="5" step="0.1" required
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"></div>
+                            <div><label class="text-xs font-bold text-gray-700 block mb-1">Attendance</label><input
+                                    type="number" name="attendance_rating" min="0" max="5" step="0.1" required
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"></div>
+                        </div>
+                        <div><label class="text-sm font-bold text-gray-700 block mb-1">Overall Score</label><input
+                                type="number" name="overall_score" min="0" max="5" step="0.1" required
+                                class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm"></div>
+                        <div><label class="text-sm font-bold text-gray-700 block mb-1">Comments</label><textarea
+                                name="comments" rows="3"
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"></textarea></div>
+                    </div>
+                    <button type="submit" class="w-full mt-4 py-3 text-white font-bold rounded-xl text-sm"
+                        style="background: {{ accent_color }};">Submit Evaluation</button>
+                </form>
+            </div>
+            {% elif evaluation %}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h4 class="text-lg font-bold text-gray-900 mb-4"><i
+                        class="bi bi-graph-up-arrow mr-2 text-green-600"></i>Final Evaluation (Completed)</h4>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="bg-gray-50 rounded-xl p-3 text-center">
+                        <p class="text-[10px] font-bold text-gray-400 mb-1">COMPETENCY</p>
+                        <p class="text-xl font-bold" style="color: {{ accent_color }};">{{ evaluation.competency_rating
+                            }}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-3 text-center">
+                        <p class="text-[10px] font-bold text-gray-400 mb-1">CONDUCT</p>
+                        <p class="text-xl font-bold" style="color: {{ accent_color }};">{{ evaluation.conduct_rating }}
+                        </p>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-3 text-center">
+                        <p class="text-[10px] font-bold text-gray-400 mb-1">ATTENDANCE</p>
+                        <p class="text-xl font-bold" style="color: {{ accent_color }};">{{ evaluation.attendance_rating
+                            }}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-3 text-center">
+                        <p class="text-[10px] font-bold text-gray-400 mb-1">OVERALL</p>
+                        <p class="text-xl font-bold text-green-600">{{ evaluation.overall_score }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Recommendation -->
+            {% if cycle.current_stage == 'RECOMMENDATION' and current_user.id == cycle.supervisor_id and not
+            recommendation %}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h4 class="text-lg font-bold text-gray-900 mb-4"><i class="bi bi-send-check mr-2"
+                        style="color: {{ accent_color }};"></i>Supervisor Recommendation</h4>
+                <form method="POST" action="{{ url_for('hr1.probation_submit_recommendation', cycle_id=cycle.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-1">Recommendation</label>
+                            <select name="recommendation" required
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm">
+                                <option value="Regularize">Regularize (Confirm Employment)</option>
+                                <option value="Extend">Extend Probation</option>
+                                <option value="Reassign">Reassign to Different Role</option>
+                                <option value="Terminate">Terminate Employment</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-1">Justification</label>
+                            <textarea name="justification" rows="4" required
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"
+                                placeholder="Provide detailed justification for your recommendation..."></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full mt-4 py-3 text-white font-bold rounded-xl text-sm"
+                        style="background: {{ accent_color }};">Submit Recommendation to HR</button>
+                </form>
+            </div>
+            {% elif recommendation %}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h4 class="text-lg font-bold text-gray-900 mb-4"><i
+                        class="bi bi-send-check mr-2 text-green-600"></i>Supervisor Recommendation</h4>
+                <div class="bg-gray-50 rounded-xl p-4">
+                    <p class="text-sm font-bold text-gray-900 mb-1">{{ recommendation.recommendation }}</p>
+                    <p class="text-sm text-gray-600">{{ recommendation.justification }}</p>
+                    <p class="text-[10px] text-gray-400 mt-2">Submitted: {{ recommendation.submitted_at[:10] if
+                        recommendation.submitted_at else 'N/A' }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- HR Decision -->
+            {% if cycle.current_stage == 'HR_DECISION' and (current_user.is_admin() or current_user.is_super_admin())
+            and not decision %}
+            <div class="bg-white rounded-2xl shadow-sm border-2 border-blue-200 p-6">
+                <h4 class="text-lg font-bold text-gray-900 mb-4"><i class="bi bi-shield-check mr-2"
+                        style="color: {{ accent_color }};"></i>HR Final Decision</h4>
+                <form method="POST" action="{{ url_for('hr1.probation_submit_decision', cycle_id=cycle.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-1">Decision</label>
+                            <select name="decision" required
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm">
+                                <option value="Regularize">Regularize (Confirm Employment)</option>
+                                <option value="Extend">Extend Probation</option>
+                                <option value="Reassign">Reassign to Different Role</option>
+                                <option value="Terminate">Terminate Employment</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-1">Effective Date</label>
+                            <input type="date" name="effective_date" required
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm">
+                        </div>
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-1">Notes</label>
+                            <textarea name="notes" rows="3"
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"></textarea>
+                        </div>
+                    </div>
+                    <button type="submit"
+                        class="w-full mt-4 py-3 bg-blue-600 text-white font-bold rounded-xl text-sm hover:bg-blue-700">Submit
+                        Final Decision</button>
+                </form>
+            </div>
+            {% elif decision %}
+            <div class="bg-blue-50 rounded-2xl border border-blue-200 p-6">
+                <h4 class="text-lg font-bold text-blue-900 mb-3"><i class="bi bi-shield-check mr-2"></i>HR Final
+                    Decision</h4>
+                <div class="bg-white rounded-xl p-4">
+                    <p class="text-lg font-bold text-gray-900 mb-1">{{ decision.decision }}</p>
+                    <p class="text-sm text-gray-600">{{ decision.notes or 'No additional notes.' }}</p>
+                    <p class="text-xs text-gray-400 mt-2">Effective: {{ decision.effective_date or 'N/A' }} — Decided:
+                        {{ decision.decided_at[:10] if decision.decided_at else 'N/A' }}</p>
+                    {% if decision.modified_from %}
+                    <p class="text-xs text-amber-600 mt-1"><i class="bi bi-exclamation-triangle mr-1"></i>Modified from
+                        supervisor recommendation: {{ decision.modified_from }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Stage Advance Buttons -->
+            {% if current_user.id == cycle.supervisor_id and cycle.status == 'Active' %}
+            {% if cycle.current_stage == 'MONITORING' %}
+            <form method="POST" action="{{ url_for('hr1.probation_advance_midcheck', cycle_id=cycle.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit"
+                    class="w-full py-3 bg-amber-500 text-white font-bold rounded-xl text-sm hover:bg-amber-600">Advance
+                    to Mid-Probation Check-in →</button>
+            </form>
+            {% elif cycle.current_stage == 'DOCUMENTATION' %}
+            <form method="POST" action="{{ url_for('hr1.probation_advance_eval', cycle_id=cycle.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit"
+                    class="w-full py-3 bg-amber-500 text-white font-bold rounded-xl text-sm hover:bg-amber-600">Advance
+                    to Final Evaluation →</button>
+            </form>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- Right Sidebar: Notes -->
+        <div class="space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-lg font-bold text-gray-900"><i class="bi bi-journal-text mr-2"
+                            style="color: {{ accent_color }};"></i>Notes</h4>
+                    {% if current_user.id == cycle.supervisor_id %}
+                    <button onclick="document.getElementById('noteModal').classList.remove('hidden')"
+                        class="px-3 py-1 text-[10px] font-bold text-white rounded-lg"
+                        style="background: {{ accent_color }};">+ Note</button>
+                    {% endif %}
+                </div>
+                <div class="space-y-3 max-h-[500px] overflow-y-auto">
+                    {% for note in notes %}
+                    <div class="p-3 rounded-xl border border-gray-100">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="px-2 py-0.5 text-[10px] font-bold rounded
+                                {% if note.note_type == 'Commendation' %}bg-green-100 text-green-700
+                                {% elif note.note_type == 'Incident' %}bg-red-100 text-red-700
+                                {% elif note.note_type == 'Disciplinary' %}bg-red-100 text-red-700
+                                {% else %}bg-blue-100 text-blue-700{% endif %}">{{ note.note_type }}</span>
+                            <span class="text-[10px] text-gray-400">{{ note.created_at[:10] if note.created_at else ''
+                                }}</span>
+                        </div>
+                        <p class="text-sm text-gray-700 mt-2">{{ note.content }}</p>
+                        <p class="text-[10px] text-gray-400 mt-1">by {{ note.users.username if note.users else 'Unknown'
+                            }}</p>
+                    </div>
+                    {% else %}
+                    <p class="text-gray-400 text-sm text-center py-4">No notes yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add KPI Modal -->
+<div id="kpiModal" class="hidden fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg">
+        <form method="POST" action="{{ url_for('hr1.probation_add_kpi', cycle_id=cycle.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h4 class="text-xl font-bold text-gray-900">Add KPI</h4>
+                    <button type="button" onclick="document.getElementById('kpiModal').classList.add('hidden')"
+                        class="text-gray-400 hover:text-gray-600"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="space-y-4">
+                    <div><label class="text-sm font-bold text-gray-700 block mb-1">KPI Name</label><input type="text"
+                            name="kpi_name" required class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm">
+                    </div>
+                    <div><label class="text-sm font-bold text-gray-700 block mb-1">Category</label>
+                        <select name="category" class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm">
+                            <option value="Job-Specific">Job-Specific</option>
+                            <option value="Competency">Competency</option>
+                            <option value="Attendance">Attendance</option>
+                            <option value="Patient Safety">Patient Safety</option>
+                        </select>
+                    </div>
+                    <div><label class="text-sm font-bold text-gray-700 block mb-1">Description</label><textarea
+                            name="description" rows="2"
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"></textarea></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-sm font-bold text-gray-700 block mb-1">Target Value</label><input
+                                type="text" name="target_value"
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"
+                                placeholder="e.g. 95%"></div>
+                        <div><label class="text-sm font-bold text-gray-700 block mb-1">Weight (%)</label><input
+                                type="number" name="weight" min="0" max="100" value="0"
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="px-8 py-4 bg-gray-50 rounded-b-3xl flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('kpiModal').classList.add('hidden')"
+                    class="px-5 py-2.5 text-gray-600 font-bold rounded-xl hover:bg-gray-100 text-sm">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 text-white font-bold rounded-xl shadow-lg text-sm"
+                    style="background: {{ accent_color }};">Add KPI</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Note Modal -->
+<div id="noteModal" class="hidden fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg">
+        <form method="POST" action="{{ url_for('hr1.probation_add_note', cycle_id=cycle.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h4 class="text-xl font-bold text-gray-900">Add Performance Note</h4>
+                    <button type="button" onclick="document.getElementById('noteModal').classList.add('hidden')"
+                        class="text-gray-400 hover:text-gray-600"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="space-y-4">
+                    <div><label class="text-sm font-bold text-gray-700 block mb-1">Note Type</label>
+                        <select name="note_type" required
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm">
+                            <option value="Coaching">Coaching</option>
+                            <option value="Commendation">Commendation</option>
+                            <option value="Incident">Incident</option>
+                            <option value="Disciplinary">Disciplinary</option>
+                        </select>
+                    </div>
+                    <div><label class="text-sm font-bold text-gray-700 block mb-1">Content</label><textarea
+                            name="content" rows="4" required
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"></textarea></div>
+                    <div class="flex items-center"><input type="checkbox" name="is_published" id="is_published"
+                            class="mr-2"><label for="is_published" class="text-sm text-gray-700">Visible to
+                            employee</label></div>
+                </div>
+            </div>
+            <div class="px-8 py-4 bg-gray-50 rounded-b-3xl flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('noteModal').classList.add('hidden')"
+                    class="px-5 py-2.5 text-gray-600 font-bold rounded-xl hover:bg-gray-100 text-sm">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 text-white font-bold rounded-xl shadow-lg text-sm"
+                    style="background: {{ accent_color }};">Add Note</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

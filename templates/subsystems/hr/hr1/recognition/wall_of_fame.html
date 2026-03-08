@@ -1,0 +1,110 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Wall of Fame - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Wall of Fame{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="rounded-3xl shadow-xl p-8 text-white relative overflow-hidden"
+        style="background: linear-gradient(135deg, #f59e0b, #d97706, #b45309);">
+        <div
+            class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl">
+        </div>
+        <div class="relative z-10">
+            <h3 class="text-2xl md:text-3xl font-extrabold mb-2"><i class="bi bi-trophy mr-2"></i>Wall of Fame</h3>
+            <p class="text-white/70 text-sm">Celebrating our outstanding employees</p>
+            <div class="flex flex-wrap gap-3 mt-5">
+                <a href="{{ url_for('hr1.recognition_nominate') }}"
+                    class="px-5 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors text-sm text-amber-700">
+                    <i class="bi bi-hand-thumbs-up mr-1"></i> Nominate Someone
+                </a>
+                {% if current_user.is_admin() or current_user.is_super_admin() %}
+                <a href="{{ url_for('hr1.recognition_inbox') }}"
+                    class="px-5 py-2.5 bg-white/15 text-white font-bold rounded-xl hover:bg-white/25 transition-colors backdrop-blur-sm text-sm">
+                    <i class="bi bi-inbox mr-1"></i> Review Inbox
+                </a>
+                <a href="{{ url_for('hr1.recognition_types_admin') }}"
+                    class="px-5 py-2.5 bg-white/15 text-white font-bold rounded-xl hover:bg-white/25 transition-colors backdrop-blur-sm text-sm">
+                    <i class="bi bi-gear mr-1"></i> Manage Types
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Approved Recognitions Grid -->
+    <div>
+        <h4 class="text-xl font-bold text-gray-900 mb-6">Recent Recognitions</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for rec in approved_recognitions %}
+            <div
+                class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 group relative overflow-hidden">
+                <div
+                    class="absolute top-0 right-0 w-24 h-24 bg-amber-50 rounded-full transform translate-x-8 -translate-y-8 group-hover:scale-150 transition-transform duration-500">
+                </div>
+                <div class="relative z-10">
+                    <div class="flex items-center mb-4">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white shadow-lg mr-4">
+                            <i
+                                class="bi bi-{{ rec.recognition_types.icon if rec.recognition_types else 'award' }} text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="font-extrabold text-gray-900">{{ rec.nominee.full_name or rec.nominee.username if
+                                rec.nominee else 'Employee' }}</p>
+                            <p class="text-xs text-gray-400">{{ rec.nominee.department if rec.nominee else '' }}</p>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <span class="px-3 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-full">{{
+                            rec.recognition_types.name if rec.recognition_types else 'Recognition' }}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 leading-relaxed line-clamp-3">{{ rec.justification }}</p>
+                    <div class="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
+                        <p class="text-[10px] text-gray-400">Nominated by {{ rec.nominator.full_name or
+                            rec.nominator.username if rec.nominator else 'Anonymous' }}</p>
+                        <p class="text-[10px] text-gray-400">{{ rec.reviewed_at[:10] if rec.reviewed_at else '' }}</p>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-span-full bg-white rounded-2xl shadow-sm border border-gray-100 p-16 text-center">
+                <i class="bi bi-trophy text-5xl text-gray-200"></i>
+                <p class="text-gray-400 font-medium mt-4">No approved recognitions yet. Be the first to nominate!</p>
+                <a href="{{ url_for('hr1.recognition_nominate') }}"
+                    class="inline-block mt-4 px-5 py-2.5 text-white font-bold rounded-xl text-sm"
+                    style="background: {{ accent_color }};">Nominate Now</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- My Nominations -->
+    {% if my_nominations %}
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+        <h4 class="text-xl font-bold text-gray-900 mb-6">My Nominations</h4>
+        <div class="space-y-3">
+            {% for nom in my_nominations %}
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                <div class="flex items-center">
+                    <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 mr-3">
+                        <i class="bi bi-{{ nom.recognition_types.icon if nom.recognition_types else 'award' }}"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm text-gray-900">{{ nom.recognition_types.name if
+                            nom.recognition_types else 'Recognition' }}</p>
+                        <p class="text-xs text-gray-400">{{ nom.created_at[:10] if nom.created_at else '' }}</p>
+                    </div>
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase
+                    {% if nom.status == 'Approved' %}bg-green-100 text-green-700
+                    {% elif nom.status == 'Pending' %}bg-amber-100 text-amber-700
+                    {% elif nom.status == 'Rejected' %}bg-red-100 text-red-700
+                    {% else %}bg-gray-100 text-gray-600{% endif %}">{{ nom.status }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,192 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Nominate - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Submit Nomination{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Hero Banner -->
+    <div class="rounded-3xl shadow-xl p-8 text-white relative overflow-hidden"
+        style="background: linear-gradient(135deg, {{ accent_color or '#3B82F6' }}, #f59e0b, #d97706);">
+        <div
+            class="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full transform translate-x-1/2 -translate-y-1/2 blur-3xl">
+        </div>
+        <div
+            class="absolute bottom-0 left-0 w-48 h-48 bg-black opacity-10 rounded-full transform -translate-x-1/2 translate-y-1/2 blur-2xl">
+        </div>
+        <div class="relative z-10">
+            <a href="{{ url_for('hr1.recognition_wall') }}"
+                class="text-white/60 hover:text-white text-sm font-bold mb-3 inline-block transition-colors"><i
+                    class="bi bi-arrow-left mr-1"></i> Back to Wall of Fame</a>
+            <h3 class="text-2xl md:text-3xl font-extrabold mb-2"><i class="bi bi-hand-thumbs-up mr-2"></i>Nominate an
+                Employee</h3>
+            <p class="text-white/70 text-sm md:text-base max-w-xl">Recognize outstanding work by submitting a
+                nomination. Your nomination will be reviewed by a supervisor before being published to the Wall of Fame.
+            </p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Main Form Column -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                <div class="flex items-center mb-6">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white mr-3 shadow-lg"
+                        style="background: {{ accent_color }};">
+                        <i class="bi bi-pencil-square"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900">Nomination Details</h4>
+                        <p class="text-xs text-gray-400">All fields marked with * are required</p>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('hr1.recognition_nominate') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="space-y-6">
+                        <!-- Nominee Selection -->
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-2">
+                                <i class="bi bi-person mr-1" style="color: {{ accent_color }};"></i>
+                                Nominee <span class="text-red-500">*</span>
+                            </label>
+                            <select name="nominee_id" required
+                                class="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:border-transparent transition-all"
+                                id="nomineeSelect">
+                                <option value="">Select an employee...</option>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}">{{ emp.full_name or emp.username }}{% if emp.department %}
+                                    — {{ emp.department }}{% endif %}</option>
+                                {% endfor %}
+                            </select>
+                            <p class="text-xs text-amber-600 mt-1.5 flex items-center"><i
+                                    class="bi bi-info-circle mr-1"></i> You cannot nominate yourself.</p>
+                        </div>
+
+                        <!-- Recognition Type -->
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-2">
+                                <i class="bi bi-award mr-1" style="color: {{ accent_color }};"></i>
+                                Recognition Type <span class="text-red-500">*</span>
+                            </label>
+                            <select name="recognition_type_id" required
+                                class="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:border-transparent transition-all">
+                                <option value="">Select type...</option>
+                                {% for rt in recognition_types %}
+                                <option value="{{ rt.id }}">{{ rt.name }}{% if rt.description %} — {{ rt.description
+                                    }}{% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Justification -->
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-2">
+                                <i class="bi bi-chat-left-text mr-1" style="color: {{ accent_color }};"></i>
+                                Justification <span class="text-red-500">*</span>
+                            </label>
+                            <textarea name="justification" rows="5" required
+                                class="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:border-transparent transition-all resize-y"
+                                placeholder="Explain why this person deserves recognition. Include specific examples of their outstanding work, impact on the team, or measurable achievements..."></textarea>
+                            <p class="text-xs text-gray-400 mt-1">Minimum 20 characters recommended for a strong
+                                nomination.</p>
+                        </div>
+
+                        <!-- Supporting Details -->
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-2">
+                                <i class="bi bi-paperclip mr-1" style="color: {{ accent_color }};"></i>
+                                Supporting Details <span class="text-gray-400 font-normal">(optional)</span>
+                            </label>
+                            <textarea name="supporting_details" rows="3"
+                                class="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:border-transparent transition-all resize-y"
+                                placeholder="Additional context, specific dates, external feedback, or supporting evidence..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
+                        <button type="submit"
+                            class="px-8 py-3.5 text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition-all text-sm flex items-center justify-center"
+                            style="background: {{ accent_color }};">
+                            <i class="bi bi-send-fill mr-2"></i> Submit Nomination
+                        </button>
+                        <a href="{{ url_for('hr1.recognition_wall') }}"
+                            class="px-6 py-3.5 text-gray-600 font-bold rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors text-sm text-center">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Sidebar: Tips & Recognition Types -->
+        <div class="space-y-6">
+            <!-- How It Works -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h5 class="font-bold text-gray-900 mb-4 flex items-center"><i
+                        class="bi bi-lightbulb mr-2 text-amber-500"></i>How It Works</h5>
+                <div class="space-y-4">
+                    <div class="flex items-start">
+                        <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold mr-3 shrink-0 mt-0.5"
+                            style="background: {{ accent_color }};">1</div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-800">Submit</p>
+                            <p class="text-xs text-gray-400">Fill out the form and submit your nomination.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div
+                            class="w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center text-white text-xs font-bold mr-3 shrink-0 mt-0.5">
+                            2</div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-800">Review</p>
+                            <p class="text-xs text-gray-400">A supervisor reviews and approves or rejects it.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div
+                            class="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold mr-3 shrink-0 mt-0.5">
+                            3</div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-800">Celebrate</p>
+                            <p class="text-xs text-gray-400">Approved nominations appear on the Wall of Fame!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Available Recognition Types -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h5 class="font-bold text-gray-900 mb-4 flex items-center"><i class="bi bi-collection mr-2"
+                        style="color: {{ accent_color }};"></i>Recognition Types</h5>
+                <div class="space-y-3">
+                    {% for rt in recognition_types %}
+                    <div
+                        class="flex items-center p-3 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-100 hover:shadow-sm transition-shadow">
+                        <div
+                            class="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 mr-3 shrink-0">
+                            <i class="bi bi-{{ rt.icon or 'award' }}"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="font-bold text-sm text-gray-900 truncate">{{ rt.name }}</p>
+                            {% if rt.description %}
+                            <p class="text-[10px] text-gray-400 truncate">{{ rt.description }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-sm text-gray-400 text-center py-4">No types available yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Important Note -->
+            <div class="bg-blue-50 rounded-2xl border border-blue-100 p-5">
+                <h5 class="font-bold text-blue-800 text-sm flex items-center mb-2"><i
+                        class="bi bi-clock-history mr-2"></i>Auto-Expiry</h5>
+                <p class="text-xs text-blue-600 leading-relaxed">Nominations that are not reviewed within <strong>30
+                        days</strong> will be automatically rejected. Make sure to follow up with your supervisor if
+                    needed.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

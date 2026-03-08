@@ -1,0 +1,111 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Recognition Inbox - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Recognition Approval Inbox{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex items-center justify-between">
+        <div>
+            <a href="{{ url_for('hr1.recognition_wall') }}"
+                class="text-sm font-bold text-gray-400 hover:text-gray-600 mb-2 inline-block"><i
+                    class="bi bi-arrow-left mr-1"></i> Back to Wall of Fame</a>
+            <h3 class="text-2xl font-bold text-gray-900">Recognition Inbox</h3>
+            <p class="text-gray-500 text-sm mt-1">Approve or reject nomination requests</p>
+        </div>
+        <span class="px-4 py-2 bg-amber-100 text-amber-700 font-bold rounded-xl text-sm">{{ pending_nominations|length
+            }} Pending</span>
+    </div>
+
+    <!-- Pending Nominations -->
+    <div>
+        <h4 class="text-lg font-bold text-gray-900 mb-4">Pending Review</h4>
+        <div class="space-y-4">
+            {% for nom in pending_nominations %}
+            <div class="bg-white rounded-2xl shadow-sm border border-amber-100 p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 mr-4">
+                            <i
+                                class="bi bi-{{ nom.recognition_types.icon if nom.recognition_types else 'award' }} text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-900">{{ nom.nominee.full_name or nom.nominee.username if
+                                nom.nominee else 'Employee' }}</p>
+                            <p class="text-xs text-gray-400">Nominated by {{ nom.nominator.full_name or
+                                nom.nominator.username if nom.nominator else 'Unknown' }} &bull; {{ nom.created_at[:10]
+                                if nom.created_at else '' }}</p>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-full">{{
+                        nom.recognition_types.name if nom.recognition_types else 'Recognition' }}</span>
+                </div>
+                <p class="text-sm text-gray-600 mb-2"><strong>Justification:</strong> {{ nom.justification }}</p>
+                {% if nom.supporting_details %}
+                <p class="text-sm text-gray-500 mb-4"><strong>Supporting Details:</strong> {{ nom.supporting_details }}
+                </p>
+                {% endif %}
+                <div class="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-50">
+                    <form method="POST" action="{{ url_for('hr1.recognition_approve', nom_id=nom.id) }}" class="inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="review_notes" value="">
+                        <button type="submit"
+                            class="px-5 py-2 bg-green-500 text-white font-bold rounded-xl text-sm hover:bg-green-600 transition-colors"><i
+                                class="bi bi-check-lg mr-1"></i> Approve</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('hr1.recognition_reject', nom_id=nom.id) }}" class="inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="review_notes" value="">
+                        <button type="submit"
+                            class="px-5 py-2 bg-red-500 text-white font-bold rounded-xl text-sm hover:bg-red-600 transition-colors"><i
+                                class="bi bi-x-lg mr-1"></i> Reject</button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+                <i class="bi bi-inbox text-5xl text-gray-200"></i>
+                <p class="text-gray-400 font-medium mt-4">No pending nominations.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Reviewed Nominations -->
+    {% if reviewed_nominations %}
+    <div>
+        <h4 class="text-lg font-bold text-gray-900 mb-4">Previously Reviewed</h4>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Nominee</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for nom in reviewed_nominations %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-3 text-sm font-bold text-gray-900">{{ nom.nominee.full_name or
+                            nom.nominee.username if nom.nominee else 'N/A' }}</td>
+                        <td class="px-6 py-3 text-sm text-gray-600">{{ nom.recognition_types.name if
+                            nom.recognition_types else 'N/A' }}</td>
+                        <td class="px-6 py-3">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase
+                                {% if nom.status == 'Approved' %}bg-green-100 text-green-700
+                                {% elif nom.status == 'Rejected' %}bg-red-100 text-red-700
+                                {% else %}bg-gray-100 text-gray-600{% endif %}">{{ nom.status }}</span>
+                        </td>
+                        <td class="px-6 py-3 text-xs text-gray-400">{{ nom.reviewed_at[:10] if nom.reviewed_at else
+                            'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
