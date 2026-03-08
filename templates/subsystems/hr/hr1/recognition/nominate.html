@@ -54,8 +54,8 @@
                                 id="nomineeSelect">
                                 <option value="">Select an employee...</option>
                                 {% for emp in employees %}
-                                <option value="{{ emp.id }}">{{ emp.full_name or emp.username }}{% if emp.department %}
-                                    — {{ emp.department }}{% endif %}</option>
+                                <option value="{{ emp.id }}">{{ emp.full_name or emp.username }} — {{ emp.role }}{% if
+                                    emp.subsystem %} ({{ emp.subsystem | upper }}){% endif %}</option>
                                 {% endfor %}
                             </select>
                             <p class="text-xs text-amber-600 mt-1.5 flex items-center"><i

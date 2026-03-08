@@ -1306,8 +1306,8 @@ def recognition_nominate():
         except Exception as e:
             flash(f'Error: {str(e)}', 'danger')
 
-    # GET: fetch employees and recognition types
-    employees = client.table('users').select('id, username, full_name, department').eq('status', 'Active').neq('id', current_user.id).execute()
+    # GET: fetch all staff/manager employees across all subsystems (exclude admins, patients, superadmins)
+    employees = client.table('users').select('id, username, full_name, department, role, subsystem').eq('status', 'Active').neq('id', current_user.id).in_('role', ['Staff', 'Manager']).order('full_name').execute()
     types = client.table('recognition_types').select('*').eq('is_active', True).execute()
 
     return render_template('subsystems/hr/hr1/recognition/nominate.html',
