@@ -490,9 +490,10 @@ def schedule_interview():
         except Exception as e:
             flash(f'Error scheduling interview: {str(e)}', 'danger')
             
-    # GET: fetch applicants and eligible interviewers (role-filtered)
-    applicants = client.table('applicants').select('*').neq('status', 'Handoff').execute().data
-    interviewers = client.table('users').select('id, username, role').eq('department', 'HR').neq('role', 'Applicant').execute().data
+    # GET: fetch only schedulable applicants (Screening or Interview stage)
+    applicants = client.table('applicants').select('*').in_('status', ['Screening', 'Interview']).order('first_name').execute().data
+    # Interviewers: only active HR1 users with roles capable of conducting interviews (no Applicants)
+    interviewers = client.table('users').select('id, username, role').eq('subsystem', 'hr1').eq('status', 'Active').in_('role', ['Staff', 'HR_Staff', 'Interviewer', 'Manager', 'Admin', 'Administrator', 'SuperAdmin']).order('username').execute().data
     
     selected_applicant_id = request.args.get('applicant_id')
     
