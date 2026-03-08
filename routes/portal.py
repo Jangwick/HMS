@@ -74,21 +74,18 @@ def upload_avatar():
             file_path = f"avatars/{current_user.id}_{int(os.path.getmtime(os.path.dirname(__file__)) or 0)}{ext}"
             
             # Upload to Supabase Storage (bucket named 'profiles')
-            # Assuming 'profiles' bucket exists and is public or has appropriate policies
             try:
-                # Try to upload file
                 bucket_name = 'profiles'
-                
-                # Check if bucket exists, if not this might fail but we'll try to upload anyway
-                # Supabase Python client storage API: storage.from_('bucket').upload('path', file)
-                res = client.storage.from_(bucket_name).upload(
+                from utils.supabase_client import get_supabase_service_client
+                storage_client = get_supabase_service_client()
+                res = storage_client.storage.from_(bucket_name).upload(
                     path=file_path,
                     file=file_content,
                     file_options={"content-type": file.content_type, "x-upsert": "true"}
                 )
                 
                 # Get public URL
-                avatar_url = client.storage.from_(bucket_name).get_public_url(file_path)
+                avatar_url = storage_client.storage.from_(bucket_name).get_public_url(file_path)
                 
                 # Update user in database
                 current_user.update(avatar_url=avatar_url)
@@ -251,6 +248,8 @@ def careers():
 def apply():
     """Public job application form submission — data goes to HR1 applicants table."""
     from utils.supabase_client import get_supabase_client
+    import os
+    from datetime import datetime
     client = get_supabase_client()
 
     first_name = request.form.get('first_name', '').strip()
@@ -276,9 +275,53 @@ def apply():
     if vacancy_id:
         data['vacancy_id'] = int(vacancy_id)
 
-    # Store cover letter in documents JSONB
+    # Build documents list
+    documents = []
+
+    # Handle resume/CV file upload
+    resume_url = None
+    if 'resume' in request.files:
+        file = request.files['resume']
+        if file and file.filename:
+            ext = os.path.splitext(file.filename)[1].lower()
+            if ext in ['.pdf', '.doc', '.docx']:
+                try:
+                    file_content = file.read()
+                    # Max 5MB
+                    if len(file_content) <= 5 * 1024 * 1024:
+                        timestamp = int(datetime.now().timestamp())
+                        safe_name = f"{first_name}_{last_name}".replace(' ', '_').lower()
+                        file_path = f"{safe_name}_{timestamp}{ext}"
+                        bucket_name = 'resumes'
+
+                        # Use service client for storage operations (requires elevated privileges)
+                        from utils.supabase_client import get_supabase_service_client
+                        storage_client = get_supabase_service_client()
+                        storage_client.storage.from_(bucket_name).upload(
+                            path=file_path,
+                            file=file_content,
+                            file_options={"content-type": file.content_type, "x-upsert": "true"}
+                        )
+
+                        resume_url = storage_client.storage.from_(bucket_name).get_public_url(file_path)
+                        documents.append({
+                            'type': 'resume',
+                            'filename': file.filename,
+                            'url': resume_url
+                        })
+                    else:
+                        flash('Resume file is too large. Maximum size is 5MB.', 'warning')
+                except Exception as e:
+                    # Don't save a broken record — just warn the applicant and continue
+                    print(f"Resume upload error: {e}")
+                    flash('Your CV file could not be uploaded (storage error). Your application was still submitted — HR can request your CV directly.', 'warning')
+
+    # Add cover letter to documents
     if cover_letter:
-        data['documents'] = [{'type': 'cover_letter', 'content': cover_letter}]
+        documents.append({'type': 'cover_letter', 'content': cover_letter})
+
+    if documents:
+        data['documents'] = documents
 
     try:
         client.table('applicants').insert(data).execute()
@@ -286,10 +329,11 @@ def apply():
         # Notify HR1 admins of new online application
         try:
             from utils.hms_models import Notification
+            resume_note = " (with resume attached)" if resume_url else ""
             Notification.create(
                 subsystem='hr1',
                 title="New Online Job Application",
-                message=f"{first_name} {last_name} has submitted an online application via the HMS Careers portal.",
+                message=f"{first_name} {last_name} has submitted an online application via the HMS Careers portal{resume_note}.",
                 n_type="info",
                 sender_subsystem='portal',
                 target_url=url_for('hr1.list_applicants', _external=True)

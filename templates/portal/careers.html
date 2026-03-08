@@ -50,7 +50,7 @@
                 <span class="font-bold text-gray-900 tracking-tight">HMS CAREERS</span>
             </div>
             <div class="flex items-center space-x-4">
-                <a href="{{ url_for('portal.index') }}"
+                <a href="{{ url_for('patient.landing') }}"
                     class="text-[10px] font-black text-gray-500 hover:text-blue-600 uppercase tracking-widest transition-colors">
                     <i class="bi bi-arrow-left mr-1"></i> Back to HMS
                 </a>
@@ -230,7 +230,7 @@
                 </p>
             </div>
 
-            <form method="POST" action="{{ url_for('portal.apply') }}"
+            <form method="POST" action="{{ url_for('portal.apply') }}" enctype="multipart/form-data"
                 class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 md:p-10 space-y-6">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -281,6 +281,38 @@
                         </label>
                         <input type="tel" name="phone" placeholder="+63 912 345 6789"
                             class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                    </div>
+                </div>
+
+                <!-- Resume / CV Upload -->
+                <div>
+                    <label class="text-xs font-bold text-gray-700 mb-2 block">
+                        <i class="bi bi-file-earmark-pdf mr-1 text-gray-400"></i>
+                        Resume / CV
+                    </label>
+                    <div class="relative">
+                        <input type="file" name="resume" id="resumeInput" accept=".pdf,.doc,.docx"
+                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            onchange="updateFileName(this)">
+                        <div id="uploadZone"
+                            class="w-full px-6 py-8 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 hover:bg-blue-50/50 hover:border-blue-300 transition-all text-center cursor-pointer">
+                            <div id="uploadPlaceholder">
+                                <div
+                                    class="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center mx-auto mb-3">
+                                    <i class="bi bi-cloud-arrow-up text-2xl text-blue-500"></i>
+                                </div>
+                                <p class="text-sm font-bold text-gray-700 mb-1">Click to upload your Resume / CV</p>
+                                <p class="text-[11px] text-gray-400">PDF, DOC, or DOCX — Max 5MB</p>
+                            </div>
+                            <div id="uploadSuccess" class="hidden">
+                                <div
+                                    class="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center mx-auto mb-3">
+                                    <i class="bi bi-file-earmark-check text-2xl text-emerald-600"></i>
+                                </div>
+                                <p class="text-sm font-bold text-emerald-700 mb-1" id="fileName"></p>
+                                <p class="text-[11px] text-gray-400">Click to change file</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -339,4 +371,30 @@
         </div>
     </footer>
 </div>
+<script>
+    function updateFileName(input) {
+        const placeholder = document.getElementById('uploadPlaceholder');
+        const success = document.getElementById('uploadSuccess');
+        const fileNameEl = document.getElementById('fileName');
+
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const maxSize = 5 * 1024 * 1024; // 5MB
+
+            if (file.size > maxSize) {
+                alert('File size exceeds 5MB. Please choose a smaller file.');
+                input.value = '';
+                return;
+            }
+
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            fileNameEl.textContent = file.name + ' (' + sizeMB + ' MB)';
+            placeholder.classList.add('hidden');
+            success.classList.remove('hidden');
+        } else {
+            placeholder.classList.remove('hidden');
+            success.classList.add('hidden');
+        }
+    }
+</script>
 {% endblock %}

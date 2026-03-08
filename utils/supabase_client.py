@@ -16,13 +16,35 @@ load_dotenv()
 # Supabase configuration
 SUPABASE_URL: str = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY: str = os.environ.get("SUPABASE_KEY", "")
+SUPABASE_SERVICE_KEY: str = os.environ.get("SUPABASE_SERVICE_KEY", "")
 
 # Password expiry configuration
 PASSWORD_EXPIRY_DAYS = 90
 PASSWORD_WARNING_DAYS = 7
 
-# Singleton client instance
+# Singleton client instances
 _supabase_client: Client = None
+_supabase_service_client: Client = None
+
+
+def get_supabase_service_client() -> Client:
+    """
+    Get or create a Supabase client using the service_role key.
+    Use this for storage operations (upload/delete files) which require elevated privileges.
+    Falls back to the anon client if service key is not configured.
+    """
+    global _supabase_service_client
+
+    if _supabase_service_client is None:
+        key = SUPABASE_SERVICE_KEY or SUPABASE_KEY
+        if not SUPABASE_URL or not key:
+            raise ValueError(
+                "Supabase credentials not configured. "
+                "Please set SUPABASE_URL and SUPABASE_SERVICE_KEY in your .env file."
+            )
+        _supabase_service_client = create_client(SUPABASE_URL, key)
+
+    return _supabase_service_client
 
 
 def get_supabase_client() -> Client:

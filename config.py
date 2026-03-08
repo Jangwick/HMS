@@ -12,6 +12,7 @@ class Config:
     # Supabase Configuration
     SUPABASE_URL = os.environ.get('SUPABASE_URL')
     SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+    SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')  # service_role key for storage operations
 
     # Security
     BCRYPT_LOG_ROUNDS = 12

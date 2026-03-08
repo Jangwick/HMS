@@ -221,12 +221,69 @@
             <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8">
                 <h3 class="text-sm font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Files & Documents</h3>
                 <div class="space-y-3">
-                    <div
-                        class="p-4 border border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-center group hover:border-[#6366F1] transition-colors cursor-pointer">
-                        <i
-                            class="bi bi-cloud-arrow-up text-2xl text-gray-300 mb-2 group-hover:text-[#6366F1] transition-colors"></i>
-                        <p class="text-xs font-bold text-gray-500">Upload CV / Resume</p>
+                    {# Use namespace() to avoid Jinja2 for-loop scoping issue #}
+                    {% set ns = namespace(resume=None, cover_letter=None) %}
+                    {% if applicant.documents %}
+                        {% for doc in applicant.documents %}
+                            {% if doc.type == 'resume' %}
+                                {% set ns.resume = doc %}
+                            {% elif doc.type == 'cover_letter' %}
+                                {% set ns.cover_letter = doc %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+
+                    {% if ns.resume %}
+                    <div class="p-5 bg-gray-50 border border-gray-100 rounded-2xl flex items-center group hover:bg-white hover:shadow-md transition-all">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center mr-4 shadow-sm"
+                             style="background-color: {{ accent_color or '#3B82F6' }}15; color: {{ accent_color or '#3B82F6' }};">
+                            <i class="bi bi-file-earmark-pdf-fill text-xl"></i>
+                        </div>
+                        <div class="flex-1 overflow-hidden">
+                            <p class="text-sm font-black text-gray-900 truncate">{{ ns.resume.filename or 'Resume.pdf' }}</p>
+                            {% if ns.resume.url %}
+                            <p class="text-[10px] font-bold text-green-500 uppercase">Ready to Download</p>
+                            {% else %}
+                            <p class="text-[10px] font-bold text-red-400 uppercase">Upload Failed — Re-upload below</p>
+                            {% endif %}
+                        </div>
+                        {% if ns.resume.url %}
+                        <a href="{{ ns.resume.url }}" target="_blank"
+                           class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-xs font-bold transition-all shadow-sm hover:shadow-md"
+                           style="background: {{ accent_color or '#3B82F6' }};">
+                            <i class="bi bi-download"></i> View
+                        </a>
+                        {% else %}
+                        <span class="px-3 py-2 rounded-xl bg-red-50 text-red-400 text-xs font-bold border border-red-100">
+                            <i class="bi bi-exclamation-triangle-fill mr-1"></i>Failed
+                        </span>
+                        {% endif %}
                     </div>
+                    {% endif %}
+
+                    {% if ns.cover_letter %}
+                    <div class="p-5 bg-gray-50 border border-gray-100 rounded-2xl space-y-3">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 mr-3 shadow-sm">
+                                <i class="bi bi-chat-left-text-fill"></i>
+                            </div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase">Cover Letter / Note</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-gray-100 text-xs text-gray-600 leading-relaxed italic">
+                            "{{ ns.cover_letter.content or ns.cover_letter.text or 'No content provided.' }}"
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <form action="{{ url_for('hr1.upload_applicant_cv', id=applicant.id) }}" method="POST" enctype="multipart/form-data" id="cvUploadForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="file" name="resume" id="resumeFileInput" class="hidden" accept=".pdf,.doc,.docx" onchange="document.getElementById('cvUploadForm').submit()">
+                        <div onclick="document.getElementById('resumeFileInput').click()"
+                            class="p-4 border border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-center group hover:border-[#6366F1] transition-colors cursor-pointer">
+                            <i class="bi bi-cloud-arrow-up text-2xl text-gray-300 mb-2 group-hover:text-[#6366F1] transition-colors"></i>
+                            <p class="text-xs font-bold text-gray-500">{% if ns.resume %}Update{% else %}Upload{% endif %} CV / Resume</p>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

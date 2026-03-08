@@ -504,6 +504,95 @@ def schedule_interview():
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
+@hr1_bp.route('/applicants/<int:id>/upload-cv', methods=['POST'])
+@login_required
+def upload_applicant_cv(id):
+    if 'resume' not in request.files:
+        flash('No file part', 'danger')
+        return redirect(url_for('hr1.applicant_details', id=id))
+    
+    file = request.files['resume']
+    if file.filename == '':
+        flash('No selected file', 'danger')
+        return redirect(url_for('hr1.applicant_details', id=id))
+    
+    if file:
+        try:
+            from utils.supabase_client import get_supabase_client
+            import os
+            client = get_supabase_client()
+            
+            # Fetch current applicant to get documents
+            applicant_resp = client.table('applicants').select('first_name, last_name, documents').eq('id', id).single().execute()
+            if not applicant_resp.data:
+                flash('Applicant not found.', 'danger')
+                return redirect(url_for('hr1.list_applicants'))
+            
+            applicant = applicant_resp.data
+            documents = applicant.get('documents') or []
+            
+            # File extension validation
+            ext = os.path.splitext(file.filename)[1].lower()
+            if ext not in ['.pdf', '.doc', '.docx']:
+                flash('Invalid file type. Please upload a PDF or specialist document.', 'danger')
+                return redirect(url_for('hr1.applicant_details', id=id))
+
+            # Read file content
+            file_content = file.read()
+            # Max 5MB
+            if len(file_content) > 5 * 1024 * 1024:
+                flash('File too large (Max 5MB).', 'danger')
+                return redirect(url_for('hr1.applicant_details', id=id))
+
+            timestamp = int(datetime.utcnow().timestamp())
+            safe_name = f"{applicant['first_name']}_{applicant['last_name']}".replace(' ', '_').lower()
+            file_path = f"{safe_name}_{timestamp}{ext}"
+            bucket_name = 'resumes'
+            
+            # Upload to Supabase Storage
+            try:
+                from utils.supabase_client import get_supabase_service_client
+                storage_client = get_supabase_service_client()
+                storage_client.storage.from_(bucket_name).upload(
+                    path=file_path,
+                    file=file_content,
+                    file_options={"content-type": file.content_type, "x-upsert": "true"}
+                )
+                
+                # Get public URL
+                resume_url = storage_client.storage.from_(bucket_name).get_public_url(file_path)
+                
+                # Update documents list (either update existing resume or add new one)
+                resume_exists = False
+                for doc in documents:
+                    if doc.get('type') == 'resume':
+                        doc['url'] = resume_url
+                        doc['filename'] = file.filename
+                        resume_exists = True
+                        break
+                
+                if not resume_exists:
+                    documents.append({
+                        'type': 'resume',
+                        'filename': file.filename,
+                        'url': resume_url
+                    })
+                
+                # Update applicant in database
+                client.table('applicants').update({'documents': documents}).eq('id', id).execute()
+                
+                from utils.hms_models import AuditLog
+                AuditLog.log(current_user.id, "Upload CV", BLUEPRINT_NAME, {"applicant_id": id, "file": file.filename})
+                
+                flash('CV / Resume uploaded successfully!', 'success')
+            except Exception as e:
+                flash(f'Storage Error: {str(e)}', 'danger')
+                
+        except Exception as e:
+            flash(f'An error occurred: {str(e)}', 'danger')
+            
+    return redirect(url_for('hr1.applicant_details', id=id))
+
 @hr1_bp.route('/applicants/<int:id>/status/<string:status>', methods=['POST'])
 @login_required
 def update_applicant_status_quick(id, status):
