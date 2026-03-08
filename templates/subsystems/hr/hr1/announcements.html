@@ -3,54 +3,155 @@
 {% block header_title %}Company Announcements{% endblock %}
 
 {% block content %}
-<div class="space-y-8">
+<div class="space-y-6">
+
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
             <h3 class="text-2xl font-bold text-gray-900">Announcements</h3>
-            <p class="text-gray-500 text-sm mt-1">Company updates and important notices</p>
+            <p class="text-gray-500 text-sm mt-1">{{ announcements|length }} announcement{{ 's' if announcements|length != 1 }} &bull; Company updates and important notices</p>
         </div>
         {% if current_user.is_admin() %}
         <button onclick="document.getElementById('createModal').classList.remove('hidden')"
-            class="px-5 py-2.5 text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition-all text-sm"
+            class="px-5 py-2.5 text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition-all text-sm shrink-0"
             style="background: {{ accent_color }};">
             <i class="bi bi-plus-lg mr-1"></i> New Announcement
         </button>
         {% endif %}
     </div>
 
-    <!-- Announcements List -->
-    <div class="space-y-4">
-        {% for ann in announcements %}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-            <div class="flex items-start justify-between mb-3">
-                <div class="flex items-center">
-                    {% if ann.priority == 'Urgent' %}
-                    <span class="px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded mr-3">URGENT</span>
-                    {% elif ann.priority == 'Important' %}
-                    <span
-                        class="px-2 py-0.5 bg-amber-400 text-white text-[10px] font-bold rounded mr-3">IMPORTANT</span>
-                    {% endif %}
-                    <h4 class="text-lg font-bold text-gray-900">{{ ann.title }}</h4>
-                </div>
-                <div class="text-right shrink-0 ml-4">
-                    <p class="text-xs text-gray-400">{{ ann.created_at[:10] }}</p>
-                    {% if ann.users %}<p class="text-[10px] text-gray-400 mt-0.5">by {{ ann.users.username }}</p>{%
-                    endif %}
+    <!-- Stats Strip -->
+    {% set urgent_count = announcements | selectattr('priority', 'equalto', 'Urgent') | list | length %}
+    {% set important_count = announcements | selectattr('priority', 'equalto', 'Important') | list | length %}
+    {% set active_count = announcements | selectattr('is_active') | list | length %}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm text-center">
+            <p class="text-2xl font-extrabold text-gray-900">{{ announcements|length }}</p>
+            <p class="text-xs text-gray-400 font-medium mt-0.5">Total</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-red-100 shadow-sm text-center">
+            <p class="text-2xl font-extrabold text-red-600">{{ urgent_count }}</p>
+            <p class="text-xs text-gray-400 font-medium mt-0.5">Urgent</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-amber-100 shadow-sm text-center">
+            <p class="text-2xl font-extrabold text-amber-600">{{ important_count }}</p>
+            <p class="text-xs text-gray-400 font-medium mt-0.5">Important</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-green-100 shadow-sm text-center">
+            <p class="text-2xl font-extrabold text-green-600">{{ active_count }}</p>
+            <p class="text-xs text-gray-400 font-medium mt-0.5">Active</p>
+        </div>
+    </div>
+
+    <!-- Filters & Search -->
+    <form method="GET" action="{{ url_for('hr1.announcements') }}" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <div class="flex flex-wrap gap-3 items-end">
+            <div class="flex-1 min-w-[160px]">
+                <label class="text-xs font-bold text-gray-500 block mb-1">Search</label>
+                <div class="relative">
+                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input type="text" name="q" value="{{ search_q }}" placeholder="Search title or content…"
+                        class="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2"
+                        style="--tw-ring-color: {{ accent_color }}20;">
                 </div>
             </div>
-            <p class="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{{ ann.content }}</p>
-            {% if ann.target_department %}
-            <div class="mt-3">
-                <span class="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-bold rounded">{{
-                    ann.target_department }}</span>
+            <div class="min-w-[130px]">
+                <label class="text-xs font-bold text-gray-500 block mb-1">Priority</label>
+                <select name="priority" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm">
+                    <option value="">All Priorities</option>
+                    <option value="Normal" {% if filter_priority == 'Normal' %}selected{% endif %}>Normal</option>
+                    <option value="Important" {% if filter_priority == 'Important' %}selected{% endif %}>Important</option>
+                    <option value="Urgent" {% if filter_priority == 'Urgent' %}selected{% endif %}>Urgent</option>
+                </select>
             </div>
+            <div class="min-w-[150px]">
+                <label class="text-xs font-bold text-gray-500 block mb-1">Department</label>
+                <select name="department" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm">
+                    <option value="">All Departments</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept }}" {% if filter_dept == dept %}selected{% endif %}>{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="min-w-[120px]">
+                <label class="text-xs font-bold text-gray-500 block mb-1">Status</label>
+                <select name="status" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm">
+                    <option value="">All</option>
+                    <option value="active" {% if filter_status == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if filter_status == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            <button type="submit" class="px-4 py-2.5 text-white font-bold rounded-xl text-sm hover:opacity-90" style="background: {{ accent_color }};">
+                <i class="bi bi-funnel mr-1"></i> Filter
+            </button>
+            {% if search_q or filter_priority or filter_dept or filter_status %}
+            <a href="{{ url_for('hr1.announcements') }}" class="px-4 py-2.5 text-gray-500 font-bold rounded-xl text-sm hover:bg-gray-100 border border-gray-200">Clear</a>
             {% endif %}
+        </div>
+    </form>
+
+    <!-- Announcements List -->
+    <div class="space-y-3">
+        {% for ann in announcements %}
+        <div class="bg-white rounded-2xl shadow-sm border {% if not ann.is_active %}border-gray-100 opacity-60{% elif ann.priority == 'Urgent' %}border-red-200{% elif ann.priority == 'Important' %}border-amber-200{% else %}border-gray-100{% endif %} p-6 hover:shadow-md transition-shadow">
+            <div class="flex items-start justify-between gap-4">
+                <!-- Left: badges + title + content -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        {% if ann.priority == 'Urgent' %}
+                        <span class="px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">URGENT</span>
+                        {% elif ann.priority == 'Important' %}
+                        <span class="px-2 py-0.5 bg-amber-400 text-white text-[10px] font-bold rounded-full">IMPORTANT</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-bold rounded-full">NORMAL</span>
+                        {% endif %}
+                        {% if not ann.is_active %}
+                        <span class="px-2 py-0.5 bg-gray-200 text-gray-500 text-[10px] font-bold rounded-full">INACTIVE</span>
+                        {% endif %}
+                        {% if ann.target_department %}
+                        <span class="px-2 py-0.5 bg-blue-100 text-blue-600 text-[10px] font-bold rounded-full"><i class="bi bi-building mr-1"></i>{{ ann.target_department }}</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 bg-gray-100 text-gray-400 text-[10px] font-medium rounded-full">All Departments</span>
+                        {% endif %}
+                        <h4 class="text-base font-bold text-gray-900 w-full mt-1">{{ ann.title }}</h4>
+                    </div>
+                    <p class="text-gray-600 text-sm leading-relaxed whitespace-pre-line line-clamp-3">{{ ann.content }}</p>
+                </div>
+                <!-- Right: meta + actions -->
+                <div class="shrink-0 flex flex-col items-end gap-2">
+                    <p class="text-xs text-gray-400">{{ ann.created_at[:10] }}</p>
+                    {% if ann.users %}<p class="text-[11px] text-gray-400">by {{ ann.users.username }}</p>{% endif %}
+                    {% if current_user.is_admin() %}
+                    <div class="flex gap-2 mt-1">
+                        <button onclick="openEditModal({{ ann | tojson }})" title="Edit"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors text-sm">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <form method="POST" action="{{ url_for('hr1.toggle_announcement', ann_id=ann.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" title="{{ 'Deactivate' if ann.is_active else 'Activate' }}"
+                                class="w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-sm
+                                {% if ann.is_active %}bg-amber-50 text-amber-600 hover:bg-amber-100{% else %}bg-green-50 text-green-600 hover:bg-green-100{% endif %}">
+                                <i class="bi bi-{% if ann.is_active %}eye-slash{% else %}eye{% endif %}"></i>
+                            </button>
+                        </form>
+                        <button onclick="openDeleteModal({{ ann.id }}, '{{ ann.title | replace("'", "\\'") }}')"
+                            title="Delete"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors text-sm">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
         {% else %}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-16 text-center">
             <i class="bi bi-megaphone text-5xl text-gray-200"></i>
-            <p class="text-gray-400 font-medium mt-4">No announcements yet.</p>
+            <p class="text-gray-400 font-medium mt-4">No announcements found.</p>
+            {% if search_q or filter_priority or filter_dept or filter_status %}
+            <a href="{{ url_for('hr1.announcements') }}" class="text-sm font-bold mt-2 inline-block hover:underline" style="color: {{ accent_color }};">Clear filters</a>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
@@ -70,15 +171,16 @@
                 </div>
                 <div class="space-y-4">
                     <div>
-                        <label class="text-sm font-bold text-gray-700 block mb-1">Title</label>
+                        <label class="text-sm font-bold text-gray-700 block mb-1">Title <span class="text-red-500">*</span></label>
                         <input type="text" name="title" required
-                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:border-transparent text-sm"
-                            style="focus:ring-color: {{ accent_color }};">
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 text-sm"
+                            placeholder="Announcement title">
                     </div>
                     <div>
-                        <label class="text-sm font-bold text-gray-700 block mb-1">Content</label>
+                        <label class="text-sm font-bold text-gray-700 block mb-1">Content <span class="text-red-500">*</span></label>
                         <textarea name="content" rows="5" required
-                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:border-transparent text-sm"></textarea>
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 text-sm"
+                            placeholder="Write announcement content here…"></textarea>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -90,10 +192,13 @@
                             </select>
                         </div>
                         <div>
-                            <label class="text-sm font-bold text-gray-700 block mb-1">Target Dept (optional)</label>
-                            <input type="text" name="target_department"
-                                class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm"
-                                placeholder="All departments">
+                            <label class="text-sm font-bold text-gray-700 block mb-1">Target Department</label>
+                            <select name="target_department" class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm">
+                                <option value="">All Departments</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept }}">{{ dept }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -103,10 +208,109 @@
                     class="px-5 py-2.5 text-gray-600 font-bold rounded-xl hover:bg-gray-100 text-sm">Cancel</button>
                 <button type="submit"
                     class="px-5 py-2.5 text-white font-bold rounded-xl shadow-lg hover:opacity-90 text-sm"
-                    style="background: {{ accent_color }};">Publish</button>
+                    style="background: {{ accent_color }};"><i class="bi bi-megaphone mr-1"></i>Publish</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="hidden fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <form method="POST" id="editForm" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h4 class="text-xl font-bold text-gray-900">Edit Announcement</h4>
+                    <button type="button" onclick="document.getElementById('editModal').classList.add('hidden')"
+                        class="text-gray-400 hover:text-gray-600"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-sm font-bold text-gray-700 block mb-1">Title <span class="text-red-500">*</span></label>
+                        <input type="text" name="title" id="editTitle" required
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-sm font-bold text-gray-700 block mb-1">Content <span class="text-red-500">*</span></label>
+                        <textarea name="content" id="editContent" rows="5" required
+                            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 text-sm"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-1">Priority</label>
+                            <select name="priority" id="editPriority" class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm">
+                                <option value="Normal">Normal</option>
+                                <option value="Important">Important</option>
+                                <option value="Urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-1">Target Department</label>
+                            <select name="target_department" id="editDept" class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm">
+                                <option value="">All Departments</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept }}">{{ dept }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="px-8 py-4 bg-gray-50 rounded-b-3xl flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('editModal').classList.add('hidden')"
+                    class="px-5 py-2.5 text-gray-600 font-bold rounded-xl hover:bg-gray-100 text-sm">Cancel</button>
+                <button type="submit"
+                    class="px-5 py-2.5 text-white font-bold rounded-xl shadow-lg hover:opacity-90 text-sm"
+                    style="background: {{ accent_color }};"><i class="bi bi-check2 mr-1"></i>Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div id="deleteModal" class="hidden fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="bi bi-trash text-2xl text-red-500"></i>
+            </div>
+            <h4 class="text-xl font-bold text-gray-900 mb-2">Delete Announcement?</h4>
+            <p class="text-gray-500 text-sm mb-1">This action cannot be undone.</p>
+            <p id="deleteAnnTitle" class="text-sm font-bold text-gray-700 mb-6"></p>
+        </div>
+        <form method="POST" id="deleteForm" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="flex gap-3">
+                <button type="button" onclick="document.getElementById('deleteModal').classList.add('hidden')"
+                    class="flex-1 px-5 py-2.5 text-gray-600 font-bold rounded-xl hover:bg-gray-100 text-sm border border-gray-200">Cancel</button>
+                <button type="submit"
+                    class="flex-1 px-5 py-2.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 text-sm">Delete</button>
             </div>
         </form>
     </div>
 </div>
 {% endif %}
+
+<script>
+function openEditModal(ann) {
+    document.getElementById('editTitle').value = ann.title || '';
+    document.getElementById('editContent').value = ann.content || '';
+    document.getElementById('editPriority').value = ann.priority || 'Normal';
+    document.getElementById('editDept').value = ann.target_department || '';
+    document.getElementById('editForm').action = '/hr/hr1/announcements/' + ann.id + '/update';
+    document.getElementById('editModal').classList.remove('hidden');
+}
+function openDeleteModal(id, title) {
+    document.getElementById('deleteAnnTitle').textContent = '"' + title + '"';
+    document.getElementById('deleteForm').action = '/hr/hr1/announcements/' + id + '/delete';
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+// Close modals on backdrop click
+['createModal','editModal','deleteModal'].forEach(function(id) {
+    document.getElementById(id).addEventListener('click', function(e) {
+        if (e.target === this) this.classList.add('hidden');
+    });
+});
+</script>
 {% endblock %}

@@ -908,11 +908,16 @@ def announcements():
     client = get_supabase_client()
 
     if request.method == 'POST' and current_user.is_admin():
+        ann_title = request.form.get('title', '').strip()
+        ann_content = request.form.get('content', '').strip()
+        ann_priority = request.form.get('priority', 'Normal')
+        ann_dept = request.form.get('target_department') or None
+
         data = {
-            'title': request.form.get('title'),
-            'content': request.form.get('content'),
-            'priority': request.form.get('priority', 'Normal'),
-            'target_department': request.form.get('target_department') or None,
+            'title': ann_title,
+            'content': ann_content,
+            'priority': ann_priority,
+            'target_department': ann_dept,
             'target_subsystem': request.form.get('target_subsystem') or None,
             'published_by': current_user.id,
             'is_active': True
@@ -920,16 +925,141 @@ def announcements():
         try:
             client.table('announcements').insert(data).execute()
             flash('Announcement published successfully!', 'success')
+
+            # --- Fire notifications ---
+            from utils.hms_models import Notification
+            n_type = 'danger' if ann_priority == 'Urgent' else ('warning' if ann_priority == 'Important' else 'info')
+            preview = (ann_content[:100] + '…') if len(ann_content) > 100 else ann_content
+            notif_msg = f"[{ann_priority}] {preview}"
+            target_url = url_for('hr1.announcements')
+
+            if ann_dept:
+                # Notify every user in the target department individually
+                try:
+                    dept_users = client.table('users').select('id').eq('department', ann_dept).eq('status', 'Active').execute().data or []
+                    for u in dept_users:
+                        Notification.create(
+                            user_id=u['id'],
+                            title=f"📢 {ann_title}",
+                            message=notif_msg,
+                            n_type=n_type,
+                            sender_subsystem=BLUEPRINT_NAME,
+                            target_url=target_url
+                        )
+                except Exception as ne:
+                    print(f"Notification error (dept broadcast): {ne}")
+            else:
+                # Broadcast to all active subsystems
+                ALL_SUBSYSTEMS = ['hr1', 'hr2', 'hr3', 'superadmin', 'portal']
+                for sub in ALL_SUBSYSTEMS:
+                    try:
+                        Notification.create(
+                            subsystem=sub,
+                            title=f"📢 {ann_title}",
+                            message=notif_msg,
+                            n_type=n_type,
+                            sender_subsystem=BLUEPRINT_NAME,
+                            target_url=target_url
+                        )
+                    except Exception as ne:
+                        print(f"Notification error (subsystem {sub}): {ne}")
+
         except Exception as e:
             flash(f'Error publishing announcement: {str(e)}', 'danger')
         return redirect(url_for('hr1.announcements'))
 
-    all_ann = client.table('announcements').select('*, users(username)').order('created_at', desc=True).limit(50).execute()
+    # Filter params
+    filter_priority = request.args.get('priority', '')
+    filter_dept = request.args.get('department', '')
+    filter_status = request.args.get('status', '')
+    search_q = request.args.get('q', '').strip()
+
+    query = client.table('announcements').select('*, users(username)').order('created_at', desc=True)
+    if filter_priority:
+        query = query.eq('priority', filter_priority)
+    if filter_dept:
+        query = query.eq('target_department', filter_dept)
+    if filter_status == 'active':
+        query = query.eq('is_active', True)
+    elif filter_status == 'inactive':
+        query = query.eq('is_active', False)
+
+    all_ann = query.limit(100).execute().data or []
+
+    # Client-side search filter
+    if search_q:
+        sq = search_q.lower()
+        all_ann = [a for a in all_ann if sq in (a.get('title') or '').lower() or sq in (a.get('content') or '').lower()]
+
+    # Get distinct departments from users for the dropdown
+    try:
+        dept_resp = client.table('users').select('department').execute()
+        departments = sorted(set(u['department'] for u in (dept_resp.data or []) if u.get('department')))
+    except Exception:
+        departments = []
+
     return render_template('subsystems/hr/hr1/announcements.html',
-                           announcements=all_ann.data or [],
+                           announcements=all_ann,
+                           departments=departments,
+                           filter_priority=filter_priority,
+                           filter_dept=filter_dept,
+                           filter_status=filter_status,
+                           search_q=search_q,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+
+@hr1_bp.route('/announcements/<int:ann_id>/update', methods=['POST'])
+@login_required
+def update_announcement(ann_id):
+    if not current_user.is_admin():
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr1.announcements'))
+    client = get_supabase_client()
+    try:
+        client.table('announcements').update({
+            'title': request.form.get('title'),
+            'content': request.form.get('content'),
+            'priority': request.form.get('priority', 'Normal'),
+            'target_department': request.form.get('target_department') or None,
+        }).eq('id', ann_id).execute()
+        flash('Announcement updated.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.announcements'))
+
+
+@hr1_bp.route('/announcements/<int:ann_id>/toggle', methods=['POST'])
+@login_required
+def toggle_announcement(ann_id):
+    if not current_user.is_admin():
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr1.announcements'))
+    client = get_supabase_client()
+    try:
+        current = client.table('announcements').select('is_active').eq('id', ann_id).single().execute()
+        new_state = not current.data.get('is_active', True)
+        client.table('announcements').update({'is_active': new_state}).eq('id', ann_id).execute()
+        flash(f'Announcement {"activated" if new_state else "deactivated"}.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.announcements'))
+
+
+@hr1_bp.route('/announcements/<int:ann_id>/delete', methods=['POST'])
+@login_required
+def delete_announcement(ann_id):
+    if not current_user.is_admin():
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr1.announcements'))
+    client = get_supabase_client()
+    try:
+        client.table('announcements').delete().eq('id', ann_id).execute()
+        flash('Announcement deleted.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.announcements'))
 
 
 @hr1_bp.route('/tasks/<int:task_id>/complete', methods=['POST'])
