@@ -46,6 +46,45 @@ def profile():
                          subsystem_color=subsystem_color,
                          career_paths=career_data)
 
+@portal_bp.route('/profile/change-password', methods=['POST'])
+@login_required
+def change_password():
+    from utils.supabase_client import get_supabase_client
+    from utils.password_validator import PasswordValidationError
+    from flask_login import logout_user
+
+    current_password = request.form.get('current_password', '').strip()
+    new_password = request.form.get('new_password', '').strip()
+    confirm_password = request.form.get('confirm_password', '').strip()
+
+    if not current_user.check_password(current_password):
+        flash('Current password is incorrect.', 'danger')
+        return redirect(url_for('portal.profile') + '#security')
+
+    if new_password != confirm_password:
+        flash('New passwords do not match.', 'danger')
+        return redirect(url_for('portal.profile') + '#security')
+
+    try:
+        current_user.set_password(new_password)
+        flash('Password updated successfully! Please log in again with your new password.', 'success')
+        logout_user()
+        # Redirect to the subsystem login
+        from utils.supabase_client import SUBSYSTEM_CONFIG
+        subsystem = current_user.subsystem if current_user.subsystem else 'portal'
+        try:
+            return redirect(url_for(f'{subsystem}.login'))
+        except Exception:
+            return redirect(url_for('portal.index'))
+    except PasswordValidationError as e:
+        for error in e.errors:
+            flash(error, 'danger')
+    except Exception as e:
+        flash('An error occurred while updating password.', 'danger')
+
+    return redirect(url_for('portal.profile') + '#security')
+
+
 @portal_bp.route('/profile/upload-avatar', methods=['POST'])
 @login_required
 def upload_avatar():

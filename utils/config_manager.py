@@ -46,7 +46,7 @@ def get_password_policy():
 def get_lockout_policy():
     return {
         'max_attempts': get_int_setting('MAX_LOGIN_ATTEMPTS', 5),
-        'duration_mins': get_int_setting('LOCKOUT_DURATION_MINS', 30)
+        'duration_mins': get_int_setting('LOCKOUT_DURATION_MINS', 5)
     }
 
 def get_session_policy():

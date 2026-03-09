@@ -88,7 +88,7 @@
                 <!-- Quick Actions -->
                 <div class="mt-6 bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden p-4">
                     <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest px-4 mb-4">Security</h3>
-                    <button class="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-{{ subsystem_color }}-50 hover:text-{{ subsystem_color }}-600 rounded-2xl transition-all duration-200">
+                    <button onclick="openChangePassword()" class="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-{{ subsystem_color }}-50 hover:text-{{ subsystem_color }}-600 rounded-2xl transition-all duration-200">
                         <i class="bi bi-shield-lock mr-3 text-lg"></i>
                         <span class="font-bold text-sm">Update Password</span>
                     </button>
@@ -254,4 +254,147 @@
         </div>
     </main>
 </div>
+
+<!-- ── Change Password Modal ────────────────────────────── -->
+<div id="cpModal" class="fixed inset-0 z-50 flex items-center justify-center hidden" aria-modal="true">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeChangePassword()"></div>
+
+    <!-- Panel -->
+    <div class="relative w-full max-w-md mx-4 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-slide-up">
+        <div class="h-2 bg-gradient-to-r from-{{ subsystem_color }}-500 to-{{ subsystem_color }}-700"></div>
+
+        <div class="px-8 pt-8 pb-10">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-{{ subsystem_color }}-100 flex items-center justify-center">
+                        <i class="bi bi-shield-lock text-{{ subsystem_color }}-600 text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-extrabold text-gray-900 tracking-tight">Change Password</h2>
+                        <p class="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">Update your credentials</p>
+                    </div>
+                </div>
+                <button onclick="closeChangePassword()" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors">
+                    <i class="bi bi-x-lg text-sm"></i>
+                </button>
+            </div>
+
+            <form method="POST" action="{{ url_for('portal.change_password') }}" class="space-y-5" id="cpForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Current Password -->
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Current Password</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400"><i class="bi bi-lock-fill"></i></span>
+                        <input id="cp_current" name="current_password" type="password" required
+                            class="w-full pl-10 pr-10 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-{{ subsystem_color }}-400 transition-all"
+                            placeholder="Enter current password">
+                        <button type="button" tabindex="-1" onclick="toggleCPField('cp_current',this)"
+                            class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- New Password -->
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">New Password</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400"><i class="bi bi-key-fill"></i></span>
+                        <input id="cp_new" name="new_password" type="password" required minlength="8" maxlength="14"
+                            class="w-full pl-10 pr-10 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-{{ subsystem_color }}-400 transition-all"
+                            placeholder="Min 8 characters" oninput="updateCPStrength(this.value)">
+                        <button type="button" tabindex="-1" onclick="toggleCPField('cp_new',this)"
+                            class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <div class="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden mt-1">
+                        <div id="cpStrengthBar" class="h-full rounded-full transition-all duration-500" style="width:0%"></div>
+                    </div>
+                    <p id="cpStrengthText" class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Empty</p>
+                </div>
+
+                <!-- Confirm Password -->
+                <div class="space-y-1.5">
+                    <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Confirm New Password</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400"><i class="bi bi-lock-fill"></i></span>
+                        <input id="cp_confirm" name="confirm_password" type="password" required
+                            class="w-full pl-10 pr-10 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-{{ subsystem_color }}-400 transition-all"
+                            placeholder="Re-enter new password" oninput="checkCPMatch()">
+                        <button type="button" tabindex="-1" onclick="toggleCPField('cp_confirm',this)"
+                            class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <p id="cpMatchText" class="text-[10px] font-bold tracking-wider hidden"></p>
+                </div>
+
+                <button type="submit"
+                    class="w-full py-3.5 bg-gradient-to-r from-{{ subsystem_color }}-500 to-{{ subsystem_color }}-700 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-lg hover:opacity-90 transition-all duration-200 mt-2">
+                    <i class="bi bi-shield-check mr-2"></i>Update Password
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes slide-up {
+    from { opacity:0; transform:translateY(20px) scale(.97); }
+    to   { opacity:1; transform:translateY(0)   scale(1);   }
+}
+.animate-slide-up { animation: slide-up .25s cubic-bezier(.16,1,.3,1) both; }
+</style>
+
+<script>
+function openChangePassword()  { document.getElementById('cpModal').classList.remove('hidden'); document.getElementById('cp_current').focus(); }
+function closeChangePassword() { document.getElementById('cpModal').classList.add('hidden'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChangePassword(); });
+
+function toggleCPField(id, btn) {
+    const inp = document.getElementById(id);
+    const ico = btn.querySelector('i');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    ico.className = inp.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+}
+
+function updateCPStrength(val) {
+    const bar  = document.getElementById('cpStrengthBar');
+    const text = document.getElementById('cpStrengthText');
+    if (!val) { bar.style.width='0%'; bar.className='h-full rounded-full transition-all duration-500'; text.textContent='Empty'; text.style.color='#9CA3AF'; return; }
+    let s = 0;
+    if (val.length >= 8)           s++;
+    if (val.length >= 12)          s++;
+    if (/[A-Z]/.test(val))         s++;
+    if (/[0-9]/.test(val))         s++;
+    if (/[^A-Za-z0-9]/.test(val))  s++;
+    const lvl = [
+        {pct:'20%',color:'#EF4444',label:'Very Weak'},
+        {pct:'40%',color:'#F97316',label:'Weak'},
+        {pct:'60%',color:'#EAB308',label:'Fair'},
+        {pct:'80%',color:'#3B82F6',label:'Strong'},
+        {pct:'100%',color:'#22C55E',label:'Very Strong'},
+    ][Math.min(s,4)];
+    bar.style.width = lvl.pct;
+    bar.style.backgroundColor = lvl.color;
+    bar.className = 'h-full rounded-full transition-all duration-500';
+    text.textContent = lvl.label;
+    text.style.color = lvl.color;
+}
+
+function checkCPMatch() {
+    const nv = document.getElementById('cp_new').value;
+    const cv = document.getElementById('cp_confirm').value;
+    const el = document.getElementById('cpMatchText');
+    if (!cv) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    if (nv === cv) { el.textContent = '✓ Passwords match';      el.style.color = '#16A34A'; }
+    else           { el.textContent = '✗ Passwords do not match'; el.style.color = '#EF4444'; }
+}
+</script>
 {% endblock %}
