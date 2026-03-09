@@ -18,11 +18,13 @@
                     class="px-5 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors text-sm text-amber-700">
                     <i class="bi bi-hand-thumbs-up mr-1"></i> Nominate Someone
                 </a>
-                {% if current_user.is_admin() or current_user.is_super_admin() %}
+                {% if current_user.is_admin() or current_user.is_super_admin() or current_user.role in ['Manager', 'HR_Staff'] %}
                 <a href="{{ url_for('hr1.recognition_inbox') }}"
                     class="px-5 py-2.5 bg-white/15 text-white font-bold rounded-xl hover:bg-white/25 transition-colors backdrop-blur-sm text-sm">
                     <i class="bi bi-inbox mr-1"></i> Review Inbox
                 </a>
+                {% endif %}
+                {% if current_user.is_admin() or current_user.is_super_admin() %}
                 <a href="{{ url_for('hr1.recognition_types_admin') }}"
                     class="px-5 py-2.5 bg-white/15 text-white font-bold rounded-xl hover:bg-white/25 transition-colors backdrop-blur-sm text-sm">
                     <i class="bi bi-gear mr-1"></i> Manage Types
@@ -99,8 +101,11 @@
                 <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase
                     {% if nom.status == 'Approved' %}bg-green-100 text-green-700
                     {% elif nom.status == 'Pending' %}bg-amber-100 text-amber-700
-                    {% elif nom.status == 'Rejected' %}bg-red-100 text-red-700
-                    {% else %}bg-gray-100 text-gray-600{% endif %}">{{ nom.status }}</span>
+                    {% elif nom.status == 'Supervisor_Approved' %}bg-blue-100 text-blue-700
+                    {% elif nom.status == 'Management_Pending' %}bg-purple-100 text-purple-700
+                    {% elif nom.status == 'Returned' %}bg-orange-100 text-orange-700
+                    {% elif nom.status in ['Rejected', 'HR_Rejected', 'Management_Rejected', 'Auto-Rejected'] %}bg-red-100 text-red-700
+                    {% else %}bg-gray-100 text-gray-600{% endif %}">{{ nom.status | replace('_', ' ') }}</span>
             </div>
             {% endfor %}
         </div>

@@ -1110,12 +1110,18 @@ def probation_list():
         'total': len(cycles),
         'active': len([c for c in cycles if c['status'] == 'Active']),
         'completed': len([c for c in cycles if c['status'] == 'Completed']),
+        'extended': len([c for c in cycles if c['status'] == 'Extended']),
+        'terminated': len([c for c in cycles if c['status'] == 'Terminated']),
     }
 
-    # Fetch employees for create form
+    # Fetch active staff employees only — exclude patients and applicants
     employees = []
     if user.is_admin() or HRRoles.can_supervise(user.role):
-        emp_resp = client.table('users').select('id, username, full_name').eq('department', 'HR').eq('status', 'Active').execute()
+        emp_resp = client.table('users').select('id, username, full_name, department')\
+            .eq('status', 'Active')\
+            .not_.in_('role', ['Applicant', 'Patient'])\
+            .neq('department', 'PATIENT_PORTAL')\
+            .order('full_name').execute()
         employees = emp_resp.data or []
 
     return render_template('subsystems/hr/hr1/probation/list.html',
@@ -1125,6 +1131,82 @@ def probation_list():
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/cancel', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def probation_cancel(cycle_id):
+    if not (current_user.is_admin() or current_user.is_super_admin()):
+        flash('Only HR Administrators can cancel probation cycles.', 'danger')
+        return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+    client = get_supabase_client()
+    try:
+        reason = request.form.get('reason', 'Cancelled by administrator.')
+        client.table('probation_cycles').update({
+            'status': 'Cancelled',
+            'updated_at': datetime.utcnow().isoformat()
+        }).eq('id', cycle_id).execute()
+        # Log a note
+        client.table('performance_notes').insert({
+            'cycle_id': cycle_id,
+            'author_id': current_user.id,
+            'note_type': 'Admin',
+            'content': f'Cycle cancelled. Reason: {reason}',
+            'is_published': True
+        }).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, "Cancel Probation Cycle", BLUEPRINT_NAME, {"cycle_id": cycle_id, "reason": reason})
+        flash('Probation cycle has been cancelled.', 'info')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_list'))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/kpis/<int:kpi_id>/delete', methods=['POST'])
+@login_required
+@supervisor_required
+def probation_delete_kpi(cycle_id, kpi_id):
+    client = get_supabase_client()
+    try:
+        # Only allow deletion if cycle is still in setup stages
+        cycle = client.table('probation_cycles').select('current_stage, supervisor_id').eq('id', cycle_id).single().execute().data
+        if not cycle:
+            flash('Cycle not found.', 'danger')
+            return redirect(url_for('hr1.probation_list'))
+        if cycle['supervisor_id'] != current_user.id and not current_user.is_admin():
+            flash('Unauthorized.', 'danger')
+            return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+        if cycle['current_stage'] not in ['ASSIGNED', 'KPI_SETUP']:
+            flash('KPIs cannot be removed after the setup stage.', 'warning')
+            return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+        client.table('probation_kpis').delete().eq('id', kpi_id).eq('cycle_id', cycle_id).execute()
+        flash('KPI removed.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/kpis/<int:kpi_id>/score', methods=['POST'])
+@login_required
+@supervisor_required
+def probation_log_kpi_progress(cycle_id, kpi_id):
+    """Log a periodic KPI progress score during the MONITORING stage."""
+    client = get_supabase_client()
+    try:
+        score = float(request.form.get('score', 0))
+        notes = request.form.get('notes', '')
+        client.table('probation_kpi_progress').insert({
+            'cycle_id': cycle_id,
+            'kpi_id': kpi_id,
+            'logged_by': current_user.id,
+            'score': score,
+            'notes': notes
+        }).execute()
+        flash('KPI progress logged.', 'success')
+    except Exception as e:
+        flash(f'Error logging progress: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
 
 
 @hr1_bp.route('/probation/create', methods=['POST'])
@@ -1336,16 +1418,125 @@ def probation_submit_checkin(cycle_id):
     from utils.probation_engine import advance_stage, ProbationStage
     client = get_supabase_client()
     try:
+        overall_rating = request.form.get('overall_rating')
+        has_gaps = overall_rating in ['Needs Improvement', 'At Risk']
+
         data = {
             'cycle_id': cycle_id,
             'supervisor_id': current_user.id,
             'gap_analysis': request.form.get('gap_analysis'),
             'improvement_plan': request.form.get('improvement_plan'),
-            'overall_rating': request.form.get('overall_rating')
+            'overall_rating': overall_rating
         }
         client.table('mid_probation_checkins').insert(data).execute()
-        advance_stage(cycle_id, ProbationStage.DOCUMENTATION, current_user.id)
-        flash('Mid-probation check-in submitted. Moved to Documentation stage.', 'success')
+
+        if has_gaps:
+            advance_stage(cycle_id, ProbationStage.IMPROVEMENT_PLAN, current_user.id)
+            flash('Mid-probation check-in submitted. Performance gaps detected — employee must acknowledge the improvement plan before HR review.', 'warning')
+        else:
+            advance_stage(cycle_id, ProbationStage.DOCUMENTATION, current_user.id)
+            flash('Mid-probation check-in submitted. No performance gaps — moved to Documentation stage.', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/acknowledge-ip', methods=['POST'])
+@login_required
+def probation_acknowledge_ip(cycle_id):
+    """Employee acknowledges the Improvement Plan generated from mid-probation check-in."""
+    client = get_supabase_client()
+    try:
+        cycle = client.table('probation_cycles').select('employee_id, supervisor_id, current_stage').eq('id', cycle_id).single().execute()
+        if not cycle.data or cycle.data['employee_id'] != current_user.id:
+            flash('Only the assigned employee can acknowledge the improvement plan.', 'danger')
+            return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+        if cycle.data['current_stage'] != 'IMPROVEMENT_PLAN':
+            flash('Improvement plan acknowledgement is not applicable at this stage.', 'danger')
+            return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+        # Record acknowledgement as a performance note
+        client.table('performance_notes').insert({
+            'cycle_id': cycle_id,
+            'author_id': current_user.id,
+            'note_type': 'IP_Acknowledged',
+            'content': f"Employee acknowledged the improvement plan. Digital signature: {request.form.get('digital_signature', current_user.full_name or current_user.username)}",
+            'is_published': True
+        }).execute()
+
+        # Notify HR Admins to review the improvement plan
+        from utils.hms_models import Notification
+        Notification.create(
+            subsystem='hr1',
+            role='Admin',
+            title="Improvement Plan Acknowledged — HR Review Required",
+            message=f"An employee has acknowledged their improvement plan and is awaiting HR approval to continue.",
+            n_type="warning",
+            sender_subsystem='hr1'
+        )
+
+        flash('Improvement plan acknowledged. HR will now review before continuing.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/hr-review-ip', methods=['POST'])
+@login_required
+def probation_hr_review_ip(cycle_id):
+    """HR reviews the acknowledged improvement plan and either approves (advance to DOCUMENTATION)
+    or rejects (supervisor must revise the checkin/plan)."""
+    if not current_user.is_admin() and not current_user.is_super_admin():
+        flash('Only HR Administrators can review improvement plans.', 'danger')
+        return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+    from utils.probation_engine import advance_stage, ProbationStage
+    client = get_supabase_client()
+    try:
+        action = request.form.get('action')  # 'approve' or 'reject'
+        hr_notes = request.form.get('hr_notes', '')
+
+        if action == 'approve':
+            # Log HR approval note
+            client.table('performance_notes').insert({
+                'cycle_id': cycle_id,
+                'author_id': current_user.id,
+                'note_type': 'IP_HR_Approved',
+                'content': f"HR approved the improvement plan. Notes: {hr_notes}",
+                'is_published': True
+            }).execute()
+            advance_stage(cycle_id, ProbationStage.DOCUMENTATION, current_user.id)
+
+            # Notify supervisor and employee
+            cycle = client.table('probation_cycles').select('employee_id, supervisor_id').eq('id', cycle_id).single().execute()
+            if cycle.data:
+                from utils.hms_models import Notification
+                Notification.create(user_id=cycle.data['supervisor_id'], subsystem='hr1', title="Improvement Plan Approved", message="HR has approved the improvement plan. The cycle has advanced to Documentation.", n_type="success", sender_subsystem='hr1')
+                Notification.create(user_id=cycle.data['employee_id'], subsystem='hr1', title="Improvement Plan Approved", message="HR has reviewed and approved your improvement plan. Continue monitoring.", n_type="success", sender_subsystem='hr1')
+            flash('Improvement plan approved. Cycle advanced to Documentation stage.', 'success')
+
+        elif action == 'reject':
+            # Log HR rejection — supervisor must revise
+            client.table('performance_notes').insert({
+                'cycle_id': cycle_id,
+                'author_id': current_user.id,
+                'note_type': 'IP_HR_Rejected',
+                'content': f"HR rejected the improvement plan — revision required. Notes: {hr_notes}",
+                'is_published': True
+            }).execute()
+
+            # Notify supervisor to revise the improvement plan
+            cycle = client.table('probation_cycles').select('supervisor_id').eq('id', cycle_id).single().execute()
+            if cycle.data:
+                from utils.hms_models import Notification
+                Notification.create(user_id=cycle.data['supervisor_id'], subsystem='hr1', title="Improvement Plan Needs Revision", message=f"HR has rejected the improvement plan. Please revise it. Notes: {hr_notes}", n_type="danger", sender_subsystem='hr1')
+
+            # Delete previous IP_Acknowledged notes so employee can re-acknowledge after revision
+            client.table('performance_notes').delete().eq('cycle_id', cycle_id).eq('note_type', 'IP_Acknowledged').execute()
+            flash('Improvement plan sent back for revision. Supervisor has been notified.', 'warning')
+
     except ValueError as e:
         flash(str(e), 'danger')
     except Exception as e:
@@ -1542,12 +1733,43 @@ def recognition_nominate():
             sup_resp = client.table('users').select('id').eq('department', nominee.department).in_('role', ['Manager', 'Admin', 'Administrator']).limit(1).execute()
             supervisor_id = sup_resp.data[0]['id'] if sup_resp.data else None
 
+        # Handle optional supporting document upload
+        attachment_url = None
+        attachment_file = request.files.get('attachment')
+        if attachment_file and attachment_file.filename:
+            import os
+            ext = os.path.splitext(attachment_file.filename)[1].lower()
+            allowed_exts = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']
+            if ext not in allowed_exts:
+                flash('Invalid file type. Allowed: PDF, Word, JPG, PNG.', 'danger')
+                return redirect(url_for('hr1.recognition_nominate'))
+            file_content = attachment_file.read()
+            if len(file_content) > 5 * 1024 * 1024:
+                flash('File too large. Maximum size is 5 MB.', 'danger')
+                return redirect(url_for('hr1.recognition_nominate'))
+            try:
+                from utils.supabase_client import get_supabase_service_client
+                storage_client = get_supabase_service_client()
+                bucket_name = 'recognition-docs'
+                timestamp = int(datetime.utcnow().timestamp())
+                safe_name = (current_user.username or str(current_user.id)).replace(' ', '_').lower()
+                file_path = f"{safe_name}_{timestamp}{ext}"
+                storage_client.storage.from_(bucket_name).upload(
+                    path=file_path,
+                    file=file_content,
+                    file_options={"content-type": attachment_file.content_type, "x-upsert": "true"}
+                )
+                attachment_url = storage_client.storage.from_(bucket_name).get_public_url(file_path)
+            except Exception as upload_err:
+                flash(f'Document upload failed: {str(upload_err)}. Nomination submitted without attachment.', 'warning')
+
         data = {
             'nominee_id': nominee_id,
             'nominator_id': current_user.id,
             'recognition_type_id': int(request.form.get('recognition_type_id')),
             'justification': request.form.get('justification'),
             'supporting_details': request.form.get('supporting_details'),
+            'attachment_url': attachment_url,
             'status': 'Pending',
             'supervisor_id': supervisor_id,
             'auto_reject_date': (datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d')
@@ -1589,23 +1811,51 @@ def recognition_nominate():
 @login_required
 @policy_required(BLUEPRINT_NAME)
 def recognition_inbox():
+    """Multi-level approval inbox — each role sees their own queue."""
     client = get_supabase_client()
+    SELECT_FIELDS = '*, recognition_types(name, icon), nominee:users!recognition_nominations_nominee_id_fkey(username, full_name, department), nominator:users!recognition_nominations_nominator_id_fkey(username, full_name)'
 
-    if current_user.is_admin() or current_user.is_super_admin():
-        noms = client.table('recognition_nominations').select(
-            '*, recognition_types(name, icon), nominee:users!recognition_nominations_nominee_id_fkey(username, full_name), nominator:users!recognition_nominations_nominator_id_fkey(username, full_name)'
-        ).order('created_at', desc=True).execute()
+    is_hr = current_user.is_admin() or current_user.is_super_admin()
+    is_management = is_hr or getattr(current_user, 'role', '') == 'Manager'
+
+    # --- Supervisor Queue: Pending nominations where this user is the assigned supervisor ---
+    supervisor_pending = []
+    if not is_hr:  # Non-admins see only their own
+        sp = client.table('recognition_nominations').select(SELECT_FIELDS).eq('supervisor_id', current_user.id).eq('status', 'Pending').order('created_at', desc=True).execute()
+        supervisor_pending = sp.data or []
+    else:  # Admins see all pending
+        sp = client.table('recognition_nominations').select(SELECT_FIELDS).eq('status', 'Pending').order('created_at', desc=True).execute()
+        supervisor_pending = sp.data or []
+
+    # --- HR Queue: Supervisor_Approved nominations awaiting HR validation ---
+    hr_queue = []
+    if is_hr:
+        hq = client.table('recognition_nominations').select(SELECT_FIELDS).eq('status', 'Supervisor_Approved').order('reviewed_at', desc=True).execute()
+        hr_queue = hq.data or []
+
+    # --- Management Queue: Management_Pending nominations awaiting committee decision ---
+    management_queue = []
+    if is_management:
+        mq = client.table('recognition_nominations').select(SELECT_FIELDS).eq('status', 'Management_Pending').order('reviewed_at', desc=True).execute()
+        management_queue = mq.data or []
+
+    # --- History: all reviewed records visible to admins; own nominations to others ---
+    if is_hr:
+        hist = client.table('recognition_nominations').select(SELECT_FIELDS).not_.in_('status', ['Pending', 'Supervisor_Approved', 'Management_Pending']).order('reviewed_at', desc=True).limit(50).execute()
     else:
-        noms = client.table('recognition_nominations').select(
-            '*, recognition_types(name, icon), nominee:users!recognition_nominations_nominee_id_fkey(username, full_name), nominator:users!recognition_nominations_nominator_id_fkey(username, full_name)'
-        ).eq('supervisor_id', current_user.id).order('created_at', desc=True).execute()
+        hist = client.table('recognition_nominations').select(SELECT_FIELDS).eq('supervisor_id', current_user.id).not_.in_('status', ['Pending']).order('reviewed_at', desc=True).limit(20).execute()
+    reviewed_nominations = hist.data or []
 
-    pending = [n for n in (noms.data or []) if n['status'] == 'Pending']
-    reviewed = [n for n in (noms.data or []) if n['status'] != 'Pending']
+    total_pending = len(supervisor_pending) + len(hr_queue) + len(management_queue)
 
     return render_template('subsystems/hr/hr1/recognition/inbox.html',
-                           pending_nominations=pending,
-                           reviewed_nominations=reviewed,
+                           supervisor_pending=supervisor_pending,
+                           hr_queue=hr_queue,
+                           management_queue=management_queue,
+                           reviewed_nominations=reviewed_nominations,
+                           total_pending=total_pending,
+                           is_hr=is_hr,
+                           is_management=is_management,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -1614,22 +1864,68 @@ def recognition_inbox():
 @hr1_bp.route('/recognition/<int:nom_id>/approve', methods=['POST'])
 @login_required
 def recognition_approve(nom_id):
+    """Supervisor approves nomination and forwards it to HR."""
     client = get_supabase_client()
     try:
+        nom_resp = client.table('recognition_nominations').select('nominator_id, nominee_id, supervisor_id').eq('id', nom_id).single().execute()
+        nom = nom_resp.data
+        if not nom:
+            flash('Nomination not found.', 'danger')
+            return redirect(url_for('hr1.recognition_inbox'))
+
         client.table('recognition_nominations').update({
-            'status': 'Approved',
+            'status': 'Supervisor_Approved',
             'reviewed_at': datetime.utcnow().isoformat(),
             'review_notes': request.form.get('review_notes', '')
         }).eq('id', nom_id).execute()
 
-        # Notify nominator and nominee
-        nom = client.table('recognition_nominations').select('nominee_id, nominator_id, recognition_type_id').eq('id', nom_id).single().execute()
-        if nom.data:
-            from utils.hms_models import Notification
-            Notification.create(user_id=nom.data['nominee_id'], subsystem='hr1', title="Recognition Approved!", message="Congratulations! You have been recognized for your outstanding work.", n_type="success", sender_subsystem='hr1')
-            Notification.create(user_id=nom.data['nominator_id'], subsystem='hr1', title="Nomination Approved", message="Your recognition nomination has been approved.", n_type="success", sender_subsystem='hr1')
+        # Notify HR Admins to validate the nomination
+        from utils.hms_models import Notification
+        Notification.create(
+            subsystem='hr1', role='Admin',
+            title='Recognition Nomination Awaiting HR Validation',
+            message='A supervisor has approved a nomination. Please validate it against HR policy.',
+            n_type='info', sender_subsystem='hr1',
+            target_url=url_for('hr1.recognition_inbox')
+        )
+        Notification.create(
+            user_id=nom['nominator_id'], subsystem='hr1',
+            title='Nomination Forwarded to HR',
+            message='Your nomination has been approved by the supervisor and is now under HR review.',
+            n_type='info', sender_subsystem='hr1'
+        )
+        flash('Nomination approved and forwarded to HR for validation.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.recognition_inbox'))
 
-        flash('Nomination approved!', 'success')
+
+@hr1_bp.route('/recognition/<int:nom_id>/return', methods=['POST'])
+@login_required
+def recognition_return(nom_id):
+    """Supervisor returns nomination to nominator for revision."""
+    client = get_supabase_client()
+    try:
+        nom_resp = client.table('recognition_nominations').select('nominator_id').eq('id', nom_id).single().execute()
+        nom = nom_resp.data
+        if not nom:
+            flash('Nomination not found.', 'danger')
+            return redirect(url_for('hr1.recognition_inbox'))
+
+        client.table('recognition_nominations').update({
+            'status': 'Returned',
+            'reviewed_at': datetime.utcnow().isoformat(),
+            'review_notes': request.form.get('review_notes', '')
+        }).eq('id', nom_id).execute()
+
+        from utils.hms_models import Notification
+        Notification.create(
+            user_id=nom['nominator_id'], subsystem='hr1',
+            title='Nomination Returned for Revision',
+            message=f"Your nomination has been returned by the supervisor for revision. Reason: {request.form.get('review_notes', 'See feedback.')}",
+            n_type='warning', sender_subsystem='hr1'
+        )
+        flash('Nomination returned to nominator for revision.', 'info')
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('hr1.recognition_inbox'))
@@ -1638,20 +1934,112 @@ def recognition_approve(nom_id):
 @hr1_bp.route('/recognition/<int:nom_id>/reject', methods=['POST'])
 @login_required
 def recognition_reject(nom_id):
+    """Supervisor hard-rejects a nomination (e.g., fails basic criteria)."""
     client = get_supabase_client()
     try:
+        nom_resp = client.table('recognition_nominations').select('nominator_id').eq('id', nom_id).single().execute()
+        nom = nom_resp.data
         client.table('recognition_nominations').update({
             'status': 'Rejected',
             'reviewed_at': datetime.utcnow().isoformat(),
             'review_notes': request.form.get('review_notes', '')
         }).eq('id', nom_id).execute()
 
-        nom = client.table('recognition_nominations').select('nominator_id').eq('id', nom_id).single().execute()
-        if nom.data:
+        if nom:
             from utils.hms_models import Notification
-            Notification.create(user_id=nom.data['nominator_id'], subsystem='hr1', title="Nomination Rejected", message="Your recognition nomination was not approved.", n_type="warning", sender_subsystem='hr1')
+            Notification.create(user_id=nom['nominator_id'], subsystem='hr1', title='Nomination Rejected', message='Your recognition nomination did not meet the basic criteria and has been rejected.', n_type='warning', sender_subsystem='hr1')
 
         flash('Nomination rejected.', 'info')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.recognition_inbox'))
+
+
+@hr1_bp.route('/recognition/<int:nom_id>/hr-review', methods=['POST'])
+@login_required
+def recognition_hr_review(nom_id):
+    """HR validates the nomination against policy and either forwards to Management or rejects."""
+    if not current_user.is_admin() and not current_user.is_super_admin():
+        flash('Only HR Administrators can perform this action.', 'danger')
+        return redirect(url_for('hr1.recognition_inbox'))
+
+    client = get_supabase_client()
+    try:
+        action = request.form.get('action')  # 'forward' or 'reject'
+        nom_resp = client.table('recognition_nominations').select('nominator_id, nominee_id').eq('id', nom_id).single().execute()
+        nom = nom_resp.data
+
+        if action == 'forward':
+            client.table('recognition_nominations').update({
+                'status': 'Management_Pending',
+                'reviewed_at': datetime.utcnow().isoformat(),
+                'review_notes': request.form.get('review_notes', '')
+            }).eq('id', nom_id).execute()
+
+            from utils.hms_models import Notification
+            if nom:
+                Notification.create(user_id=nom['nominator_id'], subsystem='hr1', title='Nomination Under Management Review', message='Your nomination has passed HR validation and is now under Management/Committee review.', n_type='info', sender_subsystem='hr1')
+            flash('Nomination validated and forwarded to Management/Committee for final approval.', 'success')
+
+        elif action == 'reject':
+            client.table('recognition_nominations').update({
+                'status': 'HR_Rejected',
+                'reviewed_at': datetime.utcnow().isoformat(),
+                'review_notes': request.form.get('review_notes', '')
+            }).eq('id', nom_id).execute()
+
+            from utils.hms_models import Notification
+            if nom:
+                Notification.create(user_id=nom['nominator_id'], subsystem='hr1', title='Nomination Rejected by HR', message=f"Your nomination did not pass HR policy validation. Reason: {request.form.get('review_notes', '')}", n_type='warning', sender_subsystem='hr1')
+            flash('Nomination rejected at HR level.', 'info')
+
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr1.recognition_inbox'))
+
+
+@hr1_bp.route('/recognition/<int:nom_id>/management-review', methods=['POST'])
+@login_required
+def recognition_management_review(nom_id):
+    """Management/Committee gives final approval or rejection. Approved → goes to Wall of Fame."""
+    if not (current_user.is_admin() or current_user.is_super_admin() or getattr(current_user, 'role', '') == 'Manager'):
+        flash('Management access required.', 'danger')
+        return redirect(url_for('hr1.recognition_inbox'))
+
+    client = get_supabase_client()
+    try:
+        action = request.form.get('action')  # 'approve' or 'reject'
+        nom_resp = client.table('recognition_nominations').select('nominee_id, nominator_id, recognition_type_id').eq('id', nom_id).single().execute()
+        nom = nom_resp.data
+
+        if action == 'approve':
+            client.table('recognition_nominations').update({
+                'status': 'Approved',
+                'reviewed_at': datetime.utcnow().isoformat(),
+                'review_notes': request.form.get('review_notes', '')
+            }).eq('id', nom_id).execute()
+
+            # Notify nominee and nominator
+            from utils.hms_models import Notification
+            if nom:
+                Notification.create(user_id=nom['nominee_id'], subsystem='hr1', title='Congratulations — Recognition Approved!', message='You have been officially recognized for your outstanding contribution. Your achievement will be featured on the Wall of Fame.', n_type='success', sender_subsystem='hr1')
+                Notification.create(user_id=nom['nominator_id'], subsystem='hr1', title='Nomination Approved by Management', message='Your recognition nomination has been approved by Management and is now on the Wall of Fame.', n_type='success', sender_subsystem='hr1')
+            # Notify HR to prepare certificate/incentive
+            Notification.create(subsystem='hr1', role='Admin', title='Prepare Recognition Certificate/Incentive', message='A recognition has been approved by Management. Please prepare the certificate or incentive and schedule the announcement.', n_type='info', sender_subsystem='hr1')
+            flash('Recognition approved! Featured on Wall of Fame. HR has been notified to prepare the certificate.', 'success')
+
+        elif action == 'reject':
+            client.table('recognition_nominations').update({
+                'status': 'Management_Rejected',
+                'reviewed_at': datetime.utcnow().isoformat(),
+                'review_notes': request.form.get('review_notes', '')
+            }).eq('id', nom_id).execute()
+
+            from utils.hms_models import Notification
+            if nom:
+                Notification.create(user_id=nom['nominator_id'], subsystem='hr1', title='Nomination Not Approved by Management', message=f"The Management/Committee did not approve the nomination. Reason: {request.form.get('review_notes', '')}", n_type='warning', sender_subsystem='hr1')
+            flash('Nomination rejected by Management.', 'info')
+
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('hr1.recognition_inbox'))

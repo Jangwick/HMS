@@ -14,6 +14,7 @@ class ProbationStage:
     KPI_ACKNOWLEDGED = 'KPI_ACKNOWLEDGED'
     MONITORING = 'MONITORING'
     MID_CHECK_IN = 'MID_CHECK_IN'
+    IMPROVEMENT_PLAN = 'IMPROVEMENT_PLAN'   # Conditional: only when performance gaps found
     DOCUMENTATION = 'DOCUMENTATION'
     FINAL_EVALUATION = 'FINAL_EVALUATION'
     RECOMMENDATION = 'RECOMMENDATION'
@@ -21,7 +22,7 @@ class ProbationStage:
 
     ALL_STAGES = [
         ASSIGNED, KPI_SETUP, KPI_ACKNOWLEDGED, MONITORING,
-        MID_CHECK_IN, DOCUMENTATION, FINAL_EVALUATION,
+        MID_CHECK_IN, IMPROVEMENT_PLAN, DOCUMENTATION, FINAL_EVALUATION,
         RECOMMENDATION, HR_DECISION
     ]
 
@@ -31,6 +32,7 @@ class ProbationStage:
         KPI_ACKNOWLEDGED: 'KPI Acknowledgement',
         MONITORING: 'Ongoing Monitoring & Coaching',
         MID_CHECK_IN: 'Mid-Probation Check-in',
+        IMPROVEMENT_PLAN: 'Improvement Plan Review',
         DOCUMENTATION: 'Documentation of Performance Notes',
         FINAL_EVALUATION: 'Final Probation Evaluation',
         RECOMMENDATION: 'Supervisor Recommendation',
@@ -43,6 +45,7 @@ class ProbationStage:
         KPI_ACKNOWLEDGED: 'hand-thumbs-up',
         MONITORING: 'eye',
         MID_CHECK_IN: 'clipboard2-check',
+        IMPROVEMENT_PLAN: 'arrow-repeat',
         DOCUMENTATION: 'journal-text',
         FINAL_EVALUATION: 'graph-up-arrow',
         RECOMMENDATION: 'send-check',
@@ -50,13 +53,15 @@ class ProbationStage:
     }
 
 
-# Valid transitions: each stage can only move to the next in sequence
+# Valid transitions: MID_CHECK_IN can go to IMPROVEMENT_PLAN (gaps found) or directly to
+# DOCUMENTATION (no gaps). IMPROVEMENT_PLAN always leads to DOCUMENTATION after HR approves.
 STAGE_TRANSITIONS = {
     ProbationStage.ASSIGNED: [ProbationStage.KPI_SETUP],
     ProbationStage.KPI_SETUP: [ProbationStage.KPI_ACKNOWLEDGED],
     ProbationStage.KPI_ACKNOWLEDGED: [ProbationStage.MONITORING],
     ProbationStage.MONITORING: [ProbationStage.MID_CHECK_IN],
-    ProbationStage.MID_CHECK_IN: [ProbationStage.DOCUMENTATION],
+    ProbationStage.MID_CHECK_IN: [ProbationStage.IMPROVEMENT_PLAN, ProbationStage.DOCUMENTATION],
+    ProbationStage.IMPROVEMENT_PLAN: [ProbationStage.DOCUMENTATION],
     ProbationStage.DOCUMENTATION: [ProbationStage.FINAL_EVALUATION],
     ProbationStage.FINAL_EVALUATION: [ProbationStage.RECOMMENDATION],
     ProbationStage.RECOMMENDATION: [ProbationStage.HR_DECISION],
@@ -177,6 +182,16 @@ def _send_stage_notification(cycle: dict, new_stage: str, actor_id: int):
             title="Mid-Probation Check-in Scheduled",
             message=f"Your supervisor will conduct a mid-probation check-in soon.",
             n_type="info",
+            sender_subsystem='hr1'
+        )
+    elif new_stage == ProbationStage.IMPROVEMENT_PLAN:
+        # Notify employee to acknowledge the improvement plan
+        Notification.create(
+            user_id=employee_id,
+            subsystem='hr1',
+            title="Improvement Plan Requires Your Acknowledgement",
+            message="Performance gaps were identified during your mid-probation review. Please review and acknowledge the improvement plan.",
+            n_type="warning",
             sender_subsystem='hr1'
         )
     elif new_stage == ProbationStage.FINAL_EVALUATION:

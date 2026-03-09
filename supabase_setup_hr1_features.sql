@@ -207,6 +207,24 @@ CREATE INDEX IF NOT EXISTS idx_final_evaluations_cycle ON final_evaluations(cycl
 CREATE INDEX IF NOT EXISTS idx_probation_recommendations_cycle ON probation_recommendations(cycle_id);
 CREATE INDEX IF NOT EXISTS idx_hr_decisions_cycle ON hr_decisions(cycle_id);
 
+-- Periodic KPI Progress Logs (during MONITORING stage)
+CREATE TABLE IF NOT EXISTS probation_kpi_progress (
+    id SERIAL PRIMARY KEY,
+    cycle_id INTEGER REFERENCES probation_cycles(id) ON DELETE CASCADE,
+    kpi_id INTEGER REFERENCES probation_kpis(id) ON DELETE CASCADE,
+    logged_by INTEGER REFERENCES users(id),
+    score NUMERIC(4,2) NOT NULL,
+    notes TEXT,
+    logged_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE IF EXISTS probation_kpi_progress ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on probation_kpi_progress" ON probation_kpi_progress;
+CREATE POLICY "Allow all on probation_kpi_progress" ON probation_kpi_progress FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_kpi_progress_cycle ON probation_kpi_progress(cycle_id);
+CREATE INDEX IF NOT EXISTS idx_kpi_progress_kpi ON probation_kpi_progress(kpi_id);
+
 -- =====================================================
 -- FEATURE 4: SOCIAL RECOGNITION MODULE
 -- =====================================================
@@ -261,3 +279,43 @@ INSERT INTO recognition_types (name, description, icon) VALUES
     ('Service Award', 'Years of dedicated service to the institution', 'award-fill'),
     ('Employee of the Month', 'Exceptional performance and dedication', 'star-fill')
 ON CONFLICT DO NOTHING;
+
+-- =====================================================
+-- ADDENDUM: WORKFLOW DIAGRAM ALIGNMENT
+-- (Run this after the initial setup if upgrading)
+-- =====================================================
+
+-- Widen status column to accommodate multi-level approval status values
+-- (Supervisor_Approved, Management_Pending, Management_Rejected, HR_Rejected, Returned)
+ALTER TABLE IF EXISTS recognition_nominations
+    ALTER COLUMN status TYPE VARCHAR(50);
+
+-- Performance Management: IMPROVEMENT_PLAN stage is handled entirely at the
+-- application layer (utils/probation_engine.py). No schema changes required —
+-- the existing probation_cycles.current_stage VARCHAR(50) and
+-- mid_probation_checkins.improvement_plan TEXT columns already support it.
+-- The improvement plan acknowledgement and HR review are tracked via
+-- performance_notes with note_type IN ('IP_Acknowledged','IP_HR_Approved','IP_HR_Rejected').
+
+-- Social Recognition: New multi-level nomination status values:
+--   Pending            → Awaiting supervisor review (30-day auto-reject deadline)
+--   Returned           → Supervisor returned to nominator for revision
+--   Supervisor_Approved→ Supervisor approved; forwarded to HR for validation
+--   HR_Rejected        → HR rejected during policy validation
+--   Management_Pending → HR validated; awaiting Management/Committee decision
+--   Management_Rejected→ Management committee rejected the nomination
+--   Approved           → Fully approved; featured on Wall of Fame
+--   Auto-Rejected      → System auto-rejected after 30-day supervisor inaction
+
+-- Index for new multi-level status routing
+CREATE INDEX IF NOT EXISTS idx_recognition_nominations_supervisor_pending
+    ON recognition_nominations(supervisor_id, status);
+
+-- =====================================================
+-- STORAGE: Create the recognition-docs bucket
+-- In Supabase Dashboard → Storage → New Bucket:
+--   Name: recognition-docs
+--   Public: true  (so reviewers can open the file URL directly)
+-- Or run via Supabase Management API / psql (storage schema):
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('recognition-docs', 'recognition-docs', true) ON CONFLICT DO NOTHING;
+-- =====================================================

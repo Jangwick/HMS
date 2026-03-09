@@ -40,7 +40,7 @@
                     </div>
                 </div>
 
-                <form method="POST" action="{{ url_for('hr1.recognition_nominate') }}">
+                <form method="POST" action="{{ url_for('hr1.recognition_nominate') }}" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="space-y-6">
                         <!-- Nominee Selection -->
@@ -101,6 +101,61 @@
                                 class="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:border-transparent transition-all resize-y"
                                 placeholder="Additional context, specific dates, external feedback, or supporting evidence..."></textarea>
                         </div>
+
+                        <!-- Supporting Document Upload -->
+                        <div>
+                            <label class="text-sm font-bold text-gray-700 block mb-2">
+                                <i class="bi bi-file-earmark-arrow-up mr-1" style="color: {{ accent_color }};"></i>
+                                Supporting Document <span class="text-gray-400 font-normal">(optional)</span>
+                            </label>
+                            <div class="relative border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 hover:bg-white hover:border-gray-300 transition-all"
+                                 id="dropZone">
+                                <input type="file" name="attachment" id="attachmentInput" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    onchange="handleFileSelect(this)">
+                                <div class="py-6 px-4 text-center" id="dropZoneContent">
+                                    <i class="bi bi-cloud-arrow-up text-3xl text-gray-300 block mb-2"></i>
+                                    <p class="text-sm font-bold text-gray-500">Click to browse or drag &amp; drop</p>
+                                    <p class="text-xs text-gray-400 mt-1">PDF, Word, JPG, PNG &bull; Max 5 MB</p>
+                                </div>
+                                <div class="hidden py-4 px-4 flex items-center gap-3" id="fileSelectedContent">
+                                    <i class="bi bi-file-earmark-check text-2xl text-green-500"></i>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-bold text-gray-800 truncate" id="selectedFileName"></p>
+                                        <p class="text-xs text-gray-400" id="selectedFileSize"></p>
+                                    </div>
+                                    <button type="button" onclick="clearFile()"
+                                        class="text-gray-400 hover:text-red-500 transition-colors">
+                                        <i class="bi bi-x-circle text-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <script>
+                        function handleFileSelect(input) {
+                            const file = input.files[0];
+                            if (!file) return;
+                            const mb = (file.size / 1024 / 1024).toFixed(2);
+                            if (file.size > 5 * 1024 * 1024) {
+                                alert('File too large. Maximum size is 5 MB.');
+                                input.value = '';
+                                return;
+                            }
+                            document.getElementById('dropZoneContent').classList.add('hidden');
+                            const sel = document.getElementById('fileSelectedContent');
+                            sel.classList.remove('hidden');
+                            sel.classList.add('flex');
+                            document.getElementById('selectedFileName').textContent = file.name;
+                            document.getElementById('selectedFileSize').textContent = mb + ' MB';
+                        }
+                        function clearFile() {
+                            document.getElementById('attachmentInput').value = '';
+                            document.getElementById('fileSelectedContent').classList.add('hidden');
+                            document.getElementById('fileSelectedContent').classList.remove('flex');
+                            document.getElementById('dropZoneContent').classList.remove('hidden');
+                        }
+                        </script>
                     </div>
 
                     <!-- Action Buttons -->
