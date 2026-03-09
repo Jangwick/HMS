@@ -26,6 +26,33 @@
     {% set total_scheduled = records | selectattr('status', 'equalto', 'Scheduled') | list | length %}
     {% set total_submitted = records | selectattr('status', 'equalto', 'Submitted') | list | length %}
 
+    <!-- Top KPI strip -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
+            <p class="text-3xl font-black text-gray-900">{{ total_staff }}</p>
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Total Staff</p>
+        </div>
+        <div class="bg-cyan-50 p-5 rounded-2xl shadow-sm border border-cyan-100 text-center">
+            <p class="text-3xl font-black text-cyan-700">{{ total_trainings_enrolled }}</p>
+            <p class="text-xs font-bold text-cyan-500 uppercase tracking-widest mt-1">Trainings Enrolled</p>
+            {% if total_trainings_enrolled > 0 %}
+            <p class="text-xs text-cyan-400 mt-0.5">{{ total_trainings_attended }} attended</p>
+            {% endif %}
+        </div>
+        <div class="bg-indigo-50 p-5 rounded-2xl shadow-sm border border-indigo-100 text-center">
+            <p class="text-3xl font-black text-indigo-700">{{ total_records }}</p>
+            <p class="text-xs font-bold text-indigo-500 uppercase tracking-widest mt-1">Assessments</p>
+            {% if total_records > 0 %}
+            <p class="text-xs text-indigo-400 mt-0.5">{{ total_competent }} competent</p>
+            {% endif %}
+        </div>
+        <div class="bg-violet-50 p-5 rounded-2xl shadow-sm border border-violet-100 text-center">
+            <p class="text-3xl font-black text-violet-700">{{ total_certs }}</p>
+            <p class="text-xs font-bold text-violet-500 uppercase tracking-widest mt-1">Certificates Issued</p>
+        </div>
+    </div>
+
+    <!-- Competency stat cards -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
             <p class="text-3xl font-black text-gray-900">{{ total_records }}</p>
@@ -181,6 +208,51 @@
         </div>
     </div>
     {% endfor %}
+    {% endif %}
+
+    <!-- ── Training Compliance by Department ── -->
+    {% if training_dept_map %}
+    <div>
+        <h2 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Training Compliance by Department</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for dept, td in training_dept_map.items() | sort %}
+            {% set att_rate = ((td.get('Attended',0) / td.total) * 100)|round|int if td.total > 0 else 0 %}
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-black"
+                             style="background: {{ accent_color or '#0891B2' }}">{{ dept[0]|upper }}</div>
+                        <div>
+                            <p class="text-sm font-black text-gray-900">{{ dept }}</p>
+                            <p class="text-[10px] text-gray-400">{{ td.total }} enrollment{{ 's' if td.total != 1 }}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xl font-black {{ 'text-green-600' if att_rate >= 70 else 'text-amber-600' if att_rate >= 40 else 'text-red-600' }}">{{ att_rate }}%</p>
+                        <p class="text-[10px] text-gray-400 font-bold">Attended</p>
+                    </div>
+                </div>
+                {% if td.total > 0 %}
+                <div class="w-full bg-gray-100 rounded-full h-2 mb-2 overflow-hidden">
+                    <div class="h-2 rounded-full flex">
+                        <div class="bg-green-500 h-full" style="width: {{ att_rate }}%"></div>
+                        <div class="bg-amber-400 h-full" style="width: {{ ((td.get('Enrolled',0) / td.total) * 100)|round|int }}%"></div>
+                        <div class="bg-red-400 h-full" style="width: {{ ((td.get('Absent',0) / td.total) * 100)|round|int }}%"></div>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="flex flex-wrap gap-3 text-[10px] font-bold mt-1">
+                    <span class="text-green-600">{{ td.get('Attended',0) }} Attended</span>
+                    <span class="text-amber-600">{{ td.get('Enrolled',0) }} Enrolled</span>
+                    {% if td.get('Absent',0) %}<span class="text-red-500">{{ td.get('Absent',0) }} Absent</span>{% endif %}
+                    {% if cert_dept_counts.get(dept) %}
+                    <span class="text-violet-600">{{ cert_dept_counts[dept] }} Cert{{ 's' if cert_dept_counts[dept] != 1 }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
     {% endif %}
 
 </div>

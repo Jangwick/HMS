@@ -173,7 +173,7 @@
                     {% set tr = t.training if t.training else {} %}
                     <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                         <span class="text-xs font-bold text-gray-700 truncate max-w-[160px]">{{ tr.get('title', '—') }}</span>
-                        <span class="text-[10px] text-gray-400">{{ tr.get('scheduled_date', '')[:10] if tr.get('scheduled_date') else '' }}</span>
+                        <span class="text-[10px] text-gray-400">{{ tr.get('schedule_date', '')[:10] if tr.get('schedule_date') else '' }}</span>
                     </div>
                     {% else %}
                     <p class="text-sm text-gray-400">No trainings enrolled yet.</p>

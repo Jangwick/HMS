@@ -740,26 +740,6 @@
                         <span>My Self Service</span>
                         <i class="bi bi-arrow-right ml-auto text-xs opacity-60"></i>
                     </a>
-                    <a href="{{ url_for('hr2.my_career', context=blueprint_name) }}"
-                        class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#0891B2]' if request.endpoint == 'hr2.my_career' }}">
-                        <i class="bi bi-person-workspace mr-3 text-[#0891B2]"></i>
-                        <span class="font-bold text-[#0891B2]">My Roadmap</span>
-                    </a>
-                    <a href="{{ url_for('hr2.my_assessments', context=blueprint_name) }}"
-                        class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#0891B2]' if request.endpoint == 'hr2.my_assessments' }}">
-                        <i class="bi bi-clipboard2-check mr-3 text-[#0891B2]"></i>
-                        <span class="font-bold text-[#0891B2]">My Assessments</span>
-                    </a>
-                    <a href="{{ url_for('hr2.my_trainings', context=blueprint_name) }}"
-                        class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#0891B2]' if request.endpoint == 'hr2.my_trainings' }}">
-                        <i class="bi bi-mortarboard mr-3 text-[#0891B2]"></i>
-                        <span class="font-bold text-[#0891B2]">My Trainings</span>
-                    </a>
-                    <a href="{{ url_for('hr2.my_learning', context=blueprint_name) }}"
-                        class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-[#0891B2]' if request.endpoint == 'hr2.my_learning' }}">
-                        <i class="bi bi-book mr-3 text-[#0891B2]"></i>
-                        <span class="font-bold text-[#0891B2]">My Learning</span>
-                    </a>
                     <a href="{{ url_for('hr3.list_attendance', context=blueprint_name) }}"
                         class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-accent-light border-l-4 border-accent text-accent' if 'attendance' in request.endpoint }}">
                         <i class="bi {{ 'bi-activity' if blueprint_name == 'hr3' else 'bi-clock-history' }} mr-3"></i>

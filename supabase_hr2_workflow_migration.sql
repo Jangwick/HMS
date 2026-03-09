@@ -109,6 +109,24 @@ ALTER TABLE IF EXISTS training_participants ADD COLUMN IF NOT EXISTS progress_pc
 ALTER TABLE IF EXISTS training_participants ADD COLUMN IF NOT EXISTS self_completed BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS training_participants ADD COLUMN IF NOT EXISTS evidence_url TEXT;
 ALTER TABLE IF EXISTS training_participants ADD COLUMN IF NOT EXISTS evidence_flagged BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS training_certifications ADD COLUMN IF NOT EXISTS certificate_number VARCHAR(50) UNIQUE;
+
+-- ----------------------------
+-- STORAGE: hr2-assessments bucket
+-- ----------------------------
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('hr2-assessments', 'hr2-assessments', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public Access hr2-assessments" ON storage.objects;
+DROP POLICY IF EXISTS "Public Upload hr2-assessments" ON storage.objects;
+DROP POLICY IF EXISTS "Public Update hr2-assessments" ON storage.objects;
+DROP POLICY IF EXISTS "Public Delete hr2-assessments" ON storage.objects;
+
+CREATE POLICY "Public Access hr2-assessments" ON storage.objects FOR SELECT USING (bucket_id = 'hr2-assessments');
+CREATE POLICY "Public Upload hr2-assessments" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'hr2-assessments');
+CREATE POLICY "Public Update hr2-assessments" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'hr2-assessments');
+CREATE POLICY "Public Delete hr2-assessments" ON storage.objects FOR DELETE USING (bucket_id = 'hr2-assessments');
 
 -- Done
 SELECT 'HR2 workflow migration complete.' AS result;

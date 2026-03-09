@@ -6,6 +6,36 @@
 {% block content %}
 <div class="max-w-4xl mx-auto py-8 space-y-6">
 
+    <!-- ESS Sub-nav -->
+    <div class="flex items-center gap-2 flex-wrap">
+        <a href="{{ url_for('hr2.employee_self_service', context=blueprint_name) }}"
+           class="flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-gray-700 transition-colors mr-1">
+            <i class="bi bi-grid-1x2-fill"></i><span class="hidden sm:inline">Self Service</span>
+        </a>
+        <i class="bi bi-chevron-right text-gray-300 text-[10px]"></i>
+        <a href="{{ url_for('hr2.my_career', context=blueprint_name) }}"
+           class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all
+                  {{ 'text-white shadow-sm' if request.endpoint == 'hr2.my_career' else 'bg-gray-100 text-gray-500 hover:bg-gray-200' }}"
+           {% if request.endpoint == 'hr2.my_career' %}style="background:{{ accent_color or '#0891B2' }}"{% endif %}>
+            <i class="bi bi-person-workspace"></i> Roadmap
+        </a>
+        <a href="{{ url_for('hr2.my_assessments', context=blueprint_name) }}"
+           class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all
+                  {{ 'bg-indigo-500 text-white shadow-sm' if request.endpoint == 'hr2.my_assessments' else 'bg-gray-100 text-gray-500 hover:bg-gray-200' }}">
+            <i class="bi bi-clipboard2-check"></i> Assessments
+        </a>
+        <a href="{{ url_for('hr2.my_trainings', context=blueprint_name) }}"
+           class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all
+                  {{ 'bg-cyan-500 text-white shadow-sm' if request.endpoint == 'hr2.my_trainings' else 'bg-gray-100 text-gray-500 hover:bg-gray-200' }}">
+            <i class="bi bi-mortarboard"></i> Trainings
+        </a>
+        <a href="{{ url_for('hr2.my_learning', context=blueprint_name) }}"
+           class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all
+                  {{ 'bg-violet-500 text-white shadow-sm' if request.endpoint == 'hr2.my_learning' else 'bg-gray-100 text-gray-500 hover:bg-gray-200' }}">
+            <i class="bi bi-book"></i> Learning
+        </a>
+    </div>
+
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
@@ -74,14 +104,26 @@
                             <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mt-0.5">{{ t.type or 'Training' }}</p>
                             <div class="flex flex-wrap items-center gap-3 mt-2">
                                 <span class="flex items-center gap-1 text-xs text-gray-600">
-                                    <i class="bi bi-calendar3 text-[#0891B2]"></i>{{ t.schedule_date or 'TBD' }}
+                                    <i class="bi bi-calendar3 text-[#0891B2]"></i>
+                                    {% if t.schedule_date %}
+                                        {{ t.schedule_date[:10] | replace('-', '/') if 'T' in (t.schedule_date or '') else t.schedule_date or 'TBD' }}
+                                    {% else %}TBD{% endif %}
                                 </span>
                                 <span class="flex items-center gap-1 text-xs text-gray-600">
                                     <i class="bi bi-person-badge text-[#0891B2]"></i>{{ t.trainer }}
                                 </span>
                                 {% if t.location %}
                                 <span class="flex items-center gap-1 text-xs text-gray-600">
-                                    <i class="bi bi-{{ 'wifi' if t.location_type == 'Online' else 'geo-alt' }} text-[#0891B2]"></i>{{ t.location_type or 'On-site' }}{% if t.location_type != 'Online' %}: {{ t.location }}{% endif %}
+                                    {% if t.location_type == 'Online' %}
+                                        <i class="bi bi-camera-video text-blue-500"></i><span class="text-blue-600 font-bold">Online</span>
+                                        {% if t.location and t.location.startswith('http') %}
+                                        — <a href="{{ t.location }}" target="_blank" class="text-blue-600 font-black underline flex items-center gap-1"><i class="bi bi-box-arrow-up-right text-[10px]"></i>Join Meeting</a>
+                                        {% endif %}
+                                    {% elif t.location_type == 'Off-site' %}
+                                        <i class="bi bi-signpost-2 text-amber-500"></i><span class="text-amber-600 font-bold">Off-site</span>: {{ t.location }}
+                                    {% else %}
+                                        <i class="bi bi-geo-alt text-[#0891B2]"></i>{{ t.location }}
+                                    {% endif %}
                                 </span>
                                 {% endif %}
                             </div>
@@ -112,25 +154,38 @@
                 <!-- Progress Bar -->
                 {% if grp_status == 'Scheduled' %}
                 <div class="mt-4 ml-16">
-                    <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center justify-between mb-2">
                         <span class="text-xs font-bold text-gray-500">My Progress</span>
                         <span class="text-xs font-black text-[#0891B2]" id="prog_label_{{ e.id }}">{{ e.progress_pct or 0 }}%</span>
                     </div>
-                    <div class="w-full bg-gray-100 rounded-full h-2 mb-3">
-                        <div class="bg-[#0891B2] h-2 rounded-full transition-all" id="prog_bar_{{ e.id }}" style="width: {{ e.progress_pct or 0 }}%"></div>
+                    <div class="w-full bg-gray-100 rounded-full h-2 mb-3 overflow-hidden">
+                        <div class="h-2 rounded-full transition-all duration-500" id="prog_bar_{{ e.id }}"
+                             style="width: {{ e.progress_pct or 0 }}%; background: {{ accent_color or '#0891B2' }}"></div>
                     </div>
-                    <form action="{{ url_for('hr2.update_training_progress') }}" method="POST" class="flex items-center gap-3">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="context" value="{{ blueprint_name }}">
-                        <input type="hidden" name="participant_id" value="{{ e.id }}">
-                        <input type="range" name="progress_pct" min="0" max="100" value="{{ e.progress_pct or 0 }}"
-                            oninput="document.getElementById('prog_label_{{ e.id }}').textContent=this.value+'%'; document.getElementById('prog_bar_{{ e.id }}').style.width=this.value+'%'"
-                            class="flex-1 accent-[#0891B2]">
-                        <label class="flex items-center gap-1 text-xs font-bold text-gray-600 cursor-pointer">
-                            <input type="checkbox" name="self_completed" value="1" {{ 'checked' if e.self_completed }} class="rounded"> Done
+                    <!-- Quick-select progress buttons -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                        {% for pct in [25, 50, 75, 100] %}
+                        <button type="button"
+                            onclick="setProgress({{ e.id }}, {{ pct }}, '{{ csrf_token() }}', '{{ blueprint_name }}')"
+                            class="px-3 py-1.5 rounded-lg text-xs font-black border transition-all
+                                {{ 'text-white border-transparent' if (e.progress_pct or 0) >= pct else 'bg-gray-50 border-gray-200 text-gray-600 hover:border-[#0891B2] hover:text-[#0891B2]' }}"
+                            id="prog_btn_{{ e.id }}_{{ pct }}"
+                            style="{{ 'background:' + (accent_color or '#0891B2') + ';border-color:' + (accent_color or '#0891B2') if (e.progress_pct or 0) >= pct else '' }}">
+                            {{ pct }}%
+                        </button>
+                        {% endfor %}
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-gray-600 cursor-pointer ml-auto border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-all"
+                               id="done_label_{{ e.id }}"
+                               onclick="toggleDone({{ e.id }}, '{{ csrf_token() }}', '{{ blueprint_name }}')">
+                            <span class="w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all
+                                {{ 'bg-[#0891B2] border-[#0891B2]' if e.self_completed else 'border-gray-300' }}"
+                                id="done_check_{{ e.id }}">
+                                {% if e.self_completed %}<i class="bi bi-check text-white text-[10px]"></i>{% endif %}
+                            </span>
+                            Mark as Done
                         </label>
-                        <button type="submit" class="px-3 py-1.5 bg-[#0891B2] text-white text-xs font-bold rounded-lg hover:bg-cyan-700">Save</button>
-                    </form>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-2"><i class="bi bi-info-circle mr-1"></i>Track your own preparation progress. HR records official attendance separately.</p>
                 </div>
                 {% endif %}
 
@@ -143,10 +198,11 @@
                     </a>
                     {% endif %}
                     {% if cert %}
-                    <a href="{{ cert.training.schedule_date }}" target="_blank"
+                    <button onclick='openCertModal({{ cert|tojson|safe }}, {{ t.title|tojson|safe }}, {{ (t.trainer or "")|tojson|safe }}, {{ current_user.username|tojson|safe }})'
                        class="flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-100 rounded-xl text-xs font-bold text-purple-700 hover:bg-purple-100 transition-all">
-                        <i class="bi bi-award-fill"></i> Certificate Issued {{ cert.issued_date }}{% if cert.expiry_date %} • Expires {{ cert.expiry_date }}{% endif %}
-                    </a>
+                        <i class="bi bi-award-fill"></i> View Certificate
+                        {% if cert.expiry_date %}<span class="text-purple-400 font-normal ml-1">&bull; Expires {{ cert.expiry_date }}</span>{% endif %}
+                    </button>
                     {% endif %}
                     {% if grp_status == 'Completed' and not e.evidence_url %}
                     <button onclick="openEvidenceModal({{ e.id }})"
@@ -170,15 +226,158 @@
     {% endif %}
 </div>
 
+<!-- Certificate Modal -->
+<div id="certModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 items-center justify-center p-4" style="display:none">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden">
+        <!-- Toolbar -->
+        <div class="flex justify-between items-center px-6 py-3 bg-gray-900">
+            <div class="flex items-center gap-2">
+                <i class="bi bi-award-fill text-yellow-400 text-lg"></i>
+                <span class="font-bold text-white text-sm tracking-wide">Certificate of Completion</span>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="window.print()"
+                    class="flex items-center gap-1.5 px-4 py-1.5 bg-yellow-400 text-gray-900 text-xs font-black rounded-lg hover:bg-yellow-300 transition-all">
+                    <i class="bi bi-printer-fill"></i> Print / Save PDF
+                </button>
+                <button onclick="document.getElementById('certModal').style.display='none'"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all">
+                    <i class="bi bi-x-lg text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Certificate Body -->
+        <div id="certPrintArea" style="background: linear-gradient(160deg, #1e1b4b 0%, #312e81 40%, #1e3a5f 100%); padding: 3px;">
+            <div style="background: linear-gradient(160deg, #fefce8 0%, #ffffff 50%, #f0f9ff 100%); position:relative; overflow:hidden;">
+
+                <!-- Top gold band -->
+                <div style="background: linear-gradient(90deg, #b45309, #d97706, #f59e0b, #d97706, #b45309); height: 8px;"></div>
+
+                <!-- Corner ornaments via CSS -->
+                <div style="position:absolute; top:20px; left:20px; width:60px; height:60px; border-top: 3px solid #d97706; border-left: 3px solid #d97706; border-radius: 4px 0 0 0; opacity:0.6;"></div>
+                <div style="position:absolute; top:20px; right:20px; width:60px; height:60px; border-top: 3px solid #d97706; border-right: 3px solid #d97706; border-radius: 0 4px 0 0; opacity:0.6;"></div>
+                <div style="position:absolute; bottom:20px; left:20px; width:60px; height:60px; border-bottom: 3px solid #d97706; border-left: 3px solid #d97706; border-radius: 0 0 0 4px; opacity:0.6;"></div>
+                <div style="position:absolute; bottom:20px; right:20px; width:60px; height:60px; border-bottom: 3px solid #d97706; border-right: 3px solid #d97706; border-radius: 0 0 4px 0; opacity:0.6;"></div>
+
+                <!-- Watermark seal (background) -->
+                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); opacity:0.04; font-size:200px; color:#312e81; pointer-events:none; line-height:1;">
+                    <i class="bi bi-shield-fill-check"></i>
+                </div>
+
+                <div style="padding: 40px 60px 36px; text-align:center; position:relative;">
+
+                    <!-- Logo / Seal -->
+                    <div style="display:flex; justify-content:center; margin-bottom:20px;">
+                        <div style="width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,#1e1b4b,#4338ca); border:4px solid #d97706; display:flex; align-items:center; justify-content:center; box-shadow: 0 0 0 3px #fef3c7, 0 4px 20px rgba(67,56,202,0.3);">
+                            <i class="bi bi-hospital" style="color:#fbbf24; font-size:32px;"></i>
+                        </div>
+                    </div>
+
+                    <!-- Org name -->
+                    <p style="font-size:10px; font-weight:800; letter-spacing:0.25em; color:#6b7280; text-transform:uppercase; margin:0 0 4px;">Hospital Management System</p>
+
+                    <!-- Title -->
+                    <h1 style="font-size:28px; font-weight:900; background:linear-gradient(90deg,#92400e,#d97706,#92400e); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin:0 0 4px; letter-spacing:0.02em;">Certificate of Completion</h1>
+
+                    <!-- Gold divider -->
+                    <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin:12px 0 18px;">
+                        <div style="height:1px; width:80px; background:linear-gradient(90deg,transparent,#d97706);"></div>
+                        <i class="bi bi-star-fill" style="color:#d97706; font-size:10px;"></i>
+                        <i class="bi bi-star-fill" style="color:#d97706; font-size:14px;"></i>
+                        <i class="bi bi-star-fill" style="color:#d97706; font-size:10px;"></i>
+                        <div style="height:1px; width:80px; background:linear-gradient(90deg,#d97706,transparent);"></div>
+                    </div>
+
+                    <!-- Certify text -->
+                    <p style="font-size:13px; color:#6b7280; margin:0 0 8px; font-style:italic;">This is to proudly certify that</p>
+
+                    <!-- Recipient name -->
+                    <p id="cert_name" style="font-size:32px; font-weight:900; color:#1e1b4b; font-family:Georgia,serif; margin:0 0 4px; letter-spacing:0.02em;"></p>
+                    <div style="height:2px; width:200px; background:linear-gradient(90deg,transparent,#d97706,transparent); margin:6px auto 16px;"></div>
+
+                    <!-- Body text -->
+                    <p style="font-size:13px; color:#6b7280; margin:0 0 8px;">has successfully completed the training program</p>
+
+                    <!-- Training title -->
+                    <p id="cert_training" style="font-size:20px; font-weight:800; color:#0f172a; margin:0 0 6px; padding:0 20px;"></p>
+
+                    <!-- Date -->
+                    <p style="font-size:12px; color:#6b7280; margin:0 0 4px;">Completed on <strong id="cert_issued" style="color:#1e1b4b; font-weight:700;"></strong></p>
+
+                    <!-- Expiry -->
+                    <p id="cert_expiry_row" style="font-size:11px; color:#9ca3af; margin:2px 0 0; display:none;">
+                        Valid until <span id="cert_expiry" style="font-weight:600; color:#6b7280;"></span>
+                    </p>
+
+                    <!-- Gold divider -->
+                    <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin:24px 0;">
+                        <div style="height:1px; flex:1; background:linear-gradient(90deg,transparent,#e5e7eb);"></div>
+                        <i class="bi bi-diamond-fill" style="color:#d97706; font-size:8px;"></i>
+                        <div style="height:1px; flex:1; background:linear-gradient(90deg,#e5e7eb,transparent);"></div>
+                    </div>
+
+                    <!-- Signatures row -->
+                    <div style="display:flex; justify-content:center; gap:80px;">
+                        <div style="text-align:center;">
+                            <!-- Signature line with decorative wave -->
+                            <div style="width:140px; border-bottom:2px solid #d1d5db; margin:0 auto 6px; padding-top:24px; position:relative;">
+                                <div style="position:absolute; bottom:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,#d97706 40%,transparent);"></div>
+                            </div>
+                            <p id="cert_trainer" style="font-size:11px; font-weight:700; color:#374151; margin:0;"></p>
+                            <p style="font-size:10px; color:#9ca3af; margin:2px 0 0; text-transform:uppercase; letter-spacing:0.1em;">Trainer / Facilitator</p>
+                        </div>
+                        <div style="text-align:center;">
+                            <div style="width:140px; border-bottom:2px solid #d1d5db; margin:0 auto 6px; padding-top:24px; position:relative;">
+                                <div style="position:absolute; bottom:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,#d97706 40%,transparent);"></div>
+                            </div>
+                            <p style="font-size:11px; font-weight:700; color:#374151; margin:0;">HR Department</p>
+                            <p style="font-size:10px; color:#9ca3af; margin:2px 0 0; text-transform:uppercase; letter-spacing:0.1em;">Authorized By</p>
+                        </div>
+                    </div>
+
+                    <!-- Certificate number -->
+                    <p style="font-size:10px; color:#d1d5db; margin:20px 0 0; font-family:monospace; letter-spacing:0.1em;">
+                        Certificate No.: <span id="cert_number" style="color:#9ca3af;"></span>
+                    </p>
+
+                </div>
+
+                <!-- Bottom gold band -->
+                <div style="background: linear-gradient(90deg, #b45309, #d97706, #f59e0b, #d97706, #b45309); height: 8px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print isolation styles -->
+<style>
+@media print {
+    body > * { visibility: hidden !important; }
+    #certPrintArea, #certPrintArea * { visibility: visible !important; }
+    #certPrintArea {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        display: flex !important;
+        align-items: stretch !important;
+    }
+    #certPrintArea > div {
+        width: 100% !important;
+    }
+}
+</style>
+
 <!-- Evidence Upload Modal -->
-<div id="evidenceModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+<div id="evidenceModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 items-center justify-center p-4" style="display:none">
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
         <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
             <div>
                 <h3 class="text-lg font-black text-gray-900">Upload Completion Evidence</h3>
                 <p class="text-xs text-gray-400 mt-0.5">PDF, DOCX, JPG — max 10MB</p>
             </div>
-            <button onclick="document.getElementById('evidenceModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+            <button onclick="document.getElementById('evidenceModal').style.display='none'" class="text-gray-400 hover:text-gray-600">
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
@@ -202,7 +401,82 @@
 <script>
 function openEvidenceModal(participantId) {
     document.getElementById('evidence_participant_id').value = participantId;
-    document.getElementById('evidenceModal').classList.remove('hidden');
+    document.getElementById('evidenceModal').style.display = 'flex';
+}
+
+function setProgress(participantId, pct, csrf, context) {
+    fetch('{{ url_for("hr2.update_training_progress") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `csrf_token=${encodeURIComponent(csrf)}&participant_id=${participantId}&progress_pct=${pct}&self_completed=${pct === 100 ? 1 : 0}&context=${encodeURIComponent(context)}`
+    }).then(() => {
+        const bar = document.getElementById('prog_bar_' + participantId);
+        const lbl = document.getElementById('prog_label_' + participantId);
+        if (bar) bar.style.width = pct + '%';
+        if (lbl) lbl.textContent = pct + '%';
+        [25, 50, 75, 100].forEach(p => {
+            const btn = document.getElementById('prog_btn_' + participantId + '_' + p);
+            if (!btn) return;
+            if (pct >= p) {
+                btn.style.cssText = 'background:{{ accent_color or "#0891B2" }};border-color:{{ accent_color or "#0891B2" }};color:white';
+            } else {
+                btn.style.cssText = '';
+                btn.className = btn.className.replace('text-white','') + ' bg-gray-50 border-gray-200 text-gray-600';
+            }
+        });
+        if (pct === 100) markDoneVisual(participantId, true);
+    }).catch(() => {});
+}
+
+function markDoneVisual(participantId, checked) {
+    const box = document.getElementById('done_check_' + participantId);
+    if (!box) return;
+    if (checked) {
+        box.style.cssText = 'background:{{ accent_color or "#0891B2" }};border-color:{{ accent_color or "#0891B2" }}';
+        box.innerHTML = '<i class="bi bi-check" style="color:white;font-size:10px"></i>';
+    } else {
+        box.style.cssText = 'border-color:#d1d5db';
+        box.innerHTML = '';
+    }
+}
+
+function openCertModal(cert, trainingTitle, trainer, username) {
+    document.getElementById('cert_name').textContent = username;
+    document.getElementById('cert_training').textContent = trainingTitle;
+    document.getElementById('cert_trainer').textContent = trainer || 'HR Department';
+    document.getElementById('cert_issued').textContent = cert.issued_date || '';
+    document.getElementById('cert_number').textContent = cert.certificate_number || 'N/A';
+    const expiryRow = document.getElementById('cert_expiry_row');
+    if (cert.expiry_date) {
+        document.getElementById('cert_expiry').textContent = cert.expiry_date;
+        expiryRow.style.display = 'block';
+    } else {
+        expiryRow.style.display = 'none';
+    }
+    document.getElementById('certModal').style.display = 'flex';
+}
+
+function toggleDone(participantId, csrf, context) {
+    const box = document.getElementById('done_check_' + participantId);
+    const isChecked = box && box.innerHTML.includes('bi-check');
+    const newVal = isChecked ? 0 : 1;
+    fetch('{{ url_for("hr2.update_training_progress") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `csrf_token=${encodeURIComponent(csrf)}&participant_id=${participantId}&progress_pct=${newVal ? 100 : 0}&self_completed=${newVal}&context=${encodeURIComponent(context)}`
+    }).then(() => {
+        markDoneVisual(participantId, newVal === 1);
+        if (newVal === 1) {
+            const bar = document.getElementById('prog_bar_' + participantId);
+            const lbl = document.getElementById('prog_label_' + participantId);
+            if (bar) bar.style.width = '100%';
+            if (lbl) lbl.textContent = '100%';
+            [25, 50, 75, 100].forEach(p => {
+                const btn = document.getElementById('prog_btn_' + participantId + '_' + p);
+                if (btn) btn.style.cssText = 'background:{{ accent_color or "#0891B2" }};border-color:{{ accent_color or "#0891B2" }};color:white';
+            });
+        }
+    }).catch(() => {});
 }
 </script>
 {% endblock %}

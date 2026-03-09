@@ -5,8 +5,16 @@ from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_suc
 from utils.password_validator import PasswordValidationError
 from utils.policy import policy_required
 from datetime import datetime
+import random
+import string
 
 hr2_bp = Blueprint('hr2', __name__)
+
+def _gen_cert_number():
+    """Generate a unique certificate number: HMS-TRN-YYYY-XXXXXXXX"""
+    yr = datetime.utcnow().year
+    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+    return f'HMS-TRN-{yr}-{code}'
 
 # Subsystem configuration
 SUBSYSTEM_NAME = 'HR2 - Talent Development'
@@ -305,8 +313,19 @@ def list_trainings():
         'total': len(trainings),
         'scheduled': len([t for t in trainings if t['status'] == 'Scheduled']),
         'completed': len([t for t in trainings if t['status'] == 'Completed']),
-        'total_participants': len(participants)
+        'total_participants': len(participants),
+        'pending_evidence': len([p for p in participants if p.get('evidence_flagged')])
     }
+
+    # Fetch pending evidence rows with full context for review table
+    try:
+        ev_resp = client.table('training_participants') \
+            .select('id, evidence_url, evidence_flagged, training_id, user_id, users(username, department, role), training:trainings(title, schedule_date)') \
+            .eq('evidence_flagged', True) \
+            .execute()
+        pending_evidence_rows = ev_resp.data or []
+    except Exception:
+        pending_evidence_rows = []
     
     # Competencies for linking dropdown
     try:
@@ -320,6 +339,7 @@ def list_trainings():
                            participants=participants,
                            staff_members=staff_members,
                            stats=stats,
+                           pending_evidence_rows=pending_evidence_rows,
                            competencies_list=competencies_list,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
@@ -348,11 +368,11 @@ def add_training():
                     sc = get_supabase_service_client()
                     ts = int(datetime.utcnow().timestamp())
                     file_path = f"training_requirements/{ts}_{req_file.filename.replace(' ','_')}"
-                    sc.storage.from_('training-docs').upload(
+                    sc.storage.from_('hr2-assessments').upload(
                         path=file_path, file=req_file.read(),
                         file_options={'content-type': req_file.content_type, 'x-upsert': 'true'}
                     )
-                    requirements_file_url = sc.storage.from_('training-docs').get_public_url(file_path)
+                    requirements_file_url = sc.storage.from_('hr2-assessments').get_public_url(file_path)
                 except Exception as ue:
                     flash(f'Requirement file upload failed: {ue}. Training saved without file.', 'warning')
 
@@ -425,11 +445,11 @@ def edit_training(id):
                 sc = get_supabase_service_client()
                 ts = int(datetime.utcnow().timestamp())
                 file_path = f"training_requirements/{ts}_{req_file.filename.replace(' ','_')}"
-                sc.storage.from_('training-docs').upload(
+                sc.storage.from_('hr2-assessments').upload(
                     path=file_path, file=req_file.read(),
                     file_options={'content-type': req_file.content_type, 'x-upsert': 'true'}
                 )
-                requirements_file_url = sc.storage.from_('training-docs').get_public_url(file_path)
+                requirements_file_url = sc.storage.from_('hr2-assessments').get_public_url(file_path)
             except Exception as ue:
                 flash(f'Requirement file upload failed: {ue}.', 'warning')
 
@@ -489,7 +509,7 @@ def complete_training(id):
     
     try:
         # Mark training as completed
-        training_resp = client.table('trainings').update({'status': 'Completed'}).eq('id', id).returning('representation').execute()
+        client.table('trainings').update({'status': 'Completed'}).eq('id', id).execute()
         training = client.table('trainings').select('title').eq('id', id).single().execute().data
         training_title = training.get('title', 'Training') if training else 'Training'
 
@@ -508,6 +528,7 @@ def complete_training(id):
                         'training_id': id,
                         'user_id': p['user_id'],
                         'issued_date': datetime.utcnow().strftime('%Y-%m-%d'),
+                        'certificate_number': _gen_cert_number(),
                     }).execute()
                     cert_issued += 1
                 except Exception:
@@ -592,6 +613,7 @@ def issue_certification():
             'user_id': int(user_id),
             'issued_date': datetime.utcnow().strftime('%Y-%m-%d'),
             'expiry_date': expiry_date,
+            'certificate_number': _gen_cert_number(),
         }, on_conflict='training_id,user_id').execute()
 
         Notification.create(
@@ -1314,9 +1336,7 @@ def update_training_progress():
     self_completed = request.form.get('self_completed') == '1'
     context = request.form.get('context', BLUEPRINT_NAME)
     try:
-        upd = {'progress_pct': int(progress_pct)}
-        if self_completed:
-            upd['self_completed'] = True
+        upd = {'progress_pct': int(progress_pct), 'self_completed': self_completed}
         client.table('training_participants').update(upd) \
             .eq('id', participant_id).eq('user_id', current_user.id).execute()
         flash('Progress updated!', 'success')
@@ -1362,6 +1382,77 @@ def upload_training_evidence():
     except Exception as e:
         flash(f'Upload failed: {str(e)}', 'danger')
     return redirect(url_for('hr2.my_trainings', context=context))
+
+
+@hr2_bp.route('/trainings/evidence/approve/<int:id>', methods=['POST'])
+@login_required
+def approve_evidence(id):
+    """Admin approves submitted training evidence and auto-issues a certificate."""
+    if not current_user.is_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+    try:
+        row = client.table('training_participants') \
+            .select('user_id, training_id') \
+            .eq('id', id).single().execute().data
+        # Clear the pending flag
+        client.table('training_participants').update({'evidence_flagged': False}).eq('id', id).execute()
+        if row:
+            t = client.table('trainings').select('title').eq('id', row['training_id']).single().execute().data
+            training_title = t.get('title', 'Training') if t else 'Training'
+            # Auto-issue certificate
+            try:
+                client.table('training_certifications').upsert({
+                    'training_id': row['training_id'],
+                    'user_id': row['user_id'],
+                    'issued_date': datetime.utcnow().strftime('%Y-%m-%d'),
+                    'certificate_number': _gen_cert_number(),
+                }, on_conflict='training_id,user_id').execute()
+                cert_msg = f' A certificate of completion has been issued to you.'
+            except Exception:
+                cert_msg = ''
+            Notification.create(
+                user_id=row['user_id'],
+                subsystem='hr2',
+                title='Evidence Approved — Certificate Issued',
+                message=f'Your completion evidence for "{training_title}" has been approved by HR.{cert_msg}',
+                n_type='success',
+                sender_subsystem='hr2'
+            )
+        flash('Evidence approved and certificate issued to the participant.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr2.list_trainings'))
+
+
+@hr2_bp.route('/trainings/evidence/reject/<int:id>', methods=['POST'])
+@login_required
+def reject_evidence(id):
+    """Admin rejects submitted training evidence — clears it so staff can re-upload."""
+    if not current_user.is_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+    try:
+        row = client.table('training_participants').select('user_id, training_id').eq('id', id).single().execute().data
+        client.table('training_participants').update({'evidence_flagged': False, 'evidence_url': None}).eq('id', id).execute()
+        if row:
+            t = client.table('trainings').select('title').eq('id', row['training_id']).single().execute().data
+            Notification.create(
+                user_id=row['user_id'],
+                subsystem='hr2',
+                title='Evidence Rejected — Please Re-submit',
+                message=f'Your completion evidence for "{t.get("title", "training") if t else "training"}" was not accepted. Please upload a clearer or correct file.',
+                n_type='warning',
+                sender_subsystem='hr2'
+            )
+        flash('Evidence rejected and staff notified to re-submit.', 'warning')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('hr2.list_trainings'))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1503,7 +1594,7 @@ def employee_self_service():
     recent_trainings = []
     try:
         t_resp = client.table('training_participants') \
-            .select('attendance_status, training:trainings(title, scheduled_date, status)') \
+            .select('attendance_status, training:trainings(title, schedule_date, status)') \
             .eq('user_id', uid).execute()
         for r in (t_resp.data or []):
             training_counts['enrolled'] += 1
@@ -1513,7 +1604,7 @@ def employee_self_service():
         training_counts['certs'] = len(cert_resp.data or [])
         recent_trainings = sorted(
             t_resp.data or [],
-            key=lambda x: x.get('training', {}).get('scheduled_date') or '',
+            key=lambda x: x.get('training', {}).get('schedule_date') or '',
             reverse=True
         )[:3]
     except Exception:
@@ -1556,21 +1647,80 @@ def compliance_report():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
 
+    # ── Fetch users map (avoid ambiguous multi-FK join on staff_competencies) ──
+    try:
+        users_resp = client.table('users') \
+            .select('id, username, department, role') \
+            .not_.in_('role', ['Applicant', 'Patient']) \
+            .order('username').execute()
+        users_map = {u['id']: u for u in (users_resp.data or [])}
+    except Exception:
+        users_map = {}
+
+    # ── Competency assessments (join competencies only — unambiguous FK) ──
     try:
         rec_resp = client.table('staff_competencies') \
-            .select('status, assessment_date, user:users(id, username, department, role), competency:competencies(skill_name, category)') \
+            .select('id, user_id, status, assessment_date, competency:competencies(skill_name, category)') \
             .execute()
-        records = rec_resp.data or []
+        raw_records = rec_resp.data or []
     except Exception:
-        records = []
+        raw_records = []
 
+    # Attach user info from users_map
+    records = []
+    for r in raw_records:
+        uid = r.get('user_id')
+        u = users_map.get(uid)
+        if u:
+            r['user'] = u
+        records.append(r)
+
+    # ── All competencies (for coverage matrix) ──
     try:
         comp_resp = client.table('competencies').select('id, skill_name, category').order('skill_name').execute()
         all_competencies = comp_resp.data or []
     except Exception:
         all_competencies = []
 
-    # Build department map
+    # ── Training compliance data ──
+    try:
+        tp_resp = client.table('training_participants') \
+            .select('user_id, attendance_status, training:trainings(id, title, schedule_date, status, competency_id)') \
+            .execute()
+        tp_raw = tp_resp.data or []
+    except Exception:
+        tp_raw = []
+
+    # Build training compliance per-department
+    training_dept_map = {}
+    for r in tp_raw:
+        uid = r.get('user_id')
+        u = users_map.get(uid)
+        if not u:
+            continue
+        dept = u.get('department', 'Unknown')
+        att = r.get('attendance_status', 'Enrolled')
+        tr = r.get('training') or {}
+        if dept not in training_dept_map:
+            training_dept_map[dept] = {'Attended': 0, 'Enrolled': 0, 'Absent': 0, 'total': 0}
+        training_dept_map[dept]['total'] += 1
+        training_dept_map[dept][att] = training_dept_map[dept].get(att, 0) + 1
+
+    # ── Certification counts per department ──
+    try:
+        cert_resp = client.table('training_certifications').select('user_id').execute()
+        cert_raw = cert_resp.data or []
+    except Exception:
+        cert_raw = []
+
+    cert_dept_counts = {}
+    for c in cert_raw:
+        u = users_map.get(c.get('user_id'))
+        if u:
+            dept = u.get('department', 'Unknown')
+            cert_dept_counts[dept] = cert_dept_counts.get(dept, 0) + 1
+
+    # ── Build competency department map ──
     dept_map = {}
     for r in records:
         if not r.get('user') or not r.get('competency'):
@@ -1583,7 +1733,11 @@ def compliance_report():
         dept_map[dept]['total'] += 1
         uid = r['user']['id']
         if uid not in dept_map[dept]['staff']:
-            dept_map[dept]['staff'][uid] = {'username': r['user']['username'], 'role': r['user']['role'], 'assessments': []}
+            dept_map[dept]['staff'][uid] = {
+                'username': r['user']['username'],
+                'role': r['user']['role'],
+                'assessments': []
+            }
         dept_map[dept]['staff'][uid]['assessments'].append({
             'skill': r['competency']['skill_name'],
             'category': r['competency']['category'],
@@ -1591,10 +1745,22 @@ def compliance_report():
             'date': r.get('assessment_date'),
         })
 
+    # Summary totals
+    total_staff = len(users_map)
+    total_certs = len(cert_raw)
+    total_trainings_enrolled = len(tp_raw)
+    total_trainings_attended = sum(1 for r in tp_raw if r.get('attendance_status') == 'Attended')
+
     return render_template('subsystems/hr/hr2/compliance_report.html',
                            records=records,
                            dept_map=dept_map,
                            all_competencies=all_competencies,
+                           training_dept_map=training_dept_map,
+                           cert_dept_counts=cert_dept_counts,
+                           total_staff=total_staff,
+                           total_certs=total_certs,
+                           total_trainings_enrolled=total_trainings_enrolled,
+                           total_trainings_attended=total_trainings_attended,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
