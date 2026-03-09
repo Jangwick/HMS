@@ -1,0 +1,290 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}My Self Service — {{ subsystem_name }}{% endblock %}
+{% block header_title %}Employee Self Service{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto py-8 space-y-8">
+
+    <!-- Header -->
+    <div>
+        <h1 class="text-3xl font-black text-gray-900">
+            Welcome back, {{ current_user.first_name or current_user.username }}
+        </h1>
+        <p class="text-gray-400 mt-1 text-sm">Your personal HR hub — career progress, assessments, trainings, and learning.</p>
+    </div>
+
+    <!-- ── Quick stat strip ── -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
+            <p class="text-3xl font-black text-gray-900">{{ assessment_counts.Competent }}</p>
+            <p class="text-[11px] font-black text-green-600 uppercase tracking-widest mt-1">Competencies Earned</p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
+            <p class="text-3xl font-black text-gray-900">{{ training_counts.enrolled }}</p>
+            <p class="text-[11px] font-black text-blue-500 uppercase tracking-widest mt-1">Trainings Enrolled</p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
+            <p class="text-3xl font-black text-gray-900">{{ training_counts.certs }}</p>
+            <p class="text-[11px] font-black uppercase tracking-widest mt-1" style="color: {{ accent_color or '#0891B2' }}">Certificates</p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
+            <p class="text-3xl font-black {{ 'text-red-600' if gap_count else 'text-gray-300' }}">{{ gap_count }}</p>
+            <p class="text-[11px] font-black uppercase tracking-widest mt-1 {{ 'text-red-400' if gap_count else 'text-gray-400' }}">Skill Gaps</p>
+        </div>
+    </div>
+
+    <!-- ── Main grid ── -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Career Path card -->
+        <div class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+            <div class="px-6 py-5 flex items-center gap-3 border-b border-gray-100" style="background: linear-gradient(to right, {{ accent_color or '#0891B2' }}15, transparent)">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white" style="background: {{ accent_color or '#0891B2' }}">
+                    <i class="bi bi-person-workspace text-sm"></i>
+                </div>
+                <div>
+                    <h2 class="font-black text-gray-900 text-sm">My Career Roadmap</h2>
+                    <p class="text-[11px] text-gray-400">Assigned path &amp; requirement progress</p>
+                </div>
+            </div>
+            <div class="p-6 flex-1">
+                {% if career_assignment %}
+                <p class="font-black text-gray-800 mb-3">{{ career_assignment.path.title }}</p>
+                <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                    <span>{{ career_assignment._done_reqs }} / {{ career_assignment._total_reqs }} requirements done</span>
+                    <span class="font-black" style="color: {{ accent_color or '#0891B2' }}">{{ career_assignment._pct }}%</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden mb-4">
+                    <div class="h-2 rounded-full transition-all" style="width: {{ career_assignment._pct }}%; background: {{ accent_color or '#0891B2' }}"></div>
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-black
+                    {{ 'bg-green-50 text-green-700' if career_assignment.status == 'Active'
+                       else 'bg-amber-50 text-amber-700' }}">
+                    {{ career_assignment.status }}
+                </span>
+                {% else %}
+                <div class="text-center py-6">
+                    <i class="bi bi-map text-4xl text-gray-200 block mb-2"></i>
+                    <p class="text-sm text-gray-400">No active career path assigned yet.</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+                <a href="{{ url_for('hr2.my_career', context=blueprint_name) }}"
+                   class="text-xs font-black hover:underline" style="color: {{ accent_color or '#0891B2' }}">
+                    View full roadmap →
+                </a>
+            </div>
+        </div>
+
+        <!-- Assessments card -->
+        <div class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+            <div class="px-6 py-5 flex items-center gap-3 border-b border-gray-100" style="background: linear-gradient(to right, #6366F115, transparent)">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-indigo-500">
+                    <i class="bi bi-clipboard2-check text-sm"></i>
+                </div>
+                <div>
+                    <h2 class="font-black text-gray-900 text-sm">My Assessments</h2>
+                    <p class="text-[11px] text-gray-400">Competency evaluations &amp; outcomes</p>
+                </div>
+            </div>
+            <div class="p-6 flex-1">
+                <!-- Status pills -->
+                <div class="flex flex-wrap gap-2 mb-5">
+                    {% if assessment_counts.Scheduled %}
+                    <span class="px-3 py-1.5 rounded-xl text-xs font-black bg-amber-50 text-amber-700">
+                        <i class="bi bi-calendar3 mr-1"></i>{{ assessment_counts.Scheduled }} Scheduled
+                    </span>
+                    {% endif %}
+                    {% if assessment_counts.Submitted %}
+                    <span class="px-3 py-1.5 rounded-xl text-xs font-black bg-blue-50 text-blue-700">
+                        <i class="bi bi-send-check mr-1"></i>{{ assessment_counts.Submitted }} Submitted
+                    </span>
+                    {% endif %}
+                    {% if assessment_counts.Competent %}
+                    <span class="px-3 py-1.5 rounded-xl text-xs font-black bg-green-50 text-green-700">
+                        <i class="bi bi-patch-check mr-1"></i>{{ assessment_counts.Competent }} Competent
+                    </span>
+                    {% endif %}
+                    {% if assessment_counts['Not Yet Competent'] %}
+                    <span class="px-3 py-1.5 rounded-xl text-xs font-black bg-red-50 text-red-600">
+                        <i class="bi bi-x-circle mr-1"></i>{{ assessment_counts['Not Yet Competent'] }} Not Yet Competent
+                    </span>
+                    {% endif %}
+                    {% if not (assessment_counts.Scheduled or assessment_counts.Submitted or assessment_counts.Competent or assessment_counts['Not Yet Competent']) %}
+                    <p class="text-sm text-gray-400">No assessments yet.</p>
+                    {% endif %}
+                </div>
+                <!-- Recent list -->
+                <div class="space-y-2">
+                    {% for a in recent_assessments %}
+                    <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                        <span class="text-xs font-bold text-gray-700">{{ a.competency.skill_name if a.competency else '—' }}</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black
+                            {{ 'bg-green-50 text-green-700' if a.status == 'Competent'
+                               else 'bg-red-50 text-red-600' if a.status == 'Not Yet Competent'
+                               else 'bg-amber-50 text-amber-700' if a.status == 'Scheduled'
+                               else 'bg-blue-50 text-blue-600' }}">
+                            {{ a.status }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+                <a href="{{ url_for('hr2.my_assessments', context=blueprint_name) }}"
+                   class="text-xs font-black text-indigo-600 hover:underline">
+                    View all assessments →
+                </a>
+            </div>
+        </div>
+
+        <!-- Trainings card -->
+        <div class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+            <div class="px-6 py-5 flex items-center gap-3 border-b border-gray-100" style="background: linear-gradient(to right, #0EA5E915, transparent)">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-cyan-500">
+                    <i class="bi bi-mortarboard text-sm"></i>
+                </div>
+                <div>
+                    <h2 class="font-black text-gray-900 text-sm">My Trainings</h2>
+                    <p class="text-[11px] text-gray-400">Enrolled sessions &amp; completion status</p>
+                </div>
+            </div>
+            <div class="p-6 flex-1">
+                <div class="flex items-center gap-4 mb-5">
+                    <div class="text-center">
+                        <p class="text-2xl font-black text-gray-900">{{ training_counts.enrolled }}</p>
+                        <p class="text-[10px] text-gray-400 uppercase font-bold">Enrolled</p>
+                    </div>
+                    <div class="w-px h-10 bg-gray-100"></div>
+                    <div class="text-center">
+                        <p class="text-2xl font-black text-green-600">{{ training_counts.completed }}</p>
+                        <p class="text-[10px] text-gray-400 uppercase font-bold">Attended</p>
+                    </div>
+                    <div class="w-px h-10 bg-gray-100"></div>
+                    <div class="text-center">
+                        <p class="text-2xl font-black" style="color: {{ accent_color or '#0891B2' }}">{{ training_counts.certs }}</p>
+                        <p class="text-[10px] text-gray-400 uppercase font-bold">Certs</p>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    {% for t in recent_trainings %}
+                    {% set tr = t.training if t.training else {} %}
+                    <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                        <span class="text-xs font-bold text-gray-700 truncate max-w-[160px]">{{ tr.get('title', '—') }}</span>
+                        <span class="text-[10px] text-gray-400">{{ tr.get('scheduled_date', '')[:10] if tr.get('scheduled_date') else '' }}</span>
+                    </div>
+                    {% else %}
+                    <p class="text-sm text-gray-400">No trainings enrolled yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+                <a href="{{ url_for('hr2.my_trainings', context=blueprint_name) }}"
+                   class="text-xs font-black text-cyan-600 hover:underline">
+                    View all trainings →
+                </a>
+            </div>
+        </div>
+
+        <!-- Learning / Gaps card -->
+        <div class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+            <div class="px-6 py-5 flex items-center gap-3 border-b border-gray-100" style="background: linear-gradient(to right, #8B5CF615, transparent)">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-violet-500">
+                    <i class="bi bi-book text-sm"></i>
+                </div>
+                <div>
+                    <h2 class="font-black text-gray-900 text-sm">My Learning</h2>
+                    <p class="text-[11px] text-gray-400">Competency gaps &amp; recommended courses</p>
+                </div>
+            </div>
+            <div class="p-6 flex-1 flex flex-col justify-between">
+                {% if gap_count %}
+                <div class="bg-red-50 border border-red-100 rounded-2xl p-4 mb-4 flex items-start gap-3">
+                    <i class="bi bi-exclamation-triangle-fill text-red-500 mt-0.5"></i>
+                    <div>
+                        <p class="text-sm font-black text-red-700">{{ gap_count }} skill gap{{ 's' if gap_count != 1 }} detected</p>
+                        <p class="text-xs text-red-400 mt-0.5">Recommended training has been identified for you. Visit My Learning to enroll.</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-green-50 border border-green-100 rounded-2xl p-4 mb-4 flex items-start gap-3">
+                    <i class="bi bi-check-circle-fill text-green-500 mt-0.5"></i>
+                    <div>
+                        <p class="text-sm font-black text-green-700">No skill gaps!</p>
+                        <p class="text-xs text-green-400 mt-0.5">All assessed competencies are marked Competent.</p>
+                    </div>
+                </div>
+                {% endif %}
+                <a href="{{ url_for('hr2.my_learning', context=blueprint_name) }}"
+                   class="w-full py-3 rounded-2xl text-center text-sm font-black text-white transition-all hover:opacity-90"
+                   style="background: {{ accent_color or '#0891B2' }}">
+                    <i class="bi bi-book mr-2"></i>Open Learning Dashboard
+                </a>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+                <a href="{{ url_for('hr2.my_learning', context=blueprint_name) }}"
+                   class="text-xs font-black text-violet-600 hover:underline">
+                    View full LMS →
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Recent Notifications ── -->
+    {% if notifications %}
+    <div class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-100 flex items-center gap-3">
+            <i class="bi bi-bell text-gray-400"></i>
+            <h2 class="font-black text-gray-900 text-sm">Recent Notifications</h2>
+        </div>
+        <div class="divide-y divide-gray-50">
+            {% for n in notifications %}
+            <div class="px-6 py-4 flex items-start gap-4">
+                <div class="w-2 h-2 rounded-full mt-1.5 flex-shrink-0
+                    {{ 'bg-green-500' if n.type == 'success'
+                       else 'bg-red-500' if n.type == 'danger'
+                       else 'bg-amber-400' if n.type == 'warning'
+                       else 'bg-blue-400' }}"></div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-gray-800">{{ n.title }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5 truncate">{{ n.message }}</p>
+                </div>
+                <span class="text-[10px] text-gray-300 whitespace-nowrap">{{ n.created_at[:10] if n.created_at else '' }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Quick nav tiles ── -->
+    <div>
+        <h2 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Quick Access</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <a href="{{ url_for('hr2.my_career', context=blueprint_name) }}"
+               class="group bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all text-center flex flex-col items-center gap-2">
+                <i class="bi bi-person-workspace text-2xl" style="color: {{ accent_color or '#0891B2' }}"></i>
+                <span class="text-xs font-black text-gray-700 group-hover:text-gray-900">My Roadmap</span>
+            </a>
+            <a href="{{ url_for('hr2.my_assessments', context=blueprint_name) }}"
+               class="group bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all text-center flex flex-col items-center gap-2">
+                <i class="bi bi-clipboard2-check text-2xl text-indigo-500"></i>
+                <span class="text-xs font-black text-gray-700 group-hover:text-gray-900">My Assessments</span>
+            </a>
+            <a href="{{ url_for('hr2.my_trainings', context=blueprint_name) }}"
+               class="group bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all text-center flex flex-col items-center gap-2">
+                <i class="bi bi-mortarboard text-2xl text-cyan-500"></i>
+                <span class="text-xs font-black text-gray-700 group-hover:text-gray-900">My Trainings</span>
+            </a>
+            <a href="{{ url_for('hr2.my_learning', context=blueprint_name) }}"
+               class="group bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all text-center flex flex-col items-center gap-2">
+                <i class="bi bi-book text-2xl text-violet-500"></i>
+                <span class="text-xs font-black text-gray-700 group-hover:text-gray-900">My Learning</span>
+            </a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

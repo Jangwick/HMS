@@ -97,5 +97,18 @@ DROP POLICY IF EXISTS "Allow all on assessment_answers" ON assessment_answers;
 CREATE POLICY "Allow all on assessment_answers" ON assessment_answers
     FOR ALL USING (true) WITH CHECK (true);
 
+-- ----------------------------
+-- TRAININGS: link to competency for feedback loop
+-- ----------------------------
+ALTER TABLE IF EXISTS trainings ADD COLUMN IF NOT EXISTS competency_id INTEGER REFERENCES competencies(id) ON DELETE SET NULL;
+
+-- ----------------------------
+-- TRAINING_PARTICIPANTS: progress tracking + evidence
+-- ----------------------------
+ALTER TABLE IF EXISTS training_participants ADD COLUMN IF NOT EXISTS progress_pct SMALLINT DEFAULT 0;
+ALTER TABLE IF EXISTS training_participants ADD COLUMN IF NOT EXISTS self_completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS training_participants ADD COLUMN IF NOT EXISTS evidence_url TEXT;
+ALTER TABLE IF EXISTS training_participants ADD COLUMN IF NOT EXISTS evidence_flagged BOOLEAN DEFAULT FALSE;
+
 -- Done
 SELECT 'HR2 workflow migration complete.' AS result;

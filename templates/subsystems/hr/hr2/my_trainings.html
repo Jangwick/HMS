@@ -1,0 +1,208 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}My Trainings - {{ subsystem_name }}{% endblock %}
+{% block header_title %}My Trainings{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8 space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-black text-gray-900">My Trainings</h1>
+            <p class="text-gray-500 mt-1">Track your enrolled training programs, progress, and certificates.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="px-4 py-2 bg-cyan-50 text-[#0891B2] rounded-xl text-sm font-bold">
+                <i class="bi bi-mortarboard mr-1"></i>{{ enrollments|length }} Enrolled
+            </span>
+            <span class="px-4 py-2 bg-green-50 text-green-700 rounded-xl text-sm font-bold">
+                <i class="bi bi-award mr-1"></i>{{ certifications|length }} Certs
+            </span>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="p-4 rounded-xl font-medium text-sm
+        {{ 'bg-green-50 text-green-700 border border-green-100' if category == 'success' else
+           'bg-red-50 text-red-700 border border-red-100' if category == 'danger' else
+           'bg-amber-50 text-amber-700 border border-amber-100' }}">
+        <i class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} mr-2"></i>{{ message }}
+    </div>
+    {% endfor %}
+    {% endwith %}
+
+    {% if not enrollments %}
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-16 text-center">
+        <div class="w-20 h-20 bg-cyan-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <i class="bi bi-mortarboard text-4xl text-[#0891B2]"></i>
+        </div>
+        <h3 class="text-xl font-black text-gray-900 mb-2">Not Enrolled in Any Training</h3>
+        <p class="text-gray-400">HR will enroll you in training programs. Check My Learning for available sessions.</p>
+        <a href="{{ url_for('hr2.my_learning', context=blueprint_name) }}" class="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white" style="background: {{ accent_color or '#0891B2' }}">
+            <i class="bi bi-book"></i> Browse Learning Hub
+        </a>
+    </div>
+    {% else %}
+
+    <!-- Training Cards -->
+    {% set status_order = ['Scheduled', 'Completed'] %}
+    {% for grp_status in status_order %}
+    {% set group = enrollments | selectattr('training.status', 'equalto', grp_status) | list %}
+    {% if group %}
+    <div>
+        <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+            {% if grp_status == 'Scheduled' %}<i class="bi bi-clock mr-1 text-amber-500"></i>Upcoming
+            {% else %}<i class="bi bi-check-circle mr-1 text-green-500"></i>Completed
+            {% endif %}
+        </h2>
+        <div class="space-y-4">
+        {% for e in group %}
+        {% set t = e.training %}
+        {% set cert = certifications.get(t.id|string) %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg flex-shrink-0"
+                             style="background: linear-gradient(135deg, {{ accent_color or '#0891B2' }}, #164e63)">
+                            <i class="bi bi-mortarboard"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-black text-gray-900">{{ t.title }}</h3>
+                            <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mt-0.5">{{ t.type or 'Training' }}</p>
+                            <div class="flex flex-wrap items-center gap-3 mt-2">
+                                <span class="flex items-center gap-1 text-xs text-gray-600">
+                                    <i class="bi bi-calendar3 text-[#0891B2]"></i>{{ t.schedule_date or 'TBD' }}
+                                </span>
+                                <span class="flex items-center gap-1 text-xs text-gray-600">
+                                    <i class="bi bi-person-badge text-[#0891B2]"></i>{{ t.trainer }}
+                                </span>
+                                {% if t.location %}
+                                <span class="flex items-center gap-1 text-xs text-gray-600">
+                                    <i class="bi bi-{{ 'wifi' if t.location_type == 'Online' else 'geo-alt' }} text-[#0891B2]"></i>{{ t.location_type or 'On-site' }}{% if t.location_type != 'Online' %}: {{ t.location }}{% endif %}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right flex-shrink-0 space-y-1">
+                        <span class="px-3 py-1 rounded-full text-xs font-black block
+                            {{ 'bg-amber-50 text-amber-600' if grp_status == 'Scheduled' else 'bg-green-50 text-green-700' }}">
+                            {{ grp_status }}
+                        </span>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold block
+                            {{ 'bg-green-50 text-green-600' if e.attendance_status == 'Attended' else 'bg-gray-50 text-gray-500' }}">
+                            {{ e.attendance_status or 'Enrolled' }}
+                        </span>
+                        {% if cert %}
+                        <span class="px-3 py-1 rounded-full text-xs font-bold block bg-purple-50 text-purple-700">
+                            <i class="bi bi-award-fill mr-1"></i>Certified
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Description -->
+                {% if t.description %}
+                <p class="mt-3 text-sm text-gray-500 ml-16">{{ t.description }}</p>
+                {% endif %}
+
+                <!-- Progress Bar -->
+                {% if grp_status == 'Scheduled' %}
+                <div class="mt-4 ml-16">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold text-gray-500">My Progress</span>
+                        <span class="text-xs font-black text-[#0891B2]" id="prog_label_{{ e.id }}">{{ e.progress_pct or 0 }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2 mb-3">
+                        <div class="bg-[#0891B2] h-2 rounded-full transition-all" id="prog_bar_{{ e.id }}" style="width: {{ e.progress_pct or 0 }}%"></div>
+                    </div>
+                    <form action="{{ url_for('hr2.update_training_progress') }}" method="POST" class="flex items-center gap-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="context" value="{{ blueprint_name }}">
+                        <input type="hidden" name="participant_id" value="{{ e.id }}">
+                        <input type="range" name="progress_pct" min="0" max="100" value="{{ e.progress_pct or 0 }}"
+                            oninput="document.getElementById('prog_label_{{ e.id }}').textContent=this.value+'%'; document.getElementById('prog_bar_{{ e.id }}').style.width=this.value+'%'"
+                            class="flex-1 accent-[#0891B2]">
+                        <label class="flex items-center gap-1 text-xs font-bold text-gray-600 cursor-pointer">
+                            <input type="checkbox" name="self_completed" value="1" {{ 'checked' if e.self_completed }} class="rounded"> Done
+                        </label>
+                        <button type="submit" class="px-3 py-1.5 bg-[#0891B2] text-white text-xs font-bold rounded-lg hover:bg-cyan-700">Save</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <!-- Actions Row -->
+                <div class="flex flex-wrap items-center gap-3 mt-4 ml-16">
+                    {% if t.requirements_file_url %}
+                    <a href="{{ t.requirements_file_url }}" target="_blank"
+                       class="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-100 transition-all">
+                        <i class="bi bi-file-earmark-text text-[#0891B2]"></i> View Requirements
+                    </a>
+                    {% endif %}
+                    {% if cert %}
+                    <a href="{{ cert.training.schedule_date }}" target="_blank"
+                       class="flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-100 rounded-xl text-xs font-bold text-purple-700 hover:bg-purple-100 transition-all">
+                        <i class="bi bi-award-fill"></i> Certificate Issued {{ cert.issued_date }}{% if cert.expiry_date %} • Expires {{ cert.expiry_date }}{% endif %}
+                    </a>
+                    {% endif %}
+                    {% if grp_status == 'Completed' and not e.evidence_url %}
+                    <button onclick="openEvidenceModal({{ e.id }})"
+                        class="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-100 rounded-xl text-xs font-bold text-amber-700 hover:bg-amber-100 transition-all">
+                        <i class="bi bi-cloud-upload"></i> Upload Evidence
+                    </button>
+                    {% elif e.evidence_url %}
+                    <a href="{{ e.evidence_url }}" target="_blank"
+                       class="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-100 rounded-xl text-xs font-bold text-green-700 hover:bg-green-100 transition-all">
+                        <i class="bi bi-file-earmark-check"></i> Evidence Submitted{% if e.evidence_flagged %} • Pending Review{% endif %}
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+</div>
+
+<!-- Evidence Upload Modal -->
+<div id="evidenceModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+            <div>
+                <h3 class="text-lg font-black text-gray-900">Upload Completion Evidence</h3>
+                <p class="text-xs text-gray-400 mt-0.5">PDF, DOCX, JPG — max 10MB</p>
+            </div>
+            <button onclick="document.getElementById('evidenceModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="evidenceForm" action="{{ url_for('hr2.upload_training_evidence') }}" method="POST" enctype="multipart/form-data" class="p-6 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="context" value="{{ blueprint_name }}">
+            <input type="hidden" name="participant_id" id="evidence_participant_id">
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Select File</label>
+                <input type="file" name="evidence_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required
+                    class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:bg-cyan-600 file:text-white file:cursor-pointer">
+            </div>
+            <p class="text-xs text-gray-400"><i class="bi bi-info-circle mr-1"></i>This will be flagged for Department Head review.</p>
+            <button type="submit" class="w-full py-3 text-white font-black rounded-2xl hover:opacity-90 transition-all" style="background: {{ accent_color or '#0891B2' }}">
+                <i class="bi bi-cloud-upload-fill mr-2"></i>Upload Evidence
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEvidenceModal(participantId) {
+    document.getElementById('evidence_participant_id').value = participantId;
+    document.getElementById('evidenceModal').classList.remove('hidden');
+}
+</script>
+{% endblock %}

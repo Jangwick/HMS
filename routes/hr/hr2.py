@@ -308,11 +308,19 @@ def list_trainings():
         'total_participants': len(participants)
     }
     
+    # Competencies for linking dropdown
+    try:
+        comp_resp = client.table('competencies').select('id, skill_name, category').order('skill_name').execute()
+        competencies_list = comp_resp.data or []
+    except Exception:
+        competencies_list = []
+
     return render_template('subsystems/hr/hr2/trainings.html',
                            trainings=trainings,
                            participants=participants,
                            staff_members=staff_members,
                            stats=stats,
+                           competencies_list=competencies_list,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -348,6 +356,7 @@ def add_training():
                 except Exception as ue:
                     flash(f'Requirement file upload failed: {ue}. Training saved without file.', 'warning')
 
+        competency_id_raw = request.form.get('competency_id') or None
         data = {
             'title': request.form.get('title'),
             'type': request.form.get('type'),
@@ -362,6 +371,7 @@ def add_training():
             'max_participants': request.form.get('max_participants') or None,
             'materials_url': request.form.get('materials_url') or None,
             'requirements_file_url': requirements_file_url,
+            'competency_id': int(competency_id_raw) if competency_id_raw else None,
             'status': 'Scheduled'
         }
         
@@ -437,6 +447,7 @@ def edit_training(id):
         'max_participants': request.form.get('max_participants') or None,
         'materials_url': request.form.get('materials_url') or None,
         'requirements_file_url': requirements_file_url,
+        'competency_id': int(request.form.get('competency_id')) if request.form.get('competency_id') else None,
     }
     
     try:
@@ -519,6 +530,37 @@ def complete_training(id):
                 pass
 
         flash(f'Training marked as completed! {cert_issued} certificate(s) issued to attending staff.', 'success')
+
+        # ── Feedback loop: schedule reassessment for linked competency ──────
+        try:
+            t_meta = client.table('trainings').select('competency_id').eq('id', id).maybe_single().execute()
+            comp_link = t_meta.data.get('competency_id') if t_meta and t_meta.data else None
+            if comp_link:
+                for p in participants:
+                    if p.get('attendance_status') == 'Attended':
+                        nyc = client.table('staff_competencies').select('id') \
+                            .eq('user_id', p['user_id']) \
+                            .eq('competency_id', comp_link) \
+                            .eq('status', 'Not Yet Competent') \
+                            .execute()
+                        if nyc.data:
+                            client.table('staff_competencies').insert({
+                                'user_id': p['user_id'],
+                                'competency_id': comp_link,
+                                'status': 'Scheduled',
+                                'notes': f'Reassessment after remediation training: {training_title}',
+                            }).execute()
+                            Notification.create(
+                                user_id=p['user_id'],
+                                subsystem='hr2',
+                                title='Reassessment Scheduled',
+                                message=f'A reassessment has been scheduled following your completion of the remediation training "{training_title}".',
+                                n_type='info',
+                                sender_subsystem='hr2'
+                            )
+        except Exception:
+            pass  # Non-critical
+
     except Exception as e:
         flash(f'Error updating training: {str(e)}', 'danger')
         
@@ -1042,6 +1084,31 @@ def evaluate_assessment(assessment_id):
                 sender_subsystem='hr2'
             )
 
+        # ── Not Yet Competent → auto-enroll in linked remediation training ─
+        if outcome == 'Not Yet Competent' and comp_id and user_id:
+            try:
+                linked = client.table('trainings').select('id, title') \
+                    .eq('competency_id', comp_id).eq('status', 'Scheduled').execute()
+                if linked.data:
+                    t = linked.data[0]
+                    existing_enroll = client.table('training_participants').select('id') \
+                        .eq('training_id', t['id']).eq('user_id', user_id).execute()
+                    if not existing_enroll.data:
+                        client.table('training_participants').insert({
+                            'training_id': t['id'],
+                            'user_id': int(user_id),
+                        }).execute()
+                        Notification.create(
+                            user_id=int(user_id),
+                            subsystem='hr2',
+                            title=f'Enrolled in Remediation: {t["title"]}',
+                            message=f'You have been enrolled in "{t["title"]}" as a remediation step following your "{skill_name}" assessment outcome.',
+                            n_type='info',
+                            sender_subsystem='hr2'
+                        )
+            except Exception:
+                pass  # Non-critical
+
         flash(f'Assessment evaluated as {outcome}!', 'success')
     except Exception as e:
         flash(f'Error evaluating assessment: {str(e)}', 'danger')
@@ -1190,6 +1257,347 @@ def submit_my_assessment(assessment_id):
         flash(f'Error submitting assessment: {str(e)}', 'danger')
 
     return redirect(url_for('hr2.my_assessments', context=context))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  MY TRAININGS  (staff-facing)
+# ─────────────────────────────────────────────────────────────────────────────
+@hr2_bp.route('/my-trainings')
+@login_required
+def my_trainings():
+    """Staff-facing page: view all training enrollments, progress, certificates."""
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    context = request.args.get('context', BLUEPRINT_NAME)
+    subsystem_map = {
+        'hr1': ('HR1 - Recruitment', '#6366F1'),
+        'hr2': ('HR2 - Talent Development', '#0891B2'),
+        'hr3': ('HR3 - Workforce Ops', '#8B5CF6'),
+    }
+    display_name, accent = subsystem_map.get(context, (SUBSYSTEM_NAME, ACCENT_COLOR))
+
+    try:
+        enroll_resp = client.table('training_participants') \
+            .select('*, training:trainings(id, title, schedule_date, trainer, location, location_type, status, target_department, competency_id, requirements_file_url, description, type, start_time, end_time)') \
+            .eq('user_id', current_user.id) \
+            .execute()
+        enrollments = enroll_resp.data or []
+    except Exception:
+        enrollments = []
+
+    try:
+        cert_resp = client.table('training_certifications') \
+            .select('*, training:trainings(title, schedule_date)') \
+            .eq('user_id', current_user.id) \
+            .execute()
+        certifications = {str(r['training_id']): r for r in (cert_resp.data or [])}
+    except Exception:
+        certifications = {}
+
+    return render_template('subsystems/hr/hr2/my_trainings.html',
+                           enrollments=enrollments,
+                           certifications=certifications,
+                           subsystem_name=display_name,
+                           accent_color=accent,
+                           blueprint_name=context)
+
+
+@hr2_bp.route('/my-trainings/progress', methods=['POST'])
+@login_required
+def update_training_progress():
+    """Staff self-reports progress percentage on a training."""
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    participant_id = request.form.get('participant_id')
+    progress_pct = request.form.get('progress_pct', 0)
+    self_completed = request.form.get('self_completed') == '1'
+    context = request.form.get('context', BLUEPRINT_NAME)
+    try:
+        upd = {'progress_pct': int(progress_pct)}
+        if self_completed:
+            upd['self_completed'] = True
+        client.table('training_participants').update(upd) \
+            .eq('id', participant_id).eq('user_id', current_user.id).execute()
+        flash('Progress updated!', 'success')
+    except Exception as e:
+        flash(f'Error updating progress: {str(e)}', 'danger')
+    return redirect(url_for('hr2.my_trainings', context=context))
+
+
+@hr2_bp.route('/my-trainings/evidence', methods=['POST'])
+@login_required
+def upload_training_evidence():
+    """Staff uploads completion evidence; flags it for Dept Head / HR review."""
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    import os, uuid
+    client = get_supabase_client()
+    participant_id = request.form.get('participant_id')
+    context = request.form.get('context', BLUEPRINT_NAME)
+
+    file = request.files.get('evidence_file')
+    if not file or not file.filename:
+        flash('Please select a file to upload.', 'warning')
+        return redirect(url_for('hr2.my_trainings', context=context))
+    try:
+        ext = os.path.splitext(file.filename)[1]
+        fname = f"training_evidence/{current_user.id}_{uuid.uuid4().hex}{ext}"
+        client.storage.from_('hr2-assessments').upload(fname, file.read(),
+            file_options={'content-type': file.content_type or 'application/octet-stream'})
+        evidence_url = client.storage.from_('hr2-assessments').get_public_url(fname)
+        client.table('training_participants').update({
+            'evidence_url': evidence_url,
+            'evidence_flagged': True,
+        }).eq('id', participant_id).eq('user_id', current_user.id).execute()
+        Notification.create(
+            subsystem='hr2',
+            title='Training Evidence Submitted',
+            message=f'{current_user.username} submitted completion evidence for a training — please review.',
+            n_type='info',
+            sender_subsystem='hr2',
+            target_url='/hr/hr2/trainings'
+        )
+        flash('Evidence uploaded and flagged for review.', 'success')
+    except Exception as e:
+        flash(f'Upload failed: {str(e)}', 'danger')
+    return redirect(url_for('hr2.my_trainings', context=context))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  MY LEARNING  (LMS dashboard — staff-facing)
+# ─────────────────────────────────────────────────────────────────────────────
+@hr2_bp.route('/my-learning')
+@login_required
+def my_learning():
+    """LMS dashboard: gaps, recommended trainings, progress, certificates."""
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    context = request.args.get('context', BLUEPRINT_NAME)
+    subsystem_map = {
+        'hr1': ('HR1 - Recruitment', '#6366F1'),
+        'hr2': ('HR2 - Talent Development', '#0891B2'),
+        'hr3': ('HR3 - Workforce Ops', '#8B5CF6'),
+    }
+    display_name, accent = subsystem_map.get(context, (SUBSYSTEM_NAME, ACCENT_COLOR))
+
+    # Competency gaps
+    try:
+        gaps_resp = client.table('staff_competencies') \
+            .select('*, competency:competencies(id, skill_name, category)') \
+            .eq('user_id', current_user.id).eq('status', 'Not Yet Competent').execute()
+        gaps = gaps_resp.data or []
+        recommended = {}
+        for g in gaps:
+            cid = g.get('competency', {}).get('id')
+            if cid:
+                t_resp = client.table('trainings').select('id, title, schedule_date, trainer, status') \
+                    .eq('competency_id', cid).eq('status', 'Scheduled').execute()
+                recommended[cid] = t_resp.data or []
+    except Exception:
+        gaps, recommended = [], {}
+
+    # My enrollments
+    try:
+        enroll_resp = client.table('training_participants') \
+            .select('*, training:trainings(id, title, schedule_date, status, competency_id, type)') \
+            .eq('user_id', current_user.id).execute()
+        enrollments = enroll_resp.data or []
+    except Exception:
+        enrollments = []
+
+    enrolled_ids = {str(e['training_id']) for e in enrollments}
+
+    # Certifications
+    try:
+        cert_resp = client.table('training_certifications') \
+            .select('*, training:trainings(title, schedule_date)') \
+            .eq('user_id', current_user.id).execute()
+        certifications = cert_resp.data or []
+    except Exception:
+        certifications = []
+
+    # Available (not yet enrolled) scheduled trainings
+    try:
+        avail_resp = client.table('trainings').select('id, title, schedule_date, trainer, target_department, competency_id, max_participants') \
+            .eq('status', 'Scheduled').execute()
+        available = [t for t in (avail_resp.data or []) if str(t['id']) not in enrolled_ids]
+    except Exception:
+        available = []
+
+    return render_template('subsystems/hr/hr2/my_learning.html',
+                           gaps=gaps,
+                           recommended=recommended,
+                           enrollments=enrollments,
+                           certifications=certifications,
+                           available=available,
+                           subsystem_name=display_name,
+                           accent_color=accent,
+                           blueprint_name=context)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  EMPLOYEE SELF SERVICE HUB
+# ─────────────────────────────────────────────────────────────────────────────
+@hr2_bp.route('/my-ess')
+@login_required
+def employee_self_service():
+    """Aggregated ESS hub — career, assessments, trainings, learning in one view."""
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    context = request.args.get('context', BLUEPRINT_NAME)
+    subsystem_map = {
+        'hr1': ('HR1 - Recruitment', '#6366F1'),
+        'hr2': ('HR2 - Talent Development', '#0891B2'),
+        'hr3': ('HR3 - Workforce Ops', '#8B5CF6'),
+        'hr4': ('HR4 - Compensation', '#EC4899'),
+        'ct1': ('CT1 - Patient Access', '#10B981'),
+        'ct2': ('CT2 - Clinical Ops', '#059669'),
+        'ct3': ('CT3 - Medical Records', '#10B981'),
+        'log1': ('LOG1 - Supply Chain', '#F59E0B'),
+        'log2': ('LOG2 - Fleet Ops', '#F97316'),
+        'financials': ('FIN1 - Revenue & Expenditure', '#0891B2'),
+        'admin': ('System Admin', '#1F2937'),
+    }
+    display_name, accent = subsystem_map.get(context, (SUBSYSTEM_NAME, ACCENT_COLOR))
+    uid = current_user.id
+
+    # ── Career ──
+    career_assignment = None
+    try:
+        ca_resp = client.table('staff_career_paths') \
+            .select('status, updated_at, completed_requirements, path:career_paths(title, requirements)') \
+            .eq('user_id', uid) \
+            .in_('status', ['Active', 'Pending Approval']) \
+            .limit(1).execute()
+        career_assignment = ca_resp.data[0] if ca_resp.data else None
+        if career_assignment:
+            reqs_raw = career_assignment.get('path', {}).get('requirements', '') or ''
+            all_reqs = [r.strip() for r in reqs_raw.replace(';', ',').split(',') if r.strip()]
+            done = career_assignment.get('completed_requirements') or []
+            career_assignment['_total_reqs'] = len(all_reqs)
+            career_assignment['_done_reqs'] = len([r for r in all_reqs if r in done])
+            career_assignment['_pct'] = int((career_assignment['_done_reqs'] / len(all_reqs) * 100) if all_reqs else 0)
+    except Exception:
+        career_assignment = None
+
+    # ── Assessments ──
+    assessment_counts = {'Scheduled': 0, 'Submitted': 0, 'Competent': 0, 'Not Yet Competent': 0}
+    recent_assessments = []
+    try:
+        a_resp = client.table('staff_competencies') \
+            .select('status, assessment_date, competency:competencies(skill_name)') \
+            .eq('user_id', uid).order('assessment_date', desc=True).execute()
+        for r in (a_resp.data or []):
+            s = r.get('status', '')
+            if s in assessment_counts:
+                assessment_counts[s] += 1
+        recent_assessments = (a_resp.data or [])[:3]
+    except Exception:
+        pass
+
+    # ── Trainings ──
+    training_counts = {'enrolled': 0, 'completed': 0, 'certs': 0}
+    recent_trainings = []
+    try:
+        t_resp = client.table('training_participants') \
+            .select('attendance_status, training:trainings(title, scheduled_date, status)') \
+            .eq('user_id', uid).execute()
+        for r in (t_resp.data or []):
+            training_counts['enrolled'] += 1
+            if r.get('attendance_status') == 'Attended':
+                training_counts['completed'] += 1
+        cert_resp = client.table('training_certifications').select('id').eq('user_id', uid).execute()
+        training_counts['certs'] = len(cert_resp.data or [])
+        recent_trainings = sorted(
+            t_resp.data or [],
+            key=lambda x: x.get('training', {}).get('scheduled_date') or '',
+            reverse=True
+        )[:3]
+    except Exception:
+        pass
+
+    # ── Learning gaps ──
+    gap_count = assessment_counts.get('Not Yet Competent', 0)
+
+    # ── Notifications ──
+    notifications = []
+    try:
+        from utils.hms_models import Notification
+        notifications = Notification.get_for_user(current_user, limit=5)
+    except Exception:
+        pass
+
+    return render_template('subsystems/hr/hr2/ess.html',
+                           career_assignment=career_assignment,
+                           assessment_counts=assessment_counts,
+                           recent_assessments=recent_assessments,
+                           training_counts=training_counts,
+                           recent_trainings=recent_trainings,
+                           gap_count=gap_count,
+                           notifications=notifications,
+                           subsystem_name=display_name,
+                           accent_color=accent,
+                           blueprint_name=context)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  COMPLIANCE REPORT  (admin-facing)
+# ─────────────────────────────────────────────────────────────────────────────
+@hr2_bp.route('/competencies/compliance-report')
+@login_required
+def compliance_report():
+    """Department-level competency compliance report for Dept Heads / HR."""
+    if not current_user.is_admin():
+        flash('Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_competencies'))
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        rec_resp = client.table('staff_competencies') \
+            .select('status, assessment_date, user:users(id, username, department, role), competency:competencies(skill_name, category)') \
+            .execute()
+        records = rec_resp.data or []
+    except Exception:
+        records = []
+
+    try:
+        comp_resp = client.table('competencies').select('id, skill_name, category').order('skill_name').execute()
+        all_competencies = comp_resp.data or []
+    except Exception:
+        all_competencies = []
+
+    # Build department map
+    dept_map = {}
+    for r in records:
+        if not r.get('user') or not r.get('competency'):
+            continue
+        dept = r['user'].get('department', 'Unknown')
+        status = r.get('status', 'Scheduled')
+        if dept not in dept_map:
+            dept_map[dept] = {'Competent': 0, 'Not Yet Competent': 0, 'Scheduled': 0, 'Submitted': 0, 'total': 0, 'staff': {}}
+        dept_map[dept][status] = dept_map[dept].get(status, 0) + 1
+        dept_map[dept]['total'] += 1
+        uid = r['user']['id']
+        if uid not in dept_map[dept]['staff']:
+            dept_map[dept]['staff'][uid] = {'username': r['user']['username'], 'role': r['user']['role'], 'assessments': []}
+        dept_map[dept]['staff'][uid]['assessments'].append({
+            'skill': r['competency']['skill_name'],
+            'category': r['competency']['category'],
+            'status': status,
+            'date': r.get('assessment_date'),
+        })
+
+    return render_template('subsystems/hr/hr2/compliance_report.html',
+                           records=records,
+                           dept_map=dept_map,
+                           all_competencies=all_competencies,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 
 @hr2_bp.route('/career-paths')
@@ -1465,9 +1873,30 @@ def my_career():
     # 2. Otherwise take the most recently updated one (could be Completed or Paused)
     assignment = next((a for a in assignments if a['status'] in ['Active', 'Pending Approval']), 
                       assignments[0] if assignments else None)
-    
+
+    # Fetch user's competency profile for requirement status badges
+    competent_skills = set()
+    nyc_skills = set()
+    try:
+        sc_resp = client.table('staff_competencies') \
+            .select('status, competency:competencies(skill_name)') \
+            .eq('user_id', current_user.id) \
+            .in_('status', ['Competent', 'Not Yet Competent']) \
+            .execute()
+        for r in (sc_resp.data or []):
+            if r.get('competency'):
+                sn = r['competency']['skill_name'].lower().strip()
+                if r['status'] == 'Competent':
+                    competent_skills.add(sn)
+                else:
+                    nyc_skills.add(sn)
+    except Exception:
+        pass
+
     return render_template('subsystems/hr/hr2/my_career.html',
                            assignment=assignment,
+                           competent_skills=competent_skills,
+                           nyc_skills=nyc_skills,
                            subsystem_name=display_name,
                            accent_color=accent_color,
                            blueprint_name=context)

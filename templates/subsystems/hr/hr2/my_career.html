@@ -161,6 +161,14 @@
                                             {% endif %}
                                             
                                             <span>{{ req_clean }}</span>
+                                            {% set comp_lower = req_clean | lower %}
+                                            {% if comp_lower in competent_skills %}
+                                            <span class="text-[9px] font-black bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full ml-1 whitespace-nowrap">✓ Competent</span>
+                                            {% elif comp_lower in nyc_skills %}
+                                            <span class="text-[9px] font-black bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full ml-1 whitespace-nowrap">✗ Not Yet</span>
+                                            {% else %}
+                                            <span class="text-[9px] font-black bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full ml-1 whitespace-nowrap">Not Assessed</span>
+                                            {% endif %}
 
                                             {% if is_current and assignment.status == 'Active' %}
                                             <div class="flex items-center gap-2 border-l border-gray-200 pl-2 ml-1">
