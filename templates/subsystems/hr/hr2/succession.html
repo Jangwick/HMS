@@ -42,6 +42,7 @@
                         <th class="px-8 py-5 text-left text-xs font-black text-gray-400 uppercase tracking-widest">Identified Successor</th>
                         <th class="px-8 py-5 text-left text-xs font-black text-gray-400 uppercase tracking-widest">Readiness</th>
                         <th class="px-8 py-5 text-left text-xs font-black text-gray-400 uppercase tracking-widest">Vacancy Risk</th>
+                        <th class="px-8 py-5 text-left text-xs font-black text-gray-400 uppercase tracking-widest">Status</th>
                         <th class="px-8 py-5 text-right text-xs font-black text-gray-400 uppercase tracking-widest">Actions</th>
                     </tr>
                 </thead>
@@ -94,15 +95,45 @@
                             </span>
                             {% endif %}
                         </td>
+                        <td class="px-8 py-6">
+                            {% set plan_status = plan.status or 'Pending Review' %}
+                            {% if plan_status == 'Finalized' %}
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-600 border border-green-100 uppercase">Finalized</span>
+                            {% elif plan_status == 'Ready' %}
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100 uppercase">Ready</span>
+                            {% elif plan_status == 'Not Ready' %}
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 uppercase">Not Ready</span>
+                            {% else %}
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-100 uppercase">Pending Review</span>
+                            {% endif %}
+                            {% if plan.is_critical %}
+                            <span class="ml-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700 uppercase">Critical</span>
+                            {% endif %}
+                        </td>
                         <td class="px-8 py-6 text-right">
-                            <div class="flex justify-end items-center gap-3">
+                            <div class="flex justify-end items-center gap-2">
+                                {% if (plan.status or 'Pending Review') not in ('Finalized',) %}
+                                <button onclick='openReviewModal({{ plan | tojson | safe }})'
+                                    class="p-2 text-purple-400 hover:text-purple-700 hover:bg-purple-50 rounded-xl transition-all"
+                                    title="Review Plan">
+                                    <i class="bi bi-clipboard-check"></i>
+                                </button>
+                                {% endif %}
+                                {% if (plan.status or '') == 'Ready' %}
+                                <form action="{{ url_for('hr2.finalize_succession', id=plan.id) }}" method="POST" onsubmit="return confirm('Finalize this succession plan?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-xl transition-all" title="Finalize Plan">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
                                 <button onclick='openEditPlanModal({{ plan | tojson | safe }})' 
-                                    class="p-2 text-blue-400 hover:text-blue-600 transition-colors">
+                                    class="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
                                 <form action="{{ url_for('hr2.delete_succession_plan', id=plan.id) }}" method="POST" onsubmit="return confirm('Remove this plan?');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="p-2 text-gray-300 hover:text-red-500 transition-colors">
+                                    <button type="submit" class="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
@@ -111,7 +142,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="px-8 py-20 text-center">
+                        <td colspan="7" class="px-8 py-20 text-center">
                             <i class="bi bi-people text-4xl text-gray-200 mb-4 block"></i>
                             <h4 class="text-lg font-bold text-gray-900">No succession plans</h4>
                             <p class="text-gray-500">Start by identifying key roles for succession.</p>
@@ -185,6 +216,11 @@
                 <textarea name="development_notes" rows="3" placeholder="Targeted trainings, mentorships..." class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]"></textarea>
             </div>
 
+            <div class="flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
+                <input type="checkbox" name="is_critical" value="1" id="add_is_critical" class="w-4 h-4 accent-red-500">
+                <label for="add_is_critical" class="text-sm font-bold text-red-700 cursor-pointer"><i class="bi bi-exclamation-triangle mr-1"></i>Mark as Critical Role</label>
+            </div>
+
             <button type="submit" class="w-full py-4 bg-[#0891B2] text-white font-bold rounded-2xl shadow-lg hover:bg-cyan-700 transition-all mt-4">
                 Finalize Plan
             </button>
@@ -253,8 +289,43 @@
                 <textarea name="development_notes" id="edit_development_notes" rows="3" placeholder="Targeted trainings, mentorships..." class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]"></textarea>
             </div>
 
+            <div class="flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
+                <input type="checkbox" name="is_critical" value="1" id="edit_is_critical" class="w-4 h-4 accent-red-500">
+                <label for="edit_is_critical" class="text-sm font-bold text-red-700 cursor-pointer"><i class="bi bi-exclamation-triangle mr-1"></i>Mark as Critical Role</label>
+            </div>
+
             <button type="submit" class="w-full py-4 bg-[#0891B2] text-white font-bold rounded-2xl shadow-lg hover:bg-cyan-700 transition-all mt-4">
                 Update Plan
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Review Plan Modal -->
+<div id="reviewPlanModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="p-8 border-b border-gray-100 flex justify-between items-center bg-purple-600 text-white">
+            <h3 class="text-2xl font-bold">Review Succession Plan</h3>
+            <button onclick="document.getElementById('reviewPlanModal').classList.add('hidden')" class="text-white/80 hover:text-white">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="reviewPlanForm" method="POST" class="p-8 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p id="reviewPlanRoleTitle" class="font-bold text-gray-600 text-sm"></p>
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Readiness Outcome</label>
+                <select name="ready" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-purple-500">
+                    <option value="1">✅ Successor is Ready</option>
+                    <option value="0">❌ Not Yet Ready</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Review Notes <span class="text-gray-400 font-normal text-xs">(optional)</span></label>
+                <textarea name="review_notes" rows="3" placeholder="Add feedback or development recommendations..." class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-purple-500"></textarea>
+            </div>
+            <button type="submit" class="w-full py-4 bg-purple-600 text-white font-bold rounded-2xl shadow-lg hover:bg-purple-700 transition-all">
+                <i class="bi bi-clipboard-check mr-2"></i>Submit Review
             </button>
         </form>
     </div>
@@ -263,7 +334,7 @@
 <script>
     function openEditPlanModal(plan) {
         const form = document.getElementById('editPlanForm');
-        form.action = `/hr2/succession/edit/${plan.id}`;
+        form.action = `/hr/hr2/succession/edit/${plan.id}`;
         
         document.getElementById('edit_role_title').value = plan.role_title;
         document.getElementById('edit_incumbent_id').value = plan.incumbent_id || '';
@@ -271,6 +342,7 @@
         document.getElementById('edit_readiness_level').value = plan.readiness_level;
         document.getElementById('edit_risk_of_vacancy').value = plan.risk_of_vacancy;
         document.getElementById('edit_development_notes').value = plan.development_notes || '';
+        document.getElementById('edit_is_critical').checked = plan.is_critical === true;
 
         document.getElementById('editPlanModal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
@@ -281,11 +353,18 @@
         document.body.style.overflow = 'auto';
     }
 
+    function openReviewModal(plan) {
+        document.getElementById('reviewPlanForm').action = `/hr/hr2/succession/review/${plan.id}`;
+        document.getElementById('reviewPlanRoleTitle').textContent = `Role: ${plan.role_title}`;
+        document.getElementById('reviewPlanModal').classList.remove('hidden');
+    }
+
     // Close on escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeEditPlanModal();
             document.getElementById('addPlanModal').classList.add('hidden');
+            document.getElementById('reviewPlanModal').classList.add('hidden');
         }
     });
 
@@ -293,8 +372,10 @@
     window.onclick = (e) => {
         const addModal = document.getElementById('addPlanModal');
         const editModal = document.getElementById('editPlanModal');
+        const reviewModal = document.getElementById('reviewPlanModal');
         if (e.target === addModal) addModal.classList.add('hidden');
         if (e.target === editModal) closeEditPlanModal();
+        if (e.target === reviewModal) reviewModal.classList.add('hidden');
     }
 </script>
 {% endblock %}

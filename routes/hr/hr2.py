@@ -291,8 +291,13 @@ def list_trainings():
         training['participant_count'] = len([p for p in participants if p['training_id'] == training['id']])
         training['max_participants'] = int(training.get('max_participants') or 0)
 
-    # Fetch active staff for enrollment dropdown
-    staff_response = client.table('users').select('id, username, department, role').eq('status', 'Active').execute()
+    # Fetch active hospital staff for enrollment dropdown (exclude patients/portal users)
+    staff_response = client.table('users').select('id, username, department, role') \
+        .eq('status', 'Active') \
+        .not_.in_('role', ['Applicant', 'Patient']) \
+        .not_.in_('department', ['PATIENT_PORTAL', 'FINANCIALS']) \
+        .order('username') \
+        .execute()
     staff_members = staff_response.data if staff_response.data else []
 
     # Calculate basic stats
@@ -320,24 +325,66 @@ def add_training():
         return redirect(url_for('hr2.list_trainings'))
         
     if request.method == 'POST':
+        import os
         from utils.supabase_client import get_supabase_client
         client = get_supabase_client()
-        
+
+        # Handle requirements file upload
+        requirements_file_url = None
+        req_file = request.files.get('requirements_file')
+        if req_file and req_file.filename:
+            ext = os.path.splitext(req_file.filename)[1].lower()
+            if ext in ['.pdf', '.doc', '.docx']:
+                try:
+                    from utils.supabase_client import get_supabase_service_client
+                    sc = get_supabase_service_client()
+                    ts = int(datetime.utcnow().timestamp())
+                    file_path = f"training_requirements/{ts}_{req_file.filename.replace(' ','_')}"
+                    sc.storage.from_('training-docs').upload(
+                        path=file_path, file=req_file.read(),
+                        file_options={'content-type': req_file.content_type, 'x-upsert': 'true'}
+                    )
+                    requirements_file_url = sc.storage.from_('training-docs').get_public_url(file_path)
+                except Exception as ue:
+                    flash(f'Requirement file upload failed: {ue}. Training saved without file.', 'warning')
+
         data = {
             'title': request.form.get('title'),
             'type': request.form.get('type'),
             'schedule_date': request.form.get('schedule_date'),
             'description': request.form.get('description'),
             'location': request.form.get('location'),
+            'location_type': request.form.get('location_type', 'On-site'),
+            'start_time': request.form.get('start_time') or None,
+            'end_time': request.form.get('end_time') or None,
             'trainer': request.form.get('trainer'),
             'target_department': request.form.get('target_department'),
-            'max_participants': request.form.get('max_participants'),
-            'materials_url': request.form.get('materials_url'),
+            'max_participants': request.form.get('max_participants') or None,
+            'materials_url': request.form.get('materials_url') or None,
+            'requirements_file_url': requirements_file_url,
             'status': 'Scheduled'
         }
         
         try:
-            client.table('trainings').insert(data).execute()
+            resp = client.table('trainings').insert(data).execute()
+            training_id = resp.data[0]['id'] if resp.data else None
+
+            # Notify target department staff about new scheduled training
+            if training_id:
+                try:
+                    from utils.hms_models import Notification
+                    target_dept = data['target_department']
+                    Notification.create(
+                        subsystem='hr2',
+                        title=f'New Training: {data["title"]}',
+                        message=f'A new training session "{data["title"]}" has been scheduled on {data["schedule_date"]}. Check Training Management for details.',
+                        n_type='info',
+                        sender_subsystem='hr2',
+                        target_url='/hr/hr2/trainings'
+                    )
+                except Exception:
+                    pass
+
             flash('Training session scheduled successfully!', 'success')
         except Exception as e:
             flash(f'Error scheduling training: {str(e)}', 'danger')
@@ -353,19 +400,43 @@ def edit_training(id):
         flash('Unauthorized: Admin access required.', 'danger')
         return redirect(url_for('hr2.list_trainings'))
         
+    import os
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    
+
+    # Handle requirements file upload
+    requirements_file_url = request.form.get('existing_requirements_file_url') or None
+    req_file = request.files.get('requirements_file')
+    if req_file and req_file.filename:
+        ext = os.path.splitext(req_file.filename)[1].lower()
+        if ext in ['.pdf', '.doc', '.docx']:
+            try:
+                from utils.supabase_client import get_supabase_service_client
+                sc = get_supabase_service_client()
+                ts = int(datetime.utcnow().timestamp())
+                file_path = f"training_requirements/{ts}_{req_file.filename.replace(' ','_')}"
+                sc.storage.from_('training-docs').upload(
+                    path=file_path, file=req_file.read(),
+                    file_options={'content-type': req_file.content_type, 'x-upsert': 'true'}
+                )
+                requirements_file_url = sc.storage.from_('training-docs').get_public_url(file_path)
+            except Exception as ue:
+                flash(f'Requirement file upload failed: {ue}.', 'warning')
+
     data = {
         'title': request.form.get('title'),
         'type': request.form.get('type'),
         'schedule_date': request.form.get('schedule_date'),
         'description': request.form.get('description'),
         'location': request.form.get('location'),
+        'location_type': request.form.get('location_type', 'On-site'),
+        'start_time': request.form.get('start_time') or None,
+        'end_time': request.form.get('end_time') or None,
         'trainer': request.form.get('trainer'),
         'target_department': request.form.get('target_department'),
-        'max_participants': request.form.get('max_participants'),
-        'materials_url': request.form.get('materials_url')
+        'max_participants': request.form.get('max_participants') or None,
+        'materials_url': request.form.get('materials_url') or None,
+        'requirements_file_url': requirements_file_url,
     }
     
     try:
@@ -402,14 +473,97 @@ def complete_training(id):
         return redirect(url_for('hr2.list_trainings'))
         
     from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
     client = get_supabase_client()
     
     try:
-        client.table('trainings').update({'status': 'Completed'}).eq('id', id).execute()
-        flash('Training marked as completed!', 'success')
+        # Mark training as completed
+        training_resp = client.table('trainings').update({'status': 'Completed'}).eq('id', id).returning('representation').execute()
+        training = client.table('trainings').select('title').eq('id', id).single().execute().data
+        training_title = training.get('title', 'Training') if training else 'Training'
+
+        # Issue certifications and notify all attended participants
+        participants_resp = client.table('training_participants')\
+            .select('id, user_id, attendance_status')\
+            .eq('training_id', id)\
+            .execute()
+        participants = participants_resp.data or []
+
+        cert_issued = 0
+        for p in participants:
+            if p.get('attendance_status') == 'Attended':
+                try:
+                    client.table('training_certifications').insert({
+                        'training_id': id,
+                        'user_id': p['user_id'],
+                        'issued_date': datetime.utcnow().strftime('%Y-%m-%d'),
+                    }).execute()
+                    cert_issued += 1
+                except Exception:
+                    pass  # cert may already exist
+
+            # Notify all enrolled participants
+            try:
+                msg = (f'You have been issued a certificate of completion for "{training_title}".'
+                       if p.get('attendance_status') == 'Attended'
+                       else f'The training "{training_title}" has been completed.')
+                Notification.create(
+                    user_id=p['user_id'],
+                    subsystem='hr2',
+                    title=f'Training Completed: {training_title}',
+                    message=msg,
+                    n_type='success' if p.get('attendance_status') == 'Attended' else 'info',
+                    sender_subsystem='hr2'
+                )
+            except Exception:
+                pass
+
+        flash(f'Training marked as completed! {cert_issued} certificate(s) issued to attending staff.', 'success')
     except Exception as e:
         flash(f'Error updating training: {str(e)}', 'danger')
         
+    return redirect(url_for('hr2.list_trainings'))
+
+
+@hr2_bp.route('/trainings/issue-cert', methods=['POST'])
+@login_required
+def issue_certification():
+    """Manually issue a training certification to a specific participant."""
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_trainings'))
+
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+
+    training_id = request.form.get('training_id')
+    user_id = request.form.get('user_id')
+    expiry_date = request.form.get('expiry_date') or None
+
+    try:
+        training = client.table('trainings').select('title').eq('id', training_id).single().execute().data
+        training_title = training.get('title', 'Training') if training else 'Training'
+
+        client.table('training_certifications').upsert({
+            'training_id': int(training_id),
+            'user_id': int(user_id),
+            'issued_date': datetime.utcnow().strftime('%Y-%m-%d'),
+            'expiry_date': expiry_date,
+        }, on_conflict='training_id,user_id').execute()
+
+        Notification.create(
+            user_id=int(user_id),
+            subsystem='hr2',
+            title=f'Certificate Issued: {training_title}',
+            message=f'A training certificate for "{training_title}" has been issued to you by HR.',
+            n_type='success',
+            sender_subsystem='hr2'
+        )
+        flash('Certification issued successfully!', 'success')
+    except Exception as e:
+        flash(f'Error issuing certification: {str(e)}', 'danger')
+
     return redirect(url_for('hr2.list_trainings'))
 
 @hr2_bp.route('/trainings/enroll', methods=['POST'])
@@ -509,9 +663,13 @@ def list_competencies():
     response = client.table('competencies').select('*').execute()
     competencies = response.data if response.data else []
     
-    # Fetch all staff members (users) for the assessment dropdown
-    # Filtering by those who are Active/Approved
-    staff_response = client.table('users').select('id, username, email, department, role').eq('status', 'Active').execute()
+    # Fetch active hospital staff for assessment dropdown (exclude patients/portal users)
+    staff_response = client.table('users').select('id, username, email, department, role') \
+        .eq('status', 'Active') \
+        .not_.in_('role', ['Applicant', 'Patient']) \
+        .not_.in_('department', ['PATIENT_PORTAL', 'FINANCIALS']) \
+        .order('username') \
+        .execute()
     staff_members = staff_response.data if staff_response.data else []
 
     # Fetch staff assessments with user details
@@ -543,7 +701,9 @@ def add_competency():
     data = {
         'skill_name': request.form.get('skill_name'),
         'role': request.form.get('role'),
-        'description': request.form.get('description')
+        'category': request.form.get('category', 'Technical'),  # Clinical / Technical / Behavioral
+        'description': request.form.get('description'),
+        'license_required': request.form.get('license_required') == '1',
     }
     
     try:
@@ -567,7 +727,9 @@ def edit_competency(id):
     data = {
         'skill_name': request.form.get('skill_name'),
         'role': request.form.get('role'),
-        'description': request.form.get('description')
+        'category': request.form.get('category', 'Technical'),
+        'description': request.form.get('description'),
+        'license_required': request.form.get('license_required') == '1',
     }
     
     try:
@@ -596,26 +758,179 @@ def delete_competency(id):
         
     return redirect(url_for('hr2.list_competencies'))
 
-@hr2_bp.route('/competencies/assess', methods=['POST'])
+@hr2_bp.route('/competencies/schedule-assessment', methods=['POST'])
 @login_required
 def assess_staff():
+    """Schedule a competency assessment — checks license validity, notifies supervisor."""
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_competencies'))
+
     from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
     client = get_supabase_client()
-    
-    data = {
-        'user_id': request.form.get('user_id'),
-        'competency_id': request.form.get('competency_id'),
-        'assessment_date': request.form.get('assessment_date'),
-        'level': request.form.get('level'),
-        'assessor_id': current_user.id
-    }
-    
+
+    user_id       = request.form.get('user_id')
+    competency_id = request.form.get('competency_id')
+    scheduled_date= request.form.get('scheduled_date')
+    assessment_type = request.form.get('assessment_type', 'Practical')
+    supervisor_id = request.form.get('supervisor_id')
+    license_verified = request.form.get('license_verified') == '1'
+    license_expiry   = request.form.get('license_expiry') or None
+
     try:
-        client.table('staff_competencies').insert(data).execute()
-        flash('Staff assessment recorded!', 'success')
+        # License expiry check — block if expired
+        if license_expiry:
+            from datetime import date
+            exp_date = date.fromisoformat(license_expiry)
+            if exp_date < date.today():
+                flash('Assessment blocked: Staff member\'s license has expired. Please renew before scheduling.', 'danger')
+                return redirect(url_for('hr2.list_competencies'))
+
+        # Get competency name for notifications
+        comp = client.table('competencies').select('skill_name').eq('id', competency_id).maybe_single().execute()
+        skill_name = comp.data.get('skill_name', 'Competency') if comp and comp.data else 'Competency'
+
+        # Insert scheduled assessment record
+        client.table('staff_competencies').insert({
+            'user_id': int(user_id),
+            'competency_id': int(competency_id),
+            'assessment_date': scheduled_date,
+            'assessment_type': assessment_type,
+            'supervisor_id': int(supervisor_id) if supervisor_id else None,
+            'license_verified': license_verified,
+            'license_expiry': license_expiry,
+            'status': 'Scheduled',
+            'assessor_id': current_user.id,
+        }).execute()
+
+        # Notify staff member
+        Notification.create(
+            user_id=int(user_id),
+            subsystem='hr2',
+            title=f'Assessment Scheduled: {skill_name}',
+            message=f'A competency assessment for "{skill_name}" has been scheduled on {scheduled_date}.',
+            n_type='info',
+            sender_subsystem='hr2'
+        )
+
+        # Notify supervisor
+        if supervisor_id:
+            Notification.create(
+                user_id=int(supervisor_id),
+                subsystem='hr2',
+                title=f'Competency Assessment Assigned: {skill_name}',
+                message=f'You have been assigned to supervise a competency assessment for "{skill_name}" on {scheduled_date}.',
+                n_type='info',
+                sender_subsystem='hr2'
+            )
+
+        flash('Competency assessment scheduled and supervisor notified!', 'success')
     except Exception as e:
-        flash(f'Error recording assessment: {str(e)}', 'danger')
-        
+        flash(f'Error scheduling assessment: {str(e)}', 'danger')
+
+    return redirect(url_for('hr2.list_competencies'))
+
+
+@hr2_bp.route('/competencies/submit-result/<int:assessment_id>', methods=['POST'])
+@login_required
+def submit_assessment_result(assessment_id):
+    """Employee submits their assessment score/notes — moves to Submitted state."""
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+
+    score       = request.form.get('score')
+    notes       = request.form.get('notes')
+
+    try:
+        rec = client.table('staff_competencies').select('supervisor_id, competency_id').eq('id', assessment_id).maybe_single().execute()
+        data_rec = rec.data if rec else {}
+
+        client.table('staff_competencies').update({
+            'score': float(score) if score else None,
+            'notes': notes,
+            'status': 'Submitted',
+        }).eq('id', assessment_id).execute()
+
+        # Notify supervisor that results are ready for evaluation
+        supervisor_id = data_rec.get('supervisor_id')
+        if supervisor_id:
+            comp_id = data_rec.get('competency_id')
+            comp = client.table('competencies').select('skill_name').eq('id', comp_id).maybe_single().execute()
+            skill_name = comp.data.get('skill_name', 'Competency') if comp and comp.data else 'Competency'
+
+            Notification.create(
+                user_id=int(supervisor_id),
+                subsystem='hr2',
+                title=f'Assessment Result Submitted: {skill_name}',
+                message=f'A staff member has submitted their result for the "{skill_name}" competency assessment. Please review and evaluate.',
+                n_type='info',
+                sender_subsystem='hr2'
+            )
+
+        flash('Assessment result submitted successfully!', 'success')
+    except Exception as e:
+        flash(f'Error submitting result: {str(e)}', 'danger')
+
+    return redirect(url_for('hr2.list_competencies'))
+
+
+@hr2_bp.route('/competencies/evaluate/<int:assessment_id>', methods=['POST'])
+@login_required
+def evaluate_assessment(assessment_id):
+    """Supervisor evaluates a submitted assessment — Competent or Not Yet Competent."""
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+
+    outcome          = request.form.get('outcome')  # 'Competent' or 'Not Yet Competent'
+    level            = request.form.get('level')
+    corrective_action= request.form.get('corrective_action') or None
+    evaluator_notes  = request.form.get('evaluator_notes') or None
+
+    try:
+        rec = client.table('staff_competencies').select('user_id, competency_id').eq('id', assessment_id).maybe_single().execute()
+        data_rec = rec.data if rec else {}
+        user_id   = data_rec.get('user_id')
+        comp_id   = data_rec.get('competency_id')
+
+        comp = client.table('competencies').select('skill_name').eq('id', comp_id).maybe_single().execute()
+        skill_name = comp.data.get('skill_name', 'Competency') if comp and comp.data else 'Competency'
+
+        update_data = {
+            'level': level,
+            'status': outcome,
+            'corrective_action': corrective_action,
+            'evaluator_notes': evaluator_notes,
+            'evaluated_by': current_user.id,
+            'evaluated_at': datetime.utcnow().isoformat(),
+        }
+        client.table('staff_competencies').update(update_data).eq('id', assessment_id).execute()
+
+        # Notify employee of outcome
+        if user_id:
+            if outcome == 'Competent':
+                msg = f'Congratulations! You have been evaluated as Competent in "{skill_name}". Your profile has been updated.'
+                n_type = 'success'
+            else:
+                msg = (f'Your "{skill_name}" competency assessment has been reviewed. Outcome: Not Yet Competent.'
+                       + (f' Corrective action required: {corrective_action}' if corrective_action else ''))
+                n_type = 'warning'
+
+            Notification.create(
+                user_id=int(user_id),
+                subsystem='hr2',
+                title=f'Assessment Evaluated: {skill_name}',
+                message=msg,
+                n_type=n_type,
+                sender_subsystem='hr2'
+            )
+
+        flash(f'Assessment evaluated as {outcome}!', 'success')
+    except Exception as e:
+        flash(f'Error evaluating assessment: {str(e)}', 'danger')
+
     return redirect(url_for('hr2.list_competencies'))
 
 @hr2_bp.route('/career-paths')
@@ -628,8 +943,13 @@ def list_career_paths():
     response = client.table('career_paths').select('*').execute()
     paths = response.data if response.data else []
     
-    # Fetch all active users for assignment
-    users_resp = client.table('users').select('id, username, role').eq('status', 'Active').execute()
+    # Fetch active hospital staff for assignment (exclude patients/portal users)
+    users_resp = client.table('users').select('id, username, department, role') \
+        .eq('status', 'Active') \
+        .not_.in_('role', ['Applicant', 'Patient']) \
+        .not_.in_('department', ['PATIENT_PORTAL', 'FINANCIALS']) \
+        .order('username') \
+        .execute()
     employees = users_resp.data if users_resp.data else []
     
     # Fetch existing assignments with full user and path details
@@ -1064,8 +1384,13 @@ def list_succession_plans():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
-    # Fetch all users for selection
-    staff_response = client.table('users').select('id, username, department, role').eq('status', 'Active').execute()
+    # Fetch active hospital staff for selection (exclude patients/portal users)
+    staff_response = client.table('users').select('id, username, department, role') \
+        .eq('status', 'Active') \
+        .not_.in_('role', ['Applicant', 'Patient']) \
+        .not_.in_('department', ['PATIENT_PORTAL', 'FINANCIALS']) \
+        .order('username') \
+        .execute()
     staff_members = staff_response.data if staff_response.data else []
     
     # Fetch succession plans with joined user data (using explicit foreign keys)
@@ -1087,21 +1412,39 @@ def add_succession_plan():
         return redirect(url_for('hr2.list_succession_plans'))
         
     from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
     client = get_supabase_client()
     
-    incumbent_id = request.form.get('incumbent_id')
-    
+    incumbent_id  = request.form.get('incumbent_id')
+    successor_id  = request.form.get('successor_id')
+    is_critical   = request.form.get('is_critical') == '1'
+    role_title    = request.form.get('role_title')
+
     data = {
-        'role_title': request.form.get('role_title'),
+        'role_title': role_title,
         'incumbent_id': int(incumbent_id) if incumbent_id and incumbent_id.isdigit() else None,
-        'successor_id': request.form.get('successor_id'),
+        'successor_id': int(successor_id) if successor_id and successor_id.isdigit() else None,
         'readiness_level': request.form.get('readiness_level'),
         'risk_of_vacancy': request.form.get('risk_of_vacancy'),
-        'development_notes': request.form.get('development_notes')
+        'development_notes': request.form.get('development_notes'),
+        'is_critical': is_critical,
+        'status': 'Pending Review',
     }
     
     try:
         client.table('succession_plans').insert(data).execute()
+
+        # Notify successor that they have been identified
+        if successor_id and successor_id.isdigit():
+            Notification.create(
+                user_id=int(successor_id),
+                subsystem='hr2',
+                title='You Have Been Identified as a Successor',
+                message=f'You have been identified by HR as a potential successor for the role of "{role_title}". Please review your development plan.',
+                n_type='info',
+                sender_subsystem='hr2'
+            )
+
         flash('Succession plan recorded!', 'success')
     except Exception as e:
         flash(f'Error adding succession plan: {str(e)}', 'danger')
@@ -1119,14 +1462,17 @@ def edit_succession_plan(id):
     client = get_supabase_client()
     
     incumbent_id = request.form.get('incumbent_id')
-    
+    successor_id = request.form.get('successor_id')
+    is_critical  = request.form.get('is_critical') == '1'
+
     data = {
         'role_title': request.form.get('role_title'),
         'incumbent_id': int(incumbent_id) if incumbent_id and incumbent_id.isdigit() else None,
-        'successor_id': request.form.get('successor_id'),
+        'successor_id': int(successor_id) if successor_id and successor_id.isdigit() else None,
         'readiness_level': request.form.get('readiness_level'),
         'risk_of_vacancy': request.form.get('risk_of_vacancy'),
-        'development_notes': request.form.get('development_notes')
+        'development_notes': request.form.get('development_notes'),
+        'is_critical': is_critical,
     }
     
     try:
@@ -1153,6 +1499,143 @@ def delete_succession_plan(id):
     except Exception as e:
         flash(f'Error deleting plan: {str(e)}', 'danger')
         
+    return redirect(url_for('hr2.list_succession_plans'))
+
+
+@hr2_bp.route('/succession/review/<int:id>', methods=['POST'])
+@login_required
+def review_succession(id):
+    """HR reviews the succession plan and marks successor as Ready or Not Ready."""
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_succession_plans'))
+
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+
+    ready     = request.form.get('ready')  # '1' = Ready, '0' = Not Ready
+    review_notes = request.form.get('review_notes') or None
+
+    try:
+        plan = client.table('succession_plans').select('successor_id, role_title').eq('id', id).maybe_single().execute()
+        plan_data = plan.data if plan else {}
+        successor_id = plan_data.get('successor_id')
+        role_title   = plan_data.get('role_title', 'Role')
+
+        new_status = 'Ready' if ready == '1' else 'Not Ready'
+        client.table('succession_plans').update({
+            'status': new_status,
+            'review_notes': review_notes,
+            'reviewed_by': current_user.id,
+            'reviewed_at': datetime.utcnow().isoformat(),
+        }).eq('id', id).execute()
+
+        if successor_id:
+            if ready == '1':
+                msg  = f'You have been reviewed and marked as Ready for the role of "{role_title}".' + (f' Notes: {review_notes}' if review_notes else '')
+                n_type = 'success'
+            else:
+                msg  = f'Your succession plan for "{role_title}" has been reviewed. Status: Not Yet Ready.' + (f' Notes: {review_notes}' if review_notes else '')
+                n_type = 'warning'
+
+            Notification.create(
+                user_id=int(successor_id),
+                subsystem='hr2',
+                title=f'Succession Plan Reviewed: {role_title}',
+                message=msg,
+                n_type=n_type,
+                sender_subsystem='hr2'
+            )
+
+        flash(f'Succession plan marked as {new_status}.', 'success')
+    except Exception as e:
+        flash(f'Error reviewing plan: {str(e)}', 'danger')
+
+    return redirect(url_for('hr2.list_succession_plans'))
+
+
+@hr2_bp.route('/succession/finalize/<int:id>', methods=['POST'])
+@login_required
+def finalize_succession(id):
+    """HR finalizes a succession plan — notifies successor and incumbent."""
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr2.list_succession_plans'))
+
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+
+    try:
+        plan = client.table('succession_plans').select('successor_id, incumbent_id, role_title').eq('id', id).maybe_single().execute()
+        plan_data = plan.data if plan else {}
+        successor_id = plan_data.get('successor_id')
+        incumbent_id = plan_data.get('incumbent_id')
+        role_title   = plan_data.get('role_title', 'Role')
+
+        client.table('succession_plans').update({
+            'status': 'Finalized',
+            'finalized_by': current_user.id,
+            'finalized_at': datetime.utcnow().isoformat(),
+        }).eq('id', id).execute()
+
+        if successor_id:
+            Notification.create(
+                user_id=int(successor_id),
+                subsystem='hr2',
+                title=f'Succession Plan Finalized: {role_title}',
+                message=f'Your succession plan for the role of "{role_title}" has been finalized. You are the designated successor.',
+                n_type='success',
+                sender_subsystem='hr2'
+            )
+
+        if incumbent_id:
+            Notification.create(
+                user_id=int(incumbent_id),
+                subsystem='hr2',
+                title=f'Succession Plan Finalized: {role_title}',
+                message=f'A succession plan for your role "{role_title}" has been finalized by HR.',
+                n_type='info',
+                sender_subsystem='hr2'
+            )
+
+        flash('Succession plan finalized and all parties notified!', 'success')
+    except Exception as e:
+        flash(f'Error finalizing plan: {str(e)}', 'danger')
+
+    return redirect(url_for('hr2.list_succession_plans'))
+
+
+@hr2_bp.route('/succession/update-notes/<int:id>', methods=['POST'])
+@login_required
+def update_succession_status(id):
+    """Employee updates their own readiness notes on a succession plan."""
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    notes = request.form.get('development_notes') or None
+    readiness = request.form.get('readiness_level') or None
+
+    try:
+        plan = client.table('succession_plans').select('successor_id').eq('id', id).maybe_single().execute()
+        plan_data = plan.data if plan else {}
+        if plan_data.get('successor_id') != current_user.id and not current_user.is_admin():
+            flash('Unauthorized: You can only update your own succession notes.', 'danger')
+            return redirect(url_for('hr2.list_succession_plans'))
+
+        update_data = {}
+        if notes is not None:
+            update_data['development_notes'] = notes
+        if readiness:
+            update_data['readiness_level'] = readiness
+
+        if update_data:
+            client.table('succession_plans').update(update_data).eq('id', id).execute()
+            flash('Development notes updated!', 'success')
+    except Exception as e:
+        flash(f'Error updating notes: {str(e)}', 'danger')
+
     return redirect(url_for('hr2.list_succession_plans'))
 
 @hr2_bp.route('/settings', methods=['GET', 'POST'])
