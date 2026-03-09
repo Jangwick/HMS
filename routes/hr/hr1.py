@@ -1726,11 +1726,11 @@ def recognition_nominate():
             flash('You cannot nominate yourself.', 'danger')
             return redirect(url_for('hr1.recognition_nominate'))
 
-        # Find supervisor for the nominee
+        # Find supervisor for the nominee — restrict to hr1 subsystem only
         nominee = User.get_by_id(nominee_id)
         supervisor_id = None
         if nominee:
-            sup_resp = client.table('users').select('id').eq('department', nominee.department).in_('role', ['Manager', 'Admin', 'Administrator']).limit(1).execute()
+            sup_resp = client.table('users').select('id').eq('department', nominee.department).eq('subsystem', 'hr1').in_('role', ['Manager', 'Admin', 'Administrator']).limit(1).execute()
             supervisor_id = sup_resp.data[0]['id'] if sup_resp.data else None
 
         # Handle optional supporting document upload
@@ -1788,6 +1788,19 @@ def recognition_nominate():
                     n_type="info",
                     sender_subsystem='hr1',
                     target_url=url_for('hr1.recognition_inbox')
+                )
+
+            # Notify the nominee
+            if nominee:
+                from utils.hms_models import Notification
+                Notification.create(
+                    user_id=nominee.id,
+                    subsystem=nominee.subsystem,
+                    title="You've Been Nominated for Recognition!",
+                    message=f"Congratulations! {current_user.username} has nominated you for recognition. Your nomination is currently under review.",
+                    n_type="success",
+                    sender_subsystem='hr1',
+                    target_url=url_for('hr1.recognition_wall')
                 )
 
             flash('Nomination submitted successfully!', 'success')
