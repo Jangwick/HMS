@@ -41,10 +41,17 @@
             <div class="mt-auto space-y-4">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Level: Required</span>
-                    <button onclick='viewDetails({{ competency | tojson | safe }}, {{ assessments | selectattr("competency_id", "equalto", competency.id) | list | tojson | safe }})' 
-                        class="text-sm font-bold text-[#0891B2] hover:underline">
-                        View Records
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button onclick="openQuestionsModal({{ competency.id }}, '{{ competency.skill_name | e }}')"
+                            class="text-sm font-bold text-purple-600 hover:underline">
+                            <i class="bi bi-question-circle mr-1"></i>Questions
+                        </button>
+                        <span class="text-gray-200">|</span>
+                        <button onclick='viewDetails({{ competency | tojson | safe }}, {{ assessments | selectattr("competency_id", "equalto", competency.id) | list | tojson | safe }})' 
+                            class="text-sm font-bold text-[#0891B2] hover:underline">
+                            View Records
+                        </button>
+                    </div>
                 </div>
                 <button onclick="openAssessModal({{ competency.id }}, '{{ competency.skill_name }}')"
                     class="w-full py-2.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-[#0891B2] hover:text-white transition-all text-sm">
@@ -165,16 +172,27 @@
         <form action="{{ url_for('hr2.assess_staff') }}" method="POST" class="p-8 space-y-4 overflow-y-auto max-h-[70vh]">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="competency_id" id="assess_competency_id">
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">Staff Member</label>
-                <select name="user_id" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
-                    <option value="">Select Employee...</option>
-                    {% for staff in staff_members %}
-                    <option value="{{ staff.id }}">{{ staff.username }} ({{ staff.role }})</option>
-                    {% endfor %}
-                </select>
-            </div>
             <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Staff Member</label>
+                    <select name="user_id" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                        <option value="">Select Employee...</option>
+                        {% for staff in staff_members %}
+                        <option value="{{ staff.id }}">{{ staff.username }} ({{ staff.role }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Supervisor / Assessor</label>
+                    <select name="supervisor_id" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                        <option value="">Select Supervisor...</option>
+                        {% for sup in supervisors %}
+                        <option value="{{ sup.id }}">{{ sup.username }} ({{ sup.role }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Assessment Type</label>
                     <select name="assessment_type" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
@@ -185,18 +203,20 @@
                     </select>
                 </div>
                 <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Mode</label>
+                    <select name="location_type" id="assess_location_type" onchange="toggleVenueField()" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
+                        <option value="On-site">On-site</option>
+                        <option value="Online">Online</option>
+                    </select>
+                </div>
+                <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Scheduled Date</label>
                     <input type="date" name="scheduled_date" value="{{ current_date }}" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
                 </div>
             </div>
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">Supervisor / Assessor</label>
-                <select name="supervisor_id" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
-                    <option value="">Select Supervisor...</option>
-                    {% for staff in staff_members %}
-                    <option value="{{ staff.id }}">{{ staff.username }} ({{ staff.role }})</option>
-                    {% endfor %}
-                </select>
+            <div id="venue_field">
+                <label class="block text-sm font-bold text-gray-700 mb-1">Location / Venue</label>
+                <input type="text" name="location" placeholder="e.g. Training Room A, Simulation Lab, Ward 3..." class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2]">
             </div>
             <div class="p-4 bg-amber-50 rounded-xl border border-amber-100 space-y-3">
                 <p class="text-xs font-bold text-amber-700 uppercase tracking-widest">License Verification</p>
@@ -247,6 +267,120 @@
     </div>
 </div>
 
+<!-- Manage Questions Modal -->
+<div id="questionsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-purple-50">
+            <div>
+                <h3 class="text-xl font-black text-gray-900">Question Bank</h3>
+                <p id="q_skill_name" class="text-purple-600 font-medium text-sm"></p>
+            </div>
+            <button onclick="document.getElementById('questionsModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 space-y-4">
+            <!-- Add question form -->
+            <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
+                <p class="text-xs font-black text-gray-500 uppercase tracking-widest">Add New Question</p>
+                <input type="hidden" id="q_competency_id">
+                <div>
+                    <textarea id="new_question_text" rows="2" placeholder="Enter question text..."
+                        class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-400 text-sm resize-none"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Type</label>
+                        <select id="new_question_type" onchange="toggleOptionsField()" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm">
+                            <option value="text">Essay / Short Answer</option>
+                            <option value="multiple_choice">Multiple Choice</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Points</label>
+                        <input type="number" id="new_question_points" value="10" min="1" max="100"
+                            class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm">
+                    </div>
+                </div>
+                <div id="options_field" class="hidden">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Options <span class="font-normal">(one per line)</span></label>
+                    <textarea id="new_question_options" rows="4" placeholder="Option A&#10;Option B&#10;Option C&#10;Option D"
+                        class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm resize-none"></textarea>
+                </div>
+                <button onclick="addQuestion()"
+                    class="px-5 py-2 bg-purple-600 text-white text-sm font-bold rounded-xl hover:bg-purple-700 transition-all">
+                    <i class="bi bi-plus-lg mr-1"></i>Add Question
+                </button>
+            </div>
+
+            <!-- Questions list -->
+            <div id="questions_list" class="space-y-3">
+                <p class="text-center text-gray-400 italic text-sm py-4" id="no_questions_msg">No questions yet. Add one above.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Evaluate Assessment Modal -->
+<div id="evaluateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-green-50">
+            <div>
+                <h3 class="text-xl font-black text-gray-900">Evaluate Assessment</h3>
+                <p id="eval_staff_name" class="text-green-700 font-medium text-sm"></p>
+            </div>
+            <button onclick="document.getElementById('evaluateModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 space-y-4">
+            <!-- Submitted answers (loaded dynamically) -->
+            <div id="answers_section">
+                <p class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Submitted Answers</p>
+                <div id="answers_list" class="space-y-3"></div>
+                <div id="no_answers_msg" class="hidden text-sm text-gray-400 italic text-center py-4">No structured answers — check written answer above.</div>
+            </div>
+            <!-- Submitted file -->
+            <div id="eval_file_section" class="hidden p-3 bg-blue-50 rounded-xl border border-blue-100">
+                <p class="text-xs font-black text-blue-400 uppercase mb-1">Submitted File</p>
+                <a id="eval_file_link" href="#" target="_blank" class="text-sm text-blue-600 font-bold hover:underline">
+                    <i class="bi bi-paperclip mr-1"></i>View Attachment
+                </a>
+            </div>
+        </div>
+        <form id="evaluateForm" method="POST" class="p-6 border-t border-gray-100 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Outcome</label>
+                    <select name="outcome" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-green-400">
+                        <option value="Competent">✅ Competent</option>
+                        <option value="Not Yet Competent">❌ Not Yet Competent</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Score <span class="font-normal text-gray-400 text-xs">(optional)</span></label>
+                    <input type="number" name="score" min="0" max="100" step="0.5" placeholder="e.g. 85"
+                        class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-green-400">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Evaluator Notes</label>
+                <textarea name="evaluator_notes" rows="3" placeholder="Feedback for the staff member..."
+                    class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-green-400 resize-none text-sm"></textarea>
+            </div>
+            <div id="corrective_section">
+                <label class="block text-sm font-bold text-gray-700 mb-1">Corrective Action Required</label>
+                <textarea name="corrective_action" rows="2" placeholder="What must the staff member improve or do..."
+                    class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-red-300 resize-none text-sm"></textarea>
+            </div>
+            <button type="submit" class="w-full py-3 bg-green-600 text-white font-black rounded-2xl hover:bg-green-700 transition-all">
+                <i class="bi bi-check2-circle mr-2"></i>Submit Evaluation
+            </button>
+        </form>
+    </div>
+</div>
+
 <script>
     function openEditModal(competency) {
         document.getElementById('edit_skill_name').value = competency.skill_name;
@@ -261,7 +395,15 @@
     function openAssessModal(id, name) {
         document.getElementById('assess_competency_id').value = id;
         document.getElementById('assess_skill_name').textContent = name;
+        // Reset mode to On-site and show venue field
+        document.getElementById('assess_location_type').value = 'On-site';
+        document.getElementById('venue_field').style.display = '';
         document.getElementById('assessModal').classList.remove('hidden');
+    }
+
+    function toggleVenueField() {
+        const mode = document.getElementById('assess_location_type').value;
+        document.getElementById('venue_field').style.display = mode === 'Online' ? 'none' : '';
     }
 
     function viewDetails(competency, records) {
@@ -288,6 +430,7 @@
                     'Not Yet Competent': 'bg-red-50 text-red-600',
                 };
                 const statusClass = statusMap[status] || 'bg-gray-50 text-gray-600';
+                const canEvaluate = status === 'Submitted';
                 
                 const item = document.createElement('div');
                 item.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-2xl';
@@ -298,12 +441,13 @@
                         </div>
                         <div>
                             <p class="font-bold text-gray-900">${rec.users.username}</p>
-                            <p class="text-xs text-gray-500">${rec.users.department} • ${rec.users.role}</p>
+                            <p class="text-xs text-gray-500">${rec.users.department} • ${rec.users.role}${rec.location_type ? ' • <span class="font-semibold">' + rec.location_type + '</span>' : ''}${rec.location ? ' • <i class="bi bi-geo-alt"></i> ' + rec.location : ''}</p>
                         </div>
                     </div>
-                    <div class="text-right">
+                    <div class="text-right flex flex-col items-end gap-1">
                         <span class="px-3 py-1 rounded-full text-xs font-bold ${statusClass}">${status}</span>
-                        <p class="text-[10px] text-gray-400 mt-1 uppercase font-bold">${rec.assessment_date || rec.level || ''}</p>
+                        <p class="text-[10px] text-gray-400 uppercase font-bold">${rec.assessment_date || ''}</p>
+                        ${canEvaluate ? `<button onclick="openEvaluateModal(${rec.id}, '${rec.users.username}')" class="mt-1 px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-all"><i class="bi bi-check2-circle mr-1"></i>Evaluate</button>` : ''}
                     </div>
                 `;
                 list.appendChild(item);
@@ -311,6 +455,140 @@
         }
         
         document.getElementById('detailsModal').classList.remove('hidden');
+    }
+
+    // ── Question Management ────────────────────────────────────────────────
+
+    function openQuestionsModal(competencyId, skillName) {
+        document.getElementById('q_competency_id').value = competencyId;
+        document.getElementById('q_skill_name').textContent = skillName;
+        document.getElementById('new_question_text').value = '';
+        document.getElementById('new_question_options').value = '';
+        document.getElementById('new_question_type').value = 'text';
+        document.getElementById('options_field').classList.add('hidden');
+        loadQuestions(competencyId);
+        document.getElementById('questionsModal').classList.remove('hidden');
+    }
+
+    function toggleOptionsField() {
+        const type = document.getElementById('new_question_type').value;
+        document.getElementById('options_field').classList.toggle('hidden', type !== 'multiple_choice');
+    }
+
+    function loadQuestions(competencyId) {
+        const list = document.getElementById('questions_list');
+        const noMsg = document.getElementById('no_questions_msg');
+        list.innerHTML = '<p class="text-center text-gray-400 text-sm py-4 animate-pulse">Loading...</p>';
+
+        fetch(`/hr/hr2/competencies/${competencyId}/questions`)
+            .then(r => r.json())
+            .then(questions => {
+                list.innerHTML = '';
+                if (questions.length === 0) {
+                    list.innerHTML = '<p class="text-center text-gray-400 italic text-sm py-4">No questions yet. Add one above.</p>';
+                    return;
+                }
+                questions.forEach((q, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'p-4 bg-white rounded-2xl border border-gray-100 flex justify-between items-start gap-3';
+                    div.innerHTML = `
+                        <div class="flex gap-3 items-start flex-1">
+                            <span class="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 text-xs font-black flex items-center justify-center flex-shrink-0">${i+1}</span>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-gray-800">${q.question_text}</p>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${q.question_type === 'multiple_choice' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}">${q.question_type === 'multiple_choice' ? 'Multiple Choice' : 'Essay'}</span>
+                                    <span class="text-[10px] text-gray-400">${q.points || 10} pts</span>
+                                </div>
+                                ${q.options && q.options.length ? `<div class="mt-2 flex flex-wrap gap-1">${q.options.map(o => `<span class="text-xs bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-lg text-gray-600">${o}</span>`).join('')}</div>` : ''}
+                            </div>
+                        </div>
+                        <button onclick="deleteQuestion(${q.id})" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all flex-shrink-0">
+                            <i class="bi bi-trash text-xs"></i>
+                        </button>
+                    `;
+                    list.appendChild(div);
+                });
+            })
+            .catch(() => { list.innerHTML = '<p class="text-red-500 text-sm text-center py-4">Failed to load questions.</p>'; });
+    }
+
+    function addQuestion() {
+        const competencyId = document.getElementById('q_competency_id').value;
+        const text = document.getElementById('new_question_text').value.trim();
+        const type = document.getElementById('new_question_type').value;
+        const options = document.getElementById('new_question_options').value;
+        const points = document.getElementById('new_question_points').value;
+
+        if (!text) { alert('Please enter question text.'); return; }
+
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const form = new FormData();
+        form.append('competency_id', competencyId);
+        form.append('question_text', text);
+        form.append('question_type', type);
+        form.append('options', options);
+        form.append('points', points);
+        form.append('csrf_token', '{{ csrf_token() }}');
+
+        fetch('/hr/hr2/competencies/add-question', { method: 'POST', body: form })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('new_question_text').value = '';
+                    document.getElementById('new_question_options').value = '';
+                    loadQuestions(competencyId);
+                } else { alert('Error: ' + (data.error || 'Unknown')); }
+            });
+    }
+
+    function deleteQuestion(questionId) {
+        if (!confirm('Delete this question?')) return;
+        const competencyId = document.getElementById('q_competency_id').value;
+        const form = new FormData();
+        form.append('csrf_token', '{{ csrf_token() }}');
+        fetch(`/hr/hr2/competencies/delete-question/${questionId}`, { method: 'POST', body: form })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) loadQuestions(competencyId);
+                else alert('Error: ' + (data.error || 'Unknown'));
+            });
+    }
+
+    // ── Evaluate Modal ─────────────────────────────────────────────────────
+
+    function openEvaluateModal(assessmentId, staffName) {
+        document.getElementById('eval_staff_name').textContent = staffName;
+        document.getElementById('evaluateForm').action = `/hr/hr2/competencies/evaluate/${assessmentId}`;
+        document.getElementById('answers_list').innerHTML = '<p class="text-gray-400 text-sm text-center py-4 animate-pulse">Loading answers...</p>';
+        document.getElementById('no_answers_msg').classList.add('hidden');
+        document.getElementById('eval_file_section').classList.add('hidden');
+        document.getElementById('detailsModal').classList.add('hidden');
+
+        fetch(`/hr/hr2/competencies/assessment-answers/${assessmentId}`)
+            .then(r => r.json())
+            .then(answers => {
+                const list = document.getElementById('answers_list');
+                list.innerHTML = '';
+                if (answers.length === 0) {
+                    document.getElementById('no_answers_msg').classList.remove('hidden');
+                } else {
+                    answers.forEach((a, i) => {
+                        const div = document.createElement('div');
+                        div.className = 'p-4 bg-gray-50 rounded-2xl space-y-2';
+                        div.innerHTML = `
+                            <div class="flex items-start gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-green-100 text-green-700 text-xs font-black flex items-center justify-center flex-shrink-0 mt-0.5">${i+1}</span>
+                                <p class="text-sm font-bold text-gray-700">${a.question?.question_text || 'Question'}</p>
+                            </div>
+                            <div class="ml-8 p-3 bg-white rounded-xl border border-gray-100 text-sm text-gray-800">${a.answer_text || '<span class="text-gray-400 italic">No answer given</span>'}</div>
+                        `;
+                        list.appendChild(div);
+                    });
+                }
+            });
+
+        document.getElementById('evaluateModal').classList.remove('hidden');
     }
 </script>
 {% endblock %}

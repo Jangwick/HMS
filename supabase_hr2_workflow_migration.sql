@@ -38,6 +38,8 @@ ALTER TABLE IF EXISTS competencies ADD COLUMN IF NOT EXISTS license_required BOO
 -- STAFF_COMPETENCIES: full workflow fields
 -- ----------------------------
 ALTER TABLE IF EXISTS staff_competencies ADD COLUMN IF NOT EXISTS assessment_type VARCHAR(50) DEFAULT 'Practical';
+ALTER TABLE IF EXISTS staff_competencies ADD COLUMN IF NOT EXISTS location_type VARCHAR(20) DEFAULT 'On-site';
+ALTER TABLE IF EXISTS staff_competencies ADD COLUMN IF NOT EXISTS location TEXT;
 ALTER TABLE IF EXISTS staff_competencies ADD COLUMN IF NOT EXISTS supervisor_id INTEGER REFERENCES users(id);
 ALTER TABLE IF EXISTS staff_competencies ADD COLUMN IF NOT EXISTS license_verified BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS staff_competencies ADD COLUMN IF NOT EXISTS license_expiry DATE;
@@ -48,6 +50,8 @@ ALTER TABLE IF EXISTS staff_competencies ADD COLUMN IF NOT EXISTS corrective_act
 ALTER TABLE IF EXISTS staff_competencies ADD COLUMN IF NOT EXISTS evaluator_notes TEXT;
 ALTER TABLE IF EXISTS staff_competencies ADD COLUMN IF NOT EXISTS evaluated_by INTEGER REFERENCES users(id);
 ALTER TABLE IF EXISTS staff_competencies ADD COLUMN IF NOT EXISTS evaluated_at TIMESTAMP;
+ALTER TABLE IF EXISTS staff_competencies ADD COLUMN IF NOT EXISTS written_answer TEXT;
+ALTER TABLE IF EXISTS staff_competencies ADD COLUMN IF NOT EXISTS submission_file_url TEXT;
 
 -- ----------------------------
 -- SUCCESSION_PLANS: workflow fields
@@ -59,6 +63,39 @@ ALTER TABLE IF EXISTS succession_plans ADD COLUMN IF NOT EXISTS reviewed_by INTE
 ALTER TABLE IF EXISTS succession_plans ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP;
 ALTER TABLE IF EXISTS succession_plans ADD COLUMN IF NOT EXISTS finalized_by INTEGER REFERENCES users(id);
 ALTER TABLE IF EXISTS succession_plans ADD COLUMN IF NOT EXISTS finalized_at TIMESTAMP;
+
+-- ----------------------------
+-- COMPETENCY_QUESTIONS: question bank per competency
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS competency_questions (
+    id SERIAL PRIMARY KEY,
+    competency_id INTEGER REFERENCES competencies(id) ON DELETE CASCADE,
+    question_text TEXT NOT NULL,
+    question_type VARCHAR(20) DEFAULT 'text',
+    options JSONB,
+    points INTEGER DEFAULT 10,
+    order_num INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+ALTER TABLE IF EXISTS competency_questions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on competency_questions" ON competency_questions;
+CREATE POLICY "Allow all on competency_questions" ON competency_questions
+    FOR ALL USING (true) WITH CHECK (true);
+
+-- ----------------------------
+-- ASSESSMENT_ANSWERS: per-question answers per scheduled assessment
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS assessment_answers (
+    id SERIAL PRIMARY KEY,
+    assessment_id INTEGER REFERENCES staff_competencies(id) ON DELETE CASCADE,
+    question_id INTEGER REFERENCES competency_questions(id) ON DELETE CASCADE,
+    answer_text TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+ALTER TABLE IF EXISTS assessment_answers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on assessment_answers" ON assessment_answers;
+CREATE POLICY "Allow all on assessment_answers" ON assessment_answers
+    FOR ALL USING (true) WITH CHECK (true);
 
 -- Done
 SELECT 'HR2 workflow migration complete.' AS result;

@@ -1,0 +1,307 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}My Assessments - {{ subsystem_name }}{% endblock %}
+{% block header_title %}My Assessments{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8 space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-black text-gray-900">My Assessments</h1>
+            <p class="text-gray-500 mt-1">Competency assessments scheduled for you by HR.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="px-4 py-2 bg-cyan-50 text-[#0891B2] rounded-xl text-sm font-bold">
+                <i class="bi bi-clipboard-check mr-1"></i>{{ assessments|length }} Total
+            </span>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="p-4 rounded-xl font-medium text-sm
+        {{ 'bg-green-50 text-green-700 border border-green-100' if category == 'success' else
+           'bg-red-50 text-red-700 border border-red-100' if category == 'danger' else
+           'bg-amber-50 text-amber-700 border border-amber-100' }}">
+        <i class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} mr-2"></i>{{ message }}
+    </div>
+    {% endfor %}
+    {% endwith %}
+
+    {% if not assessments %}
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-16 text-center">
+        <div class="w-20 h-20 bg-cyan-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <i class="bi bi-clipboard2 text-4xl text-[#0891B2]"></i>
+        </div>
+        <h3 class="text-xl font-black text-gray-900 mb-2">No Assessments Scheduled</h3>
+        <p class="text-gray-400">You have no competency assessments assigned. Check back later.</p>
+    </div>
+    {% else %}
+
+    <!-- Status groups -->
+    {% set status_order = ['Scheduled', 'Submitted', 'Competent', 'Not Yet Competent'] %}
+    {% for status in status_order %}
+    {% set group = assessments | selectattr('status', 'equalto', status) | list %}
+    {% if group %}
+    <div>
+        <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+            {% if status == 'Scheduled' %}<i class="bi bi-clock mr-1 text-amber-500"></i>
+            {% elif status == 'Submitted' %}<i class="bi bi-send mr-1 text-blue-500"></i>
+            {% elif status == 'Competent' %}<i class="bi bi-patch-check-fill mr-1 text-green-500"></i>
+            {% else %}<i class="bi bi-x-circle mr-1 text-red-500"></i>
+            {% endif %}
+            {{ status }}
+        </h2>
+        <div class="space-y-4">
+            {% for a in group %}
+            {% set is_online_written = (a.location_type == 'Online' and a.assessment_type == 'Written') %}
+            {% set is_portfolio = (a.assessment_type == 'Portfolio') %}
+            {% set can_submit = (status == 'Scheduled') and (is_online_written or is_portfolio) %}
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <!-- Card Header -->
+                <div class="p-6 flex items-start justify-between gap-4">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg flex-shrink-0"
+                             style="background: linear-gradient(135deg, {{ accent_color or '#0891B2' }}, #164e63)">
+                            {% if a.assessment_type == 'Written' %}<i class="bi bi-pencil-square"></i>
+                            {% elif a.assessment_type == 'Practical' %}<i class="bi bi-tools"></i>
+                            {% elif a.assessment_type == 'Observation' %}<i class="bi bi-eye"></i>
+                            {% else %}<i class="bi bi-folder2-open"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-black text-gray-900">{{ a.competency.skill_name if a.competency else 'Competency Assessment' }}</h3>
+                            <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mt-0.5">
+                                {{ a.competency.category if a.competency else '' }}
+                            </p>
+                            <div class="flex flex-wrap items-center gap-3 mt-2">
+                                <span class="flex items-center gap-1 text-xs text-gray-600 font-medium">
+                                    <i class="bi bi-{{ 'wifi' if a.location_type == 'Online' else 'building' }} text-[#0891B2]"></i>
+                                    {{ a.location_type or 'On-site' }}
+                                </span>
+                                <span class="flex items-center gap-1 text-xs text-gray-600 font-medium">
+                                    <i class="bi bi-clipboard-check text-[#0891B2]"></i>
+                                    {{ a.assessment_type }}
+                                </span>
+                                <span class="flex items-center gap-1 text-xs text-gray-600 font-medium">
+                                    <i class="bi bi-calendar3 text-[#0891B2]"></i>
+                                    {{ a.assessment_date or 'TBD' }}
+                                </span>
+                                {% if a.location and a.location_type != 'Online' %}
+                                <span class="flex items-center gap-1 text-xs text-gray-600 font-medium">
+                                    <i class="bi bi-geo-alt text-[#0891B2]"></i>
+                                    {{ a.location }}
+                                </span>
+                                {% endif %}
+                                {% if a.supervisor %}
+                                <span class="flex items-center gap-1 text-xs text-gray-600 font-medium">
+                                    <i class="bi bi-person-badge text-[#0891B2]"></i>
+                                    {{ a.supervisor.username }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Status badge -->
+                    <div class="flex-shrink-0 text-right">
+                        <span class="px-3 py-1 rounded-full text-xs font-black
+                            {{ 'bg-amber-50 text-amber-600' if status == 'Scheduled' else
+                               'bg-blue-50 text-blue-600' if status == 'Submitted' else
+                               'bg-green-50 text-green-700' if status == 'Competent' else
+                               'bg-red-50 text-red-700' }}">
+                            {{ status }}
+                        </span>
+                        {% if a.score is not none %}
+                        <p class="text-xs text-gray-400 mt-1">Score: <span class="font-black text-gray-700">{{ a.score }}</span></p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Outcome / Evaluator Notes -->
+                {% if status in ('Competent', 'Not Yet Competent') %}
+                <div class="px-6 pb-5">
+                    {% if a.evaluator_notes %}
+                    <div class="p-3 bg-gray-50 rounded-xl text-sm text-gray-600 border border-gray-100">
+                        <p class="text-[10px] font-black text-gray-400 uppercase mb-1">Evaluator Notes</p>
+                        {{ a.evaluator_notes }}
+                    </div>
+                    {% endif %}
+                    {% if a.corrective_action %}
+                    <div class="p-3 bg-red-50 rounded-xl text-sm text-red-700 border border-red-100 mt-2">
+                        <p class="text-[10px] font-black text-red-400 uppercase mb-1">Corrective Action Required</p>
+                        {{ a.corrective_action }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Submission area for eligible assessments -->
+                {% if status == 'Submitted' and (a.written_answer or a.submission_file_url) %}
+                <div class="px-6 pb-5">
+                    <div class="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                        <p class="text-[10px] font-black text-blue-400 uppercase mb-1">Your Submission</p>
+                        {% if a.written_answer %}
+                        <p class="text-sm text-blue-800">{{ a.written_answer[:200] }}{% if a.written_answer|length > 200 %}…{% endif %}</p>
+                        {% endif %}
+                        {% if a.submission_file_url %}
+                        <a href="{{ a.submission_file_url }}" target="_blank" class="text-xs text-blue-600 font-bold mt-1 inline-flex items-center gap-1 hover:underline">
+                            <i class="bi bi-paperclip"></i> View Submitted File
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Action buttons for submittable assessments -->
+                {% if can_submit %}
+                <div class="px-6 pb-6">
+                    {% if is_online_written %}
+                    <button onclick="openSubmitModal({{ a.id }}, '{{ a.competency.skill_name if a.competency else 'Assessment' | e }}')"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
+                        style="background: {{ accent_color or '#0891B2' }}">
+                        <i class="bi bi-pencil-fill"></i> Start Written Assessment
+                    </button>
+                    {% elif is_portfolio %}
+                    <button onclick="openSubmitModal({{ a.id }}, '{{ a.competency.skill_name if a.competency else 'Assessment' | e }}')"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
+                        style="background: {{ accent_color or '#0891B2' }}">
+                        <i class="bi bi-upload"></i> Upload Portfolio
+                    </button>
+                    {% endif %}
+                </div>
+                {% elif status == 'Scheduled' and not can_submit %}
+                <div class="px-6 pb-5">
+                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm text-gray-500">
+                        <i class="bi bi-info-circle mr-2 text-gray-400"></i>
+                        {% if a.location_type == 'Online' %}
+                            Your supervisor/assessor will record the result after the assessment.
+                        {% else %}
+                            Attend at the scheduled location. Your assessor will record the result.
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+</div>
+
+<!-- Submit Assessment Modal -->
+<div id="submitModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 flex-shrink-0">
+            <div>
+                <h3 class="text-xl font-black text-gray-900">Submit Assessment</h3>
+                <p id="submit_skill_name" class="text-[#0891B2] font-medium text-sm mt-0.5"></p>
+            </div>
+            <button onclick="document.getElementById('submitModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="submitForm" method="POST" enctype="multipart/form-data" class="overflow-y-auto flex-1">
+            <div class="p-6 space-y-5">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="context" value="{{ blueprint_name }}">
+
+                <!-- Per-question section (rendered dynamically by JS) -->
+                <div id="questions_section" class="space-y-6"></div>
+
+                <!-- Fallback generic textarea (shown when no questions exist) -->
+                <div id="fallback_section" class="hidden">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Your Answer</label>
+                    <textarea name="written_answer" rows="7"
+                        placeholder="Write your answer here. Be thorough and detailed."
+                        class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2] text-sm resize-none"></textarea>
+                </div>
+
+                <!-- File upload -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">
+                        <span id="file_label">Attachment / Portfolio</span>
+                        <span class="font-normal text-gray-400 text-xs ml-1">(PDF, DOCX, JPG — max 10MB, optional)</span>
+                    </label>
+                    <input type="file" name="portfolio_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:bg-cyan-600 file:text-white file:cursor-pointer">
+                </div>
+
+                <button type="submit"
+                    class="w-full py-4 text-white font-black rounded-2xl shadow-lg hover:opacity-90 transition-all"
+                    style="background: {{ accent_color or '#0891B2' }}">
+                    <i class="bi bi-send-fill mr-2"></i>Submit Assessment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Build per-assessment questions map from Jinja
+const assessmentQuestions = {
+    {% for a in assessments %}
+    {{ a.id }}: {{ a.questions | tojson }},
+    {% endfor %}
+};
+
+function openSubmitModal(assessmentId, skillName) {
+    document.getElementById('submit_skill_name').textContent = skillName;
+    document.getElementById('submitForm').action = `/hr/hr2/my-assessments/submit/${assessmentId}`;
+
+    const questions = assessmentQuestions[assessmentId] || [];
+    const qSection = document.getElementById('questions_section');
+    const fallback = document.getElementById('fallback_section');
+    qSection.innerHTML = '';
+
+    if (questions.length === 0) {
+        fallback.classList.remove('hidden');
+    } else {
+        fallback.classList.add('hidden');
+        questions.forEach((q, i) => {
+            const div = document.createElement('div');
+            div.className = 'space-y-2';
+
+            let inputHtml = '';
+            if (q.question_type === 'multiple_choice' && q.options && q.options.length) {
+                inputHtml = `<div class="space-y-2 mt-2">` +
+                    q.options.map(opt => `
+                        <label class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-cyan-50 transition-colors">
+                            <input type="radio" name="answer_${q.id}" value="${opt.replace(/"/g, '&quot;')}" class="text-[#0891B2] w-4 h-4">
+                            <span class="text-sm text-gray-700">${opt}</span>
+                        </label>`).join('') +
+                    `</div>`;
+            } else {
+                inputHtml = `<textarea name="answer_${q.id}" rows="4"
+                    placeholder="Write your answer here..."
+                    class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-[#0891B2] text-sm resize-none mt-1"></textarea>`;
+            }
+
+            const typeLabel = q.question_type === 'multiple_choice' ? 'Multiple Choice' : 'Essay';
+            const typeClass = q.question_type === 'multiple_choice' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500';
+
+            div.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <span class="w-7 h-7 rounded-lg bg-cyan-50 text-[#0891B2] text-xs font-black flex items-center justify-center flex-shrink-0 mt-0.5">${i+1}</span>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <p class="text-sm font-bold text-gray-800">${q.question_text}</p>
+                            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${typeClass}">${typeLabel}</span>
+                            <span class="text-[10px] text-gray-400">${q.points || 10} pts</span>
+                        </div>
+                        ${inputHtml}
+                    </div>
+                </div>
+            `;
+            qSection.appendChild(div);
+        });
+    }
+
+    document.getElementById('submitModal').classList.remove('hidden');
+}
+</script>
+{% endblock %}

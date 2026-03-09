@@ -294,7 +294,7 @@ def list_trainings():
     # Fetch active hospital staff for enrollment dropdown (exclude patients/portal users)
     staff_response = client.table('users').select('id, username, department, role') \
         .eq('status', 'Active') \
-        .not_.in_('role', ['Applicant', 'Patient']) \
+        .not_.in_('role', ['Applicant', 'Patient', 'Administrator', 'SuperAdmin']) \
         .not_.in_('department', ['PATIENT_PORTAL', 'FINANCIALS']) \
         .order('username') \
         .execute()
@@ -666,11 +666,19 @@ def list_competencies():
     # Fetch active hospital staff for assessment dropdown (exclude patients/portal users)
     staff_response = client.table('users').select('id, username, email, department, role') \
         .eq('status', 'Active') \
-        .not_.in_('role', ['Applicant', 'Patient']) \
+        .not_.in_('role', ['Applicant', 'Patient', 'Administrator', 'SuperAdmin']) \
         .not_.in_('department', ['PATIENT_PORTAL', 'FINANCIALS']) \
         .order('username') \
         .execute()
     staff_members = staff_response.data if staff_response.data else []
+
+    # Fetch administrators/supervisors for the assessor dropdown
+    supervisors_response = client.table('users').select('id, username, department, role') \
+        .eq('status', 'Active') \
+        .in_('role', ['Administrator', 'SuperAdmin']) \
+        .order('username') \
+        .execute()
+    supervisors = supervisors_response.data if supervisors_response.data else []
 
     # Fetch staff assessments with user details
     # Explicitly specify the user_id relationship to avoid ambiguity with assessor_id
@@ -682,6 +690,7 @@ def list_competencies():
     return render_template('subsystems/hr/hr2/competencies.html',
                            competencies=competencies,
                            staff_members=staff_members,
+                           supervisors=supervisors,
                            assessments=assessments,
                            current_date=datetime.now().strftime('%Y-%m-%d'),
                            subsystem_name=SUBSYSTEM_NAME,
@@ -758,6 +767,108 @@ def delete_competency(id):
         
     return redirect(url_for('hr2.list_competencies'))
 
+
+# ── Question Bank ────────────────────────────────────────────────────────────
+
+@hr2_bp.route('/competencies/<int:competency_id>/questions', methods=['GET'])
+@login_required
+def get_questions(competency_id):
+    """Returns JSON list of questions for a competency."""
+    from utils.supabase_client import get_supabase_client
+    from flask import jsonify
+    client = get_supabase_client()
+    try:
+        resp = client.table('competency_questions') \
+            .select('*') \
+            .eq('competency_id', competency_id) \
+            .order('order_num') \
+            .execute()
+        return jsonify(resp.data or [])
+    except Exception as e:
+        return jsonify({'error': str(e), 'hint': 'Run the HR2 migration SQL in Supabase first.'}), 500
+
+
+@hr2_bp.route('/competencies/add-question', methods=['POST'])
+@login_required
+def add_question():
+    if not current_user.is_admin():
+        from flask import jsonify
+        return jsonify({'error': 'Unauthorized'}), 403
+    from utils.supabase_client import get_supabase_client
+    from flask import jsonify
+    import json
+    client = get_supabase_client()
+
+    competency_id  = request.form.get('competency_id')
+    question_text  = request.form.get('question_text', '').strip()
+    question_type  = request.form.get('question_type', 'text')
+    options_raw    = request.form.get('options', '')
+    points         = request.form.get('points') or 1
+
+    if not question_text:
+        return jsonify({'error': 'Question text is required'}), 400
+
+    # Parse comma-separated options for multiple_choice
+    options = None
+    if question_type == 'multiple_choice':
+        options = [o.strip() for o in options_raw.split('\n') if o.strip()]
+
+    try:
+        # Get next order number
+        existing = client.table('competency_questions') \
+            .select('order_num') \
+            .eq('competency_id', competency_id) \
+            .order('order_num', desc=True) \
+            .limit(1) \
+            .execute()
+        next_order = (existing.data[0]['order_num'] + 1) if existing.data else 1
+
+        result = client.table('competency_questions').insert({
+            'competency_id': int(competency_id),
+            'question_text': question_text,
+            'question_type': question_type,
+            'options': options,
+            'points': int(points),
+            'order_num': next_order,
+        }).execute()
+        return jsonify({'success': True, 'question': result.data[0] if result.data else {}})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@hr2_bp.route('/competencies/delete-question/<int:question_id>', methods=['POST'])
+@login_required
+def delete_question(question_id):
+    if not current_user.is_admin():
+        from flask import jsonify
+        return jsonify({'error': 'Unauthorized'}), 403
+    from utils.supabase_client import get_supabase_client
+    from flask import jsonify
+    client = get_supabase_client()
+    try:
+        client.table('competency_questions').delete().eq('id', question_id).execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@hr2_bp.route('/competencies/assessment-answers/<int:assessment_id>', methods=['GET'])
+@login_required
+def get_assessment_answers(assessment_id):
+    """Returns JSON of submitted answers with question text — for supervisor evaluation."""
+    from utils.supabase_client import get_supabase_client
+    from flask import jsonify
+    client = get_supabase_client()
+    try:
+        resp = client.table('assessment_answers') \
+            .select('*, question:competency_questions(question_text, question_type, options, points)') \
+            .eq('assessment_id', assessment_id) \
+            .execute()
+        return jsonify(resp.data or [])
+    except Exception as e:
+        return jsonify({'error': str(e), 'hint': 'Run the HR2 migration SQL in Supabase first.'}), 500
+
+
 @hr2_bp.route('/competencies/schedule-assessment', methods=['POST'])
 @login_required
 def assess_staff():
@@ -774,7 +885,9 @@ def assess_staff():
     competency_id = request.form.get('competency_id')
     scheduled_date= request.form.get('scheduled_date')
     assessment_type = request.form.get('assessment_type', 'Practical')
+    location_type = request.form.get('location_type', 'On-site')
     supervisor_id = request.form.get('supervisor_id')
+    location      = request.form.get('location') or None
     license_verified = request.form.get('license_verified') == '1'
     license_expiry   = request.form.get('license_expiry') or None
 
@@ -797,7 +910,9 @@ def assess_staff():
             'competency_id': int(competency_id),
             'assessment_date': scheduled_date,
             'assessment_type': assessment_type,
+            'location_type': location_type,
             'supervisor_id': int(supervisor_id) if supervisor_id else None,
+            'location': location if location_type == 'On-site' else None,
             'license_verified': license_verified,
             'license_expiry': license_expiry,
             'status': 'Scheduled',
@@ -933,6 +1048,150 @@ def evaluate_assessment(assessment_id):
 
     return redirect(url_for('hr2.list_competencies'))
 
+
+@hr2_bp.route('/my-assessments')
+@login_required
+def my_assessments():
+    """Staff-facing page: view all scheduled/submitted assessments for the current user."""
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    context = request.args.get('context', BLUEPRINT_NAME)
+    subsystem_map = {
+        'hr1': ('HR1 - Recruitment', '#6366F1'),
+        'hr2': ('HR2 - Talent Development', '#0891B2'),
+        'hr3': ('HR3 - Workforce Ops', '#8B5CF6'),
+    }
+    display_name, accent = subsystem_map.get(context, (SUBSYSTEM_NAME, ACCENT_COLOR))
+
+    resp = client.table('staff_competencies') \
+        .select('*, competency:competencies(id, skill_name, category, description), supervisor:users!staff_competencies_supervisor_id_fkey(username)') \
+        .eq('user_id', current_user.id) \
+        .order('assessment_date', desc=True) \
+        .execute()
+    assessments = resp.data if resp.data else []
+
+    # Attach questions and submitted answers per assessment
+    for a in assessments:
+        comp_id = a.get('competency', {}).get('id') if a.get('competency') else None
+        a['questions'] = []
+        a['submitted_answers'] = {}
+        if comp_id:
+            try:
+                q_resp = client.table('competency_questions').select('*') \
+                    .eq('competency_id', comp_id).order('order_num').execute()
+                a['questions'] = q_resp.data or []
+            except Exception:
+                pass  # Table not yet created — run migration SQL
+
+        # Fetch previously submitted answers if status == Submitted
+        if a.get('status') in ('Submitted', 'Competent', 'Not Yet Competent'):
+            try:
+                ans_resp = client.table('assessment_answers').select('*') \
+                    .eq('assessment_id', a['id']).execute()
+                a['submitted_answers'] = {str(r['question_id']): r['answer_text'] for r in (ans_resp.data or [])}
+            except Exception:
+                pass  # Table not yet created — run migration SQL
+
+    return render_template('subsystems/hr/hr2/my_assessments.html',
+                           assessments=assessments,
+                           subsystem_name=display_name,
+                           accent_color=accent,
+                           blueprint_name=context)
+
+
+@hr2_bp.route('/my-assessments/submit/<int:assessment_id>', methods=['POST'])
+@login_required
+def submit_my_assessment(assessment_id):
+    """Staff submits questionnaire answers + optional file for their assessment."""
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    import os, uuid, json
+    client = get_supabase_client()
+
+    context = request.form.get('context', BLUEPRINT_NAME)
+
+    # Verify ownership
+    rec = client.table('staff_competencies').select('user_id, supervisor_id, competency_id, assessment_type, status') \
+        .eq('id', assessment_id).maybe_single().execute()
+    if not rec or not rec.data or rec.data['user_id'] != current_user.id:
+        flash('Assessment not found or access denied.', 'danger')
+        return redirect(url_for('hr2.my_assessments', context=context))
+
+    if rec.data['status'] not in ('Scheduled',):
+        flash('This assessment has already been submitted or evaluated.', 'warning')
+        return redirect(url_for('hr2.my_assessments', context=context))
+
+    submission_file_url = None
+
+    # Handle file upload
+    file = request.files.get('portfolio_file')
+    if file and file.filename:
+        try:
+            ext = os.path.splitext(file.filename)[1]
+            filename = f"portfolio_{current_user.id}_{uuid.uuid4().hex}{ext}"
+            file_bytes = file.read()
+            client.storage.from_('hr2-assessments').upload(filename, file_bytes,
+                file_options={"content-type": file.content_type or "application/octet-stream"})
+            submission_file_url = client.storage.from_('hr2-assessments').get_public_url(filename)
+        except Exception as e:
+            flash(f'File upload failed: {str(e)}', 'warning')
+
+    try:
+        comp_id = rec.data['competency_id']
+
+        # Fetch questions for this competency
+        q_resp = client.table('competency_questions').select('id') \
+            .eq('competency_id', comp_id).execute()
+        questions = q_resp.data or []
+
+        # Save per-question answers
+        answer_rows = []
+        summary_parts = []
+        for q in questions:
+            qid = str(q['id'])
+            answer = request.form.get(f'answer_{qid}', '').strip()
+            if answer:
+                answer_rows.append({
+                    'assessment_id': assessment_id,
+                    'question_id': q['id'],
+                    'answer_text': answer,
+                })
+                summary_parts.append(answer)
+
+        if answer_rows:
+            client.table('assessment_answers').insert(answer_rows).execute()
+
+        # Also store a plain-text written_answer summary for backward compatibility
+        combined = '\n\n'.join(summary_parts) if summary_parts else request.form.get('written_answer') or None
+
+        client.table('staff_competencies').update({
+            'written_answer': combined,
+            'submission_file_url': submission_file_url,
+            'status': 'Submitted',
+        }).eq('id', assessment_id).execute()
+
+        # Notify supervisor
+        supervisor_id = rec.data.get('supervisor_id')
+        if supervisor_id:
+            comp = client.table('competencies').select('skill_name').eq('id', comp_id).maybe_single().execute()
+            skill_name = comp.data.get('skill_name', 'Competency') if comp and comp.data else 'Competency'
+            Notification.create(
+                user_id=int(supervisor_id),
+                subsystem='hr2',
+                title=f'Assessment Submitted: {skill_name}',
+                message=f'{current_user.username} has submitted their "{skill_name}" assessment. Please evaluate.',
+                n_type='info',
+                sender_subsystem='hr2'
+            )
+
+        flash('Assessment submitted successfully! Your supervisor has been notified.', 'success')
+    except Exception as e:
+        flash(f'Error submitting assessment: {str(e)}', 'danger')
+
+    return redirect(url_for('hr2.my_assessments', context=context))
+
+
 @hr2_bp.route('/career-paths')
 @login_required
 def list_career_paths():
@@ -946,7 +1205,7 @@ def list_career_paths():
     # Fetch active hospital staff for assignment (exclude patients/portal users)
     users_resp = client.table('users').select('id, username, department, role') \
         .eq('status', 'Active') \
-        .not_.in_('role', ['Applicant', 'Patient']) \
+        .not_.in_('role', ['Applicant', 'Patient', 'Administrator', 'SuperAdmin']) \
         .not_.in_('department', ['PATIENT_PORTAL', 'FINANCIALS']) \
         .order('username') \
         .execute()
@@ -1387,7 +1646,7 @@ def list_succession_plans():
     # Fetch active hospital staff for selection (exclude patients/portal users)
     staff_response = client.table('users').select('id, username, department, role') \
         .eq('status', 'Active') \
-        .not_.in_('role', ['Applicant', 'Patient']) \
+        .not_.in_('role', ['Applicant', 'Patient', 'Administrator', 'SuperAdmin']) \
         .not_.in_('department', ['PATIENT_PORTAL', 'FINANCIALS']) \
         .order('username') \
         .execute()
