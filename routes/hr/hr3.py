@@ -298,30 +298,58 @@ def clock_in():
             if schedule:
                 start_time_str = schedule['start_time']
                 schedule_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} {start_time_str}", "%Y-%m-%d %H:%M:%S")
-                
-                if now > (schedule_start + timedelta(minutes=5)):
+                earliest_allowed = schedule_start - timedelta(minutes=15)
+
+                # Block clock-in if more than 15 minutes before shift start
+                if now < earliest_allowed:
+                    flash(
+                        f'Too early to clock in. Your shift starts at {schedule_start.strftime("%I:%M %p")}. '
+                        f'You may clock in from {earliest_allowed.strftime("%I:%M %p")} onwards.',
+                        'warning'
+                    )
+                    return hr3_redirect_fallback()
+
+                # Grace period: on-time if within 15 minutes of shift start; late otherwise
+                if now > (schedule_start + timedelta(minutes=15)):
                     status = 'Late'
                     # Calculate minutes late
                     diff = now - schedule_start
                     minutes_late = int(diff.total_seconds() / 60)
                     remarks = f"Late by {minutes_late} minutes. " + (request.form.get('remarks') or "")
             else:
-                if now.hour >= 9 and now.minute > 5:
+                default_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} 09:00:00", "%Y-%m-%d %H:%M:%S")
+                earliest_allowed = default_start - timedelta(minutes=15)
+                if now < earliest_allowed:
+                    flash(
+                        f'Too early to clock in. Default shift starts at 09:00 AM. '
+                        f'You may clock in from {earliest_allowed.strftime("%I:%M %p")} onwards.',
+                        'warning'
+                    )
+                    return hr3_redirect_fallback()
+                if now > (default_start + timedelta(minutes=15)):
                     status = 'Late'
-                    schedule_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} 09:00:00", "%Y-%m-%d %H:%M:%S")
-                    diff = now - schedule_start
+                    diff = now - default_start
                     minutes_late = int(diff.total_seconds() / 60)
                     remarks = f"Late by {minutes_late} minutes (Default). " + (request.form.get('remarks') or "")
         else:
-            if now.hour >= 9 and now.minute > 5:
+            default_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} 09:00:00", "%Y-%m-%d %H:%M:%S")
+            earliest_allowed = default_start - timedelta(minutes=15)
+            if now < earliest_allowed:
+                flash(
+                    f'Too early to clock in. Default shift starts at 09:00 AM. '
+                    f'You may clock in from {earliest_allowed.strftime("%I:%M %p")} onwards.',
+                    'warning'
+                )
+                return hr3_redirect_fallback()
+            if now > (default_start + timedelta(minutes=15)):
                 status = 'Late'
-                schedule_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} 09:00:00", "%Y-%m-%d %H:%M:%S")
-                diff = now - schedule_start
+                diff = now - default_start
                 minutes_late = int(diff.total_seconds() / 60)
                 remarks = f"Late by {minutes_late} minutes (Default). " + (request.form.get('remarks') or "")
     except Exception as e:
         print(f"Schedule check error: {e}")
-        if now.hour >= 9 and now.minute > 5:
+        default_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} 09:00:00", "%Y-%m-%d %H:%M:%S")
+        if now > (default_start + timedelta(minutes=15)):
             status = 'Late'
             remarks = "Late (Default check error). " + (request.form.get('remarks') or "")
         
@@ -333,7 +361,7 @@ def clock_in():
             'remarks': remarks
         }
         client.table('attendance_logs').insert(data).execute()
-        flash(f'Clocked in successfully at {now.strftime("%H:%M")}. Status: {status}', 'success')
+        flash(f'Clocked in successfully at {now.strftime("%I:%M %p")}. Status: {status}', 'success')
     except Exception as e:
         flash(f'Error during clock-in: {str(e)}', 'danger')
     
@@ -350,35 +378,57 @@ def clock_out():
         flash('No active clock-in found.', 'warning')
         return hr3_redirect_fallback()
     
+    now = datetime.now()
+    day_name = now.strftime('%A')
+
+    # --- Resolve shift end time (must happen BEFORE any try/except that swallows errors) ---
+    shift_end_str = '17:00:00'  # default
     try:
-        now = datetime.now()
+        sched_resp = client.table('staff_schedules')\
+            .select('day_of_week, end_time')\
+            .eq('user_id', current_user.id)\
+            .eq('is_active', True)\
+            .execute()
+        if sched_resp.data:
+            sched = next(
+                (s for s in sched_resp.data
+                 if s.get('day_of_week', '').strip().lower() in (day_name.lower(), 'daily')),
+                None
+            )
+            if sched and sched.get('end_time'):
+                shift_end_str = sched['end_time']
+    except Exception as se:
+        print(f"Schedule lookup error in clock_out: {se}")
+
+    sched_end = datetime.strptime(f"{now.strftime('%Y-%m-%d')} {shift_end_str}", "%Y-%m-%d %H:%M:%S")
+    grace_end = sched_end - timedelta(minutes=15)
+
+    # Block clock-out if more than 15 mins before shift end
+    if now < grace_end:
+        minutes_remaining = int((grace_end - now).total_seconds() / 60)
+        flash(
+            f'You cannot clock out yet. Your shift ends at {sched_end.strftime("%I:%M %p")}. '
+            f'You may clock out from {grace_end.strftime("%I:%M %p")} onwards '
+            f'({minutes_remaining} minute(s) remaining).',
+            'warning'
+        )
+        return hr3_redirect_fallback()
+
+    try:
         log_id = active_log.data[0]['id']
         overtime_hours = 0.0
-
-        # Compute overtime vs scheduled end time
-        try:
-            day_name = now.strftime('%A')
-            sched_resp = client.table('staff_schedules')\
-                .select('end_time')\
-                .eq('user_id', current_user.id)\
-                .eq('is_active', True)\
-                .execute()
-            if sched_resp.data:
-                sched = next((s for s in sched_resp.data if s.get('day_of_week') in (day_name, 'Daily')), None)
-                if sched and sched.get('end_time'):
-                    end_str = sched['end_time']  # e.g. "17:00:00"
-                    sched_end = datetime.strptime(f"{now.strftime('%Y-%m-%d')} {end_str}", "%Y-%m-%d %H:%M:%S")
-                    if now > sched_end + timedelta(minutes=30):
-                        diff = now - sched_end
-                        overtime_hours = round(diff.total_seconds() / 3600, 2)
-        except Exception as oe:
-            print(f"OT calculation error: {oe}")
-
         update_data = {'clock_out': now.isoformat(), 'overtime_hours': overtime_hours}
+
+        # Overtime: more than 30 mins after shift end
+        if now > sched_end + timedelta(minutes=30):
+            diff = now - sched_end
+            overtime_hours = round(diff.total_seconds() / 3600, 2)
+            update_data['overtime_hours'] = overtime_hours
+
         client.table('attendance_logs').update(update_data).eq('id', log_id).execute()
-        
+
         ot_msg = f" Overtime: {overtime_hours}h recorded." if overtime_hours > 0 else ""
-        flash(f'Clocked out at {now.strftime("%H:%M")}.{ot_msg}', 'success')
+        flash(f'Clocked out at {now.strftime("%I:%M %p")}.{ot_msg}', 'success')
     except Exception as e:
         flash(f'Error during clock-out: {str(e)}', 'danger')
         
