@@ -1626,10 +1626,10 @@ def employee_self_service():
     attendance_summary = {'On-time': 0, 'Late': 0, 'Absent': 0}
     try:
         att_resp = client.table('attendance_logs') \
-            .select('id, clock_in, clock_out, status, remarks') \
+            .select('id, clock_in, clock_out, status, remarks, overtime_hours') \
             .eq('user_id', uid) \
             .order('clock_in', desc=True) \
-            .limit(5).execute()
+            .limit(10).execute()
         recent_attendance = att_resp.data or []
         for a in recent_attendance:
             s = a.get('status', '')
@@ -1638,22 +1638,49 @@ def employee_self_service():
     except Exception:
         pass
 
-    # ── My Leave Requests ──
+    # ── My Leave Requests — fetch ALL for accurate summary + full modal ──
+    all_leaves = []
     recent_leaves = []
     leave_summary = {'Pending': 0, 'Approved': 0, 'Rejected': 0}
+    leave_days_used = {}   # {leave_type: total calendar days used (approved only)}
     try:
         lv_resp = client.table('leave_requests') \
-            .select('id, leave_type, start_date, end_date, status, workflow_step, created_at') \
+            .select('id, leave_type, start_date, end_date, status, workflow_step, remarks, document_url, created_at') \
             .eq('user_id', uid) \
             .order('created_at', desc=True) \
-            .limit(5).execute()
-        recent_leaves = lv_resp.data or []
-        for lv in recent_leaves:
+            .execute()
+        all_leaves = lv_resp.data or []
+        recent_leaves = all_leaves[:5]
+        for lv in all_leaves:
             s = lv.get('status', '')
             if s in leave_summary:
                 leave_summary[s] += 1
+            # compute calendar days per leave entry
+            try:
+                from datetime import date as _date
+                sd = _date.fromisoformat(lv['start_date'][:10])
+                ed = _date.fromisoformat(lv['end_date'][:10])
+                days = (ed - sd).days + 1
+            except Exception:
+                days = 0
+            lv['_days'] = days
+            # tally approved days per type for balance calc
+            if lv.get('status') == 'Approved' and lv.get('leave_type') and days > 0:
+                lt = lv['leave_type']
+                leave_days_used[lt] = leave_days_used.get(lt, 0) + days
     except Exception:
         pass
+
+    # Standard annual entitlements (days per year)
+    leave_entitlements = {
+        'Vacation Leave': 15,
+        'Sick Leave': 15,
+        'Emergency Leave': 5,
+        'Maternity Leave': 105,
+        'Paternity Leave': 7,
+        'Solo Parent Leave': 7,
+        'Study Leave': 6,
+    }
 
     # ── My Schedule ──
     my_schedules = []
@@ -1681,8 +1708,11 @@ def employee_self_service():
                            notifications=notifications,
                            recent_attendance=recent_attendance,
                            attendance_summary=attendance_summary,
+                           all_leaves=all_leaves,
                            recent_leaves=recent_leaves,
                            leave_summary=leave_summary,
+                           leave_days_used=leave_days_used,
+                           leave_entitlements=leave_entitlements,
                            my_schedules=my_schedules,
                            subsystem_name=display_name,
                            accent_color=accent,
