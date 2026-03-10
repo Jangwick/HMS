@@ -235,6 +235,16 @@
                         <i class="bi bi-megaphone-fill"></i>
                     </div>
                     <h4 class="text-xl font-black text-rose-900">Scheduled but Missing</h4>
+                    <div class="ml-auto">
+                        <form method="POST" action="{{ url_for('hr3.mark_absent') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit"
+                                    onclick="return confirm('Mark all {{ missing_staff|length }} missing employee(s) as Absent?');"
+                                    class="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition shadow">
+                                <i class="bi bi-person-x"></i> Mark All Absent
+                            </button>
+                        </form>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

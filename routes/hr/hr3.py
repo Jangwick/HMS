@@ -351,11 +351,34 @@ def clock_out():
         return hr3_redirect_fallback()
     
     try:
+        now = datetime.now()
         log_id = active_log.data[0]['id']
-        client.table('attendance_logs').update({
-            'clock_out': datetime.now().isoformat()
-        }).eq('id', log_id).execute()
-        flash('Clocked out successfully.', 'success')
+        overtime_hours = 0.0
+
+        # Compute overtime vs scheduled end time
+        try:
+            day_name = now.strftime('%A')
+            sched_resp = client.table('staff_schedules')\
+                .select('end_time')\
+                .eq('user_id', current_user.id)\
+                .eq('is_active', True)\
+                .execute()
+            if sched_resp.data:
+                sched = next((s for s in sched_resp.data if s.get('day_of_week') in (day_name, 'Daily')), None)
+                if sched and sched.get('end_time'):
+                    end_str = sched['end_time']  # e.g. "17:00:00"
+                    sched_end = datetime.strptime(f"{now.strftime('%Y-%m-%d')} {end_str}", "%Y-%m-%d %H:%M:%S")
+                    if now > sched_end + timedelta(minutes=30):
+                        diff = now - sched_end
+                        overtime_hours = round(diff.total_seconds() / 3600, 2)
+        except Exception as oe:
+            print(f"OT calculation error: {oe}")
+
+        update_data = {'clock_out': now.isoformat(), 'overtime_hours': overtime_hours}
+        client.table('attendance_logs').update(update_data).eq('id', log_id).execute()
+        
+        ot_msg = f" Overtime: {overtime_hours}h recorded." if overtime_hours > 0 else ""
+        flash(f'Clocked out at {now.strftime("%H:%M")}.{ot_msg}', 'success')
     except Exception as e:
         flash(f'Error during clock-out: {str(e)}', 'danger')
         
@@ -392,6 +415,59 @@ def force_clock_out(log_id):
         flash(f'Error during force clock-out: {str(e)}', 'danger')
         
     return hr3_redirect_fallback()
+
+
+@hr3_bp.route('/attendance/mark-absent', methods=['POST'])
+@login_required
+def mark_absent():
+    """Admin: auto-mark employees with a schedule today who never clocked in as Absent."""
+    if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr3'):
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr3.list_attendance'))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    marked = 0
+    try:
+        today = datetime.now().strftime('%Y-%m-%d')
+        day_name = datetime.now().strftime('%A')
+
+        sched_resp = client.table('staff_schedules')\
+            .select('user_id, end_time')\
+            .eq('is_active', True)\
+            .execute()
+        scheduled_ids = {
+            s['user_id']: s['end_time']
+            for s in (sched_resp.data or [])
+            if s.get('day_of_week') in (day_name, 'Daily')
+        }
+
+        clocked_resp = client.table('attendance_logs').select('user_id').gte('clock_in', today).execute()
+        clocked_ids = {r['user_id'] for r in (clocked_resp.data or [])}
+
+        now = datetime.now()
+        for uid, end_time_str in scheduled_ids.items():
+            if uid in clocked_ids:
+                continue
+            # Only mark absent after scheduled end time
+            try:
+                sched_end = datetime.strptime(f"{today} {end_time_str}", "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                sched_end = datetime.strptime(f"{today} 18:00:00", "%Y-%m-%d %H:%M:%S")
+            if now >= sched_end:
+                client.table('attendance_logs').insert({
+                    'user_id': uid,
+                    'clock_in': f"{today}T00:00:00",
+                    'status': 'Absent',
+                    'remarks': 'Auto-marked absent — no clock-in recorded for scheduled shift.'
+                }).execute()
+                marked += 1
+
+        flash(f'{marked} employee(s) marked as Absent.', 'success' if marked else 'info')
+    except Exception as e:
+        flash(f'Error marking absent: {str(e)}', 'danger')
+
+    return redirect(url_for('hr3.list_attendance'))
 
 def _notify_hr3_admins(client, title, message, n_type, sender_subsystem, target_url=None):
     """Notify all active HR3 admins."""
@@ -1266,3 +1342,417 @@ def approve_leave():
 
     # For new-flow requests, redirect to detail page
     return redirect(url_for('hr3.leave_detail', leave_id=leave_id))
+
+
+# =====================================================
+# SCHEDULE CHANGE REQUESTS
+# =====================================================
+
+def _notify_finance_admins(client, title, message, n_type, sender_subsystem, target_url=None):
+    """Notify all active Finance/Financials admins."""
+    from utils.hms_models import Notification
+    try:
+        admins = client.table('users').select('id').eq('subsystem', 'financials').in_('role', ['Admin', 'Administrator']).eq('status', 'Active').execute()
+        for a in (admins.data or []):
+            Notification.create(user_id=a['id'], title=title, message=message,
+                                n_type=n_type, sender_subsystem=sender_subsystem, target_url=target_url)
+    except Exception as e:
+        print(f"Finance notification error: {e}")
+
+
+@hr3_bp.route('/schedule-changes', methods=['GET'])
+@login_required
+def list_schedule_changes():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    is_admin = current_user.is_super_admin() or (
+        current_user.role in ['Admin', 'Administrator'] and current_user.subsystem == 'hr3'
+    )
+    query = client.table('schedule_change_requests').select(
+        '*, users:users!schedule_change_requests_user_id_fkey(username, full_name, avatar_url)'
+    )
+    if not is_admin:
+        query = query.eq('user_id', current_user.id)
+    response = query.order('created_at', desc=True).execute()
+    changes = response.data or []
+
+    # Counts for admin tabs
+    counts = {}
+    if is_admin:
+        all_resp = client.table('schedule_change_requests').select('status').execute()
+        for r in (all_resp.data or []):
+            s = r.get('status', 'Pending')
+            counts[s] = counts.get(s, 0) + 1
+
+    return render_template('subsystems/hr/hr3/schedule_changes.html',
+                           changes=changes,
+                           counts=counts,
+                           is_admin=is_admin,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr3_bp.route('/schedule-changes/request', methods=['GET', 'POST'])
+@login_required
+def request_schedule_change():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    # Fetch employee's current schedules for pre-fill
+    my_schedules = []
+    try:
+        resp = client.table('staff_schedules').select('*').eq('user_id', current_user.id).eq('is_active', True).execute()
+        my_schedules = resp.data or []
+    except Exception:
+        pass
+
+    if request.method == 'POST':
+        current_day = request.form.get('current_day', '').strip()
+        current_start = request.form.get('current_start', '').strip()
+        current_end = request.form.get('current_end', '').strip()
+        requested_day = request.form.get('requested_day', '').strip()
+        requested_start = request.form.get('requested_start', '').strip()
+        requested_end = request.form.get('requested_end', '').strip()
+        reason = request.form.get('reason', '').strip()
+
+        if not all([requested_day, requested_start, requested_end, reason]):
+            flash('Please fill in all required fields.', 'warning')
+            return render_template('subsystems/hr/hr3/schedule_change_form.html',
+                                   my_schedules=my_schedules,
+                                   form_data=request.form,
+                                   subsystem_name=SUBSYSTEM_NAME,
+                                   accent_color=ACCENT_COLOR,
+                                   blueprint_name=BLUEPRINT_NAME)
+        try:
+            record = {
+                'user_id': current_user.id,
+                'current_day': current_day or None,
+                'current_start': current_start or None,
+                'current_end': current_end or None,
+                'requested_day': requested_day,
+                'requested_start': requested_start,
+                'requested_end': requested_end,
+                'reason': reason,
+                'status': 'Pending'
+            }
+            result = client.table('schedule_change_requests').insert(record).execute()
+            req_id = result.data[0]['id'] if result.data else None
+            target_url = url_for('hr3.list_schedule_changes')
+            _notify_hr3_admins(client,
+                               title='New Schedule Change Request',
+                               message=f"{current_user.username} has submitted a schedule change request.",
+                               n_type='info',
+                               sender_subsystem=BLUEPRINT_NAME,
+                               target_url=target_url)
+            flash('Schedule change request submitted successfully.', 'success')
+            return redirect(url_for('hr3.list_schedule_changes'))
+        except Exception as e:
+            flash(f'Error submitting request: {str(e)}', 'danger')
+
+    return render_template('subsystems/hr/hr3/schedule_change_form.html',
+                           my_schedules=my_schedules,
+                           form_data={},
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr3_bp.route('/schedule-changes/<int:req_id>/decide', methods=['POST'])
+@login_required
+def decide_schedule_change(req_id):
+    if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr3'):
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr3.list_schedule_changes'))
+
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+
+    decision = request.form.get('decision')
+    reviewer_notes = request.form.get('reviewer_notes', '').strip()
+
+    if decision not in ('Approved', 'Rejected'):
+        flash('Invalid decision.', 'danger')
+        return redirect(url_for('hr3.list_schedule_changes'))
+
+    try:
+        resp = client.table('schedule_change_requests').select('*').eq('id', req_id).limit(1).execute()
+        if not resp.data:
+            flash('Request not found.', 'danger')
+            return redirect(url_for('hr3.list_schedule_changes'))
+        req_data = resp.data[0]
+
+        client.table('schedule_change_requests').update({
+            'status': decision,
+            'reviewed_by': current_user.id,
+            'reviewed_at': datetime.now().isoformat(),
+            'reviewer_notes': reviewer_notes
+        }).eq('id', req_id).execute()
+
+        # If approved, apply the schedule change
+        if decision == 'Approved':
+            uid = req_data['user_id']
+            new_day = req_data['requested_day']
+            new_start = req_data['requested_start']
+            new_end = req_data['requested_end']
+            existing = client.table('staff_schedules').select('id').eq('user_id', uid).eq('day_of_week', new_day).execute()
+            if existing.data:
+                client.table('staff_schedules').update({'start_time': new_start, 'end_time': new_end, 'is_active': True}) \
+                    .eq('id', existing.data[0]['id']).execute()
+            else:
+                client.table('staff_schedules').insert({
+                    'user_id': uid, 'day_of_week': new_day,
+                    'start_time': new_start, 'end_time': new_end, 'is_active': True
+                }).execute()
+
+        # Notify employee
+        Notification.create(
+            user_id=req_data['user_id'],
+            title=f"Schedule Change Request {decision}",
+            message=f"Your schedule change request has been {decision.lower()}." +
+                    (f" Notes: {reviewer_notes}" if reviewer_notes else ""),
+            n_type='success' if decision == 'Approved' else 'danger',
+            sender_subsystem=BLUEPRINT_NAME
+        )
+        flash(f'Schedule change request {decision.lower()}.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+
+    return redirect(url_for('hr3.list_schedule_changes'))
+
+
+# =====================================================
+# REIMBURSEMENT CLAIMS
+# =====================================================
+
+@hr3_bp.route('/reimbursements', methods=['GET'])
+@login_required
+def list_reimbursements():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    is_admin = current_user.is_super_admin() or (
+        current_user.role in ['Admin', 'Administrator'] and current_user.subsystem in ('hr3', 'financials')
+    )
+    filter_step = request.args.get('step', 'all')
+    show_archived = request.args.get('archived', '0') == '1'
+
+    query = client.table('reimbursement_claims').select(
+        '*, users:users!reimbursement_claims_user_id_fkey(username, full_name, avatar_url)'
+    )
+    if not is_admin:
+        query = query.eq('user_id', current_user.id)
+    if not show_archived:
+        query = query.eq('is_archived', False)
+    if filter_step != 'all' and filter_step in ('HR Review', 'Finance Review', 'Completed', 'Rejected'):
+        query = query.eq('workflow_step', filter_step)
+
+    claims = query.order('created_at', desc=True).execute().data or []
+
+    counts = {}
+    if is_admin:
+        all_resp = client.table('reimbursement_claims').select('workflow_step').execute()
+        for r in (all_resp.data or []):
+            s = r.get('workflow_step', 'HR Review')
+            counts[s] = counts.get(s, 0) + 1
+
+    return render_template('subsystems/hr/hr3/reimbursements.html',
+                           claims=claims,
+                           counts=counts,
+                           is_admin=is_admin,
+                           filter_step=filter_step,
+                           show_archived=show_archived,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr3_bp.route('/reimbursements/submit', methods=['GET', 'POST'])
+@login_required
+def submit_reimbursement():
+    from utils.supabase_client import get_supabase_client, get_supabase_service_client
+    client = get_supabase_client()
+
+    if request.method == 'POST':
+        claim_type = request.form.get('claim_type', '').strip()
+        amount_str = request.form.get('amount', '0').strip()
+        description = request.form.get('description', '').strip()
+        expense_date = request.form.get('expense_date', '').strip()
+        receipt_file = request.files.get('receipt')
+
+        errors = []
+        if not claim_type:
+            errors.append('Claim type is required.')
+        try:
+            amount = float(amount_str)
+            if amount <= 0:
+                raise ValueError
+        except ValueError:
+            errors.append('Enter a valid positive amount.')
+        if not description:
+            errors.append('Description is required.')
+        if not expense_date:
+            errors.append('Expense date is required.')
+
+        if errors:
+            for e in errors:
+                flash(e, 'warning')
+            return render_template('subsystems/hr/hr3/reimbursement_form.html',
+                                   form_data=request.form,
+                                   subsystem_name=SUBSYSTEM_NAME,
+                                   accent_color=ACCENT_COLOR,
+                                   blueprint_name=BLUEPRINT_NAME)
+        # Upload receipt if provided
+        receipt_url = None
+        if receipt_file and receipt_file.filename:
+            try:
+                import uuid, os
+                ext = os.path.splitext(receipt_file.filename)[1].lower()
+                allowed = {'.pdf', '.jpg', '.jpeg', '.png'}
+                if ext not in allowed:
+                    flash('Receipt must be PDF, JPG, or PNG.', 'warning')
+                    return render_template('subsystems/hr/hr3/reimbursement_form.html',
+                                           form_data=request.form,
+                                           subsystem_name=SUBSYSTEM_NAME,
+                                           accent_color=ACCENT_COLOR,
+                                           blueprint_name=BLUEPRINT_NAME)
+                service_client = get_supabase_service_client()
+                file_bytes = receipt_file.read()
+                filename = f"receipts/{current_user.id}/{uuid.uuid4().hex}{ext}"
+                service_client.storage.from_('receipts').upload(filename, file_bytes,
+                    file_options={"content-type": receipt_file.content_type or "application/octet-stream"})
+                receipt_url = service_client.storage.from_('receipts').get_public_url(filename)
+            except Exception as ue:
+                flash(f'Receipt upload failed: {str(ue)}', 'warning')
+
+        try:
+            record = {
+                'user_id': current_user.id,
+                'claim_type': claim_type,
+                'amount': amount,
+                'description': description,
+                'expense_date': expense_date,
+                'receipt_url': receipt_url,
+                'status': 'Pending',
+                'workflow_step': 'HR Review'
+            }
+            client.table('reimbursement_claims').insert(record).execute()
+
+            target_url = url_for('hr3.list_reimbursements')
+            _notify_hr3_admins(client,
+                               title='New Reimbursement Claim',
+                               message=f"{current_user.username} submitted a ₱{amount:,.2f} {claim_type} reimbursement claim.",
+                               n_type='info',
+                               sender_subsystem=BLUEPRINT_NAME,
+                               target_url=target_url)
+            flash('Reimbursement claim submitted successfully.', 'success')
+            return redirect(url_for('hr3.list_reimbursements'))
+        except Exception as e:
+            flash(f'Error submitting claim: {str(e)}', 'danger')
+
+    return render_template('subsystems/hr/hr3/reimbursement_form.html',
+                           form_data={},
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr3_bp.route('/reimbursements/<int:claim_id>/decide', methods=['POST'])
+@login_required
+def decide_reimbursement(claim_id):
+    if not current_user.is_super_admin() and \
+       not (current_user.is_admin() and current_user.subsystem in ('hr3', 'financials')):
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr3.list_reimbursements'))
+
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+
+    decision = request.form.get('decision')
+    notes = request.form.get('notes', '').strip()
+
+    if decision not in ('Approve', 'Reject'):
+        flash('Invalid decision.', 'danger')
+        return redirect(url_for('hr3.list_reimbursements'))
+
+    try:
+        resp = client.table('reimbursement_claims').select('*').eq('id', claim_id).limit(1).execute()
+        if not resp.data:
+            flash('Claim not found.', 'danger')
+            return redirect(url_for('hr3.list_reimbursements'))
+        claim = resp.data[0]
+        step = claim.get('workflow_step', 'HR Review')
+        now_iso = datetime.now().isoformat()
+
+        if step == 'HR Review':
+            if decision == 'Approve':
+                client.table('reimbursement_claims').update({
+                    'workflow_step': 'Finance Review',
+                    'status': 'HR Approved',
+                    'hr_approved_by': current_user.id,
+                    'hr_approved_at': now_iso,
+                    'hr_notes': notes
+                }).eq('id', claim_id).execute()
+                _notify_finance_admins(client,
+                    title='Reimbursement Claim — Finance Review Needed',
+                    message=f"A ₱{claim['amount']:,.2f} {claim['claim_type']} claim is awaiting Finance approval.",
+                    n_type='info', sender_subsystem=BLUEPRINT_NAME,
+                    target_url=url_for('hr3.list_reimbursements'))
+                flash('Claim forwarded to Finance for approval.', 'success')
+            else:
+                client.table('reimbursement_claims').update({
+                    'workflow_step': 'Rejected',
+                    'status': 'Rejected',
+                    'hr_approved_by': current_user.id,
+                    'hr_approved_at': now_iso,
+                    'hr_notes': notes,
+                    'is_archived': True,
+                    'archived_at': now_iso
+                }).eq('id', claim_id).execute()
+                Notification.create(user_id=claim['user_id'],
+                    title='Reimbursement Claim Rejected',
+                    message=f"Your {claim['claim_type']} claim of ₱{claim['amount']:,.2f} was rejected by HR." +
+                            (f" Reason: {notes}" if notes else ""),
+                    n_type='danger', sender_subsystem=BLUEPRINT_NAME)
+                flash('Claim rejected.', 'info')
+
+        elif step == 'Finance Review':
+            if decision == 'Approve':
+                client.table('reimbursement_claims').update({
+                    'workflow_step': 'Completed',
+                    'status': 'Finance Approved',
+                    'finance_approved_by': current_user.id,
+                    'finance_approved_at': now_iso,
+                    'finance_notes': notes,
+                    'is_archived': True,
+                    'archived_at': now_iso
+                }).eq('id', claim_id).execute()
+                Notification.create(user_id=claim['user_id'],
+                    title='Reimbursement Claim Approved',
+                    message=f"Your {claim['claim_type']} claim of ₱{claim['amount']:,.2f} has been approved for payment.",
+                    n_type='success', sender_subsystem=BLUEPRINT_NAME)
+                flash('Claim fully approved. Employee notified.', 'success')
+            else:
+                client.table('reimbursement_claims').update({
+                    'workflow_step': 'Rejected',
+                    'status': 'Rejected',
+                    'finance_approved_by': current_user.id,
+                    'finance_approved_at': now_iso,
+                    'finance_notes': notes,
+                    'is_archived': True,
+                    'archived_at': now_iso
+                }).eq('id', claim_id).execute()
+                Notification.create(user_id=claim['user_id'],
+                    title='Reimbursement Claim Rejected by Finance',
+                    message=f"Your {claim['claim_type']} claim was rejected by Finance." +
+                            (f" Reason: {notes}" if notes else ""),
+                    n_type='danger', sender_subsystem=BLUEPRINT_NAME)
+                flash('Claim rejected.', 'info')
+        else:
+            flash('This claim has already been completed.', 'info')
+
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+
+    return redirect(url_for('hr3.list_reimbursements'))

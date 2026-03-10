@@ -1,0 +1,95 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+        <div class="bg-accent p-8 text-white relative overflow-hidden">
+            <div class="relative z-10">
+                <h3 class="text-2xl font-extrabold flex items-center gap-3">
+                    <i class="bi bi-receipt"></i> Submit Reimbursement Claim
+                </h3>
+                <p class="text-white/80 mt-2 font-medium">Upload your receipt and claim work-related expenses</p>
+            </div>
+            <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+        </div>
+
+        <!-- Workflow hint -->
+        <div class="px-8 pt-6">
+            <div class="flex items-center gap-0 text-xs font-bold text-gray-400">
+                {% for label, icon in [('Submit','bi-send'),('HR Review','bi-person-check'),('Finance Review','bi-bank'),('Paid','bi-check-circle')] %}
+                <div class="flex items-center">
+                    <div class="flex flex-col items-center">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center {% if loop.first %}bg-accent text-white{% else %}bg-gray-100 text-gray-400{% endif %}">
+                            <i class="bi {{ icon }} text-sm"></i>
+                        </div>
+                        <span class="mt-1 {% if loop.first %}text-accent{% endif %}">{{ label }}</span>
+                    </div>
+                    {% if not loop.last %}<div class="w-10 h-0.5 bg-gray-200 mb-4 mx-1"></div>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" class="p-8 space-y-6" id="claimForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Claim type + amount -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Claim Type <span class="text-red-500">*</span></label>
+                    <select name="claim_type" required class="w-full rounded-xl border-gray-200 shadow-sm focus:ring-accent focus:border-accent text-sm py-2.5 px-3">
+                        <option value="">— select type —</option>
+                        {% for t in ['Travel','Medical','Meal','Equipment','Communication','Other'] %}
+                        <option value="{{ t }}" {% if form_data.get('claim_type') == t %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Amount (₱) <span class="text-red-500">*</span></label>
+                    <input type="number" name="amount" step="0.01" min="0.01" required
+                           value="{{ form_data.get('amount','') }}" placeholder="0.00"
+                           class="w-full rounded-xl border-gray-200 shadow-sm focus:ring-accent focus:border-accent text-sm py-2.5 px-3">
+                </div>
+            </div>
+
+            <!-- Expense date -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Expense Date <span class="text-red-500">*</span></label>
+                <input type="date" name="expense_date" required value="{{ form_data.get('expense_date','') }}"
+                       class="w-full rounded-xl border-gray-200 shadow-sm focus:ring-accent focus:border-accent text-sm py-2.5 px-3">
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Description <span class="text-red-500">*</span></label>
+                <textarea name="description" required rows="3" placeholder="Describe what this expense was for..."
+                          class="w-full rounded-xl border-gray-200 shadow-sm focus:ring-accent focus:border-accent text-sm py-2.5 px-3 resize-none">{{ form_data.get('description','') }}</textarea>
+            </div>
+
+            <!-- Receipt upload -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Receipt / Supporting Document</label>
+                <div class="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-accent transition cursor-pointer"
+                     onclick="document.getElementById('receipt_input').click()">
+                    <i class="bi bi-upload text-2xl text-gray-400 block mb-2"></i>
+                    <p class="text-sm text-gray-500">Click to upload <span class="text-gray-400">(PDF, JPG, PNG)</span></p>
+                    <p id="receipt_filename" class="text-xs text-accent mt-1 font-medium"></p>
+                </div>
+                <input type="file" id="receipt_input" name="receipt" accept=".pdf,.jpg,.jpeg,.png" class="hidden"
+                       onchange="document.getElementById('receipt_filename').textContent = this.files[0]?.name || ''">
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <a href="{{ url_for(blueprint_name + '.list_reimbursements') }}"
+                   class="flex-1 text-center py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="flex-1 py-3 bg-accent hover:opacity-90 text-white font-bold rounded-xl transition flex items-center justify-center gap-2">
+                    <i class="bi bi-send"></i> Submit Claim
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1409,3 +1409,76 @@ CREATE POLICY "Public Update ESS Docs" ON storage.objects FOR UPDATE WITH CHECK 
 
 DROP POLICY IF EXISTS "Public Delete ESS Docs" ON storage.objects;
 CREATE POLICY "Public Delete ESS Docs" ON storage.objects FOR DELETE USING (bucket_id = 'ess-documents');
+
+-- =====================================================
+-- HR3 MISSING FEATURES MIGRATION
+-- Overtime, Schedule Change Requests, Reimbursements
+-- =====================================================
+
+-- 1. Overtime tracking on attendance_logs
+ALTER TABLE IF EXISTS attendance_logs ADD COLUMN IF NOT EXISTS overtime_hours DECIMAL(4,2) DEFAULT 0.00;
+
+-- 2. Schedule Change Requests
+CREATE TABLE IF NOT EXISTS schedule_change_requests (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    current_day VARCHAR(20),
+    current_start TIME,
+    current_end TIME,
+    requested_day VARCHAR(20),
+    requested_start TIME,
+    requested_end TIME,
+    reason TEXT,
+    status VARCHAR(20) DEFAULT 'Pending', -- Pending, Approved, Rejected
+    reviewed_by INTEGER REFERENCES users(id),
+    reviewed_at TIMESTAMP,
+    reviewer_notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE IF EXISTS schedule_change_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on schedule_change_requests" ON schedule_change_requests;
+CREATE POLICY "Allow all on schedule_change_requests" ON schedule_change_requests FOR ALL USING (true) WITH CHECK (true);
+
+-- 3. Reimbursement Claims
+CREATE TABLE IF NOT EXISTS reimbursement_claims (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    claim_type VARCHAR(50),           -- Travel, Medical, Meal, Equipment, Other
+    amount DECIMAL(12,2) NOT NULL,
+    receipt_url TEXT,
+    description TEXT,
+    expense_date DATE,
+    status VARCHAR(20) DEFAULT 'Pending', -- Pending, HR Approved, Finance Approved, Rejected, Paid
+    workflow_step VARCHAR(50) DEFAULT 'HR Review', -- HR Review, Finance Review, Completed
+    hr_approved_by INTEGER REFERENCES users(id),
+    hr_approved_at TIMESTAMP,
+    hr_notes TEXT,
+    finance_approved_by INTEGER REFERENCES users(id),
+    finance_approved_at TIMESTAMP,
+    finance_notes TEXT,
+    is_archived BOOLEAN DEFAULT FALSE,
+    archived_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE IF EXISTS reimbursement_claims ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on reimbursement_claims" ON reimbursement_claims;
+CREATE POLICY "Allow all on reimbursement_claims" ON reimbursement_claims FOR ALL USING (true) WITH CHECK (true);
+
+-- 4. Storage bucket for receipts
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('receipts', 'receipts', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public Access Receipts" ON storage.objects;
+CREATE POLICY "Public Access Receipts" ON storage.objects FOR SELECT USING (bucket_id = 'receipts');
+
+DROP POLICY IF EXISTS "Public Upload Receipts" ON storage.objects;
+CREATE POLICY "Public Upload Receipts" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'receipts');
+
+DROP POLICY IF EXISTS "Public Update Receipts" ON storage.objects;
+CREATE POLICY "Public Update Receipts" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'receipts');
+
+DROP POLICY IF EXISTS "Public Delete Receipts" ON storage.objects;
+CREATE POLICY "Public Delete Receipts" ON storage.objects FOR DELETE USING (bucket_id = 'receipts');

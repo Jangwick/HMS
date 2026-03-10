@@ -1,0 +1,104 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+        <div class="bg-accent p-8 text-white relative overflow-hidden">
+            <div class="relative z-10">
+                <h3 class="text-2xl font-extrabold flex items-center gap-3">
+                    <i class="bi bi-calendar2-range"></i>
+                    Request Schedule Change
+                </h3>
+                <p class="text-white/80 mt-2 font-medium">Submit a request to update your work schedule</p>
+            </div>
+            <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+        </div>
+
+        <form method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Current schedule (read-only context) -->
+            {% if my_schedules %}
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Your Current Schedule(s)</label>
+                <div class="space-y-2">
+                    {% for s in my_schedules %}
+                    <div class="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-gray-600">
+                        <i class="bi bi-clock-history text-accent"></i>
+                        <span class="font-medium">{{ s.day_of_week }}</span>
+                        <span>{{ s.start_time[:5] }} – {{ s.end_time[:5] }}</span>
+                        {% if s.is_active %}<span class="ml-auto text-green-600 font-semibold text-xs bg-green-50 px-2 py-0.5 rounded-full">Active</span>{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <hr class="border-gray-100">
+            {% endif %}
+
+            <!-- Current schedule fields -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Current Day</label>
+                    <select name="current_day" class="w-full rounded-xl border-gray-200 shadow-sm focus:ring-accent focus:border-accent text-sm py-2.5 px-3">
+                        <option value="">— select —</option>
+                        {% for d in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Daily'] %}
+                        <option value="{{ d }}" {% if form_data.get('current_day') == d %}selected{% endif %}>{{ d }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Current Start</label>
+                    <input type="time" name="current_start" value="{{ form_data.get('current_start','') }}"
+                           class="w-full rounded-xl border-gray-200 shadow-sm focus:ring-accent focus:border-accent text-sm py-2.5 px-3">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Current End</label>
+                    <input type="time" name="current_end" value="{{ form_data.get('current_end','') }}"
+                           class="w-full rounded-xl border-gray-200 shadow-sm focus:ring-accent focus:border-accent text-sm py-2.5 px-3">
+                </div>
+            </div>
+
+            <!-- Requested schedule fields -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Requested Day <span class="text-red-500">*</span></label>
+                    <select name="requested_day" required class="w-full rounded-xl border-gray-200 shadow-sm focus:ring-accent focus:border-accent text-sm py-2.5 px-3">
+                        <option value="">— select —</option>
+                        {% for d in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Daily'] %}
+                        <option value="{{ d }}" {% if form_data.get('requested_day') == d %}selected{% endif %}>{{ d }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Requested Start <span class="text-red-500">*</span></label>
+                    <input type="time" name="requested_start" required value="{{ form_data.get('requested_start','') }}"
+                           class="w-full rounded-xl border-gray-200 shadow-sm focus:ring-accent focus:border-accent text-sm py-2.5 px-3">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Requested End <span class="text-red-500">*</span></label>
+                    <input type="time" name="requested_end" required value="{{ form_data.get('requested_end','') }}"
+                           class="w-full rounded-xl border-gray-200 shadow-sm focus:ring-accent focus:border-accent text-sm py-2.5 px-3">
+                </div>
+            </div>
+
+            <!-- Reason -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Reason <span class="text-red-500">*</span></label>
+                <textarea name="reason" required rows="3" placeholder="Explain why you need this schedule change..."
+                          class="w-full rounded-xl border-gray-200 shadow-sm focus:ring-accent focus:border-accent text-sm py-2.5 px-3 resize-none">{{ form_data.get('reason','') }}</textarea>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <a href="{{ url_for(blueprint_name + '.list_schedule_changes') }}"
+                   class="flex-1 text-center py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="flex-1 py-3 bg-accent hover:opacity-90 text-white font-bold rounded-xl transition flex items-center justify-center gap-2">
+                    <i class="bi bi-send"></i> Submit Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

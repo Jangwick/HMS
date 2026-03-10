@@ -411,6 +411,16 @@
                     <i class="bi bi-calendar-minus mr-3"></i>
                     <span>Leave Requests</span>
                 </a>
+                <a href="{{ url_for('hr3.list_schedule_changes') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint in ('hr3.list_schedule_changes','hr3.request_schedule_change') }}">
+                    <i class="bi bi-calendar2-range mr-3"></i>
+                    <span>Schedule Changes</span>
+                </a>
+                <a href="{{ url_for('hr3.list_reimbursements') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint in ('hr3.list_reimbursements','hr3.submit_reimbursement') }}">
+                    <i class="bi bi-receipt mr-3"></i>
+                    <span>Reimbursements</span>
+                </a>
                 {% if current_user.is_admin() %}
                 <a href="{{ url_for('hr3.analytics') }}"
                     class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if request.endpoint == 'hr3.analytics' }}">

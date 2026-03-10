@@ -1,0 +1,143 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-extrabold text-gray-800 flex items-center gap-2">
+                <i class="bi bi-calendar2-range text-accent"></i> Schedule Change Requests
+            </h2>
+            <p class="text-gray-500 text-sm mt-1">{{ 'All requests' if is_admin else 'Your submitted change requests' }}</p>
+        </div>
+        <a href="{{ url_for(blueprint_name + '.request_schedule_change') }}"
+           class="inline-flex items-center gap-2 bg-accent text-white font-bold px-5 py-2.5 rounded-xl hover:opacity-90 transition text-sm">
+            <i class="bi bi-plus-circle"></i> New Request
+        </a>
+    </div>
+
+    <!-- Admin tabs -->
+    {% if is_admin %}
+    <div class="flex gap-2 flex-wrap">
+        {% set tabs = [('all','All','bi-list-ul'), ('Pending','Pending','bi-hourglass-split'), ('Approved','Approved','bi-check-circle'), ('Rejected','Rejected','bi-x-circle')] %}
+        {% for val, label, icon in tabs %}
+        <a href="{{ url_for(blueprint_name + '.list_schedule_changes') }}{% if val != 'all' %}?step={{ val }}{% endif %}"
+           class="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition border
+           {% if request.args.get('step','all') == val %}bg-accent text-white border-accent shadow{% else %}bg-white text-gray-600 border-gray-200 hover:border-accent hover:text-accent{% endif %}">
+            <i class="bi {{ icon }}"></i> {{ label }}
+            {% if val != 'all' and counts.get(val, 0) > 0 %}
+            <span class="ml-1 bg-white/20 text-xs font-bold px-2 py-0.5 rounded-full {% if request.args.get('step','all') == val %}text-white{% else %}text-accent bg-accent/10{% endif %}">
+                {{ counts.get(val, 0) }}
+            </span>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Table -->
+    <div class="bg-white rounded-2xl shadow border border-gray-100 overflow-hidden">
+        {% if changes %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                        {% if is_admin %}<th class="text-left py-3 px-4 font-semibold text-gray-600">Employee</th>{% endif %}
+                        <th class="text-left py-3 px-4 font-semibold text-gray-600">From</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-600">Requested</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-600">Reason</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-600">Status</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-600">Date</th>
+                        {% if is_admin %}<th class="text-right py-3 px-4 font-semibold text-gray-600">Action</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for c in changes %}
+                    <tr class="hover:bg-gray-50/50 transition {% if is_admin and c.status == 'Pending' %}bg-amber-50/30{% endif %}">
+                        {% if is_admin %}
+                        <td class="py-3 px-4">
+                            <div class="flex items-center gap-2">
+                                {% if c.users and c.users.avatar_url %}
+                                <img src="{{ c.users.avatar_url }}" class="w-7 h-7 rounded-full object-cover">
+                                {% else %}
+                                <div class="w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xs font-bold">
+                                    {{ (c.users.username[0] if c.users else '?')|upper }}
+                                </div>
+                                {% endif %}
+                                <span class="font-medium text-gray-800">{{ c.users.full_name or c.users.username if c.users else '—' }}</span>
+                            </div>
+                        </td>
+                        {% endif %}
+                        <td class="py-3 px-4 text-gray-600">
+                            {% if c.current_day %}
+                            <span class="font-medium">{{ c.current_day }}</span>
+                            {% if c.current_start %}<span class="text-xs text-gray-400"> {{ c.current_start[:5] }}–{{ c.current_end[:5] if c.current_end else '' }}</span>{% endif %}
+                            {% else %}<span class="text-gray-400 italic text-xs">Not specified</span>{% endif %}
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="font-semibold text-gray-800">{{ c.requested_day }}</span>
+                            <span class="text-xs text-gray-400"> {{ c.requested_start[:5] if c.requested_start else '' }}–{{ c.requested_end[:5] if c.requested_end else '' }}</span>
+                        </td>
+                        <td class="py-3 px-4 text-gray-600 max-w-xs truncate" title="{{ c.reason }}">{{ c.reason }}</td>
+                        <td class="py-3 px-4">
+                            {% if c.status == 'Pending' %}
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700">Pending</span>
+                            {% elif c.status == 'Approved' %}
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700">Approved</span>
+                            {% else %}
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700">Rejected</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-gray-400 text-xs">{{ c.created_at[:10] if c.created_at else '' }}</td>
+                        {% if is_admin %}
+                        <td class="py-3 px-4 text-right">
+                            {% if c.status == 'Pending' %}
+                            <div class="flex items-center justify-end gap-2">
+                                <form method="POST" action="{{ url_for(blueprint_name + '.decide_schedule_change', req_id=c.id) }}" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="decision" value="Approved">
+                                    <button type="submit" class="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 font-semibold transition">
+                                        <i class="bi bi-check"></i> Approve
+                                    </button>
+                                </form>
+                                <button onclick="document.getElementById('reject-modal-{{ c.id }}').classList.remove('hidden')"
+                                        class="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1.5 rounded-lg font-semibold transition">
+                                    <i class="bi bi-x"></i> Reject
+                                </button>
+                            </div>
+                            <!-- Reject modal -->
+                            <div id="reject-modal-{{ c.id }}" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+                                <form method="POST" action="{{ url_for(blueprint_name + '.decide_schedule_change', req_id=c.id) }}"
+                                      class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm space-y-4">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="decision" value="Rejected">
+                                    <h4 class="font-bold text-gray-800 text-lg">Reject Request</h4>
+                                    <textarea name="reviewer_notes" rows="3" placeholder="Reason for rejection (optional)"
+                                              class="w-full rounded-xl border-gray-200 shadow-sm text-sm px-3 py-2.5 focus:ring-accent focus:border-accent"></textarea>
+                                    <div class="flex gap-2">
+                                        <button type="button" onclick="document.getElementById('reject-modal-{{ c.id }}').classList.add('hidden')"
+                                                class="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition text-sm">Cancel</button>
+                                        <button type="submit" class="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition text-sm">Confirm Reject</button>
+                                    </div>
+                                </form>
+                            </div>
+                            {% else %}
+                            <span class="text-xs text-gray-400 italic">Decided</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-16 text-gray-400">
+            <i class="bi bi-calendar2-x text-5xl block mb-3"></i>
+            <p class="font-semibold">No schedule change requests found.</p>
+            <a href="{{ url_for(blueprint_name + '.request_schedule_change') }}" class="mt-4 inline-block text-accent font-bold hover:underline text-sm">Submit one now →</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
