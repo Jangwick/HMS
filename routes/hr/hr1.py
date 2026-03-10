@@ -355,6 +355,7 @@ def add_vacancy():
             'department': request.form.get('department'),
             'reason': request.form.get('reason'),
             'requirements': request.form.get('requirements'),
+            'qualifications': request.form.get('qualifications'),
             'status': 'Open',
             'approved_by': current_user.id
         }
@@ -386,6 +387,7 @@ def edit_vacancy(id):
         'department': request.form.get('department'),
         'reason': request.form.get('reason'),
         'requirements': request.form.get('requirements'),
+        'qualifications': request.form.get('qualifications'),
         'status': request.form.get('status', 'Open')
     }
     

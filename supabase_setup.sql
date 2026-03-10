@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS vacancies (
     department VARCHAR(50),
     reason VARCHAR(100), -- Replacement, New position, New service
     requirements TEXT,
+    qualifications TEXT,
     status VARCHAR(50) DEFAULT 'Open', -- Open, Filled, Closed
     approved_by INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT NOW()

@@ -170,8 +170,13 @@
                     </div>
 
                     <div class="col-span-2">
-                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Job Requirements</label>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Job Requirements / Description</label>
                         <textarea name="requirements" rows="3" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" placeholder="List key requirements..."></textarea>
+                    </div>
+
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Job Qualifications</label>
+                        <textarea name="qualifications" rows="3" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" placeholder="e.g. Bachelor's degree in Nursing, PRC licensed, minimum 2 years experience..."></textarea>
                     </div>
 
                     <div class="pt-6 flex items-center justify-end space-x-4">
@@ -239,8 +244,12 @@
                             <input type="text" name="reason" id="edit_reason" required class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-gray-700">
                         </div>
                         <div class="col-span-2">
-                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Job Requirements</label>
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Job Requirements / Description</label>
                             <textarea name="requirements" id="edit_requirements" rows="3" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-gray-700"></textarea>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Job Qualifications</label>
+                            <textarea name="qualifications" id="edit_qualifications" rows="3" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" placeholder="e.g. Bachelor's degree, PRC licensed, minimum 2 years experience..."></textarea>
                         </div>
                     </div>
 
@@ -283,6 +292,7 @@ function openEditVacancyModal(vacancy) {
         document.getElementById('edit_reason').value = vacancy.reason;
         document.getElementById('edit_status').value = vacancy.status;
         document.getElementById('edit_requirements').value = vacancy.requirements || '';
+        document.getElementById('edit_qualifications').value = vacancy.qualifications || '';
         
         document.getElementById('editVacancyForm').action = `/hr/hr1/vacancies/edit/${vacancy.id}`;
         openModal('editVacancyModal');

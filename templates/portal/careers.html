@@ -196,12 +196,13 @@
                         <p class="text-sm text-gray-600 leading-relaxed line-clamp-3 mb-4">{{ v.requirements }}</p>
                         {% endif %}
 
-                        <a href="#apply"
-                            onclick="document.getElementById('vacancy_id').value='{{ v.id }}'; document.getElementById('vacancy_display').textContent='{{ v.position_name }}';"
+                        <button
+                            data-vacancy='{{ v | tojson }}'
+                            onclick="openJobModal(JSON.parse(this.dataset.vacancy))"
                             class="inline-flex items-center text-blue-600 text-xs font-bold hover:text-blue-800 transition-colors group/btn">
                             Apply for this position
                             <i class="bi bi-arrow-right ml-2 group-hover/btn:translate-x-1 transition-transform"></i>
-                        </a>
+                        </button>
                     </div>
                 </div>
                 {% endfor %}
@@ -347,6 +348,73 @@
 
     <!-- Footer -->
     <footer class="mt-auto bg-white border-t border-gray-200 py-12 no-print">
+
+    <!-- Job Details Modal -->
+    <div id="jobDetailsModal" class="fixed inset-0 z-[200] hidden overflow-y-auto" aria-modal="true" role="dialog">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <!-- Backdrop -->
+            <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onclick="closeJobModal()"></div>
+
+            <!-- Panel -->
+            <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all">
+                <!-- Header -->
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 px-8 py-7 text-white">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-[9px] font-black uppercase tracking-[0.3em] text-blue-200 mb-1">Job Posting</p>
+                            <h2 class="text-2xl font-black tracking-tight" id="modal_position_name">Position</h2>
+                            <div class="flex items-center gap-3 mt-2 text-sm text-blue-100">
+                                <span><i class="bi bi-building mr-1"></i><span id="modal_department"></span></span>
+                                <span class="text-blue-300">•</span>
+                                <span><i class="bi bi-tag mr-1"></i><span id="modal_reason"></span></span>
+                                <span class="ml-auto px-3 py-0.5 bg-emerald-400/20 text-emerald-200 text-[9px] font-black uppercase tracking-widest rounded-full border border-emerald-300/30">Open</span>
+                            </div>
+                        </div>
+                        <button onclick="closeJobModal()" class="text-white/70 hover:text-white transition-colors flex-shrink-0 mt-1">
+                            <i class="bi bi-x-lg text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <div class="p-8 space-y-6 overflow-y-auto max-h-[60vh]">
+                    <!-- Job Description -->
+                    <div id="modal_requirements_section">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
+                                <i class="bi bi-file-text text-blue-600 text-sm"></i>
+                            </div>
+                            <h3 class="text-xs font-black text-gray-800 uppercase tracking-widest">Job Description</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 leading-relaxed whitespace-pre-line" id="modal_requirements"></p>
+                    </div>
+
+                    <hr class="border-gray-100" id="modal_divider">
+
+                    <!-- Qualifications -->
+                    <div id="modal_qualifications_section">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center">
+                                <i class="bi bi-award text-indigo-600 text-sm"></i>
+                            </div>
+                            <h3 class="text-xs font-black text-gray-800 uppercase tracking-widest">Job Qualifications</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 leading-relaxed whitespace-pre-line" id="modal_qualifications"></p>
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="px-8 py-5 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-4">
+                    <button onclick="closeJobModal()" class="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">
+                        Close
+                    </button>
+                    <button onclick="applyForJob()" class="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.25em] hover:from-blue-700 hover:to-indigo-700 hover:-translate-y-0.5 transition-all shadow-lg shadow-blue-200/50 active:scale-[0.98]">
+                        <i class="bi bi-send-fill mr-2"></i>Apply for this Position
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-gray-500">
                 <div class="flex items-center">
@@ -372,6 +440,61 @@
     </footer>
 </div>
 <script>
+    // ── Job Details Modal ──────────────────────────────────────────
+    let _currentVacancyId = null;
+    let _currentVacancyName = '';
+
+    function openJobModal(vacancy) {
+        _currentVacancyId = vacancy.id;
+        _currentVacancyName = vacancy.position_name;
+
+        document.getElementById('modal_position_name').textContent = vacancy.position_name;
+        document.getElementById('modal_department').textContent = vacancy.department || 'General';
+        document.getElementById('modal_reason').textContent = vacancy.reason || '';
+
+        const reqSection = document.getElementById('modal_requirements_section');
+        const reqText = document.getElementById('modal_requirements');
+        const divider = document.getElementById('modal_divider');
+        const qualSection = document.getElementById('modal_qualifications_section');
+        const qualText = document.getElementById('modal_qualifications');
+
+        if (vacancy.requirements) {
+            reqText.textContent = vacancy.requirements;
+            reqSection.classList.remove('hidden');
+        } else {
+            reqSection.classList.add('hidden');
+        }
+
+        if (vacancy.qualifications) {
+            qualText.textContent = vacancy.qualifications;
+            qualSection.classList.remove('hidden');
+            divider.classList.remove('hidden');
+        } else {
+            qualSection.classList.add('hidden');
+            divider.classList.add('hidden');
+        }
+
+        document.getElementById('jobDetailsModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeJobModal() {
+        document.getElementById('jobDetailsModal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    function applyForJob() {
+        closeJobModal();
+        document.getElementById('vacancy_id').value = _currentVacancyId || '';
+        document.getElementById('vacancy_display').textContent = _currentVacancyName || 'General Application';
+        document.getElementById('apply').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeJobModal();
+    });
+
+    // ── Resume Upload ──────────────────────────────────────────────
     function updateFileName(input) {
         const placeholder = document.getElementById('uploadPlaceholder');
         const success = document.getElementById('uploadSuccess');
