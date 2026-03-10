@@ -757,11 +757,13 @@
                         <span>My Self Service</span>
                         <i class="bi bi-arrow-right ml-auto text-xs opacity-60"></i>
                     </a>
+                    {% if blueprint_name == 'hr3' %}
                     <a href="{{ url_for('hr3.list_attendance', context=blueprint_name) }}"
                         class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-accent-light border-l-4 border-accent text-accent' if 'attendance' in request.endpoint }}">
-                        <i class="bi {{ 'bi-activity' if blueprint_name == 'hr3' else 'bi-clock-history' }} mr-3"></i>
-                        <span>{{ "Workforce Operation" if blueprint_name == 'hr3' else "My Attendance" }}</span>
+                        <i class="bi bi-activity mr-3"></i>
+                        <span>Workforce Operation</span>
                     </a>
+                    {% endif %}
                     {% endif %}
                     <a href="{{ url_for(blueprint_name + '.settings') }}"
                         class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-accent-light border-l-4 border-accent text-accent' if request.endpoint.endswith('.settings') }}">
