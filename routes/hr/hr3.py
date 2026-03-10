@@ -1677,7 +1677,7 @@ def submit_reimbursement():
 @login_required
 def decide_reimbursement(claim_id):
     if not current_user.is_super_admin() and \
-       not (current_user.is_admin() and current_user.subsystem in ('hr3', 'hr4', 'financials')):
+       not (current_user.is_admin() and current_user.subsystem in ('hr4', 'financials')):
         flash('Unauthorized.', 'danger')
         return redirect(url_for('hr3.list_reimbursements'))
 

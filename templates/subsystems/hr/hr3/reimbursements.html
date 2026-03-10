@@ -113,40 +113,24 @@
                         </td>
                         {% if is_admin %}
                         <td class="py-3 px-4 text-right">
-                            {% if c.workflow_step in ('HR Review', 'Finance Review') %}
-                            <div class="flex items-center justify-end gap-2">
-                                <form method="POST" action="{{ url_for(blueprint_name + '.decide_reimbursement', claim_id=c.id) }}" class="inline">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <input type="hidden" name="decision" value="Approve">
-                                    <button type="submit"
-                                            class="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 font-semibold transition">
-                                        <i class="bi bi-check"></i> Approve
-                                    </button>
-                                </form>
-                                <button onclick="document.getElementById('reimb-reject-{{ c.id }}').classList.remove('hidden')"
-                                        class="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1.5 rounded-lg font-semibold transition">
-                                    <i class="bi bi-x"></i> Reject
-                                </button>
-                            </div>
-                            <!-- Reject modal -->
-                            <div id="reimb-reject-{{ c.id }}" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-                                <form method="POST" action="{{ url_for(blueprint_name + '.decide_reimbursement', claim_id=c.id) }}"
-                                      class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm space-y-4">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <input type="hidden" name="decision" value="Reject">
-                                    <h4 class="font-bold text-gray-800 text-lg">Reject Claim</h4>
-                                    <p class="text-sm text-gray-500">{{ c.claim_type }} — ₱{{ '%.2f' % c.amount }}</p>
-                                    <textarea name="notes" rows="3" placeholder="Reason for rejection (optional)"
-                                              class="w-full rounded-xl border-gray-200 text-sm px-3 py-2.5 focus:ring-accent focus:border-accent"></textarea>
-                                    <div class="flex gap-2">
-                                        <button type="button" onclick="document.getElementById('reimb-reject-{{ c.id }}').classList.add('hidden')"
-                                                class="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition text-sm">Cancel</button>
-                                        <button type="submit" class="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition text-sm">Confirm Reject</button>
-                                    </div>
-                                </form>
-                            </div>
+                            {% if c.workflow_step == 'HR Review' %}
+                            <span class="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg">
+                                <i class="bi bi-hourglass-split"></i> Pending HR4
+                            </span>
+                            {% elif c.workflow_step == 'Finance Review' %}
+                            <span class="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
+                                <i class="bi bi-bank"></i> Pending Finance
+                            </span>
+                            {% elif c.workflow_step == 'Completed' %}
+                            <span class="inline-flex items-center gap-1 text-xs font-bold text-green-700 bg-green-50 px-2.5 py-1 rounded-lg">
+                                <i class="bi bi-check-circle-fill"></i> Approved
+                            </span>
+                            {% elif c.workflow_step == 'Rejected' %}
+                            <span class="inline-flex items-center gap-1 text-xs font-bold text-red-700 bg-red-50 px-2.5 py-1 rounded-lg">
+                                <i class="bi bi-x-circle-fill"></i> Rejected
+                            </span>
                             {% else %}
-                            <span class="text-xs text-gray-400 italic">{{ c.workflow_step }}</span>
+                            <span class="text-xs text-gray-400 italic">&mdash;</span>
                             {% endif %}
                         </td>
                         {% endif %}
