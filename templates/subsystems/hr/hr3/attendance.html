@@ -1,4 +1,4 @@
-﻿{% extends "base/subsystem_base.html" %}
+{% extends "base/subsystem_base.html" %}
 
 {% block content %}
 {% set is_workforce_admin = current_user.is_super_admin() or (current_user.is_admin() and current_user.subsystem ==

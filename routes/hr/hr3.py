@@ -1537,6 +1537,10 @@ def list_reimbursements():
     filter_step = request.args.get('step', 'all')
     show_archived = request.args.get('archived', '0') == '1'
 
+    # Completed and Rejected are always archived — include them automatically
+    if filter_step in ('Completed', 'Rejected'):
+        show_archived = True
+
     query = client.table('reimbursement_claims').select(
         '*, users:users!reimbursement_claims_user_id_fkey(username, full_name, avatar_url)'
     )
@@ -1645,6 +1649,18 @@ def submit_reimbursement():
                                n_type='info',
                                sender_subsystem=BLUEPRINT_NAME,
                                target_url=target_url)
+            # Also notify HR4 admins so they can approve from their interface
+            try:
+                hr4_admins = client.table('users').select('id').eq('subsystem', 'hr4').in_('role', ['Admin', 'Administrator']).eq('status', 'Active').execute()
+                from utils.hms_models import Notification
+                for a in (hr4_admins.data or []):
+                    Notification.create(user_id=a['id'],
+                        title='New Reimbursement Claim',
+                        message=f"{current_user.username} submitted a ₱{amount:,.2f} {claim_type} reimbursement claim.",
+                        n_type='info', sender_subsystem=BLUEPRINT_NAME,
+                        target_url=url_for('hr4.reimbursements'))
+            except Exception:
+                pass
             flash('Reimbursement claim submitted successfully.', 'success')
             return redirect(url_for('hr3.list_reimbursements'))
         except Exception as e:
@@ -1661,7 +1677,7 @@ def submit_reimbursement():
 @login_required
 def decide_reimbursement(claim_id):
     if not current_user.is_super_admin() and \
-       not (current_user.is_admin() and current_user.subsystem in ('hr3', 'financials')):
+       not (current_user.is_admin() and current_user.subsystem in ('hr3', 'hr4', 'financials')):
         flash('Unauthorized.', 'danger')
         return redirect(url_for('hr3.list_reimbursements'))
 
@@ -1698,7 +1714,7 @@ def decide_reimbursement(claim_id):
                     title='Reimbursement Claim — Finance Review Needed',
                     message=f"A ₱{claim['amount']:,.2f} {claim['claim_type']} claim is awaiting Finance approval.",
                     n_type='info', sender_subsystem=BLUEPRINT_NAME,
-                    target_url=url_for('hr3.list_reimbursements'))
+                    target_url=url_for('financials.list_reimbursements'))
                 flash('Claim forwarded to Finance for approval.', 'success')
             else:
                 client.table('reimbursement_claims').update({

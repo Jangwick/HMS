@@ -28,6 +28,42 @@
         </div>
     </div>
 
+    <!-- Pending Payroll Reimbursements -->
+    {% if pending_reimbursements %}
+    <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-5">
+        <h4 class="font-bold text-indigo-800 flex items-center gap-2 mb-3">
+            <i class="bi bi-receipt-cutoff text-indigo-600"></i>
+            Reimbursements Pending Payroll Inclusion
+            <span class="ml-1 bg-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ pending_reimbursements|length }}</span>
+        </h4>
+        <p class="text-indigo-600 text-sm mb-3">These approved claims will be automatically added to each employee's net pay when payroll is run.</p>
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-indigo-500 text-xs uppercase font-bold border-b border-indigo-200">
+                    <th class="py-2 text-left">Employee</th>
+                    <th class="py-2 text-left">Claim Type</th>
+                    <th class="py-2 text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-indigo-100">
+                {% for r in pending_reimbursements %}
+                <tr>
+                    <td class="py-2 font-semibold text-gray-800">{{ r.users.username if r.users else r.user_id }}</td>
+                    <td class="py-2 text-gray-600">{{ r.claim_type }}</td>
+                    <td class="py-2 text-right font-bold text-green-700">₱{{ "%.2f"|format(r.amount) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="border-t-2 border-indigo-300 font-bold">
+                    <td colspan="2" class="py-2 text-indigo-700">Total to disburse</td>
+                    <td class="py-2 text-right text-indigo-700">₱{{ "%.2f"|format(pending_reimbursements|sum(attribute='amount')) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% endif %}
+
     <!-- Payroll History List -->
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">

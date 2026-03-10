@@ -852,6 +852,199 @@ def settings():
         return redirect(url_for('financials.settings'))
     return render_template('shared/settings.html', subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
 
+# ──────────────────────────────────────────────
+# Reimbursement Claims – Finance Review
+# ──────────────────────────────────────────────
+
+@financials_bp.route('/reimbursements')
+@login_required
+def list_reimbursements():
+    client = get_supabase_client()
+    filter_step = request.args.get('step', 'all')
+    all_claims = []
+    bank_accounts = []
+
+    try:
+        q = client.table('reimbursement_claims') \
+            .select('*, users:users!reimbursement_claims_user_id_fkey(username, full_name)')
+        if filter_step != 'all' and filter_step in ('HR Review', 'Finance Review', 'Completed', 'Rejected'):
+            q = q.eq('workflow_step', filter_step)
+        all_claims = q.order('created_at', desc=True).execute().data or []
+    except Exception as e:
+        print(f"[Finance] Error fetching reimbursements (with join): {e}")
+        try:
+            q = client.table('reimbursement_claims').select('*')
+            if filter_step != 'all' and filter_step in ('HR Review', 'Finance Review', 'Completed', 'Rejected'):
+                q = q.eq('workflow_step', filter_step)
+            all_claims = q.order('created_at', desc=True).execute().data or []
+        except Exception as e2:
+            print(f"[Finance] Fallback also failed: {e2}")
+            all_claims = []
+
+    # Counts per stage for tab badges
+    counts = {}
+    try:
+        count_resp = client.table('reimbursement_claims').select('workflow_step').execute().data or []
+        for r in count_resp:
+            s = r.get('workflow_step', 'HR Review')
+            counts[s] = counts.get(s, 0) + 1
+    except Exception:
+        pass
+
+    try:
+        bank_accounts = client.table('bank_accounts').select('id, bank_name, account_number, balance').execute().data or []
+    except Exception:
+        bank_accounts = []
+
+    return render_template(
+        'subsystems/financials/reimbursements.html',
+        claims=all_claims,
+        counts=counts,
+        filter_step=filter_step,
+        bank_accounts=bank_accounts,
+        subsystem_name=SUBSYSTEM_NAME,
+        accent_color=ACCENT_COLOR,
+        blueprint_name=BLUEPRINT_NAME,
+    )
+
+
+@financials_bp.route('/reimbursements/<int:claim_id>/decide', methods=['POST'])
+@login_required
+def decide_reimbursement(claim_id):
+    decision = request.form.get('decision')       # 'Direct Payment', 'Payroll', or 'Reject'
+    notes    = request.form.get('notes', '').strip()
+    client   = get_supabase_client()
+    now_iso  = datetime.utcnow().isoformat()
+
+    row   = client.table('reimbursement_claims').select('*').eq('id', claim_id).single().execute()
+    claim = row.data if row.data else None
+
+    if not claim or claim.get('workflow_step') != 'Finance Review':
+        flash('Claim not found or not at Finance Review stage.', 'danger')
+        return redirect(url_for('financials.list_reimbursements'))
+
+    amount = float(claim['amount'])
+
+    # ── DIRECT PAYMENT ─────────────────────────────────────────────────────────
+    if decision == 'Direct Payment':
+        bank_account_id = request.form.get('bank_account_id')
+        if not bank_account_id:
+            flash('Please select a bank account for the direct payment.', 'warning')
+            return redirect(url_for('financials.list_reimbursements'))
+
+        # Deduct from bank account
+        acc = client.table('bank_accounts').select('balance, bank_name, account_number') \
+            .eq('id', bank_account_id).single().execute().data
+        if not acc:
+            flash('Selected bank account not found.', 'danger')
+            return redirect(url_for('financials.list_reimbursements'))
+
+        new_balance = float(acc['balance']) - amount
+        client.table('bank_accounts').update({'balance': new_balance}).eq('id', bank_account_id).execute()
+
+        # Record cash transaction
+        client.table('cash_transactions').insert({
+            'account_id': bank_account_id,
+            'transaction_type': 'WITHDRAWAL',
+            'amount': amount,
+            'description': f"Reimbursement payout — {claim['claim_type']} for employee ID {claim['user_id']}" +
+                           (f" | Note: {notes}" if notes else ""),
+            'performed_by': current_user.id,
+        }).execute()
+
+        # Mark claim completed
+        client.table('reimbursement_claims').update({
+            'workflow_step': 'Completed',
+            'status': 'Finance Approved',
+            'payment_method': 'Direct Payment',
+            'finance_approved_by': current_user.id,
+            'finance_approved_at': now_iso,
+            'finance_notes': notes,
+            'is_archived': True,
+            'archived_at': now_iso,
+        }).eq('id', claim_id).execute()
+
+        Notification.create(
+            user_id=claim['user_id'],
+            title='Reimbursement Paid Directly',
+            message=f"Your {claim['claim_type']} claim of ₱{amount:,.2f} has been approved and paid directly from " +
+                    f"{acc['bank_name']} ({acc['account_number']})." + (f" Note: {notes}" if notes else ""),
+            n_type='success',
+            sender_subsystem=BLUEPRINT_NAME,
+        )
+        flash(f'Direct payment of ₱{amount:,.2f} processed and recorded in Cash Transactions.', 'success')
+
+    # ── ADD TO PAYROLL ─────────────────────────────────────────────────────────
+    elif decision == 'Payroll':
+        # Mark claim for payroll inclusion (HR4 will pick it up at next payroll run)
+        client.table('reimbursement_claims').update({
+            'workflow_step': 'Completed',
+            'status': 'Finance Approved',
+            'payment_method': 'Payroll',
+            'payroll_included': False,
+            'finance_approved_by': current_user.id,
+            'finance_approved_at': now_iso,
+            'finance_notes': notes,
+            'is_archived': True,
+            'archived_at': now_iso,
+        }).eq('id', claim_id).execute()
+
+        # Notify HR4 admins
+        try:
+            hr4_admins = client.table('users').select('id') \
+                .eq('subsystem', 'hr4').in_('role', ['Admin', 'Administrator']).execute().data or []
+            for admin in hr4_admins:
+                Notification.create(
+                    user_id=admin['id'],
+                    title='Reimbursement — Include in Next Payroll',
+                    message=f"A ₱{amount:,.2f} {claim['claim_type']} reimbursement for employee ID {claim['user_id']} " +
+                            "has been approved by Finance and must be added to the next payroll run.",
+                    n_type='info',
+                    sender_subsystem=BLUEPRINT_NAME,
+                    target_url=url_for('hr4.payroll'),
+                )
+        except Exception:
+            pass
+
+        Notification.create(
+            user_id=claim['user_id'],
+            title='Reimbursement Approved — Added to Payroll',
+            message=f"Your {claim['claim_type']} claim of ₱{amount:,.2f} has been approved. " +
+                    "The amount will be included in your next payroll run." +
+                    (f" Note: {notes}" if notes else ""),
+            n_type='success',
+            sender_subsystem=BLUEPRINT_NAME,
+        )
+        flash(f'Claim approved. ₱{amount:,.2f} queued for the next payroll run — HR4 has been notified.', 'success')
+
+    # ── REJECT ─────────────────────────────────────────────────────────────────
+    elif decision == 'Reject':
+        client.table('reimbursement_claims').update({
+            'workflow_step': 'Rejected',
+            'status': 'Rejected',
+            'finance_approved_by': current_user.id,
+            'finance_approved_at': now_iso,
+            'finance_notes': notes,
+            'is_archived': True,
+            'archived_at': now_iso,
+        }).eq('id', claim_id).execute()
+
+        Notification.create(
+            user_id=claim['user_id'],
+            title='Reimbursement Claim Rejected',
+            message=f"Your {claim['claim_type']} claim of ₱{amount:,.2f} was rejected by Finance." +
+                    (f" Reason: {notes}" if notes else ""),
+            n_type='danger',
+            sender_subsystem=BLUEPRINT_NAME,
+        )
+        flash('Reimbursement claim rejected.', 'info')
+
+    else:
+        flash('Invalid decision.', 'warning')
+
+    return redirect(url_for('financials.list_reimbursements'))
+
+
 @financials_bp.route('/logout')
 @login_required
 def logout():

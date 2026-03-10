@@ -1,0 +1,235 @@
+{% extends 'base/subsystem_base.html' %}
+{% block title %}Reimbursements &mdash; HR4{% endblock %}
+{% block extra_head %}
+<style>
+    :root { --accent: {{ accent_color }}; }
+    .tab-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-6 py-8 space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                <i class="bi bi-receipt text-[#6366F1]"></i> Reimbursement Claims
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">Review and approve employee reimbursement claims &mdash; HR stage</p>
+        </div>
+        {% set hr_pending = counts.get('HR Review', 0) %}
+        {% if hr_pending > 0 %}
+        <span class="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-sm font-semibold px-4 py-2 rounded-xl">
+            <i class="bi bi-hourglass-split"></i> {{ hr_pending }} awaiting HR approval
+        </span>
+        {% endif %}
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex items-center gap-2 flex-wrap">
+        <a href="{{ url_for('hr4.reimbursements') }}"
+           class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl border transition
+                  {{ 'tab-active border-transparent' if filter_step == 'all' else 'border-gray-200 text-gray-600 hover:bg-gray-50' }}">
+            <i class="bi bi-list-ul"></i> All
+            {% set total = counts.values() | sum %}
+            {% if total > 0 %}<span class="text-xs {{ 'bg-white/30' if filter_step == 'all' else 'bg-gray-100 text-gray-600' }} px-2 py-0.5 rounded-full font-bold">{{ total }}</span>{% endif %}
+        </a>
+        <a href="{{ url_for('hr4.reimbursements', step='HR Review') }}"
+           class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl border transition
+                  {{ 'tab-active border-transparent' if filter_step == 'HR Review' else 'border-gray-200 text-gray-600 hover:bg-gray-50' }}">
+            <i class="bi bi-person-check"></i> HR Review
+            {% if counts.get('HR Review', 0) > 0 %}<span class="text-xs {{ 'bg-white/30' if filter_step == 'HR Review' else 'bg-amber-100 text-amber-700' }} px-2 py-0.5 rounded-full font-bold">{{ counts.get('HR Review', 0) }}</span>{% endif %}
+        </a>
+        <a href="{{ url_for('hr4.reimbursements', step='Finance Review') }}"
+           class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl border transition
+                  {{ 'tab-active border-transparent' if filter_step == 'Finance Review' else 'border-gray-200 text-gray-600 hover:bg-gray-50' }}">
+            <i class="bi bi-bank"></i> Finance Review
+            {% if counts.get('Finance Review', 0) > 0 %}<span class="text-xs {{ 'bg-white/30' if filter_step == 'Finance Review' else 'bg-blue-100 text-blue-700' }} px-2 py-0.5 rounded-full font-bold">{{ counts.get('Finance Review', 0) }}</span>{% endif %}
+        </a>
+        <a href="{{ url_for('hr4.reimbursements', step='Completed') }}"
+           class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl border transition
+                  {{ 'tab-active border-transparent' if filter_step == 'Completed' else 'border-gray-200 text-gray-600 hover:bg-gray-50' }}">
+            <i class="bi bi-check-circle"></i> Completed
+            {% if counts.get('Completed', 0) > 0 %}<span class="text-xs {{ 'bg-white/30' if filter_step == 'Completed' else 'bg-green-100 text-green-700' }} px-2 py-0.5 rounded-full font-bold">{{ counts.get('Completed', 0) }}</span>{% endif %}
+        </a>
+        <a href="{{ url_for('hr4.reimbursements', step='Rejected') }}"
+           class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl border transition
+                  {{ 'tab-active border-transparent' if filter_step == 'Rejected' else 'border-gray-200 text-gray-600 hover:bg-gray-50' }}">
+            <i class="bi bi-x-circle"></i> Rejected
+            {% if counts.get('Rejected', 0) > 0 %}<span class="text-xs {{ 'bg-white/30' if filter_step == 'Rejected' else 'bg-red-100 text-red-700' }} px-2 py-0.5 rounded-full font-bold">{{ counts.get('Rejected', 0) }}</span>{% endif %}
+        </a>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-2xl shadow border border-gray-100 overflow-hidden">
+        {% if claims %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                        <th class="px-5 py-3 text-left font-semibold text-gray-500">Employee</th>
+                        <th class="px-5 py-3 text-left font-semibold text-gray-500">Type</th>
+                        <th class="px-5 py-3 text-left font-semibold text-gray-500">Amount</th>
+                        <th class="px-5 py-3 text-left font-semibold text-gray-500">Expense Date</th>
+                        <th class="px-5 py-3 text-left font-semibold text-gray-500">Description</th>
+                        <th class="px-5 py-3 text-left font-semibold text-gray-500">Stage</th>
+                        <th class="px-5 py-3 text-left font-semibold text-gray-500">Receipt</th>
+                        <th class="px-5 py-3 text-center font-semibold text-gray-500">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for c in claims %}
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-5 py-4 font-semibold text-gray-800">
+                            {{ c.users.username if c.users else '&mdash;' }}
+                        </td>
+                        <td class="px-5 py-4 text-gray-700">{{ c.claim_type }}</td>
+                        <td class="px-5 py-4 font-bold text-gray-800">&#8369;{{ "%.2f"|format(c.amount) }}</td>
+                        <td class="px-5 py-4 text-gray-600">{{ c.expense_date[:10] if c.expense_date else '&mdash;' }}</td>
+                        <td class="px-5 py-4 text-gray-500 max-w-xs truncate">{{ c.description or '&mdash;' }}</td>
+                        <td class="px-5 py-4">
+                            {% if c.workflow_step == 'HR Review' %}
+                            <span class="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-1 rounded-lg">HR Review</span>
+                            {% elif c.workflow_step == 'Finance Review' %}
+                            <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-lg">Finance Review</span>
+                            {% elif c.workflow_step == 'Completed' %}
+                            <span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-lg">Approved</span>
+                            {% elif c.workflow_step == 'Rejected' %}
+                            <span class="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-lg">Rejected</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4">
+                            {% if c.receipt_url %}
+                            <a href="{{ c.receipt_url }}" target="_blank"
+                               class="text-[#6366F1] font-semibold text-xs hover:underline flex items-center gap-1">
+                                <i class="bi bi-file-earmark-image"></i> View
+                            </a>
+                            {% else %}
+                            <span class="text-gray-300 text-xs">None</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            {% if c.workflow_step == 'HR Review' %}
+                            <div class="flex items-center justify-center gap-2">
+                                <button type="button"
+                                        onclick="openApproveModal({{ c.id }}, '{{ c.claim_type }}', {{ c.amount }})"
+                                        class="inline-flex items-center gap-1.5 bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-green-700 transition">
+                                    <i class="bi bi-check-circle"></i> Approve
+                                </button>
+                                <button type="button"
+                                        onclick="openRejectModal({{ c.id }}, '{{ c.claim_type }}', {{ c.amount }})"
+                                        class="inline-flex items-center gap-1.5 bg-red-100 text-red-700 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-red-200 transition">
+                                    <i class="bi bi-x-circle"></i> Reject
+                                </button>
+                            </div>
+                            {% elif c.workflow_step == 'Finance Review' %}
+                            <span class="text-xs text-blue-500 font-semibold italic">At Finance</span>
+                            {% elif c.workflow_step == 'Completed' %}
+                            <span class="inline-flex items-center gap-1 text-xs font-bold text-green-700 bg-green-50 px-2 py-1 rounded-lg">
+                                <i class="bi bi-check-circle-fill"></i> Approved
+                            </span>
+                            {% elif c.workflow_step == 'Rejected' %}
+                            <span class="inline-flex items-center gap-1 text-xs font-bold text-red-700 bg-red-50 px-2 py-1 rounded-lg">
+                                <i class="bi bi-x-circle-fill"></i> Rejected
+                            </span>
+                            {% else %}
+                            <span class="text-xs text-gray-400">&mdash;</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-14 text-center text-gray-400">
+            <i class="bi bi-inbox text-5xl mb-3 block"></i>
+            <p class="font-semibold">No reimbursement claims found</p>
+            {% if filter_step != 'all' %}
+            <a href="{{ url_for('hr4.reimbursements') }}" class="text-[#6366F1] text-sm mt-2 inline-block hover:underline">View all claims</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Approve Modal -->
+<div id="approveModal" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-1 flex items-center gap-2">
+            <i class="bi bi-check-circle text-green-600"></i> Approve Claim
+        </h3>
+        <p id="approveDesc" class="text-sm text-gray-500 mb-4"></p>
+        <form id="approveForm" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input type="hidden" name="decision" value="Approve">
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Notes (optional)</label>
+            <textarea name="notes" rows="2"
+                      class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1] resize-none"
+                      placeholder="Any comments for Finance&hellip;"></textarea>
+            <div class="flex justify-end gap-3 mt-4">
+                <button type="button" onclick="closeApproveModal()"
+                        class="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition">Cancel</button>
+                <button type="submit"
+                        class="px-5 py-2 bg-green-600 text-white text-sm font-bold rounded-xl hover:bg-green-700 transition">
+                    Approve &amp; Forward to Finance
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-1 flex items-center gap-2">
+            <i class="bi bi-x-circle text-red-500"></i> Reject Claim
+        </h3>
+        <p id="rejectDesc" class="text-sm text-gray-500 mb-4"></p>
+        <form id="rejectForm" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input type="hidden" name="decision" value="Reject">
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Reason (optional)</label>
+            <textarea name="notes" rows="3"
+                      class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1] resize-none"
+                      placeholder="Provide a reason for rejection&hellip;"></textarea>
+            <div class="flex justify-end gap-3 mt-4">
+                <button type="button" onclick="closeRejectModal()"
+                        class="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition">Cancel</button>
+                <button type="submit"
+                        class="px-5 py-2 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition">
+                    Confirm Reject
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const _decideTpl = "{{ url_for('hr4.decide_reimbursement', claim_id=0) }}";
+function getDecideUrl(claimId) {
+    return _decideTpl.replace('/0/', '/' + claimId + '/');
+}
+function openApproveModal(claimId, claimType, amount) {
+    document.getElementById('approveForm').action = getDecideUrl(claimId);
+    document.getElementById('approveDesc').textContent = `${claimType} \u2014 \u20b1${typeof amount === 'number' ? amount.toFixed(2) : amount}`;
+    const m = document.getElementById('approveModal');
+    m.classList.remove('hidden'); m.classList.add('flex');
+}
+function closeApproveModal() {
+    const m = document.getElementById('approveModal');
+    m.classList.add('hidden'); m.classList.remove('flex');
+}
+function openRejectModal(claimId, claimType, amount) {
+    document.getElementById('rejectForm').action = getDecideUrl(claimId);
+    document.getElementById('rejectDesc').textContent = `${claimType} \u2014 \u20b1${typeof amount === 'number' ? amount.toFixed(2) : amount}`;
+    const m = document.getElementById('rejectModal');
+    m.classList.remove('hidden'); m.classList.add('flex');
+}
+function closeRejectModal() {
+    const m = document.getElementById('rejectModal');
+    m.classList.add('hidden'); m.classList.remove('flex');
+}
+</script>
+{% endblock %}

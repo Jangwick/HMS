@@ -1482,3 +1482,11 @@ CREATE POLICY "Public Update Receipts" ON storage.objects FOR UPDATE WITH CHECK 
 
 DROP POLICY IF EXISTS "Public Delete Receipts" ON storage.objects;
 CREATE POLICY "Public Delete Receipts" ON storage.objects FOR DELETE USING (bucket_id = 'receipts');
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Migration: Reimbursement payment method tracking
+-- Run this if reimbursement_claims table already exists in your database
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE reimbursement_claims
+    ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50),       -- 'Direct Payment' | 'Payroll'
+    ADD COLUMN IF NOT EXISTS payroll_included BOOLEAN DEFAULT FALSE; -- TRUE once included in a payroll run

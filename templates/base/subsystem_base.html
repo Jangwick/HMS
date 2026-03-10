@@ -451,6 +451,11 @@
                     <i class="bi bi-bar-chart-line mr-3"></i>
                     <span>HR Analytics</span>
                 </a>
+                <a href="{{ url_for('hr4.reimbursements') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent text-accent' if request.endpoint == 'hr4.reimbursements' }}">
+                    <i class="bi bi-receipt mr-3"></i>
+                    <span>Reimbursements</span>
+                </a>
 
                 <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Payroll Reports
                 </div>
@@ -690,6 +695,13 @@
                     class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'balance_sheet' in request.endpoint }}">
                     <i class="bi bi-file-earmark-medical mr-3"></i>
                     <span>Balance Sheet</span>
+                </a>
+
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">HR Claims</div>
+                <a href="{{ url_for('financials.list_reimbursements') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4' if 'list_reimbursements' in request.endpoint }}">
+                    <i class="bi bi-receipt-cutoff mr-3"></i>
+                    <span>Reimbursements</span>
                 </a>
                 {% endif %}
 

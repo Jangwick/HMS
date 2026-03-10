@@ -376,15 +376,24 @@ def payroll():
         # For simplicity, we'll just check if any record exists for this month
         month_str = now.strftime('%m-%Y')
         is_processed = any(datetime.strptime(r['pay_period_end'], '%Y-%m-%d').strftime('%m-%Y') == month_str for r in payroll_history)
+
+        # Pending reimbursements queued for payroll
+        reimb_res = client.table('reimbursement_claims') \
+            .select('id, user_id, claim_type, amount, users(username)') \
+            .eq('payment_method', 'Payroll').eq('payroll_included', False) \
+            .eq('workflow_step', 'Completed').execute()
+        pending_reimbursements = reimb_res.data or []
         
     except Exception as e:
         print(f"Error fetching payroll: {e}")
         payroll_history = []
         is_processed = False
+        pending_reimbursements = []
         
     return render_template('subsystems/hr/hr4/payroll.html',
                            payroll_history=payroll_history,
                            is_processed=is_processed,
+                           pending_reimbursements=pending_reimbursements,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -415,14 +424,32 @@ def process_payroll():
         
         processed_count = 0
         for rec in comp_records:
-            net_pay = float(rec['base_salary']) + float(rec['allowances']) + float(rec['bonuses']) - float(rec['deductions'])
+            # Base net pay from compensation record
+            reimbursement_bonus = 0.0
+            # Add approved payroll reimbursements for this employee
+            try:
+                reimb_res = client.table('reimbursement_claims') \
+                    .select('id, amount') \
+                    .eq('user_id', rec['user_id']) \
+                    .eq('payment_method', 'Payroll') \
+                    .eq('payroll_included', False) \
+                    .eq('workflow_step', 'Completed').execute()
+                pending_reimbs = reimb_res.data or []
+                reimbursement_bonus = sum(float(r['amount']) for r in pending_reimbs)
+                # Mark them as included
+                for r in pending_reimbs:
+                    client.table('reimbursement_claims').update({'payroll_included': True}).eq('id', r['id']).execute()
+            except Exception:
+                pass
+
+            net_pay = float(rec['base_salary']) + float(rec['allowances']) + float(rec['bonuses']) + reimbursement_bonus - float(rec['deductions'])
             
             payroll_data = {
                 'user_id': rec['user_id'],
                 'pay_period_start': pay_period_start,
                 'pay_period_end': pay_period_end,
                 'base_salary': rec['base_salary'],
-                'bonuses': rec['bonuses'],
+                'bonuses': float(rec['bonuses']) + reimbursement_bonus,
                 'deductions': rec['deductions'],
                 'net_pay': net_pay,
                 'status': 'Processed'
@@ -751,6 +778,128 @@ def export_report(report_type):
     except Exception as e:
         flash(f"Export failed: {str(e)}", "danger")
         return redirect(url_for('hr4.reports'))
+
+@hr4_bp.route('/reimbursements', methods=['GET'])
+@login_required
+def reimbursements():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    filter_step = request.args.get('step', 'all')
+    show_archived = filter_step in ('Completed', 'Rejected')
+
+    try:
+        query = client.table('reimbursement_claims').select(
+            '*, users:users!reimbursement_claims_user_id_fkey(username, full_name)'
+        )
+        if filter_step != 'all':
+            query = query.eq('workflow_step', filter_step)
+        if show_archived:
+            query = query.eq('is_archived', True)
+        else:
+            query = query.eq('is_archived', False)
+        resp = query.order('created_at', desc=True).execute()
+        claims = resp.data or []
+    except Exception as e:
+        print(f"HR4 reimbursements fetch error: {e}")
+        claims = []
+
+    # Build counts across all steps
+    try:
+        all_resp = client.table('reimbursement_claims').select('workflow_step').execute()
+        counts = {}
+        for row in (all_resp.data or []):
+            s = row.get('workflow_step', '')
+            counts[s] = counts.get(s, 0) + 1
+    except Exception:
+        counts = {}
+
+    return render_template('subsystems/hr/hr4/reimbursements.html',
+                           claims=claims,
+                           counts=counts,
+                           filter_step=filter_step,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr4_bp.route('/reimbursements/<int:claim_id>/decide', methods=['POST'])
+@login_required
+def decide_reimbursement(claim_id):
+    if not current_user.is_super_admin() and \
+       not (current_user.is_admin() and current_user.subsystem == 'hr4'):
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr4.reimbursements'))
+
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+
+    decision = request.form.get('decision')
+    notes = request.form.get('notes', '').strip()
+
+    if decision not in ('Approve', 'Reject'):
+        flash('Invalid decision.', 'danger')
+        return redirect(url_for('hr4.reimbursements'))
+
+    try:
+        resp = client.table('reimbursement_claims').select('*').eq('id', claim_id).limit(1).execute()
+        if not resp.data:
+            flash('Claim not found.', 'danger')
+            return redirect(url_for('hr4.reimbursements'))
+
+        claim = resp.data[0]
+        now_iso = datetime.now().isoformat()
+
+        if claim.get('workflow_step') != 'HR Review':
+            flash('This claim is not at the HR Review stage.', 'warning')
+            return redirect(url_for('hr4.reimbursements'))
+
+        if decision == 'Approve':
+            client.table('reimbursement_claims').update({
+                'workflow_step': 'Finance Review',
+                'status': 'HR Approved',
+                'hr_approved_by': current_user.id,
+                'hr_approved_at': now_iso,
+                'hr_notes': notes
+            }).eq('id', claim_id).execute()
+
+            # Notify Finance admins
+            try:
+                fin_admins = client.table('users').select('id').eq('subsystem', 'financials').in_('role', ['Admin', 'Administrator']).eq('status', 'Active').execute()
+                for a in (fin_admins.data or []):
+                    Notification.create(user_id=a['id'],
+                        title='Reimbursement Claim &mdash; Finance Review Needed',
+                        message=f"A &#8369;{float(claim['amount']):,.2f} {claim['claim_type']} claim is awaiting Finance approval.",
+                        n_type='info', sender_subsystem=BLUEPRINT_NAME,
+                        target_url=url_for('financials.list_reimbursements'))
+            except Exception:
+                pass
+
+            flash('Claim forwarded to Finance for approval.', 'success')
+        else:
+            client.table('reimbursement_claims').update({
+                'workflow_step': 'Rejected',
+                'status': 'Rejected',
+                'hr_approved_by': current_user.id,
+                'hr_approved_at': now_iso,
+                'hr_notes': notes,
+                'is_archived': True,
+                'archived_at': now_iso
+            }).eq('id', claim_id).execute()
+
+            Notification.create(user_id=claim['user_id'],
+                title='Reimbursement Claim Rejected',
+                message=f"Your {claim['claim_type']} claim of &#8369;{float(claim['amount']):,.2f} was rejected by HR." +
+                        (f" Reason: {notes}" if notes else ""),
+                n_type='danger', sender_subsystem=BLUEPRINT_NAME)
+            flash('Claim rejected.', 'info')
+
+    except Exception as e:
+        flash(f'Error processing decision: {str(e)}', 'danger')
+
+    return redirect(url_for('hr4.reimbursements'))
+
 
 @hr4_bp.route('/settings', methods=['GET', 'POST'])
 @login_required
