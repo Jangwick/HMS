@@ -907,9 +907,9 @@
                                                 class="bi {% if n.type == 'danger' %}bi-exclamation-octagon{% elif n.type == 'warning' %}bi-exclamation-triangle{% elif n.type == 'success' %}bi-check-circle{% else %}bi-info-circle{% endif %}"></i>
                                         </div>
                                         <div class="ml-3">
-                                            <p class="text-xs font-bold text-gray-900 leading-tight mb-1">{{ n.title }}
+                                            <p class="text-xs font-bold text-gray-900 leading-tight mb-1">{{ n.title | safe }}
                                             </p>
-                                            <p class="text-[11px] text-gray-500 leading-relaxed">{{ n.message }}</p>
+                                            <p class="text-[11px] text-gray-500 leading-relaxed">{{ n.message | safe }}</p>
                                             <div class="flex items-center mt-2 space-x-2">
                                                 <span
                                                     class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{{

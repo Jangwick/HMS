@@ -869,8 +869,8 @@ def decide_reimbursement(claim_id):
                 fin_admins = client.table('users').select('id').eq('subsystem', 'financials').in_('role', ['Admin', 'Administrator']).eq('status', 'Active').execute()
                 for a in (fin_admins.data or []):
                     Notification.create(user_id=a['id'],
-                        title='Reimbursement Claim &mdash; Finance Review Needed',
-                        message=f"A &#8369;{float(claim['amount']):,.2f} {claim['claim_type']} claim is awaiting Finance approval.",
+                        title='Reimbursement Claim — Finance Review Needed',
+                        message=f"A ₱{float(claim['amount']):,.2f} {claim['claim_type']} claim is awaiting Finance approval.",
                         n_type='info', sender_subsystem=BLUEPRINT_NAME,
                         target_url=url_for('financials.list_reimbursements'))
             except Exception:
@@ -890,7 +890,7 @@ def decide_reimbursement(claim_id):
 
             Notification.create(user_id=claim['user_id'],
                 title='Reimbursement Claim Rejected',
-                message=f"Your {claim['claim_type']} claim of &#8369;{float(claim['amount']):,.2f} was rejected by HR." +
+                message=f"Your {claim['claim_type']} claim of ₱{float(claim['amount']):,.2f} was rejected by HR." +
                         (f" Reason: {notes}" if notes else ""),
                 n_type='danger', sender_subsystem=BLUEPRINT_NAME)
             flash('Claim rejected.', 'info')

@@ -63,8 +63,8 @@
                                     <i class="bi {% if n.type == 'danger' %}bi-exclamation-octagon{% elif n.type == 'warning' %}bi-exclamation-triangle{% elif n.type == 'success' %}bi-check-circle{% else %}bi-info-circle{% endif %}"></i>
                                 </div>
                                 <div>
-                                    <h3 class="text-base font-bold text-gray-900 mb-1">{{ n.title }}</h3>
-                                    <p class="text-sm text-gray-600 leading-relaxed mb-3">{{ n.message }}</p>
+                                    <h3 class="text-base font-bold text-gray-900 mb-1">{{ n.title | safe }}</h3>
+                                    <p class="text-sm text-gray-600 leading-relaxed mb-3">{{ n.message | safe }}</p>
                                     
                                     <div class="flex items-center space-x-4">
                                         <span class="text-[10px] font-black text-gray-400 ring-1 ring-gray-100 px-2 py-0.5 rounded uppercase tracking-widest">{{ n.sender_subsystem | upper }}</span>
