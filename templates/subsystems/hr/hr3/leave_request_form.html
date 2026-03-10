@@ -11,47 +11,102 @@
                 </h3>
                 <p class="text-white/80 mt-2 font-medium">Submit your time-off request for approval</p>
             </div>
-            <!-- Decorative circle -->
             <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
         </div>
-        
-        <form method="POST" class="p-8 space-y-6">
+
+        <!-- Workflow pipeline hint -->
+        <div class="px-8 pt-6">
+            <div class="flex items-center gap-0 text-xs font-bold text-gray-400">
+                {% set pipeline = [('1', 'Submit', 'bi-send'), ('2', 'Supervisor', 'bi-person-check'), ('3', 'HR Validate', 'bi-shield-check'), ('4', 'Final Decision', 'bi-check-circle')] %}
+                {% for step in pipeline %}
+                <div class="flex items-center">
+                    <div class="flex flex-col items-center">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center {% if loop.first %}bg-accent text-white{% else %}bg-gray-100 text-gray-400{% endif %}">
+                            <i class="bi {{ step[2] }} text-sm"></i>
+                        </div>
+                        <span class="mt-1 {% if loop.first %}text-accent{% endif %}">{{ step[1] }}</span>
+                    </div>
+                    {% if not loop.last %}
+                    <div class="w-10 h-0.5 bg-gray-200 mb-4 mx-1"></div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" class="p-8 space-y-6" id="leaveForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Completeness checklist -->
+            <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4" id="completenessCard">
+                <h5 class="text-blue-800 font-bold text-sm mb-2 flex items-center">
+                    <i class="bi bi-ui-checks mr-2"></i>Submission Checklist
+                </h5>
+                <ul class="space-y-1 text-sm" id="checklist">
+                    <li id="chk-type" class="flex items-center gap-2 text-gray-400"><i class="bi bi-circle text-xs"></i> Leave type selected</li>
+                    <li id="chk-start" class="flex items-center gap-2 text-gray-400"><i class="bi bi-circle text-xs"></i> Start date set</li>
+                    <li id="chk-end" class="flex items-center gap-2 text-gray-400"><i class="bi bi-circle text-xs"></i> End date set</li>
+                    <li id="chk-dates" class="flex items-center gap-2 text-gray-400"><i class="bi bi-circle text-xs"></i> End date ≥ start date</li>
+                    <li id="chk-reason" class="flex items-center gap-2 text-gray-400"><i class="bi bi-circle text-xs"></i> Reason provided (min 10 chars)</li>
+                </ul>
+            </div>
+
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">Leave Type</label>
-                    <select name="leave_type" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all outline-none" required>
-                        <option value="" disabled selected>Select reason for leave</option>
-                        <option value="Sick Leave">Sick Leave</option>
-                        <option value="Vacation">Vacation</option>
-                        <option value="Emergency Leave">Emergency Leave</option>
-                        <option value="Maternity/Paternity">Maternity/Paternity</option>
-                        <option value="Unpaid Leave">Unpaid Leave</option>
+                    <label class="block text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">Leave Type <span class="text-red-400">*</span></label>
+                    <select name="leave_type" id="inp-type" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all outline-none" required>
+                        <option value="" disabled {% if not form_data.get('leave_type') %}selected{% endif %}>Select reason for leave</option>
+                        {% for opt in ['Sick Leave', 'Vacation', 'Emergency Leave', 'Maternity/Paternity', 'Unpaid Leave'] %}
+                        <option value="{{ opt }}" {% if form_data.get('leave_type') == opt %}selected{% endif %}>{{ opt }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">Start Date</label>
-                        <input type="date" name="start_date" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all outline-none" required>
+                        <label class="block text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">Start Date <span class="text-red-400">*</span></label>
+                        <input type="date" name="start_date" id="inp-start" value="{{ form_data.get('start_date', '') }}"
+                               class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all outline-none" required>
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">End Date</label>
-                        <input type="date" name="end_date" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all outline-none" required>
+                        <label class="block text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">End Date <span class="text-red-400">*</span></label>
+                        <input type="date" name="end_date" id="inp-end" value="{{ form_data.get('end_date', '') }}"
+                               class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all outline-none" required>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">Reason / Remarks</label>
-                    <textarea name="remarks" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all outline-none min-h-[120px]" placeholder="Briefly explain the reason for your request..."></textarea>
+                    <label class="block text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">Reason / Remarks <span class="text-red-400">*</span></label>
+                    <textarea name="remarks" id="inp-reason" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all outline-none min-h-[120px]"
+                              placeholder="Briefly explain the reason for your request (at least 10 characters)...">{{ form_data.get('remarks', '') }}</textarea>
+                    <p class="text-xs text-gray-400 mt-1"><span id="reasonCount">0</span> characters</p>
+                </div>
+
+                <!-- Document attachment -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">
+                        Supporting Document <span class="text-gray-400 font-normal text-xs">(Optional — Medical cert, etc.)</span>
+                    </label>
+                    <label class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer bg-gray-50 hover:bg-blue-50/40 hover:border-accent transition-all" id="dropZone">
+                        <div class="flex flex-col items-center justify-center" id="dropPlaceholder">
+                            <i class="bi bi-cloud-arrow-up text-2xl text-gray-300 mb-1"></i>
+                            <p class="text-sm text-gray-400">Click to upload or drag and drop</p>
+                            <p class="text-xs text-gray-300">PDF, DOC, DOCX, JPG, PNG</p>
+                        </div>
+                        <div class="hidden flex-col items-center justify-center" id="dropSelected">
+                            <i class="bi bi-file-earmark-check text-2xl text-accent mb-1"></i>
+                            <p class="text-sm font-bold text-accent" id="dropFileName"></p>
+                        </div>
+                        <input type="file" name="document" id="inp-doc" class="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                    </label>
                 </div>
             </div>
 
-            <div class="flex items-center justify-end space-x-4 pt-4">
-                <a href="{{ url_for('hr3.dashboard') }}" class="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">
+            <div class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-100">
+                <a href="{{ url_for('hr3.list_leaves') }}" class="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">
                     Cancel
                 </a>
-                <button type="submit" class="bg-accent hover:opacity-90 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-accent/20 transition-all flex items-center">
+                <button type="submit" id="submitBtn" class="bg-accent hover:opacity-90 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-accent/20 transition-all flex items-center">
                     <i class="bi bi-send mr-2"></i> Submit Request
                 </button>
             </div>
@@ -59,14 +114,61 @@
     </div>
 
     <!-- Policy section -->
-    <div class="mt-8 p-6 bg-blue-50/50 rounded-2xl border border-blue-100 flex items-start">
-        <i class="bi bi-info-circle-fill text-blue-500 mr-4 text-xl mt-0.5"></i>
+    <div class="mt-6 p-6 bg-amber-50/60 rounded-2xl border border-amber-100 flex items-start">
+        <i class="bi bi-info-circle-fill text-amber-500 mr-4 text-xl mt-0.5"></i>
         <div>
-            <h5 class="text-blue-900 font-bold mb-1">Leave Policy Reminder</h5>
-            <p class="text-blue-800/70 text-sm leading-relaxed">
-                All leave requests are subject to approval. Requests for more than 3 days should be submitted at least 1 week in advance. Ensure you have sufficient balance before applying.
+            <h5 class="text-amber-900 font-bold mb-1">Leave Policy Reminder</h5>
+            <p class="text-amber-800/70 text-sm leading-relaxed">
+                All requests go through a 3-stage approval: Supervisor → HR/Payroll Validation → Final Approval.
+                Requests for more than 3 days should be submitted at least 1 week in advance.
+                A supporting document (e.g., medical certificate) helps speed up approval for Sick Leave.
             </p>
         </div>
     </div>
 </div>
+
+<script>
+// ── Completeness checklist live validation ─────────────────────────────────
+const fields = {
+    type: document.getElementById('inp-type'),
+    start: document.getElementById('inp-start'),
+    end: document.getElementById('inp-end'),
+    reason: document.getElementById('inp-reason'),
+};
+function tick(id, ok) {
+    const li = document.getElementById(id);
+    if (!li) return;
+    const icon = li.querySelector('i');
+    if (ok) {
+        li.className = 'flex items-center gap-2 text-green-600 font-medium';
+        icon.className = 'bi bi-check-circle-fill text-xs';
+    } else {
+        li.className = 'flex items-center gap-2 text-gray-400';
+        icon.className = 'bi bi-circle text-xs';
+    }
+}
+function validate() {
+    const s = fields.start.value, e = fields.end.value, r = fields.reason.value;
+    tick('chk-type', !!fields.type.value);
+    tick('chk-start', !!s);
+    tick('chk-end', !!e);
+    tick('chk-dates', !!(s && e && e >= s));
+    tick('chk-reason', r.trim().length >= 10);
+    document.getElementById('reasonCount').textContent = r.length;
+}
+Object.values(fields).forEach(f => f.addEventListener('input', validate));
+Object.values(fields).forEach(f => f.addEventListener('change', validate));
+validate();
+
+// ── File drop zone ─────────────────────────────────────────────────────────
+const docInput = document.getElementById('inp-doc');
+docInput.addEventListener('change', function() {
+    if (this.files.length) {
+        document.getElementById('dropPlaceholder').classList.add('hidden');
+        document.getElementById('dropSelected').classList.remove('hidden');
+        document.getElementById('dropSelected').classList.add('flex');
+        document.getElementById('dropFileName').textContent = this.files[0].name;
+    }
+});
+</script>
 {% endblock %}

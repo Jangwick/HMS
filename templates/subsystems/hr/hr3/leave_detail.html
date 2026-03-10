@@ -1,0 +1,313 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block content %}
+{% set step = leave.workflow_step or 'Supervisor Review' %}
+{% set is_done = step in ('Approved', 'Rejected') %}
+{% set step_order = {'Supervisor Review': 0, 'HR Validation': 1, 'Final Approval': 2, 'Approved': 3, 'Rejected': 3} %}
+{% set cur_idx = step_order.get(step, 0) %}
+
+<div class="max-w-3xl mx-auto space-y-6">
+
+    <!-- ── Back + title ──────────────────────────────────────────────────── -->
+    <div class="flex items-center gap-3">
+        <a href="{{ url_for('hr3.list_leaves') }}" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <i class="bi bi-arrow-left text-xl"></i>
+        </a>
+        <div>
+            <h3 class="text-xl font-extrabold text-gray-900">Leave Request #{{ leave.id }}</h3>
+            <p class="text-gray-400 text-sm">Submitted {{ leave.created_at[:10] if leave.created_at else '—' }}</p>
+        </div>
+        <div class="ml-auto">
+            {% if step == 'Approved' %}
+                <span class="px-4 py-2 rounded-full text-sm font-bold bg-green-100 text-green-700"><i class="bi bi-check-circle-fill mr-1.5"></i>Approved</span>
+            {% elif step == 'Rejected' %}
+                <span class="px-4 py-2 rounded-full text-sm font-bold bg-red-100 text-red-600"><i class="bi bi-x-circle-fill mr-1.5"></i>Rejected</span>
+            {% elif step == 'Final Approval' %}
+                <span class="px-4 py-2 rounded-full text-sm font-bold bg-purple-100 text-purple-700"><i class="bi bi-hourglass-split mr-1.5"></i>Final Approval</span>
+            {% elif step == 'HR Validation' %}
+                <span class="px-4 py-2 rounded-full text-sm font-bold bg-blue-100 text-blue-700"><i class="bi bi-shield-check mr-1.5"></i>HR Validation</span>
+            {% else %}
+                <span class="px-4 py-2 rounded-full text-sm font-bold bg-amber-100 text-amber-700"><i class="bi bi-person-check mr-1.5"></i>Supervisor Review</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── Workflow pipeline ─────────────────────────────────────────────── -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-5">Approval Workflow</h4>
+        <div class="flex items-start gap-0">
+            {% set stages = [
+                ('Supervisor Review',  'bi-person-check',    'Supervisor',     'Step 1'),
+                ('HR Validation',      'bi-shield-check',    'HR / Payroll',   'Step 2'),
+                ('Final Approval',     'bi-check2-all',      'Final Decision', 'Step 3'),
+                ('Approved',           'bi-check-circle-fill','Completed',     'Done'),
+            ] %}
+            {% for s, icon, label, sub in stages %}
+            {% set i = loop.index0 %}
+            <div class="flex items-start flex-1 {% if not loop.last %}relative{% endif %}">
+                <div class="flex flex-col items-center w-full">
+                    <!-- connector line left -->
+                    {% if not loop.first %}
+                    <div class="absolute left-0 top-4 w-1/2 h-0.5 {% if cur_idx > i - 1 %}bg-accent{% else %}bg-gray-200{% endif %} -translate-y-1/2"></div>
+                    {% endif %}
+                    {% if not loop.last %}
+                    <div class="absolute right-0 top-4 w-1/2 h-0.5 {% if cur_idx > i %}bg-accent{% else %}bg-gray-200{% endif %} -translate-y-1/2"></div>
+                    {% endif %}
+
+                    <!-- step circle -->
+                    {% if step == 'Rejected' and i == cur_idx %}
+                    <div class="relative z-10 w-9 h-9 rounded-full bg-red-100 text-red-500 flex items-center justify-center shadow-sm">
+                        <i class="bi bi-x-lg text-sm"></i>
+                    </div>
+                    {% elif cur_idx > i or (step == 'Approved' and i == 3) %}
+                    <div class="relative z-10 w-9 h-9 rounded-full bg-green-500 text-white flex items-center justify-center shadow-sm">
+                        <i class="bi bi-check-lg text-sm"></i>
+                    </div>
+                    {% elif cur_idx == i %}
+                    <div class="relative z-10 w-9 h-9 rounded-full bg-accent text-white flex items-center justify-center shadow-sm ring-4 ring-accent/20">
+                        <i class="bi {{ icon }} text-sm"></i>
+                    </div>
+                    {% else %}
+                    <div class="relative z-10 w-9 h-9 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center shadow-sm">
+                        <i class="bi {{ icon }} text-sm"></i>
+                    </div>
+                    {% endif %}
+
+                    <span class="mt-2 text-xs font-bold {% if cur_idx == i %}text-accent{% elif cur_idx > i %}text-green-600{% else %}text-gray-400{% endif %} text-center">{{ label }}</span>
+                    <span class="text-[10px] text-gray-400 text-center">{{ sub }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ── Leave details card ────────────────────────────────────────────── -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 grid grid-cols-2 md:grid-cols-3 gap-5">
+        <div>
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Employee</p>
+            <p class="font-bold text-gray-900">
+                {{ leave.employee.full_name or leave.employee.username if leave.employee else '—' }}
+            </p>
+            {% if leave.employee %}
+            <p class="text-xs text-gray-400">{{ leave.employee.subsystem | upper if leave.employee.subsystem else '' }}</p>
+            {% endif %}
+        </div>
+        <div>
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Leave Type</p>
+            <p class="font-bold text-gray-900">{{ leave.leave_type or '—' }}</p>
+        </div>
+        <div>
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Duration</p>
+            <p class="font-bold text-gray-900">{{ leave.start_date }} → {{ leave.end_date }}</p>
+            {% if leave.start_date and leave.end_date %}
+            {% set days = (leave.end_date | string)[:10] %}
+            <p class="text-xs text-gray-400">
+                {% set sd = leave.start_date | string %}
+                {% set ed = leave.end_date | string %}
+                {{ sd[:10] }} to {{ ed[:10] }}
+            </p>
+            {% endif %}
+        </div>
+        <div class="col-span-2 md:col-span-3">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Reason</p>
+            <p class="text-gray-700">{{ leave.remarks or '—' }}</p>
+        </div>
+        {% if leave.document_url %}
+        <div class="col-span-2 md:col-span-3">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Supporting Document</p>
+            <a href="{{ leave.document_url }}" target="_blank" rel="noopener"
+               class="inline-flex items-center gap-2 text-accent hover:underline font-medium text-sm">
+                <i class="bi bi-file-earmark-arrow-down"></i> View Attached Document
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ── Approval timeline ─────────────────────────────────────────────── -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-5">Approval History</h4>
+        <ol class="relative border-l-2 border-gray-100 space-y-6 ml-2">
+
+            <!-- Submitted -->
+            <li class="ml-6">
+                <span class="absolute -left-3 w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center"><i class="bi bi-send-fill text-[9px]"></i></span>
+                <p class="font-bold text-gray-900 text-sm">Request Submitted</p>
+                <p class="text-xs text-gray-400">{{ leave.created_at[:16].replace('T', ' ') if leave.created_at else '—' }}</p>
+                <p class="text-sm text-gray-600 mt-0.5">by {{ leave.employee.full_name or leave.employee.username if leave.employee else 'Employee' }}</p>
+            </li>
+
+            <!-- Step 1: Supervisor -->
+            {% if leave.supervisor_decided_at %}
+            <li class="ml-6">
+                <span class="absolute -left-3 w-5 h-5 rounded-full {% if leave.supervisor_decision == 'Approved' %}bg-green-500{% else %}bg-red-400{% endif %} text-white flex items-center justify-center">
+                    <i class="bi {% if leave.supervisor_decision == 'Approved' %}bi-check-lg{% else %}bi-x-lg{% endif %} text-[9px]"></i>
+                </span>
+                <p class="font-bold text-gray-900 text-sm">
+                    Supervisor — {{ leave.supervisor_decision }}
+                </p>
+                <p class="text-xs text-gray-400">{{ leave.supervisor_decided_at[:16].replace('T', ' ') }}</p>
+                {% if leave.supervisor_user %}
+                <p class="text-sm text-gray-600 mt-0.5">by {{ leave.supervisor_user.full_name or leave.supervisor_user.username }}</p>
+                {% endif %}
+                {% if leave.supervisor_notes %}
+                <p class="text-sm text-gray-500 italic mt-1">{{ leave.supervisor_notes }}</p>
+                {% endif %}
+            </li>
+            {% elif cur_idx >= 0 and step not in ('Rejected',) %}
+            <li class="ml-6 opacity-40">
+                <span class="absolute -left-3 w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center"><i class="bi bi-person-check text-[9px] text-gray-400"></i></span>
+                <p class="font-bold text-gray-500 text-sm">Supervisor Review — Pending</p>
+            </li>
+            {% endif %}
+
+            <!-- Step 2: HR Validation -->
+            {% if leave.hr_validated_at %}
+            <li class="ml-6">
+                <span class="absolute -left-3 w-5 h-5 rounded-full {% if leave.hr_validated %}bg-green-500{% else %}bg-red-400{% endif %} text-white flex items-center justify-center">
+                    <i class="bi {% if leave.hr_validated %}bi-shield-fill-check{% else %}bi-shield-fill-x{% endif %} text-[9px]"></i>
+                </span>
+                <p class="font-bold text-gray-900 text-sm">
+                    HR / Payroll — {% if leave.hr_validated %}Validated{% else %}Rejected{% endif %}
+                </p>
+                <p class="text-xs text-gray-400">{{ leave.hr_validated_at[:16].replace('T', ' ') }}</p>
+                {% if leave.hr_validator_user %}
+                <p class="text-sm text-gray-600 mt-0.5">by {{ leave.hr_validator_user.full_name or leave.hr_validator_user.username }}</p>
+                {% endif %}
+                {% if leave.hr_notes %}
+                <p class="text-sm text-gray-500 italic mt-1">{{ leave.hr_notes }}</p>
+                {% endif %}
+            </li>
+            {% elif cur_idx >= 1 and step not in ('Rejected',) %}
+            <li class="ml-6 opacity-40">
+                <span class="absolute -left-3 w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center"><i class="bi bi-shield-check text-[9px] text-gray-400"></i></span>
+                <p class="font-bold text-gray-500 text-sm">HR / Payroll Validation — Pending</p>
+            </li>
+            {% endif %}
+
+            <!-- Step 3: Final Decision -->
+            {% if leave.final_decided_at %}
+            <li class="ml-6">
+                <span class="absolute -left-3 w-5 h-5 rounded-full {% if leave.final_decision == 'Approved' %}bg-green-500{% else %}bg-red-400{% endif %} text-white flex items-center justify-center">
+                    <i class="bi {% if leave.final_decision == 'Approved' %}bi-check2-all{% else %}bi-x-lg{% endif %} text-[9px]"></i>
+                </span>
+                <p class="font-bold text-gray-900 text-sm">
+                    Final Decision — {{ leave.final_decision }}
+                </p>
+                <p class="text-xs text-gray-400">{{ leave.final_decided_at[:16].replace('T', ' ') }}</p>
+                {% if leave.final_approver_user %}
+                <p class="text-sm text-gray-600 mt-0.5">by {{ leave.final_approver_user.full_name or leave.final_approver_user.username }}</p>
+                {% endif %}
+                {% if leave.is_archived %}
+                <span class="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs font-medium"><i class="bi bi-archive mr-1"></i>Archived</span>
+                {% endif %}
+            </li>
+            {% elif cur_idx >= 2 and step not in ('Rejected',) %}
+            <li class="ml-6 opacity-40">
+                <span class="absolute -left-3 w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center"><i class="bi bi-check2-all text-[9px] text-gray-400"></i></span>
+                <p class="font-bold text-gray-500 text-sm">Final Approval — Pending</p>
+            </li>
+            {% endif %}
+
+        </ol>
+    </div>
+
+    <!-- ── Action panel (admin only, based on current step) ─────────────── -->
+    {% if is_admin and not is_done %}
+
+    {% if step == 'Supervisor Review' %}
+    <div class="bg-white rounded-2xl border-2 border-amber-200 shadow-sm p-6">
+        <h4 class="text-sm font-bold text-amber-700 flex items-center mb-4">
+            <i class="bi bi-person-check-fill mr-2 text-amber-500"></i>Supervisor Decision Required
+        </h4>
+        <form method="POST" action="{{ url_for('hr3.supervisor_action', leave_id=leave.id) }}" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Notes (optional)</label>
+                <textarea name="notes" rows="2" placeholder="Add a note for the employee or HR team..."
+                          class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition-all"></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" name="decision" value="Approve"
+                        class="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="bi bi-check-lg"></i> Approve — Forward to HR
+                </button>
+                <button type="submit" name="decision" value="Reject"
+                        onclick="return confirm('Reject this leave request? The employee will be notified.')"
+                        class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="bi bi-x-lg"></i> Reject
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% elif step == 'HR Validation' %}
+    <div class="bg-white rounded-2xl border-2 border-blue-200 shadow-sm p-6">
+        <h4 class="text-sm font-bold text-blue-700 flex items-center mb-4">
+            <i class="bi bi-shield-check mr-2 text-blue-500"></i>HR / Payroll Validation
+        </h4>
+        <p class="text-sm text-gray-500 mb-4">Verify that this leave request complies with policy and the employee has sufficient balance.</p>
+        <form method="POST" action="{{ url_for('hr3.hr_validate', leave_id=leave.id) }}" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">HR Notes (optional)</label>
+                <textarea name="notes" rows="2" placeholder="Policy check, leave balance notes..."
+                          class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition-all"></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" name="decision" value="Validate"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="bi bi-shield-fill-check"></i> Validate & Forward
+                </button>
+                <button type="submit" name="decision" value="Reject"
+                        onclick="return confirm('Reject this leave for policy/balance reasons? The employee will be notified.')"
+                        class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="bi bi-x-lg"></i> Reject
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% elif step == 'Final Approval' %}
+    <div class="bg-white rounded-2xl border-2 border-purple-200 shadow-sm p-6">
+        <h4 class="text-sm font-bold text-purple-700 flex items-center mb-4">
+            <i class="bi bi-check2-all mr-2 text-purple-500"></i>Final Approval Decision
+        </h4>
+        <p class="text-sm text-gray-500 mb-4">This is the final stage. Approving will update HR records and notify the employee.</p>
+        <form method="POST" action="{{ url_for('hr3.final_decision_leave', leave_id=leave.id) }}" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Final Notes (optional)</label>
+                <textarea name="notes" rows="2" placeholder="Any final remarks for the employee..."
+                          class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 transition-all"></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" name="decision" value="Approve"
+                        class="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="bi bi-check-circle-fill"></i> Approve Leave
+                </button>
+                <button type="submit" name="decision" value="Reject"
+                        onclick="return confirm('Reject this leave request? The employee will be notified.')"
+                        class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="bi bi-x-circle-fill"></i> Reject
+                </button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    {% endif %}
+
+    <!-- ── Archive button (admin, completed requests not yet archived) ───── -->
+    {% if is_admin and is_done and not leave.is_archived %}
+    <div class="flex justify-end">
+        <form method="POST" action="{{ url_for('hr3.archive_leave', leave_id=leave.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="flex items-center gap-2 text-gray-400 hover:text-gray-600 text-sm font-bold transition-colors border border-gray-200 hover:border-gray-300 px-4 py-2 rounded-xl">
+                <i class="bi bi-archive"></i> Archive This Request
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

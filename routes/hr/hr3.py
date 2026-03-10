@@ -393,6 +393,24 @@ def force_clock_out(log_id):
         
     return hr3_redirect_fallback()
 
+def _notify_hr3_admins(client, title, message, n_type, sender_subsystem, target_url=None):
+    """Notify all active HR3 admins."""
+    from utils.hms_models import Notification
+    try:
+        admins = client.table('users').select('id').eq('subsystem', 'hr3').in_('role', ['Admin', 'Administrator']).eq('status', 'Active').execute()
+        for a in (admins.data or []):
+            Notification.create(
+                user_id=a['id'],
+                title=title,
+                message=message,
+                n_type=n_type,
+                sender_subsystem=sender_subsystem,
+                target_url=target_url
+            )
+    except Exception as e:
+        print(f"HR3 notification error: {e}")
+
+
 @hr3_bp.route('/leaves/request', methods=['GET', 'POST'])
 @login_required
 def request_leave():
@@ -400,11 +418,66 @@ def request_leave():
         leave_type = request.form.get('leave_type')
         start_date = request.form.get('start_date')
         end_date = request.form.get('end_date')
-        remarks = request.form.get('remarks')
-        
-        from utils.supabase_client import get_supabase_client
+        remarks = (request.form.get('remarks') or '').strip()
+        doc_file = request.files.get('document')
+
+        # ── 1. Completeness validation ────────────────────────────────────
+        errors = []
+        if not leave_type:
+            errors.append('Leave type is required.')
+        if not start_date:
+            errors.append('Start date is required.')
+        if not end_date:
+            errors.append('End date is required.')
+        if start_date and end_date and end_date < start_date:
+            errors.append('End date cannot be before start date.')
+        if not remarks or len(remarks) < 10:
+            errors.append('Please provide a reason of at least 10 characters.')
+        if errors:
+            for err in errors:
+                flash(err, 'danger')
+            return render_template('subsystems/hr/hr3/leave_request_form.html',
+                                   subsystem_name=SUBSYSTEM_NAME,
+                                   accent_color=ACCENT_COLOR,
+                                   blueprint_name=BLUEPRINT_NAME,
+                                   form_data=request.form)
+
+        from utils.supabase_client import get_supabase_client, get_supabase_service_client
         client = get_supabase_client()
-        
+
+        # ── 2. Document upload (optional) ─────────────────────────────────
+        document_url = None
+        if doc_file and doc_file.filename:
+            ALLOWED_EXT = {'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'}
+            ext = doc_file.filename.rsplit('.', 1)[-1].lower() if '.' in doc_file.filename else ''
+            if ext not in ALLOWED_EXT:
+                flash(f'Unsupported file type ({ext}). Allowed: {", ".join(sorted(ALLOWED_EXT))}', 'warning')
+            else:
+                try:
+                    import traceback
+                    svc = get_supabase_service_client()
+                    file_bytes = doc_file.read()
+                    safe_name = f"leave_{current_user.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}"
+                    svc.storage.from_('ess-documents').upload(safe_name, file_bytes,
+                        {'content-type': doc_file.content_type or 'application/octet-stream'})
+                    document_url = svc.storage.from_('ess-documents').get_public_url(safe_name)
+                except Exception as e:
+                    import traceback; traceback.print_exc()
+                    flash(f'Document upload failed (request still submitted): {e}', 'warning')
+
+        # ── 3. Automated routing: find HR3 supervisor ─────────────────────
+        supervisor_id = None
+        supervisor_data = []
+        try:
+            sup_resp = client.table('users').select('id, full_name, username') \
+                .eq('subsystem', 'hr3').in_('role', ['Admin', 'Administrator']).eq('status', 'Active').execute()
+            supervisor_data = sup_resp.data or []
+            if supervisor_data:
+                supervisor_id = supervisor_data[0]['id']
+        except Exception as e:
+            print(f"Auto-routing error: {e}")
+
+        # ── 4. Save leave request ──────────────────────────────────────────
         try:
             data = {
                 'user_id': current_user.id,
@@ -412,30 +485,38 @@ def request_leave():
                 'start_date': start_date,
                 'end_date': end_date,
                 'status': 'Pending',
-                'remarks': remarks
+                'remarks': remarks,
+                'document_url': document_url,
+                'workflow_step': 'Supervisor Review',
+                'supervisor_id': supervisor_id,
             }
-            client.table('leave_requests').insert(data).execute()
-            
-            # Notify HR2 Admin
+            result = client.table('leave_requests').insert(data).execute()
+            leave_id = result.data[0]['id'] if result.data else None
+
+            # ── 5. Notify supervisor(s) ────────────────────────────────────
             from utils.hms_models import Notification
-            Notification.create(
-                subsystem='hr2',
-                title="New Leave Request",
-                message=f"{current_user.full_name or current_user.username} has submitted a new {leave_type} leave request.",
-                n_type="info",
-                sender_subsystem=current_user.subsystem or 'SYSTEM',
-                target_url=url_for('hr3.list_leaves')
-            )
-            
-            flash('Leave request submitted successfully!', 'success')
-            return hr3_redirect_fallback()
+            target_url = url_for('hr3.leave_detail', leave_id=leave_id) if leave_id else url_for('hr3.list_leaves')
+            for sup in supervisor_data:
+                Notification.create(
+                    user_id=sup['id'],
+                    title="Leave Request — Supervisor Review Required",
+                    message=f"{current_user.full_name or current_user.username} submitted a {leave_type} leave "
+                            f"request ({start_date} → {end_date}). Please review and decide.",
+                    n_type="info",
+                    sender_subsystem=current_user.subsystem or 'hr3',
+                    target_url=target_url
+                )
+
+            flash('Leave request submitted! It has been routed to your supervisor for review.', 'success')
+            return redirect(target_url)
         except Exception as e:
             flash(f'Error submitting leave request: {str(e)}', 'danger')
-            
+
     return render_template('subsystems/hr/hr3/leave_request_form.html',
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
+                           blueprint_name=BLUEPRINT_NAME,
+                           form_data={})
 
 @hr3_bp.route('/directory')
 @login_required
@@ -744,57 +825,444 @@ def delete_schedule(schedule_id):
 def list_leaves():
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    
-    query = client.table('leave_requests').select('*, users:users!leave_requests_user_id_fkey(username)')
-    
+
+    filter_step = request.args.get('step', 'all')
+    show_archived = request.args.get('archived', '0') == '1'
+
+    query = client.table('leave_requests').select(
+        '*, users:users!leave_requests_user_id_fkey(username, full_name, avatar_url)'
+    )
+
     # Non-admins only see their own requests
-    if not current_user.is_super_admin() and (current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3'):
+    is_admin = current_user.is_super_admin() or (
+        current_user.role in ['Admin', 'Administrator'] and current_user.subsystem == 'hr3'
+    )
+    if not is_admin:
         query = query.eq('user_id', current_user.id)
-        
+
+    if not show_archived:
+        query = query.eq('is_archived', False)
+
+    if filter_step != 'all' and filter_step in ('Supervisor Review', 'HR Validation', 'Final Approval', 'Approved', 'Rejected'):
+        query = query.eq('workflow_step', filter_step)
+
     response = query.order('created_at', desc=True).execute()
     leaves = response.data if response.data else []
-    
+
+    # Count per step for tab badges
+    counts = {'all': 0, 'Supervisor Review': 0, 'HR Validation': 0, 'Final Approval': 0, 'Approved': 0, 'Rejected': 0}
+    all_resp_q = client.table('leave_requests').select('workflow_step')
+    if not is_admin:
+        all_resp_q = all_resp_q.eq('user_id', current_user.id)
+    all_resp_q = all_resp_q.eq('is_archived', False)
+    try:
+        all_steps = all_resp_q.execute().data or []
+        for row in all_steps:
+            s = row.get('workflow_step', '')
+            counts['all'] += 1
+            if s in counts:
+                counts[s] += 1
+    except Exception:
+        pass
+
     return render_template('subsystems/hr/hr3/leaves.html',
                            leaves=leaves,
+                           is_admin=is_admin,
+                           filter_step=filter_step,
+                           show_archived=show_archived,
+                           counts=counts,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
 
-@hr3_bp.route('/leaves/approve', methods=['POST'])
+
+@hr3_bp.route('/leaves/<int:leave_id>')
 @login_required
-def approve_leave():
-    if not current_user.is_super_admin() and (current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3'):
-        flash('Access denied.', 'danger')
-        return redirect(url_for('hr3.dashboard'))
-    
-    leave_id = request.form.get('leave_id')
-    status = request.form.get('status') # 'Approved' or 'Rejected'
-    
+def leave_detail(leave_id):
+    """Full ESS workflow detail view for a single leave request."""
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    
+
     try:
-        # Get target user ID before update to notify them
-        leave_data = client.table('leave_requests').select('user_id, leave_type').eq('id', leave_id).execute()
-        target_user_id = leave_data.data[0]['user_id'] if leave_data.data else None
-        
-        client.table('leave_requests').update({'status': status, 'approved_by': current_user.id}).eq('id', leave_id).execute()
-        
-        # Notify user about leave status
-        if target_user_id:
-            from utils.hms_models import Notification
-            Notification.create(
-                user_id=target_user_id,
-                title=f"Leave Request {status}",
-                message=f"Your request for {leave_data.data[0]['leave_type']} leave has been {status.lower()}.",
-                n_type="success" if status == 'Approved' else "danger",
-                sender_subsystem=BLUEPRINT_NAME
-            )
-            
-        flash(f'Leave request {status.lower()} successfully!', 'success')
+        resp = client.table('leave_requests').select('*').eq('id', leave_id).limit(1).execute()
+        if not resp.data:
+            flash('Leave request not found.', 'danger')
+            return redirect(url_for('hr3.list_leaves'))
+        leave = resp.data[0]
     except Exception as e:
-        flash(f'Error updating leave request: {str(e)}', 'danger')
-        
+        flash(f'Error loading leave request: {e}', 'danger')
+        return redirect(url_for('hr3.list_leaves'))
+
+    is_admin = current_user.is_super_admin() or (
+        current_user.role in ['Admin', 'Administrator'] and current_user.subsystem == 'hr3'
+    )
+    if not is_admin and leave.get('user_id') != current_user.id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.list_leaves'))
+
+    # Resolve related user names separately (avoids FK-name guessing)
+    def _get_user(uid):
+        if not uid:
+            return None
+        try:
+            r = client.table('users').select('id, username, full_name, avatar_url').eq('id', uid).limit(1).execute()
+            return r.data[0] if r.data else None
+        except Exception:
+            return None
+
+    leave['employee'] = _get_user(leave.get('user_id'))
+    leave['supervisor_user'] = _get_user(leave.get('supervisor_id'))
+    leave['hr_validator_user'] = _get_user(leave.get('hr_validated_by'))
+    leave['final_approver_user'] = _get_user(leave.get('final_decided_by'))
+    leave['approved_by_user'] = _get_user(leave.get('approved_by'))
+
+    WORKFLOW_STEPS_LIST = ['Supervisor Review', 'HR Validation', 'Final Approval', 'Approved']
+
+    return render_template('subsystems/hr/hr3/leave_detail.html',
+                           leave=leave,
+                           is_admin=is_admin,
+                           workflow_steps=WORKFLOW_STEPS_LIST,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr3_bp.route('/leaves/<int:leave_id>/supervisor-action', methods=['POST'])
+@login_required
+def supervisor_action(leave_id):
+    """Step 1 — Supervisor approves or rejects the leave request."""
+    is_admin = current_user.is_super_admin() or (
+        current_user.role in ['Admin', 'Administrator'] and current_user.subsystem == 'hr3'
+    )
+    if not is_admin:
+        flash('Unauthorized: Supervisor access required.', 'danger')
+        return redirect(url_for('hr3.leave_detail', leave_id=leave_id))
+
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+
+    decision = request.form.get('decision')
+    notes = (request.form.get('notes') or '').strip()
+
+    try:
+        leave_resp = client.table('leave_requests').select('*').eq('id', leave_id).limit(1).execute()
+        if not leave_resp.data:
+            flash('Leave request not found.', 'danger')
+            return redirect(url_for('hr3.list_leaves'))
+        leave = leave_resp.data[0]
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        return redirect(url_for('hr3.list_leaves'))
+
+    if leave.get('workflow_step') != 'Supervisor Review':
+        flash('This request is not awaiting supervisor review.', 'warning')
+        return redirect(url_for('hr3.leave_detail', leave_id=leave_id))
+
+    now_iso = datetime.now().isoformat()
+    detail_url = url_for('hr3.leave_detail', leave_id=leave_id)
+
+    def _get_user(uid):
+        if not uid: return None
+        try:
+            r = client.table('users').select('id, username, full_name').eq('id', uid).limit(1).execute()
+            return r.data[0] if r.data else None
+        except Exception: return None
+
+    employee = _get_user(leave.get('user_id'))
+    emp_name = (employee.get('full_name') or employee.get('username') or 'Employee') if employee else 'Employee'
+    emp_id = leave.get('user_id')
+
+    if decision == 'Approve':
+        client.table('leave_requests').update({
+            'supervisor_decision': 'Approved',
+            'supervisor_notes': notes,
+            'supervisor_decided_at': now_iso,
+            'workflow_step': 'HR Validation',
+        }).eq('id', leave_id).execute()
+
+        _notify_hr3_admins(client,
+            title="Leave Request — HR/Payroll Validation Required",
+            message=f"Supervisor approved {emp_name}'s {leave['leave_type']} leave "
+                    f"({leave['start_date']} → {leave['end_date']}). HR validation is required.",
+            n_type="info", sender_subsystem='hr3', target_url=detail_url
+        )
+        flash('Approved at supervisor stage. Routed to HR for validation.', 'success')
+
+    elif decision == 'Reject':
+        client.table('leave_requests').update({
+            'supervisor_decision': 'Rejected',
+            'supervisor_notes': notes,
+            'supervisor_decided_at': now_iso,
+            'workflow_step': 'Rejected',
+            'status': 'Rejected',
+        }).eq('id', leave_id).execute()
+
+        if emp_id:
+            Notification.create(
+                user_id=emp_id,
+                title="Leave Request Rejected — Supervisor",
+                message=f"Your {leave['leave_type']} leave ({leave['start_date']} → {leave['end_date']}) "
+                        f"was rejected by your supervisor.{(' Reason: ' + notes) if notes else ''}",
+                n_type="danger", sender_subsystem='hr3', target_url=detail_url
+            )
+        flash('Leave request rejected. Employee has been notified.', 'info')
+
+    return redirect(detail_url)
+
+
+@hr3_bp.route('/leaves/<int:leave_id>/hr-validate', methods=['POST'])
+@login_required
+def hr_validate(leave_id):
+    """Step 2 — HR/Payroll validates policy compliance and leave balance."""
+    is_admin = current_user.is_super_admin() or (
+        current_user.role in ['Admin', 'Administrator'] and current_user.subsystem == 'hr3'
+    )
+    if not is_admin:
+        flash('Unauthorized: HR access required.', 'danger')
+        return redirect(url_for('hr3.leave_detail', leave_id=leave_id))
+
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+
+    decision = request.form.get('decision')
+    notes = (request.form.get('notes') or '').strip()
+
+    try:
+        leave_resp = client.table('leave_requests').select('*').eq('id', leave_id).limit(1).execute()
+        if not leave_resp.data:
+            flash('Leave request not found.', 'danger')
+            return redirect(url_for('hr3.list_leaves'))
+        leave = leave_resp.data[0]
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        return redirect(url_for('hr3.list_leaves'))
+
+    if leave.get('workflow_step') != 'HR Validation':
+        flash('This request is not awaiting HR validation.', 'warning')
+        return redirect(url_for('hr3.leave_detail', leave_id=leave_id))
+
+    now_iso = datetime.now().isoformat()
+    detail_url = url_for('hr3.leave_detail', leave_id=leave_id)
+    emp_id = leave.get('user_id')
+
+    def _get_user(uid):
+        if not uid: return None
+        try:
+            r = client.table('users').select('id, username, full_name').eq('id', uid).limit(1).execute()
+            return r.data[0] if r.data else None
+        except Exception: return None
+
+    employee = _get_user(emp_id)
+    emp_name = (employee.get('full_name') or employee.get('username') or 'Employee') if employee else 'Employee'
+
+    if decision == 'Validate':
+        client.table('leave_requests').update({
+            'hr_validated': True,
+            'hr_validated_by': current_user.id,
+            'hr_validated_at': now_iso,
+            'hr_notes': notes,
+            'workflow_step': 'Final Approval',
+        }).eq('id', leave_id).execute()
+
+        _notify_hr3_admins(client,
+            title="Leave Request — Final Approval Required",
+            message=f"HR validated {emp_name}'s {leave['leave_type']} leave "
+                    f"({leave['start_date']} → {leave['end_date']}). Final approval decision required.",
+            n_type="warning", sender_subsystem='hr3', target_url=detail_url
+        )
+        flash('HR validation complete. Forwarded for final approval.', 'success')
+
+    elif decision == 'Reject':
+        client.table('leave_requests').update({
+            'hr_validated': False,
+            'hr_validated_by': current_user.id,
+            'hr_validated_at': now_iso,
+            'hr_notes': notes,
+            'workflow_step': 'Rejected',
+            'status': 'Rejected',
+        }).eq('id', leave_id).execute()
+
+        if emp_id:
+            Notification.create(
+                user_id=emp_id,
+                title="Leave Request Rejected — HR/Payroll",
+                message=f"Your {leave['leave_type']} leave ({leave['start_date']} → {leave['end_date']}) "
+                        f"did not pass HR/Payroll validation.{(' Reason: ' + notes) if notes else ''}",
+                n_type="danger", sender_subsystem='hr3', target_url=detail_url
+            )
+        flash('Rejected at HR validation. Employee notified.', 'info')
+
+    return redirect(detail_url)
+
+
+@hr3_bp.route('/leaves/<int:leave_id>/final-decision', methods=['POST'])
+@login_required
+def final_decision_leave(leave_id):
+    """Step 3 — Final approval decision; updates HR records and notifies employee."""
+    is_admin = current_user.is_super_admin() or (
+        current_user.role in ['Admin', 'Administrator'] and current_user.subsystem == 'hr3'
+    )
+    if not is_admin:
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr3.leave_detail', leave_id=leave_id))
+
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+
+    decision = request.form.get('decision')
+    notes = (request.form.get('notes') or '').strip()
+
+    try:
+        leave_resp = client.table('leave_requests').select('*').eq('id', leave_id).limit(1).execute()
+        if not leave_resp.data:
+            flash('Leave request not found.', 'danger')
+            return redirect(url_for('hr3.list_leaves'))
+        leave = leave_resp.data[0]
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        return redirect(url_for('hr3.list_leaves'))
+
+    if leave.get('workflow_step') != 'Final Approval':
+        flash('This request is not awaiting final approval.', 'warning')
+        return redirect(url_for('hr3.leave_detail', leave_id=leave_id))
+
+    now_iso = datetime.now().isoformat()
+    detail_url = url_for('hr3.leave_detail', leave_id=leave_id)
+    emp_id = leave.get('user_id')
+
+    def _get_user(uid):
+        if not uid: return None
+        try:
+            r = client.table('users').select('id, username, full_name').eq('id', uid).limit(1).execute()
+            return r.data[0] if r.data else None
+        except Exception: return None
+
+    employee = _get_user(emp_id)
+    emp_name = (employee.get('full_name') or employee.get('username') or 'Employee') if employee else 'Employee'
+
+    if decision == 'Approve':
+        # ── Update HR records (status = Approved, archive) ────────────────
+        client.table('leave_requests').update({
+            'final_decision': 'Approved',
+            'final_decided_by': current_user.id,
+            'final_decided_at': now_iso,
+            'workflow_step': 'Approved',
+            'status': 'Approved',
+            'approved_by': current_user.id,
+            'is_archived': True,
+            'archived_at': now_iso,
+        }).eq('id', leave_id).execute()
+
+        if emp_id:
+            Notification.create(
+                user_id=emp_id,
+                title="Leave Request Approved",
+                message=f"Your {leave['leave_type']} leave ({leave['start_date']} → {leave['end_date']}) "
+                        f"has been fully approved. Enjoy your time off!",
+                n_type="success", sender_subsystem='hr3', target_url=detail_url
+            )
+        flash(f"Leave approved and HR records updated. {emp_name} has been notified.", 'success')
+
+    elif decision == 'Reject':
+        client.table('leave_requests').update({
+            'final_decision': 'Rejected',
+            'final_decided_by': current_user.id,
+            'final_decided_at': now_iso,
+            'workflow_step': 'Rejected',
+            'status': 'Rejected',
+            'is_archived': True,
+            'archived_at': now_iso,
+        }).eq('id', leave_id).execute()
+
+        if emp_id:
+            Notification.create(
+                user_id=emp_id,
+                title="Leave Request Not Approved",
+                message=f"Your {leave['leave_type']} leave ({leave['start_date']} → {leave['end_date']}) "
+                        f"was not approved at final review.{(' Note: ' + notes) if notes else ' Please contact HR.'}",
+                n_type="danger", sender_subsystem='hr3', target_url=detail_url
+            )
+        flash('Leave request rejected. Employee has been notified.', 'info')
+
+    return redirect(detail_url)
+
+
+@hr3_bp.route('/leaves/<int:leave_id>/archive', methods=['POST'])
+@login_required
+def archive_leave(leave_id):
+    """Manually archive a completed or rejected leave request."""
+    is_admin = current_user.is_super_admin() or (
+        current_user.role in ['Admin', 'Administrator'] and current_user.subsystem == 'hr3'
+    )
+    if not is_admin:
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr3.leave_detail', leave_id=leave_id))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('leave_requests').update({
+            'is_archived': True,
+            'archived_at': datetime.now().isoformat(),
+        }).eq('id', leave_id).execute()
+        flash('Leave request archived.', 'success')
+    except Exception as e:
+        flash(f'Error archiving: {str(e)}', 'danger')
     return redirect(url_for('hr3.list_leaves'))
 
 
+@hr3_bp.route('/leaves/approve', methods=['POST'])
+@login_required
+def approve_leave():
+    """Legacy quick-approve route — redirected into the new ESS workflow."""
+    leave_id = request.form.get('leave_id')
+    status = request.form.get('status')  # 'Approved' or 'Rejected'
+
+    is_admin = current_user.is_super_admin() or (
+        current_user.role in ['Admin', 'Administrator'] and current_user.subsystem == 'hr3'
+    )
+    if not is_admin:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('hr3.dashboard'))
+
+    if not leave_id:
+        return redirect(url_for('hr3.list_leaves'))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        leave_resp = client.table('leave_requests').select('user_id, leave_type, workflow_step').eq('id', leave_id).limit(1).execute()
+        if not leave_resp.data:
+            flash('Leave request not found.', 'danger')
+            return redirect(url_for('hr3.list_leaves'))
+        leave = leave_resp.data[0]
+
+        # If still in old simple flow (no workflow_step set), do direct update
+        if not leave.get('workflow_step'):
+            from utils.hms_models import Notification
+            client.table('leave_requests').update({
+                'status': status,
+                'approved_by': current_user.id,
+                'workflow_step': status,
+                'is_archived': True,
+                'archived_at': datetime.now().isoformat()
+            }).eq('id', leave_id).execute()
+            target_id = leave.get('user_id')
+            if target_id:
+                Notification.create(user_id=target_id,
+                    title=f"Leave Request {status}",
+                    message=f"Your {leave['leave_type']} leave has been {status.lower()}.",
+                    n_type="success" if status == 'Approved' else "danger",
+                    sender_subsystem=BLUEPRINT_NAME)
+            flash(f'Leave request {status.lower()}.', 'success')
+            return redirect(url_for('hr3.list_leaves'))
+
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+
+    # For new-flow requests, redirect to detail page
+    return redirect(url_for('hr3.leave_detail', leave_id=leave_id))

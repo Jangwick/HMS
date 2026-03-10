@@ -1363,3 +1363,49 @@ CREATE POLICY "Public Update Resumes" ON storage.objects FOR UPDATE WITH CHECK (
 DROP POLICY IF EXISTS "Public Delete Resumes" ON storage.objects;
 CREATE POLICY "Public Delete Resumes" ON storage.objects FOR DELETE USING (bucket_id = 'resumes');
 
+-- =====================================================
+-- ESS (EMPLOYEE SELF-SERVICE) WORKFLOW MIGRATION
+-- Full multi-step leave request approval workflow
+-- =====================================================
+
+-- Extended leave_requests table for full ESS workflow
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS document_url TEXT;
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS workflow_step VARCHAR(50) DEFAULT 'Supervisor Review';
+
+-- Step 1: Supervisor review
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS supervisor_id INTEGER REFERENCES users(id);
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS supervisor_decision VARCHAR(20);
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS supervisor_notes TEXT;
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS supervisor_decided_at TIMESTAMP;
+
+-- Step 2: HR / Payroll validation
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS hr_validated BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS hr_validated_by INTEGER REFERENCES users(id);
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS hr_validated_at TIMESTAMP;
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS hr_notes TEXT;
+
+-- Step 3: Final decision
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS final_decision VARCHAR(20);
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS final_decided_by INTEGER REFERENCES users(id);
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS final_decided_at TIMESTAMP;
+
+-- Archive
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP;
+
+-- Bucket for ESS supporting documents (medical certs, etc.)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('ess-documents', 'ess-documents', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public Access ESS Docs" ON storage.objects;
+CREATE POLICY "Public Access ESS Docs" ON storage.objects FOR SELECT USING (bucket_id = 'ess-documents');
+
+DROP POLICY IF EXISTS "Public Upload ESS Docs" ON storage.objects;
+CREATE POLICY "Public Upload ESS Docs" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'ess-documents');
+
+DROP POLICY IF EXISTS "Public Update ESS Docs" ON storage.objects;
+CREATE POLICY "Public Update ESS Docs" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'ess-documents');
+
+DROP POLICY IF EXISTS "Public Delete ESS Docs" ON storage.objects;
+CREATE POLICY "Public Delete ESS Docs" ON storage.objects FOR DELETE USING (bucket_id = 'ess-documents');
