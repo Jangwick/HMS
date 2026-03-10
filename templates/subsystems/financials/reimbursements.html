@@ -191,7 +191,7 @@
                         class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]">
                     <option value="">&mdash; Select account &mdash;</option>
                     {% for acc in bank_accounts %}
-                    <option value="{{ acc.id }}">{{ acc.bank_name }} Â&middot; {{ acc.account_number }} (&#8369;{{ "%.2f"|format(acc.balance) }})</option>
+                    <option value="{{ acc.id }}">{{ acc.bank_name }} &middot; {{ acc.account_number }} (&#8369;{{ "%.2f"|format(acc.balance) }})</option>
                     {% endfor %}
                 </select>
             </div>
@@ -267,7 +267,7 @@ function openPayModal(claimId, claimType, amount) {
         el.classList.add('border-gray-200','text-gray-500');
     });
     document.getElementById('payForm').action = `/financials/reimbursements/${claimId}/decide`;
-    document.getElementById('payDesc').textContent = `${claimType} &mdash; &#8369;${typeof amount === 'number' ? amount.toFixed(2) : amount}`;
+    document.getElementById('payDesc').innerHTML = `${claimType} &mdash; &#8369;${typeof amount === 'number' ? amount.toFixed(2) : amount}`;
     const m = document.getElementById('payModal');
     m.classList.remove('hidden'); m.classList.add('flex');
 }
@@ -277,7 +277,7 @@ function closePayModal() {
 }
 function openRejectModal(claimId, claimType, amount) {
     document.getElementById('rejectForm').action = `/financials/reimbursements/${claimId}/decide`;
-    document.getElementById('rejectDesc').textContent = `${claimType} &mdash; &#8369;${typeof amount === 'number' ? amount.toFixed(2) : amount}`;
+    document.getElementById('rejectDesc').innerHTML = `${claimType} &mdash; &#8369;${typeof amount === 'number' ? amount.toFixed(2) : amount}`;
     const m = document.getElementById('rejectModal');
     m.classList.remove('hidden'); m.classList.add('flex');
 }
