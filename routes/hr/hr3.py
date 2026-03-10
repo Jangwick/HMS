@@ -822,7 +822,7 @@ def list_attendance():
     display_color = current_config['color']
     display_icon = current_config['icon']
     
-    query = client.table('attendance_logs').select('*, users(username, avatar_url, full_name)')
+    query = client.table('attendance_logs').select('*, users(username, avatar_url, full_name, department, subsystem)')
     
     # Non-admins only see their own logs
     if not current_user.is_super_admin() and (current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3'):
@@ -830,6 +830,15 @@ def list_attendance():
         
     response = query.order('clock_in', desc=True).execute()
     logs = response.data if response.data else []
+
+    # Group logs by department for admin view
+    logs_by_dept = {}
+    for log in logs:
+        dept = (log.get('users') or {}).get('department') or \
+               (log.get('users') or {}).get('subsystem') or 'Unassigned'
+        dept = dept.upper()
+        logs_by_dept.setdefault(dept, []).append(log)
+    logs_by_dept = dict(sorted(logs_by_dept.items()))
     
     # If admin, also find who hasn't clocked in today
     missing_staff = []
@@ -874,6 +883,7 @@ def list_attendance():
             
     return render_template('subsystems/hr/hr3/attendance.html',
                            logs=logs,
+                           logs_by_dept=logs_by_dept,
                            missing_staff=missing_staff,
                            users=users_list,
                            schedules=sched_map,

@@ -406,17 +406,17 @@
     </div>
     {% endif %}
 
-    <!-- Common Section: Activity Log (Always visible) -->
-    <div class="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
-        <div class="px-8 py-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+    <!-- Activity Log: by Department (admin) or own records (employee) -->
+    <div class="space-y-4">
+        <div class="flex items-center justify-between">
             <h4 class="font-black text-gray-900 uppercase tracking-widest text-xs">
-                {{ "Global Personnel Activity" if is_workforce_admin else "My Attendance Records" }}
+                {{ "Personnel Activity by Department" if is_workforce_admin else "My Attendance Records" }}
             </h4>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3">
                 <div class="relative hidden md:block">
                     <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
                     <input type="text" id="logSearch" placeholder="Filter logs..."
-                        class="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-accent transition-all">
+                        class="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-accent transition-all shadow-sm">
                 </div>
                 <div class="flex gap-2">
                     <button onclick="downloadAttendanceCSV()"
@@ -433,20 +433,142 @@
             </div>
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-left" id="attendanceTable">
-                <thead
-                    class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
-                    <tr>
-                        <th class="px-8 py-6">Staff Member</th>
-                        <th class="px-6 py-6">Session Period</th>
-                        <th class="px-6 py-6">Timeline</th>
-                        <th class="px-6 py-6">Status Details</th>
-                        <th class="px-8 py-6 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    {% for log in logs %}
+        {% if is_workforce_admin and logs_by_dept %}
+        {# ── Per-Department Accordion Tables ── #}
+        {% for dept, dept_logs in logs_by_dept.items() %}
+        {% set on_time = dept_logs | selectattr('status', 'equalto', 'On-time') | list | length %}
+        {% set late    = dept_logs | selectattr('status', 'equalto', 'Late')    | list | length %}
+        {% set on_duty = dept_logs | rejectattr('clock_out') | list | length %}
+        <div class="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+            <button type="button" onclick="toggleDept('dept-{{ loop.index }}')"
+                    class="w-full px-8 py-5 border-b border-gray-50 flex items-center justify-between bg-gray-50/30 hover:bg-gray-100/40 transition-colors group">
+                <div class="flex items-center gap-4">
+                    <div class="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center shrink-0">
+                        <i class="bi bi-building text-white text-xs"></i>
+                    </div>
+                    <div class="text-left">
+                        <p class="font-black text-gray-900 text-sm">{{ dept }}</p>
+                        <p class="text-[10px] text-gray-400 font-bold">{{ dept_logs | length }} record{{ 's' if dept_logs | length != 1 }}</p>
+                    </div>
+                    <div class="flex items-center gap-2 ml-2 flex-wrap">
+                        {% if on_duty > 0 %}
+                        <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-green-50 text-green-700 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block"></span> {{ on_duty }} on duty
+                        </span>
+                        {% endif %}
+                        {% if late > 0 %}<span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-50 text-amber-700">{{ late }} late</span>{% endif %}
+                        {% if on_time > 0 %}<span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-50 text-emerald-700">{{ on_time }} on-time</span>{% endif %}
+                    </div>
+                </div>
+                <i class="bi bi-chevron-down text-gray-400 group-hover:text-gray-600 transition-transform duration-200" id="dept-{{ loop.index }}-chevron"></i>
+            </button>
+            <div id="dept-{{ loop.index }}" class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
+                        <tr>
+                            <th class="px-8 py-4">Staff Member</th>
+                            <th class="px-6 py-4">Session Period</th>
+                            <th class="px-6 py-4">Timeline</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-8 py-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for log in dept_logs %}
+                        <tr class="hover:bg-gray-50/50 transition-colors group log-row"
+                            data-username="{{ log.users.username|lower if log.users else 'system' }}"
+                            data-status="{{ log.status|lower }}">
+                            <td class="px-8 py-5">
+                                <div class="flex items-center gap-3">
+                                    {% if log.users and log.users.avatar_url %}
+                                    <img src="{{ log.users.avatar_url }}" alt="" class="w-9 h-9 rounded-xl object-cover shadow-sm">
+                                    {% else %}
+                                    <div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xs">{{ log.users.username[0]|upper if log.users else 'S' }}</div>
+                                    {% endif %}
+                                    <div>
+                                        <p class="font-black text-gray-900 text-sm leading-tight truncate max-w-[160px]">{{ (log.users.full_name or log.users.username) if log.users else 'System User' }}</p>
+                                        <p class="text-[10px] text-gray-400">@{{ log.users.username if log.users else 'system' }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-5">
+                                <span class="text-xs font-black text-gray-900">{{ log.clock_in|datetime }}</span>
+                                <p class="text-[9px] text-gray-400 font-mono">HASH: {{ log.id }}</p>
+                            </td>
+                            <td class="px-6 py-5">
+                                {% if log.clock_out %}
+                                <span class="text-xs font-black text-gray-900">{{ log.clock_out|datetime }}</span>
+                                {% else %}
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                    <span class="text-[10px] font-black text-green-600 uppercase tracking-[0.1em]">On Duty</span>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-5">
+                                <span class="px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest
+                                    {% if log.status == 'On-time' %}bg-emerald-50 text-emerald-600
+                                    {% elif log.status == 'Late' %}bg-amber-50 text-amber-600
+                                    {% else %}bg-rose-50 text-rose-600{% endif %}">{{ log.status }}</span>
+                            </td>
+                            <td class="px-8 py-5 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    {% if not log.clock_out %}
+                                    {% if log.user_id == current_user.id %}
+                                    <form action="{{ url_for('hr3.clock_out') }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="next" value="{{ request.full_path }}">
+                                        <button type="submit" class="h-9 px-4 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2">
+                                            <i class="bi bi-box-arrow-right"></i> End Shift
+                                        </button>
+                                    </form>
+                                    {% elif is_workforce_admin %}
+                                    <form action="{{ url_for('hr3.force_clock_out', log_id=log.id) }}" method="POST" onsubmit="return confirm('Force clock-out this staff member?')">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="next" value="{{ request.full_path }}">
+                                        <button type="submit" class="h-9 px-4 bg-slate-800 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2">
+                                            <i class="bi bi-shield-slash"></i> Force Out
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    {% endif %}
+                                    <button onclick='viewLogDetails({
+                                        id: {{ log.id|tojson }},
+                                        username: {{ (log.users.username|tojson) if log.users else "System"|tojson }},
+                                        fullName: {{ (log.users.full_name|default(log.users.username)|tojson) if log.users else "System User"|tojson }},
+                                        clockIn: {{ log.clock_in|datetime|tojson }},
+                                        clockOut: {{ (log.clock_out|datetime|tojson) if log.clock_out else "Still On-Duty"|tojson }},
+                                        status: {{ log.status|tojson }},
+                                        remarks: {{ (log.remarks|tojson) if log.remarks else "No remarks"|tojson }}
+                                    })' class="w-9 h-9 rounded-xl bg-gray-50 text-gray-400 hover:text-accent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <i class="bi bi-info-circle-fill"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% else %}
+        {# Non-admin: own records, flat table #}
+        <div class="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left" id="attendanceTable">
+                    <thead class="bg-gray-50/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100">
+                        <tr>
+                            <th class="px-8 py-6">Staff Member</th>
+                            <th class="px-6 py-6">Session Period</th>
+                            <th class="px-6 py-6">Timeline</th>
+                            <th class="px-6 py-6">Status Details</th>
+                            <th class="px-8 py-6 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for log in logs %}
                     <tr class="hover:bg-gray-50/50 transition-colors group log-row"
                         data-username="{{ log.users.username|lower if log.users else 'system' }}"
                         data-status="{{ log.status|lower }}">
@@ -537,11 +659,24 @@
                             </div>
                         </td>
                     </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
+        {% endif %}
     </div>
+
+    <script>
+    function toggleDept(id) {
+        const body = document.getElementById(id);
+        const chevron = document.getElementById(id + '-chevron');
+        if (!body) return;
+        const isHidden = body.style.display === 'none';
+        body.style.display = isHidden ? '' : 'none';
+        chevron.style.transform = isHidden ? '' : 'rotate(-90deg)';
+    }
+    </script>
 </div>
 
 <!-- Scheduling Modal (Admin Only) -->
