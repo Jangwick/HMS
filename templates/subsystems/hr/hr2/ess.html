@@ -15,14 +15,14 @@
     </div>
 
     <!-- ── Quick stat strip ── -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
         <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
             <p class="text-3xl font-black text-gray-900">{{ assessment_counts.Competent }}</p>
-            <p class="text-[11px] font-black text-green-600 uppercase tracking-widest mt-1">Competencies Earned</p>
+            <p class="text-[11px] font-black text-green-600 uppercase tracking-widest mt-1">Competencies</p>
         </div>
         <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
             <p class="text-3xl font-black text-gray-900">{{ training_counts.enrolled }}</p>
-            <p class="text-[11px] font-black text-blue-500 uppercase tracking-widest mt-1">Trainings Enrolled</p>
+            <p class="text-[11px] font-black text-blue-500 uppercase tracking-widest mt-1">Trainings</p>
         </div>
         <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
             <p class="text-3xl font-black text-gray-900">{{ training_counts.certs }}</p>
@@ -31,6 +31,14 @@
         <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
             <p class="text-3xl font-black {{ 'text-red-600' if gap_count else 'text-gray-300' }}">{{ gap_count }}</p>
             <p class="text-[11px] font-black uppercase tracking-widest mt-1 {{ 'text-red-400' if gap_count else 'text-gray-400' }}">Skill Gaps</p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
+            <p class="text-3xl font-black {{ 'text-amber-500' if leave_summary['Pending'] else 'text-gray-300' }}">{{ leave_summary['Pending'] }}</p>
+            <p class="text-[11px] font-black text-amber-500 uppercase tracking-widest mt-1">Leaves Pending</p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
+            <p class="text-3xl font-black {{ 'text-amber-500' if attendance_summary['Late'] else 'text-gray-300' }}">{{ attendance_summary['Late'] }}</p>
+            <p class="text-[11px] font-black uppercase tracking-widest mt-1 {{ 'text-amber-400' if attendance_summary['Late'] else 'text-gray-400' }}">Late (Recent)</p>
         </div>
     </div>
 
@@ -233,6 +241,173 @@
 
     </div>
 
+    <!-- ── Workforce Section ── -->
+    <div>
+        <h2 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Workforce</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            <!-- My Schedule card -->
+            <div class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+                <div class="px-6 py-5 flex items-center gap-3 border-b border-gray-100" style="background: linear-gradient(to right, #8B5CF615, transparent)">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-violet-500">
+                        <i class="bi bi-calendar-week text-sm"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-black text-gray-900 text-sm">My Schedule</h2>
+                        <p class="text-[11px] text-gray-400">Assigned shift days &amp; times</p>
+                    </div>
+                </div>
+                <div class="p-6 flex-1">
+                    {% if my_schedules %}
+                    <div class="space-y-2">
+                        {% for s in my_schedules %}
+                        <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                            <span class="text-xs font-black text-gray-700 w-24">{{ s.day_of_week }}</span>
+                            <span class="text-xs text-gray-500">
+                                {% set start = s.start_time[:5] if s.start_time else '--' %}
+                                {% set end = s.end_time[:5] if s.end_time else '--' %}
+                                {{ start }} &ndash; {{ end }}
+                            </span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-green-50 text-green-700">Active</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-6">
+                        <i class="bi bi-calendar-x text-4xl text-gray-200 block mb-2"></i>
+                        <p class="text-sm text-gray-400">No schedule assigned yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+                    <button onclick="openModal('modalSchedule')" class="text-xs font-black text-violet-600 hover:underline">
+                        View full schedule &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- My Attendance card -->
+            <div class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+                <div class="px-6 py-5 flex items-center gap-3 border-b border-gray-100" style="background: linear-gradient(to right, #0891B215, transparent)">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-cyan-600">
+                        <i class="bi bi-clock-history text-sm"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-black text-gray-900 text-sm">My Attendance</h2>
+                        <p class="text-[11px] text-gray-400">Recent clock-in/out records</p>
+                    </div>
+                </div>
+                <div class="p-6 flex-1">
+                    <div class="flex items-center gap-4 mb-5">
+                        <div class="text-center">
+                            <p class="text-2xl font-black text-green-600">{{ attendance_summary['On-time'] }}</p>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">On-time</p>
+                        </div>
+                        <div class="w-px h-10 bg-gray-100"></div>
+                        <div class="text-center">
+                            <p class="text-2xl font-black text-amber-500">{{ attendance_summary['Late'] }}</p>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">Late</p>
+                        </div>
+                        <div class="w-px h-10 bg-gray-100"></div>
+                        <div class="text-center">
+                            <p class="text-2xl font-black text-red-500">{{ attendance_summary['Absent'] }}</p>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">Absent</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        {% for a in recent_attendance %}
+                        <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                            <span class="text-xs text-gray-500">{{ a.clock_in[:10] if a.clock_in else '—' }}</span>
+                            <span class="text-xs text-gray-600">
+                                {{ a.clock_in[11:16] if a.clock_in else '—' }}
+                                &rarr;
+                                {{ a.clock_out[11:16] if a.clock_out else 'Active' }}
+                            </span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black
+                                {{ 'bg-green-50 text-green-700' if a.status == 'On-time'
+                                   else 'bg-amber-50 text-amber-700' if a.status == 'Late'
+                                   else 'bg-red-50 text-red-600' if a.status == 'Absent'
+                                   else 'bg-gray-50 text-gray-500' }}">
+                                {{ a.status or '—' }}
+                            </span>
+                        </div>
+                        {% else %}
+                        <p class="text-sm text-gray-400">No attendance records yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+                    <button onclick="openModal('modalAttendance')" class="text-xs font-black text-cyan-600 hover:underline">
+                        View full attendance &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- My Leave Requests card -->
+            <div class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+                <div class="px-6 py-5 flex items-center gap-3 border-b border-gray-100" style="background: linear-gradient(to right, #EC489915, transparent)">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-pink-500">
+                        <i class="bi bi-calendar-check text-sm"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-black text-gray-900 text-sm">My Leave Requests</h2>
+                        <p class="text-[11px] text-gray-400">Leave history &amp; status</p>
+                    </div>
+                </div>
+                <div class="p-6 flex-1">
+                    <div class="flex items-center gap-4 mb-5">
+                        <div class="text-center">
+                            <p class="text-2xl font-black text-amber-500">{{ leave_summary['Pending'] }}</p>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">Pending</p>
+                        </div>
+                        <div class="w-px h-10 bg-gray-100"></div>
+                        <div class="text-center">
+                            <p class="text-2xl font-black text-green-600">{{ leave_summary['Approved'] }}</p>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">Approved</p>
+                        </div>
+                        <div class="w-px h-10 bg-gray-100"></div>
+                        <div class="text-center">
+                            <p class="text-2xl font-black text-red-500">{{ leave_summary['Rejected'] }}</p>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">Rejected</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        {% for lv in recent_leaves %}
+                        <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                            <div>
+                                <p class="text-xs font-bold text-gray-700">{{ lv.leave_type or '—' }}</p>
+                                <p class="text-[10px] text-gray-400">
+                                    {{ lv.start_date[:10] if lv.start_date else '—' }}
+                                    {% if lv.end_date and lv.end_date != lv.start_date %}&ndash; {{ lv.end_date[:10] }}{% endif %}
+                                </p>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black
+                                {{ 'bg-amber-50 text-amber-700' if lv.status == 'Pending'
+                                   else 'bg-green-50 text-green-700' if lv.status == 'Approved'
+                                   else 'bg-red-50 text-red-600' if lv.status == 'Rejected'
+                                   else 'bg-blue-50 text-blue-600' }}">
+                                {{ lv.status or '—' }}
+                            </span>
+                        </div>
+                        {% else %}
+                        <p class="text-sm text-gray-400">No leave requests yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                    <button onclick="openModal('modalLeaveHistory')" class="text-xs font-black text-pink-600 hover:underline">
+                        View all leaves &rarr;
+                    </button>
+                    <button onclick="openModal('modalLeaveRequest')"
+                       class="px-3 py-1.5 rounded-xl text-[11px] font-black text-white bg-pink-500 hover:bg-pink-600 transition-all">
+                        <i class="bi bi-plus mr-1"></i>New Request
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
     <!-- ── Recent Notifications ── -->
     {% if notifications %}
     <div class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden">
@@ -283,8 +458,313 @@
                 <i class="bi bi-book text-2xl text-violet-500"></i>
                 <span class="text-xs font-black text-gray-700 group-hover:text-gray-900">My Learning</span>
             </a>
+            <button onclick="openModal('modalSchedule')"
+               class="group bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all text-center flex flex-col items-center gap-2 w-full">
+                <i class="bi bi-calendar-week text-2xl text-violet-400"></i>
+                <span class="text-xs font-black text-gray-700 group-hover:text-gray-900">My Schedule</span>
+            </button>
+            <button onclick="openModal('modalAttendance')"
+               class="group bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all text-center flex flex-col items-center gap-2 w-full">
+                <i class="bi bi-clock-history text-2xl text-cyan-500"></i>
+                <span class="text-xs font-black text-gray-700 group-hover:text-gray-900">My Attendance</span>
+            </button>
+            <button onclick="openModal('modalLeaveRequest')"
+               class="group bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all text-center flex flex-col items-center gap-2 w-full">
+                <i class="bi bi-calendar-check text-2xl text-pink-500"></i>
+                <span class="text-xs font-black text-gray-700 group-hover:text-gray-900">Request Leave</span>
+            </button>
         </div>
     </div>
 
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════════ MODALS ══ -->
+
+<!-- Backdrop -->
+<div id="modalBackdrop" onclick="closeAllModals()"
+     class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 hidden"></div>
+
+{# ── Modal: My Schedule ── #}
+<div id="modalSchedule" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="px-6 py-5 flex items-center justify-between border-b border-gray-100"
+             style="background: linear-gradient(to right, #8B5CF615, transparent)">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-violet-500">
+                    <i class="bi bi-calendar-week text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-gray-900">My Schedule</h3>
+                    <p class="text-[11px] text-gray-400">All assigned shifts</p>
+                </div>
+            </div>
+            <button onclick="closeAllModals()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="p-6 max-h-[60vh] overflow-y-auto">
+            {% if my_schedules %}
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-[10px] uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                        <th class="text-left pb-3 font-black">Day</th>
+                        <th class="text-left pb-3 font-black">Start</th>
+                        <th class="text-left pb-3 font-black">End</th>
+                        <th class="text-left pb-3 font-black">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for s in my_schedules %}
+                    <tr>
+                        <td class="py-3 font-black text-gray-800">{{ s.day_of_week }}</td>
+                        <td class="py-3 text-gray-600">{{ s.start_time[:5] if s.start_time else '—' }}</td>
+                        <td class="py-3 text-gray-600">{{ s.end_time[:5] if s.end_time else '—' }}</td>
+                        <td class="py-3">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-green-50 text-green-700">Active</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-10">
+                <i class="bi bi-calendar-x text-5xl text-gray-200 block mb-3"></i>
+                <p class="text-gray-400">No schedule assigned yet. Contact HR3 to get a shift assigned.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# ── Modal: My Attendance ── #}
+<div id="modalAttendance" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden">
+        <div class="px-6 py-5 flex items-center justify-between border-b border-gray-100"
+             style="background: linear-gradient(to right, #0891B215, transparent)">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-cyan-600">
+                    <i class="bi bi-clock-history text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-gray-900">My Attendance</h3>
+                    <p class="text-[11px] text-gray-400">Recent clock-in/out records</p>
+                </div>
+            </div>
+            <button onclick="closeAllModals()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="px-6 py-4 flex items-center gap-6 border-b border-gray-50 bg-gray-50/50">
+            <div class="text-center"><p class="text-xl font-black text-green-600">{{ attendance_summary['On-time'] }}</p><p class="text-[10px] text-gray-400 uppercase font-bold">On-time</p></div>
+            <div class="text-center"><p class="text-xl font-black text-amber-500">{{ attendance_summary['Late'] }}</p><p class="text-[10px] text-gray-400 uppercase font-bold">Late</p></div>
+            <div class="text-center"><p class="text-xl font-black text-red-500">{{ attendance_summary['Absent'] }}</p><p class="text-[10px] text-gray-400 uppercase font-bold">Absent</p></div>
+        </div>
+        <div class="p-6 max-h-[55vh] overflow-y-auto">
+            {% if recent_attendance %}
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-[10px] uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                        <th class="text-left pb-3 font-black">Date</th>
+                        <th class="text-left pb-3 font-black">Clock In</th>
+                        <th class="text-left pb-3 font-black">Clock Out</th>
+                        <th class="text-left pb-3 font-black">OT hrs</th>
+                        <th class="text-left pb-3 font-black">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for a in recent_attendance %}
+                    <tr>
+                        <td class="py-3 font-bold text-gray-700">{{ a.clock_in[:10] if a.clock_in else '—' }}</td>
+                        <td class="py-3 text-gray-600">{{ a.clock_in[11:16] if a.clock_in else '—' }}</td>
+                        <td class="py-3 text-gray-600">{{ a.clock_out[11:16] if a.clock_out else '<span class="text-green-600 font-bold">Active</span>' | safe }}</td>
+                        <td class="py-3 text-gray-500">{{ a.overtime_hours or '—' }}</td>
+                        <td class="py-3">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black
+                                {{ 'bg-green-50 text-green-700' if a.status == 'On-time'
+                                   else 'bg-amber-50 text-amber-700' if a.status == 'Late'
+                                   else 'bg-red-50 text-red-600' if a.status == 'Absent'
+                                   else 'bg-gray-50 text-gray-500' }}">
+                                {{ a.status or '—' }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-10">
+                <i class="bi bi-clock text-5xl text-gray-200 block mb-3"></i>
+                <p class="text-gray-400">No attendance records yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# ── Modal: Leave History ── #}
+<div id="modalLeaveHistory" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden">
+        <div class="px-6 py-5 flex items-center justify-between border-b border-gray-100"
+             style="background: linear-gradient(to right, #EC489915, transparent)">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-pink-500">
+                    <i class="bi bi-calendar-check text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-gray-900">My Leave Requests</h3>
+                    <p class="text-[11px] text-gray-400">Full leave history</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="closeAllModals(); openModal('modalLeaveRequest')"
+                        class="px-3 py-1.5 rounded-xl text-[11px] font-black text-white bg-pink-500 hover:bg-pink-600 transition-all">
+                    <i class="bi bi-plus mr-1"></i>New Request
+                </button>
+                <button onclick="closeAllModals()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        </div>
+        <div class="p-6 max-h-[60vh] overflow-y-auto">
+            {% if recent_leaves %}
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-[10px] uppercase tracking-widest text-gray-400 border-b border-gray-100">
+                        <th class="text-left pb-3 font-black">Type</th>
+                        <th class="text-left pb-3 font-black">From</th>
+                        <th class="text-left pb-3 font-black">To</th>
+                        <th class="text-left pb-3 font-black">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% for lv in recent_leaves %}
+                    <tr>
+                        <td class="py-3 font-bold text-gray-800">{{ lv.leave_type or '—' }}</td>
+                        <td class="py-3 text-gray-600">{{ lv.start_date[:10] if lv.start_date else '—' }}</td>
+                        <td class="py-3 text-gray-600">{{ lv.end_date[:10] if lv.end_date else '—' }}</td>
+                        <td class="py-3">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black
+                                {{ 'bg-amber-50 text-amber-700' if lv.status == 'Pending'
+                                   else 'bg-green-50 text-green-700' if lv.status == 'Approved'
+                                   else 'bg-red-50 text-red-600' if lv.status == 'Rejected'
+                                   else 'bg-blue-50 text-blue-600' }}">
+                                {{ lv.status or '—' }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-10">
+                <i class="bi bi-calendar-x text-5xl text-gray-200 block mb-3"></i>
+                <p class="text-gray-400 mb-4">No leave requests yet.</p>
+                <button onclick="closeAllModals(); openModal('modalLeaveRequest')"
+                        class="px-4 py-2 rounded-xl text-sm font-black text-white bg-pink-500 hover:bg-pink-600 transition-all">
+                    <i class="bi bi-plus mr-1"></i>Submit a Leave Request
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# ── Modal: New Leave Request ── #}
+<div id="modalLeaveRequest" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="px-6 py-5 flex items-center justify-between border-b border-gray-100"
+             style="background: linear-gradient(to right, #EC489915, transparent)">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-pink-500">
+                    <i class="bi bi-send-check text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-gray-900">New Leave Request</h3>
+                    <p class="text-[11px] text-gray-400">Submit a leave application</p>
+                </div>
+            </div>
+            <button onclick="closeAllModals()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <form method="POST"
+              action="{{ url_for('hr3.request_leave') }}?next={{ url_for('hr2.employee_self_service', context=blueprint_name) | urlencode }}"
+              enctype="multipart/form-data"
+              class="p-6 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ url_for('hr2.employee_self_service', context=blueprint_name) }}">
+
+            <div>
+                <label class="block text-xs font-black text-gray-700 mb-1.5">Leave Type <span class="text-red-500">*</span></label>
+                <select name="leave_type" required
+                        class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300">
+                    <option value="">Select type…</option>
+                    <option value="Vacation Leave">Vacation Leave</option>
+                    <option value="Sick Leave">Sick Leave</option>
+                    <option value="Emergency Leave">Emergency Leave</option>
+                    <option value="Maternity Leave">Maternity Leave</option>
+                    <option value="Paternity Leave">Paternity Leave</option>
+                    <option value="Solo Parent Leave">Solo Parent Leave</option>
+                    <option value="Study Leave">Study Leave</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-black text-gray-700 mb-1.5">Start Date <span class="text-red-500">*</span></label>
+                    <input type="date" name="start_date" required
+                           class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300">
+                </div>
+                <div>
+                    <label class="block text-xs font-black text-gray-700 mb-1.5">End Date <span class="text-red-500">*</span></label>
+                    <input type="date" name="end_date" required
+                           class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-black text-gray-700 mb-1.5">Reason <span class="text-red-500">*</span></label>
+                <textarea name="remarks" rows="3" required minlength="10"
+                          placeholder="Please provide a reason (at least 10 characters)…"
+                          class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"></textarea>
+            </div>
+
+            <div>
+                <label class="block text-xs font-black text-gray-700 mb-1.5">Supporting Document <span class="text-gray-400 font-medium">(optional)</span></label>
+                <input type="file" name="document" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                       class="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100">
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="submit"
+                        class="flex-1 py-3 rounded-2xl text-sm font-black text-white bg-pink-500 hover:bg-pink-600 transition-all">
+                    <i class="bi bi-send-check mr-2"></i>Submit Leave Request
+                </button>
+                <button type="button" onclick="closeAllModals()"
+                        class="px-5 py-3 rounded-2xl text-sm font-black text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(id) {
+    document.getElementById('modalBackdrop').classList.remove('hidden');
+    document.getElementById(id).classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+function closeAllModals() {
+    ['modalSchedule','modalAttendance','modalLeaveHistory','modalLeaveRequest'].forEach(function(id) {
+        document.getElementById(id).classList.add('hidden');
+    });
+    document.getElementById('modalBackdrop').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeAllModals();
+});
+</script>
 {% endblock %}

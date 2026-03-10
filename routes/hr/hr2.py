@@ -1621,6 +1621,56 @@ def employee_self_service():
     except Exception:
         pass
 
+    # ── My Attendance (recent logs) ──
+    recent_attendance = []
+    attendance_summary = {'On-time': 0, 'Late': 0, 'Absent': 0}
+    try:
+        att_resp = client.table('attendance_logs') \
+            .select('id, clock_in, clock_out, status, remarks') \
+            .eq('user_id', uid) \
+            .order('clock_in', desc=True) \
+            .limit(5).execute()
+        recent_attendance = att_resp.data or []
+        for a in recent_attendance:
+            s = a.get('status', '')
+            if s in attendance_summary:
+                attendance_summary[s] += 1
+    except Exception:
+        pass
+
+    # ── My Leave Requests ──
+    recent_leaves = []
+    leave_summary = {'Pending': 0, 'Approved': 0, 'Rejected': 0}
+    try:
+        lv_resp = client.table('leave_requests') \
+            .select('id, leave_type, start_date, end_date, status, workflow_step, created_at') \
+            .eq('user_id', uid) \
+            .order('created_at', desc=True) \
+            .limit(5).execute()
+        recent_leaves = lv_resp.data or []
+        for lv in recent_leaves:
+            s = lv.get('status', '')
+            if s in leave_summary:
+                leave_summary[s] += 1
+    except Exception:
+        pass
+
+    # ── My Schedule ──
+    my_schedules = []
+    try:
+        sched_resp = client.table('staff_schedules') \
+            .select('day_of_week, start_time, end_time, is_active') \
+            .eq('user_id', uid) \
+            .eq('is_active', True) \
+            .execute()
+        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'Daily']
+        my_schedules = sorted(
+            sched_resp.data or [],
+            key=lambda x: day_order.index(x['day_of_week']) if x.get('day_of_week') in day_order else 99
+        )
+    except Exception:
+        pass
+
     return render_template('subsystems/hr/hr2/ess.html',
                            career_assignment=career_assignment,
                            assessment_counts=assessment_counts,
@@ -1629,6 +1679,11 @@ def employee_self_service():
                            recent_trainings=recent_trainings,
                            gap_count=gap_count,
                            notifications=notifications,
+                           recent_attendance=recent_attendance,
+                           attendance_summary=attendance_summary,
+                           recent_leaves=recent_leaves,
+                           leave_summary=leave_summary,
+                           my_schedules=my_schedules,
                            subsystem_name=display_name,
                            accent_color=accent,
                            blueprint_name=context)

@@ -645,7 +645,8 @@ def request_leave():
                 )
 
             flash('Leave request submitted! It has been routed to your supervisor for review.', 'success')
-            return redirect(target_url)
+            next_url = request.args.get('next') or request.form.get('next') or target_url
+            return redirect(next_url)
         except Exception as e:
             flash(f'Error submitting leave request: {str(e)}', 'danger')
 
