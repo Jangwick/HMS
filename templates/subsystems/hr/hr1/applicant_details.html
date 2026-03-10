@@ -24,7 +24,7 @@
                     Delete Candidate
                 </button>
             </form>
-            {% if applicant.status == 'Offer' or applicant.status == 'Interview' %}
+            {% if applicant.status == 'Offer' or applicant.status == 'Final Interview' %}
             <button onclick="openModal('handoffModal')"
                 class="px-6 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-lg transition-all transform hover:-translate-y-0.5">
                 Handoff to HR2
@@ -60,7 +60,8 @@
                         <div class="flex items-center space-x-2 mb-2">
                             <span class="px-4 py-1.5 rounded-full text-sm font-bold 
                                 {% if applicant.status == 'Screening' %}bg-blue-50 text-blue-600
-                                {% elif applicant.status == 'Interview' %}bg-amber-50 text-amber-600
+                                {% elif applicant.status == 'Initial Interview' %}bg-amber-50 text-amber-600
+                                {% elif applicant.status == 'Final Interview' %}bg-orange-50 text-orange-600
                                 {% elif applicant.status == 'Offer' %}bg-green-50 text-green-600
                                 {% elif applicant.status == 'Rejected' %}bg-red-50 text-red-600
                                 {% else %}bg-gray-50 text-gray-600{% endif %}">
@@ -195,7 +196,7 @@
                 <div class="space-y-3">
                     <p class="text-white/60 text-xs font-bold uppercase tracking-wider">Current Pipeline Position</p>
                     <div class="flex flex-col space-y-2">
-                        {% set statuses = ['Screening', 'Interview', 'Offer', 'Handoff', 'Rejected'] %}
+                        {% set statuses = ['Screening', 'Initial Interview', 'Final Interview', 'Offer', 'Handoff', 'Rejected'] %}
                         {% for s in statuses %}
                         <div class="flex items-center">
                             <div
@@ -314,7 +315,7 @@
                 class="p-8 space-y-6">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="space-y-4">
-                    {% for s in ['Screening', 'Interview', 'Offer', 'Rejected'] %}
+                    {% for s in ['Screening', 'Initial Interview', 'Final Interview', 'Offer', 'Rejected'] %}
                     <label
                         class="flex items-center p-4 rounded-2xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-all group">
                         <input type="radio" name="status" value="{{ s }}" {% if applicant.status==s %}checked{% endif %}

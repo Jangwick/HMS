@@ -274,7 +274,8 @@ def list_applicants():
     stats = {
         'total': len(all_applicants),
         'screening': len([a for a in all_applicants if a['status'] == 'Screening']),
-        'interview': len([a for a in all_applicants if a['status'] == 'Interview']),
+        'initial_interview': len([a for a in all_applicants if a['status'] == 'Initial Interview']),
+        'final_interview': len([a for a in all_applicants if a['status'] == 'Final Interview']),
         'offer': len([a for a in all_applicants if a['status'] == 'Offer']),
         'reject': len([a for a in all_applicants if a['status'] == 'Rejected'])
     }
@@ -486,14 +487,14 @@ def schedule_interview():
         
         try:
             client.table('interviews').insert(data).execute()
-            client.table('applicants').update({'status': 'Interview'}).eq('id', applicant_id).execute()
+            client.table('applicants').update({'status': 'Initial Interview'}).eq('id', applicant_id).execute()
             flash('Interview scheduled successfully!', 'success')
             return redirect(url_for('hr1.list_applicants'))
         except Exception as e:
             flash(f'Error scheduling interview: {str(e)}', 'danger')
             
     # GET: fetch only schedulable applicants (Screening or Interview stage)
-    applicants = client.table('applicants').select('*').in_('status', ['Screening', 'Interview']).order('first_name').execute().data
+    applicants = client.table('applicants').select('*').in_('status', ['Screening', 'Initial Interview', 'Final Interview']).order('first_name').execute().data
     # Interviewers: only active HR1 users with roles capable of conducting interviews (no Applicants)
     interviewers = client.table('users').select('id, username, role').eq('subsystem', 'hr1').eq('status', 'Active').in_('role', ['Staff', 'HR_Staff', 'Interviewer', 'Manager', 'Admin', 'Administrator', 'SuperAdmin']).order('username').execute().data
     

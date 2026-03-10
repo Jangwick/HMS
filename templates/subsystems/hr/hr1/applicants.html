@@ -26,7 +26,7 @@
     </div>
 
     <!-- Stat Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
         <!-- Total Applicants -->
         <a href="{{ url_for('hr1.list_applicants') }}" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-all group">
             <div class="flex items-center justify-between mb-4">
@@ -51,16 +51,28 @@
             <div class="text-sm font-medium text-gray-500">In Review</div>
         </a>
 
-        <!-- Interview -->
-        <a href="{{ url_for('hr1.list_applicants', status='Interview') }}" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-all group">
+        <!-- Initial Interview -->
+        <a href="{{ url_for('hr1.list_applicants', status='Initial Interview') }}" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-all group">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
                     <i class="bi bi-calendar-event text-2xl"></i>
                 </div>
-                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Interview</span>
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Initial Intv.</span>
             </div>
-            <div class="text-3xl font-black text-amber-600 mb-1">{{ stats.interview }}</div>
-            <div class="text-sm font-medium text-gray-500">Scheduled</div>
+            <div class="text-3xl font-black text-amber-600 mb-1">{{ stats.initial_interview }}</div>
+            <div class="text-sm font-medium text-gray-500">1st Round</div>
+        </a>
+
+        <!-- Final Interview -->
+        <a href="{{ url_for('hr1.list_applicants', status='Final Interview') }}" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-all group">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
+                    <i class="bi bi-calendar-check text-2xl"></i>
+                </div>
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Final Intv.</span>
+            </div>
+            <div class="text-3xl font-black text-orange-600 mb-1">{{ stats.final_interview }}</div>
+            <div class="text-sm font-medium text-gray-500">Final Round</div>
         </a>
 
         <!-- Offer -->

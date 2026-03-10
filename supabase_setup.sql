@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS applicants (
     phone VARCHAR(20),
     source VARCHAR(50), -- Walk-in, Referral, Agency
     vacancy_id INTEGER REFERENCES vacancies(id),
-    status VARCHAR(50) DEFAULT 'Screening', -- Screening, Interview, Offer, Handoff
+    status VARCHAR(50) DEFAULT 'Screening', -- Screening, Initial Interview, Final Interview, Offer, Handoff
     documents JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP DEFAULT NOW()
 );
