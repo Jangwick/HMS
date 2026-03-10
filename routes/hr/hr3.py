@@ -294,44 +294,40 @@ def clock_in():
         if schedule_resp.data:
             # Find schedule for today or 'Daily'
             schedule = next((s for s in schedule_resp.data if s['day_of_week'] == day_name or s['day_of_week'] == 'Daily'), None)
-            
-            if schedule:
-                start_time_str = schedule['start_time']
-                schedule_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} {start_time_str}", "%Y-%m-%d %H:%M:%S")
-                earliest_allowed = schedule_start - timedelta(minutes=15)
 
-                # Block clock-in if more than 15 minutes before shift start
-                if now < earliest_allowed:
-                    flash(
-                        f'Too early to clock in. Your shift starts at {schedule_start.strftime("%I:%M %p")}. '
-                        f'You may clock in from {earliest_allowed.strftime("%I:%M %p")} onwards.',
-                        'warning'
-                    )
-                    return hr3_redirect_fallback()
+            if not schedule:
+                # Employee has schedules but today is NOT one of their working days
+                scheduled_days = ', '.join(
+                    sorted({s['day_of_week'] for s in schedule_resp.data if s.get('day_of_week')})
+                )
+                flash(
+                    f'You are not scheduled to work today ({day_name}). '
+                    f'Your scheduled day(s): {scheduled_days}.',
+                    'warning'
+                )
+                return hr3_redirect_fallback()
 
-                # Grace period: on-time if within 15 minutes of shift start; late otherwise
-                if now > (schedule_start + timedelta(minutes=15)):
-                    status = 'Late'
-                    # Calculate minutes late
-                    diff = now - schedule_start
-                    minutes_late = int(diff.total_seconds() / 60)
-                    remarks = f"Late by {minutes_late} minutes. " + (request.form.get('remarks') or "")
-            else:
-                default_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} 09:00:00", "%Y-%m-%d %H:%M:%S")
-                earliest_allowed = default_start - timedelta(minutes=15)
-                if now < earliest_allowed:
-                    flash(
-                        f'Too early to clock in. Default shift starts at 09:00 AM. '
-                        f'You may clock in from {earliest_allowed.strftime("%I:%M %p")} onwards.',
-                        'warning'
-                    )
-                    return hr3_redirect_fallback()
-                if now > (default_start + timedelta(minutes=15)):
-                    status = 'Late'
-                    diff = now - default_start
-                    minutes_late = int(diff.total_seconds() / 60)
-                    remarks = f"Late by {minutes_late} minutes (Default). " + (request.form.get('remarks') or "")
+            start_time_str = schedule['start_time']
+            schedule_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} {start_time_str}", "%Y-%m-%d %H:%M:%S")
+            earliest_allowed = schedule_start - timedelta(minutes=15)
+
+            # Block clock-in if more than 15 minutes before shift start
+            if now < earliest_allowed:
+                flash(
+                    f'Too early to clock in. Your shift starts at {schedule_start.strftime("%I:%M %p")}. '
+                    f'You may clock in from {earliest_allowed.strftime("%I:%M %p")} onwards.',
+                    'warning'
+                )
+                return hr3_redirect_fallback()
+
+            # Grace period: on-time if within 15 minutes of shift start; late otherwise
+            if now > (schedule_start + timedelta(minutes=15)):
+                status = 'Late'
+                diff = now - schedule_start
+                minutes_late = int(diff.total_seconds() / 60)
+                remarks = f"Late by {minutes_late} minutes. " + (request.form.get('remarks') or "")
         else:
+            # No schedule assigned at all — use default 09:00 rule
             default_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} 09:00:00", "%Y-%m-%d %H:%M:%S")
             earliest_allowed = default_start - timedelta(minutes=15)
             if now < earliest_allowed:
@@ -382,7 +378,7 @@ def clock_out():
     day_name = now.strftime('%A')
 
     # --- Resolve shift end time (must happen BEFORE any try/except that swallows errors) ---
-    shift_end_str = '17:00:00'  # default
+    shift_end_str = None  # None means no schedule found for today
     try:
         sched_resp = client.table('staff_schedules')\
             .select('day_of_week, end_time')\
@@ -397,8 +393,23 @@ def clock_out():
             )
             if sched and sched.get('end_time'):
                 shift_end_str = sched['end_time']
+            else:
+                # Has schedules but today is not a working day — block clock-out too
+                scheduled_days = ', '.join(
+                    sorted({s['day_of_week'] for s in sched_resp.data if s.get('day_of_week')})
+                )
+                flash(
+                    f'You are not scheduled to work today ({day_name}). '
+                    f'Your scheduled day(s): {scheduled_days}.',
+                    'warning'
+                )
+                return hr3_redirect_fallback()
+        else:
+            # No schedule at all — fall back to default 17:00
+            shift_end_str = '17:00:00'
     except Exception as se:
         print(f"Schedule lookup error in clock_out: {se}")
+        shift_end_str = '17:00:00'
 
     sched_end = datetime.strptime(f"{now.strftime('%Y-%m-%d')} {shift_end_str}", "%Y-%m-%d %H:%M:%S")
     grace_end = sched_end - timedelta(minutes=15)
