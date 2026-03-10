@@ -351,8 +351,10 @@ def apply():
                     else:
                         flash('Resume file is too large. Maximum size is 5MB.', 'warning')
                 except Exception as e:
-                    # Don't save a broken record — just warn the applicant and continue
-                    print(f"Resume upload error: {e}")
+                    # Don't block the application — just warn the applicant and log the real error
+                    import traceback
+                    print(f"Resume upload error (bucket='resumes'): {e}")
+                    traceback.print_exc()
                     flash('Your CV file could not be uploaded (storage error). Your application was still submitted — HR can request your CV directly.', 'warning')
 
     # Add cover letter to documents

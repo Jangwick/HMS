@@ -1345,3 +1345,20 @@ CREATE POLICY "Public Update Logistics Docs" ON storage.objects FOR UPDATE WITH 
 DROP POLICY IF EXISTS "Public Delete Logistics Docs" ON storage.objects;
 CREATE POLICY "Public Delete Logistics Docs" ON storage.objects FOR DELETE USING (bucket_id = 'logistics_docs');
 
+-- Bucket for applicant resumes / CVs (used by public careers portal and HR1)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('resumes', 'resumes', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public Access Resumes" ON storage.objects;
+CREATE POLICY "Public Access Resumes" ON storage.objects FOR SELECT USING (bucket_id = 'resumes');
+
+DROP POLICY IF EXISTS "Public Upload Resumes" ON storage.objects;
+CREATE POLICY "Public Upload Resumes" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'resumes');
+
+DROP POLICY IF EXISTS "Public Update Resumes" ON storage.objects;
+CREATE POLICY "Public Update Resumes" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'resumes');
+
+DROP POLICY IF EXISTS "Public Delete Resumes" ON storage.objects;
+CREATE POLICY "Public Delete Resumes" ON storage.objects FOR DELETE USING (bucket_id = 'resumes');
+
