@@ -1453,6 +1453,79 @@ CREATE POLICY "Public Update Resumes" ON storage.objects FOR UPDATE WITH CHECK (
 DROP POLICY IF EXISTS "Public Delete Resumes" ON storage.objects;
 CREATE POLICY "Public Delete Resumes" ON storage.objects FOR DELETE USING (bucket_id = 'resumes');
 
+-- Bucket for ESS leave request supporting documents (HR3)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('ess-documents', 'ess-documents', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public Access ESS Docs" ON storage.objects;
+CREATE POLICY "Public Access ESS Docs" ON storage.objects FOR SELECT USING (bucket_id = 'ess-documents');
+
+DROP POLICY IF EXISTS "Public Upload ESS Docs" ON storage.objects;
+CREATE POLICY "Public Upload ESS Docs" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'ess-documents');
+
+DROP POLICY IF EXISTS "Public Update ESS Docs" ON storage.objects;
+CREATE POLICY "Public Update ESS Docs" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'ess-documents');
+
+DROP POLICY IF EXISTS "Public Delete ESS Docs" ON storage.objects;
+CREATE POLICY "Public Delete ESS Docs" ON storage.objects FOR DELETE USING (bucket_id = 'ess-documents');
+
+-- Bucket for reimbursement receipt images (HR3)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('receipts', 'receipts', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public Access Receipts" ON storage.objects;
+CREATE POLICY "Public Access Receipts" ON storage.objects FOR SELECT USING (bucket_id = 'receipts');
+
+DROP POLICY IF EXISTS "Public Upload Receipts" ON storage.objects;
+CREATE POLICY "Public Upload Receipts" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'receipts');
+
+DROP POLICY IF EXISTS "Public Update Receipts" ON storage.objects;
+CREATE POLICY "Public Update Receipts" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'receipts');
+
+DROP POLICY IF EXISTS "Public Delete Receipts" ON storage.objects;
+CREATE POLICY "Public Delete Receipts" ON storage.objects FOR DELETE USING (bucket_id = 'receipts');
+
+-- Bucket for HR2 training & assessment files
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('hr2-assessments', 'hr2-assessments', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public Access HR2 Assessments" ON storage.objects;
+CREATE POLICY "Public Access HR2 Assessments" ON storage.objects FOR SELECT USING (bucket_id = 'hr2-assessments');
+
+DROP POLICY IF EXISTS "Public Upload HR2 Assessments" ON storage.objects;
+CREATE POLICY "Public Upload HR2 Assessments" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'hr2-assessments');
+
+DROP POLICY IF EXISTS "Public Update HR2 Assessments" ON storage.objects;
+CREATE POLICY "Public Update HR2 Assessments" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'hr2-assessments');
+
+DROP POLICY IF EXISTS "Public Delete HR2 Assessments" ON storage.objects;
+CREATE POLICY "Public Delete HR2 Assessments" ON storage.objects FOR DELETE USING (bucket_id = 'hr2-assessments');
+
+-- Bucket for recognition nomination supporting attachments (HR1)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('recognition-docs', 'recognition-docs', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public Access Recognition Docs" ON storage.objects;
+CREATE POLICY "Public Access Recognition Docs" ON storage.objects FOR SELECT USING (bucket_id = 'recognition-docs');
+
+DROP POLICY IF EXISTS "Public Upload Recognition Docs" ON storage.objects;
+CREATE POLICY "Public Upload Recognition Docs" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'recognition-docs');
+
+DROP POLICY IF EXISTS "Public Update Recognition Docs" ON storage.objects;
+CREATE POLICY "Public Update Recognition Docs" ON storage.objects FOR UPDATE WITH CHECK (bucket_id = 'recognition-docs');
+
+DROP POLICY IF EXISTS "Public Delete Recognition Docs" ON storage.objects;
+CREATE POLICY "Public Delete Recognition Docs" ON storage.objects FOR DELETE USING (bucket_id = 'recognition-docs');
+
+-- Bucket for logistics supply-chain documents (LOG1)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('logistics_docs', 'logistics_docs', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
 -- =====================================================
 -- ESS (EMPLOYEE SELF-SERVICE) WORKFLOW MIGRATION
 -- Full multi-step leave request approval workflow

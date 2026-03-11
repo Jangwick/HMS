@@ -31,20 +31,37 @@ def get_supabase_service_client() -> Client:
     """
     Get or create a Supabase client using the service_role key.
     Use this for storage operations (upload/delete files) which require elevated privileges.
-    Falls back to the anon client if service key is not configured.
+
+    IMPORTANT: If SUPABASE_SERVICE_KEY is not set, this returns the regular anon client
+    WITHOUT caching it as the service client.  This prevents a session-wide bug where
+    all storage calls silently use the anon key (which is blocked by RLS) because a
+    bad client was cached on the first call.
+
+    To fix 403 storage errors, make sure SUPABASE_SERVICE_KEY is set in your .env file.
     """
     global _supabase_service_client
 
-    if _supabase_service_client is None:
-        key = SUPABASE_SERVICE_KEY or SUPABASE_KEY
-        if not SUPABASE_URL or not key:
-            raise ValueError(
-                "Supabase credentials not configured. "
-                "Please set SUPABASE_URL and SUPABASE_SERVICE_KEY in your .env file."
-            )
-        _supabase_service_client = create_client(SUPABASE_URL, key)
+    if not SUPABASE_URL:
+        raise ValueError("SUPABASE_URL is not configured in .env")
 
-    return _supabase_service_client
+    # If service key is available, create and cache a dedicated service-role client.
+    if SUPABASE_SERVICE_KEY:
+        if _supabase_service_client is None:
+            _supabase_service_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+        return _supabase_service_client
+
+    # No service key — fall back to the regular anon client but do NOT cache it
+    # as _supabase_service_client so the next call can still try the service key
+    # if it becomes available (e.g. after an env reload / restart).
+    import warnings
+    warnings.warn(
+        "SUPABASE_SERVICE_KEY is not set. Storage uploads are running under the anon key "
+        "and will fail if the target bucket has RLS policies. "
+        "Set SUPABASE_SERVICE_KEY in your .env file to fix 403 upload errors.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+    return get_supabase_client()
 
 
 def get_supabase_client() -> Client:
