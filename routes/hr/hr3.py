@@ -359,21 +359,13 @@ def clock_in():
                 minutes_late = int(diff.total_seconds() / 60)
                 remarks = f"Late by {minutes_late} minutes. " + (request.form.get('remarks') or "")
         else:
-            # No schedule assigned at all — use default 09:00 rule
-            default_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} 09:00:00", "%Y-%m-%d %H:%M:%S")
-            earliest_allowed = default_start - timedelta(minutes=15)
-            if now < earliest_allowed:
-                flash(
-                    f'Too early to clock in. Default shift starts at 09:00 AM. '
-                    f'You may clock in from {earliest_allowed.strftime("%I:%M %p")} onwards.',
-                    'warning'
-                )
-                return hr3_redirect_fallback()
-            if now > (default_start + timedelta(minutes=15)):
-                status = 'Late'
-                diff = now - default_start
-                minutes_late = int(diff.total_seconds() / 60)
-                remarks = f"Late by {minutes_late} minutes (Default). " + (request.form.get('remarks') or "")
+            # No schedule assigned at all — block clock-in
+            flash(
+                'You do not have a shift schedule assigned. '
+                'Please contact HR3 Personnel Operations to set up your schedule before clocking in.',
+                'danger'
+            )
+            return hr3_redirect_fallback()
     except Exception as e:
         print(f"Schedule check error: {e}")
         default_start = datetime.strptime(f"{now.strftime('%Y-%m-%d')} 09:00:00", "%Y-%m-%d %H:%M:%S")
