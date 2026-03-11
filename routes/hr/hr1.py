@@ -1230,10 +1230,8 @@ def probation_create():
         employee_id = int(request.form.get('employee_id'))
         supervisor_id = int(request.form.get('supervisor_id', current_user.id))
         cycle_type = request.form.get('cycle_type', 'New Hire')
-        start_date = request.form.get('start_date')
-        duration = int(request.form.get('duration_days', 90))
-
-        cycle = create_probation_cycle(employee_id, supervisor_id, cycle_type, start_date, duration)
+        # Start date and duration are set AFTER KPI acknowledgement
+        cycle = create_probation_cycle(employee_id, supervisor_id, cycle_type)
         if cycle:
             from utils.hms_models import AuditLog
             AuditLog.log(current_user.id, "Create Probation Cycle", BLUEPRINT_NAME, {"cycle_id": cycle['id'], "employee_id": employee_id})
@@ -1274,6 +1272,13 @@ def probation_detail(cycle_id):
     recommendation = rec_resp.data[0] if rec_resp.data else None
     dec_resp = client.table('hr_decisions').select('*').eq('cycle_id', cycle_id).execute()
     decision = dec_resp.data[0] if dec_resp.data else None
+    # Monitoring logs (all KPI progress entries, with KPI details)
+    try:
+        monitoring_logs = client.table('probation_kpi_progress') \
+            .select('*, probation_kpis(kpi_name, weight, target_value)') \
+            .eq('cycle_id', cycle_id).order('created_at', desc=True).execute().data or []
+    except Exception:
+        monitoring_logs = []
 
     # Filter unpublished notes for employees
     if current_user.id == cycle['employee_id']:
@@ -1293,12 +1298,68 @@ def probation_detail(cycle_id):
                            evaluation=evaluation,
                            recommendation=recommendation,
                            decision=decision,
+                           monitoring_logs=monitoring_logs,
                            progress=progress,
                            current_stage_idx=current_stage_idx,
                            stages=ProbationStage,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/set-period', methods=['POST'])
+@login_required
+@supervisor_required
+def probation_set_period(cycle_id):
+    """Set or update the actual probation start date and duration after KPI acknowledgement."""
+    from utils.probation_engine import calculate_end_date
+    client = get_supabase_client()
+    try:
+        cycle = client.table('probation_cycles').select('supervisor_id').eq('id', cycle_id).single().execute()
+        if not cycle.data or (cycle.data['supervisor_id'] != current_user.id and not current_user.is_admin()):
+            flash('Unauthorized.', 'danger')
+            return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+        start_date = request.form.get('start_date')
+        duration_days = int(request.form.get('duration_days', 90))
+        end_date = calculate_end_date(start_date, duration_days)
+        client.table('probation_cycles').update({
+            'start_date': start_date,
+            'end_date': end_date.isoformat(),
+            'updated_at': datetime.utcnow().isoformat()
+        }).eq('id', cycle_id).execute()
+        flash(f'Probation period set: {start_date} → {end_date.isoformat()} ({duration_days} days).', 'success')
+    except Exception as e:
+        flash(f'Error setting period: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
+
+
+@hr1_bp.route('/probation/<int:cycle_id>/monitoring-round', methods=['POST'])
+@login_required
+@supervisor_required
+def probation_log_monitoring_round(cycle_id):
+    """Log a full monitoring round (all KPIs at once) for a given period."""
+    client = get_supabase_client()
+    try:
+        period_type = request.form.get('period_type', 'Weekly')
+        period_label = request.form.get('period_label', '').strip()
+        kpis = client.table('probation_kpis').select('id').eq('cycle_id', cycle_id).execute().data or []
+        inserted = 0
+        for kpi in kpis:
+            score_val = request.form.get(f'score_{kpi["id"]}')
+            notes_val = request.form.get(f'notes_{kpi["id"]}', '')
+            if score_val is not None and score_val != '':
+                client.table('probation_kpi_progress').insert({
+                    'cycle_id': cycle_id,
+                    'kpi_id': kpi['id'],
+                    'logged_by': current_user.id,
+                    'score': float(score_val),
+                    'notes': f'[{period_type}: {period_label}] {notes_val}'.strip()
+                }).execute()
+                inserted += 1
+        flash(f'Monitoring round logged for {period_label} ({inserted} KPIs recorded).', 'success')
+    except Exception as e:
+        flash(f'Error logging monitoring round: {str(e)}', 'danger')
+    return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
 
 
 @hr1_bp.route('/probation/<int:cycle_id>/kpis', methods=['POST'])
@@ -1575,22 +1636,39 @@ def probation_submit_evaluation(cycle_id):
     from utils.probation_engine import advance_stage, ProbationStage
     client = get_supabase_client()
     try:
-        kpis = client.table('probation_kpis').select('id, kpi_name, weight').eq('cycle_id', cycle_id).execute().data or []
+        kpis = client.table('probation_kpis').select('id, kpi_name, description, target_value, weight').eq('cycle_id', cycle_id).execute().data or []
         kpi_scores = []
+        total_score = 0.0
         for kpi in kpis:
-            score = request.form.get(f'kpi_score_{kpi["id"]}', 0)
-            kpi_scores.append({'kpi_id': kpi['id'], 'name': kpi['kpi_name'], 'score': float(score), 'weight': float(kpi['weight'])})
+            actual_result = request.form.get(f'actual_result_{kpi["id"]}', '').strip()
+            actual_pct = float(request.form.get(f'actual_pct_{kpi["id"]}', 0) or 0)
+            weight = float(kpi['weight'])
+            score = round(actual_pct * weight / 100, 2)
+            kpi_remarks = request.form.get(f'remarks_{kpi["id"]}', '').strip()
+            kpi_scores.append({
+                'kpi_id': kpi['id'],
+                'name': kpi['kpi_name'],
+                'description': kpi.get('description', ''),
+                'target': kpi.get('target_value', ''),
+                'actual_result': actual_result,
+                'actual_pct': actual_pct,
+                'weight': weight,
+                'score': score,
+                'remarks': kpi_remarks
+            })
+            total_score += score
+        total_score = round(total_score, 2)
 
         import json
         data = {
             'cycle_id': cycle_id,
             'evaluator_id': current_user.id,
             'kpi_scores': json.dumps(kpi_scores),
-            'competency_rating': float(request.form.get('competency_rating', 0)),
-            'conduct_rating': float(request.form.get('conduct_rating', 0)),
-            'attendance_rating': float(request.form.get('attendance_rating', 0)),
-            'overall_score': float(request.form.get('overall_score', 0)),
-            'comments': request.form.get('comments')
+            'competency_rating': 0,
+            'conduct_rating': 0,
+            'attendance_rating': 0,
+            'overall_score': total_score,
+            'comments': request.form.get('comments', '')
         }
         client.table('final_evaluations').insert(data).execute()
         advance_stage(cycle_id, ProbationStage.RECOMMENDATION, current_user.id)
