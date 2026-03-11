@@ -297,6 +297,66 @@ BEGIN
 END $$;
 
 -- =====================================================
+-- HR4: BENEFITS & HMO TABLES
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS employee_benefits (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    benefit_type VARCHAR(100) NOT NULL,           -- 'HMO', 'Health Card', 'Rice Allowance', 'Uniform', 'Bonus', 'Other'
+    provider VARCHAR(200),                         -- e.g. 'Maxicare', 'Medicard'
+    coverage_amount DECIMAL(12,2) DEFAULT 0.00,
+    start_date DATE DEFAULT CURRENT_DATE,
+    end_date DATE,
+    status VARCHAR(50) DEFAULT 'Active',           -- Active, Expired, Suspended
+    notes TEXT,
+    granted_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS benefit_claims (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    benefit_id INTEGER REFERENCES employee_benefits(id) ON DELETE SET NULL,
+    claim_type VARCHAR(100) NOT NULL,              -- 'HMO Reimbursement', 'Benefit Availment', etc.
+    amount DECIMAL(12,2) NOT NULL,
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'Pending',          -- Pending, Approved, Rejected
+    reviewed_by INTEGER REFERENCES users(id),
+    reviewed_at TIMESTAMP,
+    review_notes TEXT,
+    submitted_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Safe column injections for employee_benefits (in case table was created without all columns)
+ALTER TABLE IF EXISTS employee_benefits ADD COLUMN IF NOT EXISTS provider VARCHAR(200);
+ALTER TABLE IF EXISTS employee_benefits ADD COLUMN IF NOT EXISTS coverage_amount DECIMAL(12,2) DEFAULT 0.00;
+ALTER TABLE IF EXISTS employee_benefits ADD COLUMN IF NOT EXISTS start_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE IF EXISTS employee_benefits ADD COLUMN IF NOT EXISTS end_date DATE;
+ALTER TABLE IF EXISTS employee_benefits ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Active';
+ALTER TABLE IF EXISTS employee_benefits ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE IF EXISTS employee_benefits ADD COLUMN IF NOT EXISTS granted_by INTEGER REFERENCES users(id);
+ALTER TABLE IF EXISTS employee_benefits ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+ALTER TABLE IF EXISTS benefit_claims ADD COLUMN IF NOT EXISTS benefit_id INTEGER REFERENCES employee_benefits(id) ON DELETE SET NULL;
+ALTER TABLE IF EXISTS benefit_claims ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE IF EXISTS benefit_claims ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Pending';
+ALTER TABLE IF EXISTS benefit_claims ADD COLUMN IF NOT EXISTS reviewed_by INTEGER REFERENCES users(id);
+ALTER TABLE IF EXISTS benefit_claims ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP;
+ALTER TABLE IF EXISTS benefit_claims ADD COLUMN IF NOT EXISTS review_notes TEXT;
+ALTER TABLE IF EXISTS benefit_claims ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP DEFAULT NOW();
+
+-- RLS: allow service role full access
+ALTER TABLE IF EXISTS employee_benefits ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_role_employee_benefits" ON employee_benefits;
+CREATE POLICY "service_role_employee_benefits" ON employee_benefits FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE IF EXISTS benefit_claims ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service_role_benefit_claims" ON benefit_claims;
+CREATE POLICY "service_role_benefit_claims" ON benefit_claims FOR ALL USING (true) WITH CHECK (true);
+
+-- =====================================================
 -- CORE TRANSACTION TABLES
 -- =====================================================
 

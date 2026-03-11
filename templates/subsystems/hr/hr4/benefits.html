@@ -1,0 +1,582 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Benefits & HMO - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Benefits & HMO Administration{% endblock %}
+
+{% block content %}
+<div class="space-y-8 animate-fade-in">
+
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-3xl font-black text-gray-900 tracking-tight">Benefits & HMO</h3>
+            <p class="text-gray-500 font-medium mt-1">Manage employee benefits packages, HMO enrollment, and benefit claims.</p>
+        </div>
+        {% if current_user.is_admin() %}
+        <button onclick="document.getElementById('modal-assign').classList.remove('hidden')"
+            class="px-6 py-3 rounded-2xl font-bold text-white flex items-center shadow-lg hover:opacity-90 transition-all"
+            style="background: {{ accent_color or '#6366F1' }};">
+            <i class="bi bi-plus-lg mr-2"></i> Assign Benefit
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-gradient-to-br from-indigo-600 to-indigo-800 p-6 rounded-3xl shadow-lg shadow-indigo-100 relative overflow-hidden">
+            <p class="text-indigo-100/80 text-xs font-black uppercase tracking-widest mb-3">Total Benefits</p>
+            <p class="text-4xl font-black text-white">{{ benefit_records|length }}</p>
+            <i class="bi bi-gift-fill absolute -right-4 -bottom-4 text-8xl text-white/10"></i>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border-2 border-gray-100 relative overflow-hidden">
+            <p class="text-gray-400 text-xs font-black uppercase tracking-widest mb-3">Active</p>
+            <p class="text-4xl font-black text-emerald-600">{{ status_counts.get('Active', 0) }}</p>
+            <i class="bi bi-check-circle-fill absolute -right-4 -bottom-4 text-8xl text-emerald-50"></i>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border-2 border-gray-100 relative overflow-hidden">
+            <p class="text-gray-400 text-xs font-black uppercase tracking-widest mb-3">Pending Claims</p>
+            <p class="text-4xl font-black text-amber-500">{{ pending_claims }}</p>
+            <i class="bi bi-hourglass-split absolute -right-4 -bottom-4 text-8xl text-amber-50"></i>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border-2 border-gray-100 relative overflow-hidden">
+            <p class="text-gray-400 text-xs font-black uppercase tracking-widest mb-3">Total Claims</p>
+            <p class="text-4xl font-black text-gray-800">{{ claim_records|length }}</p>
+            <i class="bi bi-clipboard2-pulse-fill absolute -right-4 -bottom-4 text-8xl text-gray-50"></i>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="flex space-x-2 border-b-2 border-gray-100">
+        <button onclick="showBenefitTab('registry')" id="btab-registry"
+            class="btab-btn px-6 py-3 font-bold text-sm rounded-t-2xl transition-all border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50">
+            <i class="bi bi-card-list mr-2"></i>Benefits Registry
+        </button>
+        <button onclick="showBenefitTab('claims')" id="btab-claims"
+            class="btab-btn px-6 py-3 font-bold text-sm rounded-t-2xl transition-all border-b-2 border-transparent text-gray-400 hover:text-gray-700">
+            <i class="bi bi-clipboard2-check mr-2"></i>Benefit Claims
+        </button>
+        <button onclick="showBenefitTab('hmo')" id="btab-hmo"
+            class="btab-btn px-6 py-3 font-bold text-sm rounded-t-2xl transition-all border-b-2 border-transparent text-gray-400 hover:text-gray-700">
+            <i class="bi bi-heart-pulse mr-2"></i>HMO Dashboard
+        </button>
+    </div>
+
+    <!-- Benefits Registry Tab -->
+    <div id="bpane-registry" class="btab-pane">
+        <div class="bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-gray-100">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Employee</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Benefit Type</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Provider</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Coverage</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Period</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                            {% if current_user.is_admin() %}
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        {% for b in benefit_records %}
+                        <tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="px-8 py-4">
+                                <div class="flex items-center">
+                                    <div class="w-9 h-9 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-xs mr-3">
+                                        {{ (b.users.full_name or b.users.username)[0]|upper if b.users else '?' }}
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-gray-900">{{ b.users.full_name or b.users.username if b.users else 'Unknown' }}</p>
+                                        <p class="text-[10px] font-black text-gray-400 uppercase">{{ b.users.department if b.users else '' }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-8 py-4">
+                                <span class="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold
+                                    {% if b.benefit_type == 'HMO' %}bg-blue-50 text-blue-700
+                                    {% elif b.benefit_type == 'Health Card' %}bg-emerald-50 text-emerald-700
+                                    {% elif b.benefit_type == 'Rice Allowance' %}bg-amber-50 text-amber-700
+                                    {% else %}bg-gray-100 text-gray-700{% endif %}">
+                                    {{ b.benefit_type }}
+                                </span>
+                            </td>
+                            <td class="px-8 py-4 text-sm text-gray-600">{{ b.provider or '—' }}</td>
+                            <td class="px-8 py-4 text-sm font-bold text-indigo-600 text-right">₱{{ "{:,.2f}".format(b.coverage_amount or 0) }}</td>
+                            <td class="px-8 py-4 text-xs text-gray-500">
+                                {{ b.start_date }}<br>
+                                {% if b.end_date %}<span class="text-rose-400">→ {{ b.end_date }}</span>{% else %}<span class="text-emerald-500">Ongoing</span>{% endif %}
+                            </td>
+                            <td class="px-8 py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold
+                                    {% if b.status == 'Active' %}bg-emerald-50 text-emerald-700
+                                    {% elif b.status == 'Expired' %}bg-gray-100 text-gray-500
+                                    {% else %}bg-rose-50 text-rose-700{% endif %}">
+                                    {{ b.status }}
+                                </span>
+                            </td>
+                            {% if current_user.is_admin() %}
+                            <td class="px-8 py-4">
+                                <div class="flex items-center gap-2">
+                                    <button onclick="openEditBenefit({{ b.id }})"
+                                        class="px-3 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-xl hover:bg-indigo-100">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <form method="POST" action="{{ url_for('hr4.delete_benefit', benefit_id=b.id) }}"
+                                        onsubmit="return confirm('Delete this benefit record?')">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="px-3 py-1.5 bg-rose-50 text-rose-600 text-xs font-bold rounded-xl hover:bg-rose-100">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="px-8 py-16 text-center text-gray-400 font-medium">
+                                <i class="bi bi-gift text-5xl block mb-4 text-gray-200"></i>
+                                No benefits assigned yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Benefit Claims Tab -->
+    <div id="bpane-claims" class="btab-pane hidden space-y-6">
+        <!-- Submit Claim (staff/self) -->
+        {% if not current_user.is_admin() %}
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            <h4 class="text-lg font-black text-gray-900 mb-6">Submit a Benefit Claim</h4>
+            <form method="POST" action="{{ url_for('hr4.submit_benefit_claim') }}" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Benefit</label>
+                    <select name="benefit_id" class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+                        <option value="">None / General</option>
+                        {% for b in benefit_records %}
+                        {% if b.user_id == current_user.id and b.status == 'Active' %}
+                        <option value="{{ b.id }}">{{ b.benefit_type }}{% if b.provider %} — {{ b.provider }}{% endif %}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Claim Type</label>
+                    <input type="text" name="claim_type" placeholder="e.g., HMO Reimbursement"
+                        class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Amount (₱)</label>
+                    <input type="number" name="amount" step="0.01" min="0" placeholder="0.00"
+                        class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Description</label>
+                    <input type="text" name="description" placeholder="Brief description..."
+                        class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+                </div>
+                <div class="md:col-span-2 text-right">
+                    <button type="submit"
+                        class="px-8 py-3 rounded-2xl text-white font-bold hover:opacity-90 transition-all"
+                        style="background: {{ accent_color or '#6366F1' }};">
+                        Submit Claim
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- Claims Table -->
+        <div class="bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-gray-100">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Employee</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Claim Type</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Amount</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Submitted</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                            {% if current_user.is_admin() %}
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        {% for c in claim_records %}
+                        {% if current_user.is_admin() or c.user_id == current_user.id %}
+                        <tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="px-8 py-4">
+                                <p class="text-sm font-bold text-gray-900">{{ c.users.full_name or c.users.username if c.users else 'Unknown' }}</p>
+                                <p class="text-[10px] font-black text-gray-400 uppercase">{{ c.users.department if c.users else '' }}</p>
+                            </td>
+                            <td class="px-8 py-4 text-sm text-gray-700">{{ c.claim_type }}</td>
+                            <td class="px-8 py-4 text-sm font-bold text-indigo-600 text-right">₱{{ "{:,.2f}".format(c.amount) }}</td>
+                            <td class="px-8 py-4 text-xs text-gray-500">{{ c.submitted_at[:10] if c.submitted_at else '—' }}</td>
+                            <td class="px-8 py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold
+                                    {% if c.status == 'Approved' %}bg-emerald-50 text-emerald-700
+                                    {% elif c.status == 'Rejected' %}bg-rose-50 text-rose-700
+                                    {% else %}bg-amber-50 text-amber-700{% endif %}">
+                                    {{ c.status }}
+                                </span>
+                            </td>
+                            {% if current_user.is_admin() and c.status == 'Pending' %}
+                            <td class="px-8 py-4">
+                                <form method="POST" action="{{ url_for('hr4.decide_benefit_claim', claim_id=c.id) }}" class="flex items-center gap-2">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="decision" id="decision-{{ c.id }}" value="">
+                                    <button type="submit" onclick="document.getElementById('decision-{{ c.id }}').value='Approve'"
+                                        class="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-xl hover:bg-emerald-100">
+                                        Approve
+                                    </button>
+                                    <button type="submit" onclick="document.getElementById('decision-{{ c.id }}').value='Reject'"
+                                        class="px-3 py-1.5 bg-rose-50 text-rose-700 text-xs font-bold rounded-xl hover:bg-rose-100">
+                                        Reject
+                                    </button>
+                                </form>
+                            </td>
+                            {% elif current_user.is_admin() %}
+                            <td class="px-8 py-4 text-xs text-gray-400 font-medium">
+                                {% if c.reviewer %}by {{ c.reviewer.username }}{% else %}—{% endif %}
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endif %}
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="px-8 py-16 text-center text-gray-400 font-medium">
+                                <i class="bi bi-clipboard2 text-5xl block mb-4 text-gray-200"></i>
+                                No benefit claims found.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- HMO Dashboard Tab -->
+    <div id="bpane-hmo" class="btab-pane hidden space-y-6">
+        <!-- KPI row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-3xl shadow-lg shadow-blue-100 relative overflow-hidden">
+                <p class="text-blue-100/80 text-xs font-black uppercase tracking-widest mb-3">HMO Enrollees</p>
+                <p class="text-4xl font-black text-white">{{ hmo_stats.enrollee_count }}</p>
+                <i class="bi bi-heart-pulse-fill absolute -right-4 -bottom-4 text-8xl text-white/10"></i>
+            </div>
+            <div class="bg-white p-6 rounded-3xl shadow-sm border-2 border-gray-100 relative overflow-hidden">
+                <p class="text-gray-400 text-xs font-black uppercase tracking-widest mb-3">Avg Coverage</p>
+                <p class="text-4xl font-black text-blue-600">₱{{ "{:,.0f}".format(hmo_stats.avg_coverage) }}</p>
+                <i class="bi bi-shield-heart absolute -right-4 -bottom-4 text-8xl text-blue-50"></i>
+            </div>
+            <div class="bg-white p-6 rounded-3xl shadow-sm border-2 border-gray-100 relative overflow-hidden">
+                <p class="text-gray-400 text-xs font-black uppercase tracking-widest mb-3">Total HMO Cost</p>
+                <p class="text-4xl font-black text-indigo-600">₱{{ "{:,.0f}".format(hmo_stats.total_coverage) }}</p>
+                <i class="bi bi-cash-coin absolute -right-4 -bottom-4 text-8xl text-indigo-50"></i>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Providers Breakdown -->
+            <div class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
+                <h4 class="text-lg font-black text-gray-900 mb-6">Providers</h4>
+                {% if hmo_stats.providers %}
+                <div class="space-y-3">
+                    {% for provider, count in hmo_stats.providers.items() %}
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-bold text-gray-700">{{ provider }}</span>
+                        <span class="inline-flex items-center px-3 py-1 rounded-xl bg-blue-50 text-blue-700 text-xs font-black">{{ count }} enrollee{{ 's' if count != 1 }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-400 text-sm py-8 text-center">No HMO providers yet.</p>
+                {% endif %}
+            </div>
+
+            <!-- Benefit Type Breakdown -->
+            <div class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
+                <h4 class="text-lg font-black text-gray-900 mb-6">Benefits by Type</h4>
+                {% if type_breakdown %}
+                <div class="space-y-3">
+                    {% for btype, info in type_breakdown.items() %}
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-bold text-gray-700">{{ btype }}</p>
+                            <p class="text-xs text-gray-400">₱{{ "{:,.0f}".format(info.total_coverage) }} total</p>
+                        </div>
+                        <span class="inline-flex items-center px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-black">{{ info.count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-400 text-sm py-8 text-center">No active benefits yet.</p>
+                {% endif %}
+            </div>
+
+            <!-- Total Coverage Summary -->
+            <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2.5rem] p-8 shadow-lg text-white flex flex-col justify-between">
+                <div>
+                    <p class="text-indigo-100/80 text-xs font-black uppercase tracking-widest mb-3">Total Active Coverage</p>
+                    <p class="text-4xl font-black">₱{{ "{:,.2f}".format(total_coverage) }}</p>
+                    <p class="text-indigo-100/70 text-xs mt-2">Across all benefit types</p>
+                </div>
+                <div class="mt-8 grid grid-cols-2 gap-3">
+                    <div class="bg-white/10 rounded-2xl p-3">
+                        <p class="text-indigo-100/70 text-[10px] font-bold uppercase">Active</p>
+                        <p class="text-2xl font-black">{{ status_counts.get('Active', 0) }}</p>
+                    </div>
+                    <div class="bg-white/10 rounded-2xl p-3">
+                        <p class="text-indigo-100/70 text-[10px] font-bold uppercase">Expired</p>
+                        <p class="text-2xl font-black">{{ status_counts.get('Expired', 0) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HMO Enrollee List -->
+        <div class="bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-gray-100">
+            <div class="p-8 pb-4">
+                <h4 class="text-xl font-black text-gray-900">HMO / Health Card Enrollees</h4>
+                <p class="text-sm text-gray-400 font-medium">All employees currently enrolled in health programs</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Employee</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Program</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Provider</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Coverage</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Valid Until</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        {% set hmo_records = benefit_records | selectattr('benefit_type', 'in', ['HMO', 'Health Card']) | list %}
+                        {% for b in hmo_records %}
+                        <tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="px-8 py-4">
+                                <div class="flex items-center">
+                                    <div class="w-9 h-9 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs mr-3">
+                                        {{ (b.users.full_name or b.users.username)[0]|upper if b.users else '?' }}
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-gray-900">{{ b.users.full_name or b.users.username if b.users else 'Unknown' }}</p>
+                                        <p class="text-[10px] font-black text-gray-400 uppercase">{{ b.users.department if b.users else '' }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-8 py-4"><span class="px-2 py-1 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold">{{ b.benefit_type }}</span></td>
+                            <td class="px-8 py-4 text-sm text-gray-600">{{ b.provider or '—' }}</td>
+                            <td class="px-8 py-4 text-sm font-bold text-indigo-600 text-right">₱{{ "{:,.2f}".format(b.coverage_amount or 0) }}</td>
+                            <td class="px-8 py-4 text-xs text-gray-500">
+                                {% if b.end_date %}<span class="text-rose-500">{{ b.end_date }}</span>{% else %}<span class="text-emerald-500">Ongoing</span>{% endif %}
+                            </td>
+                            <td class="px-8 py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold
+                                    {% if b.status == 'Active' %}bg-emerald-50 text-emerald-700
+                                    {% else %}bg-gray-100 text-gray-500{% endif %}">
+                                    {{ b.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="px-8 py-12 text-center text-gray-400 font-medium">No HMO enrollees.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Assign Benefit Modal -->
+{% if current_user.is_admin() %}
+<div id="modal-assign" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-lg shadow-2xl">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-black text-gray-900">Assign Benefit</h3>
+            <button onclick="document.getElementById('modal-assign').classList.add('hidden')"
+                class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 text-gray-500 font-bold">✕</button>
+        </div>
+        <form method="POST" action="{{ url_for('hr4.assign_benefit') }}" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Employee</label>
+                <select name="user_id" required class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+                    <option value="">Select employee...</option>
+                    {% for u in active_users %}
+                    <option value="{{ u.id }}">{{ u.full_name or u.username }}{% if u.department %} — {{ u.department }}{% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Benefit Type</label>
+                    <select name="benefit_type" required class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+                        <option value="HMO">HMO</option>
+                        <option value="Health Card">Health Card</option>
+                        <option value="Rice Allowance">Rice Allowance</option>
+                        <option value="Uniform">Uniform</option>
+                        <option value="Bonus">Bonus</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Provider</label>
+                    <input type="text" name="provider" placeholder="e.g. Maxicare"
+                        class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Coverage (₱)</label>
+                    <input type="number" name="coverage_amount" step="0.01" min="0" placeholder="0.00"
+                        class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Start Date</label>
+                    <input type="date" name="start_date"
+                        class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">End Date (optional)</label>
+                <input type="date" name="end_date"
+                    class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Notes</label>
+                <textarea name="notes" rows="2" placeholder="Additional notes..."
+                    class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none resize-none"></textarea>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modal-assign').classList.add('hidden')"
+                    class="flex-1 px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded-2xl hover:bg-gray-200 transition-all">Cancel</button>
+                <button type="submit"
+                    class="flex-1 px-6 py-3 text-white font-bold rounded-2xl hover:opacity-90 transition-all"
+                    style="background: {{ accent_color or '#6366F1' }};">Assign</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Benefit Modal -->
+<div id="modal-edit-benefit" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-lg shadow-2xl">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-black text-gray-900">Edit Benefit</h3>
+            <button onclick="document.getElementById('modal-edit-benefit').classList.add('hidden')"
+                class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 text-gray-500 font-bold">✕</button>
+        </div>
+        <form id="edit-benefit-form" method="POST" action="" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Benefit Type</label>
+                    <select name="benefit_type" id="edit-benefit-type" required class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+                        <option value="HMO">HMO</option>
+                        <option value="Health Card">Health Card</option>
+                        <option value="Rice Allowance">Rice Allowance</option>
+                        <option value="Uniform">Uniform</option>
+                        <option value="Bonus">Bonus</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Status</label>
+                    <select name="status" id="edit-benefit-status" class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+                        <option value="Active">Active</option>
+                        <option value="Expired">Expired</option>
+                        <option value="Suspended">Suspended</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Provider</label>
+                <input type="text" name="provider" id="edit-benefit-provider"
+                    class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Coverage (₱)</label>
+                    <input type="number" name="coverage_amount" id="edit-benefit-coverage" step="0.01" min="0"
+                        class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Start Date</label>
+                    <input type="date" name="start_date" id="edit-benefit-start"
+                        class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">End Date</label>
+                <input type="date" name="end_date" id="edit-benefit-end"
+                    class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Notes</label>
+                <textarea name="notes" id="edit-benefit-notes" rows="2"
+                    class="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-indigo-400 focus:outline-none resize-none"></textarea>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modal-edit-benefit').classList.add('hidden')"
+                    class="flex-1 px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded-2xl hover:bg-gray-200 transition-all">Cancel</button>
+                <button type="submit"
+                    class="flex-1 px-6 py-3 text-white font-bold rounded-2xl hover:opacity-90 transition-all"
+                    style="background: {{ accent_color or '#6366F1' }};">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    const BENEFIT_RECORDS = {{ benefit_records | tojson }};
+
+    function showBenefitTab(name) {
+        document.querySelectorAll('.btab-pane').forEach(p => p.classList.add('hidden'));
+        document.querySelectorAll('.btab-btn').forEach(b => {
+            b.classList.remove('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+            b.classList.add('border-transparent', 'text-gray-400');
+        });
+        document.getElementById('bpane-' + name).classList.remove('hidden');
+        const btn = document.getElementById('btab-' + name);
+        btn.classList.remove('border-transparent', 'text-gray-400');
+        btn.classList.add('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+    }
+
+    function openEditBenefit(id) {
+        const b = BENEFIT_RECORDS.find(r => r.id === id);
+        if (!b) return;
+        document.getElementById('edit-benefit-form').action = `/hr/hr4/benefits/${b.id}/edit`;
+        document.getElementById('edit-benefit-type').value = b.benefit_type || '';
+        document.getElementById('edit-benefit-status').value = b.status || 'Active';
+        document.getElementById('edit-benefit-provider').value = b.provider || '';
+        document.getElementById('edit-benefit-coverage').value = b.coverage_amount || 0;
+        document.getElementById('edit-benefit-start').value = b.start_date || '';
+        document.getElementById('edit-benefit-end').value = b.end_date || '';
+        document.getElementById('edit-benefit-notes').value = b.notes || '';
+        document.getElementById('modal-edit-benefit').classList.remove('hidden');
+    }
+</script>
+
+<style>
+    @keyframes fade-in {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in { animation: fade-in 0.6s ease-out forwards; }
+</style>
+{% endblock %}

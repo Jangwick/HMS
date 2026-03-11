@@ -27,6 +27,9 @@
                         <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Employee</th>
                         <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Department</th>
                         <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Base Salary</th>
+                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Allowances</th>
+                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Bonuses</th>
+                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Deductions</th>
                         <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Total Package</th>
                         <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Effective Date</th>
                         <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
@@ -42,8 +45,15 @@
                             </div>
                         </td>
                         <td class="px-8 py-5 text-sm text-gray-500 uppercase font-bold">{{ record.users.department or 'N/A' }}</td>
-                        <td class="px-8 py-5 text-sm text-gray-900 font-medium">${{ "{:,.2f}".format(record.base_salary) }}</td>
-                        <td class="px-8 py-5 text-sm text-indigo-600 font-bold">${{ "{:,.2f}".format(record.base_salary + (record.allowances or 0) + (record.bonuses or 0) - (record.deductions or 0)) }}</td>
+                        <td class="px-8 py-5 text-sm text-gray-900 font-medium">₱{{ "{:,.2f}".format(record.base_salary) }}</td>
+                        <td class="px-8 py-5 text-sm text-emerald-600 font-medium">₱{{ "{:,.2f}".format(record.allowances or 0) }}</td>
+                        <td class="px-8 py-5">
+                            <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700">₱{{ "{:,.2f}".format(record.bonuses or 0) }}</span>
+                        </td>
+                        <td class="px-8 py-5">
+                            <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold bg-rose-50 text-rose-700">-₱{{ "{:,.2f}".format(record.deductions or 0) }}</span>
+                        </td>
+                        <td class="px-8 py-5 text-sm text-indigo-600 font-bold">₱{{ "{:,.2f}".format(record.base_salary + (record.allowances or 0) + (record.bonuses or 0) - (record.deductions or 0)) }}</td>
                         <td class="px-8 py-5 text-sm text-gray-500">{{ record.effective_date }}</td>
                         <td class="px-8 py-5">
                             <div class="flex items-center space-x-2">

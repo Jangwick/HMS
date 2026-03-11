@@ -80,6 +80,7 @@
                         <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Pay Period</th>
                         <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Base</th>
                         <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Bonuses</th>
+                        <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Deductions</th>
                         <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Net Pay</th>
                         <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
                     </tr>
@@ -103,10 +104,15 @@
                                 {{ p.pay_period_start }} <span class="mx-1 text-gray-300">→</span> {{ p.pay_period_end }}
                             </div>
                         </td>
-                        <td class="px-8 py-4 text-sm text-gray-600 text-right font-medium">${{ "{:,.2f}".format(p.base_salary) }}</td>
-                        <td class="px-8 py-4 text-sm text-green-600 text-right font-medium">+${{ "{:,.2f}".format(p.bonuses) }}</td>
+                        <td class="px-8 py-4 text-sm text-gray-600 text-right font-medium">₱{{ "{:,.2f}".format(p.base_salary) }}</td>
+                        <td class="px-8 py-4 text-sm text-right">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700">+₱{{ "{:,.2f}".format(p.bonuses or 0) }}</span>
+                        </td>
+                        <td class="px-8 py-4 text-sm text-right">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-rose-50 text-rose-700">-₱{{ "{:,.2f}".format(p.deductions or 0) }}</span>
+                        </td>
                         <td class="px-8 py-4 text-right">
-                            <span class="text-sm font-bold text-gray-900">${{ "{:,.2f}".format(p.net_pay) }}</span>
+                            <span class="text-sm font-bold text-gray-900">₱{{ "{:,.2f}".format(p.net_pay) }}</span>
                         </td>
                         <td class="px-8 py-4">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider

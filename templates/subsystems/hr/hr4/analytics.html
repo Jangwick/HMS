@@ -18,12 +18,27 @@
         </div>
     </div>
 
+    <!-- Tab Navigation -->
+    <div class="flex space-x-2 border-b-2 border-gray-100">
+        <button onclick="showTab('compensation')" id="tab-compensation"
+            class="tab-btn px-6 py-3 font-bold text-sm rounded-t-2xl transition-all border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50">
+            <i class="bi bi-graph-up-arrow mr-2"></i>Compensation
+        </button>
+        <button onclick="showTab('compliance')" id="tab-compliance"
+            class="tab-btn px-6 py-3 font-bold text-sm rounded-t-2xl transition-all border-b-2 border-transparent text-gray-400 hover:text-gray-700">
+            <i class="bi bi-shield-check mr-2"></i>Compliance
+        </button>
+    </div>
+
+    <!-- Compensation Tab -->
+    <div id="pane-compensation" class="tab-pane space-y-8">
+
     <!-- KPI Dashboard Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="bg-gradient-to-br from-indigo-600 to-indigo-800 p-7 rounded-3xl shadow-xl shadow-indigo-100 relative overflow-hidden group">
             <div class="relative z-10">
                 <h4 class="text-indigo-100/80 text-xs font-black uppercase tracking-widest mb-4">Total Spending</h4>
-                <p class="text-3xl font-black text-white leading-none">${{ "{:,.0f}".format(metrics.total_annual_budget) }}</p>
+                <p class="text-3xl font-black text-white leading-none">₱{{ "{:,.0f}".format(metrics.total_annual_budget) }}</p>
                 <div class="mt-4 flex items-center text-indigo-100 text-[10px] font-bold">
                     <span class="bg-indigo-500/30 px-2 py-0.5 rounded-full mr-2">ANNUAL ESTIMATE</span>
                 </div>
@@ -33,7 +48,7 @@
 
         <div class="bg-white p-7 rounded-3xl shadow-sm border-2 border-gray-100 relative overflow-hidden group">
             <h4 class="text-gray-400 text-xs font-black uppercase tracking-widest mb-4">Avg Package</h4>
-            <p class="text-3xl font-black text-gray-900 leading-none">${{ "{:,.0f}".format(metrics.avg_salary) }}</p>
+            <p class="text-3xl font-black text-gray-900 leading-none">₱{{ "{:,.0f}".format(metrics.avg_salary) }}</p>
             <div class="mt-4 flex items-center text-indigo-600 text-[10px] font-bold">
                 <i class="bi bi-person-fill mr-1"></i> {{ metrics.count }} ACTIVE STAFF
             </div>
@@ -42,7 +57,7 @@
 
         <div class="bg-white p-7 rounded-3xl shadow-sm border-2 border-gray-100 relative overflow-hidden group">
             <h4 class="text-gray-400 text-xs font-black uppercase tracking-widest mb-4">Allowances</h4>
-            <p class="text-3xl font-black text-emerald-600 leading-none">${{ "{:,.0f}".format(metrics.total_allowances) }}</p>
+            <p class="text-3xl font-black text-emerald-600 leading-none">₱{{ "{:,.0f}".format(metrics.total_allowances) }}</p>
             <div class="mt-4 flex items-center text-gray-500 text-[10px] font-bold">
                 <span class="bg-emerald-50 px-2 py-0.5 rounded-full text-emerald-600 uppercase">Benefits Pool</span>
             </div>
@@ -51,7 +66,7 @@
 
         <div class="bg-white p-7 rounded-3xl shadow-sm border-2 border-gray-100 relative overflow-hidden group">
             <h4 class="text-gray-400 text-xs font-black uppercase tracking-widest mb-4">Gross Deductions</h4>
-            <p class="text-3xl font-black text-rose-600 leading-none">${{ "{:,.0f}".format(metrics.total_deductions) }}</p>
+            <p class="text-3xl font-black text-rose-600 leading-none">₱{{ "{:,.0f}".format(metrics.total_deductions) }}</p>
             <div class="mt-4 flex items-center text-gray-500 text-[10px] font-bold uppercase tracking-widest">
                 Tax & Contributions
             </div>
@@ -93,7 +108,7 @@
                         <div class="w-2 h-2 rounded-full mr-3 {% if loop.index == 1 %}bg-indigo-600{% elif loop.index == 2 %}bg-emerald-500{% else %}bg-amber-500{% endif %}"></div>
                         <span class="text-xs font-bold text-gray-600">{{ label }}</span>
                     </div>
-                    <span class="text-xs font-black text-gray-900">${{ "{:,.0f}".format(metrics.structure.data[loop.index0]) }}</span>
+                    <span class="text-xs font-black text-gray-900">₱{{ "{:,.0f}".format(metrics.structure.data[loop.index0]) }}</span>
                 </div>
                 {% endfor %}
             </div>
@@ -133,7 +148,7 @@
                                 </div>
                             </td>
                             <td class="px-10 py-5 text-right">
-                                <span class="text-sm font-black text-indigo-600">${{ "{:,.0f}".format(earner.total) }}</span>
+                                <span class="text-sm font-black text-indigo-600">₱{{ "{:,.0f}".format(earner.total) }}</span>
                                 <p class="text-[8px] font-black text-gray-300 uppercase italic">Total Package</p>
                             </td>
                         </tr>
@@ -143,12 +158,120 @@
             </div>
         </div>
     </div>
+    </div><!-- / pane-compensation -->
+    <!-- / Compensation Tab -->
+
+    <!-- Compliance Tab -->
+    <div id="pane-compliance" class="tab-pane hidden space-y-8">
+        <!-- Compliance KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="bg-gradient-to-br from-blue-600 to-blue-800 p-7 rounded-3xl shadow-xl shadow-blue-100 relative overflow-hidden group">
+                <div class="relative z-10">
+                    <h4 class="text-blue-100/80 text-xs font-black uppercase tracking-widest mb-4">Total SSS</h4>
+                    <p class="text-3xl font-black text-white leading-none">₱{{ "{:,.0f}".format(metrics.compliance_totals.sss) }}</p>
+                    <div class="mt-4 flex items-center text-blue-100 text-[10px] font-bold">
+                        <span class="bg-blue-500/30 px-2 py-0.5 rounded-full mr-2">MONTHLY</span>
+                    </div>
+                </div>
+                <i class="bi bi-building absolute -right-6 -bottom-6 text-9xl text-white/5 group-hover:scale-110 transition-transform duration-500"></i>
+            </div>
+            <div class="bg-white p-7 rounded-3xl shadow-sm border-2 border-gray-100 relative overflow-hidden group">
+                <h4 class="text-gray-400 text-xs font-black uppercase tracking-widest mb-4">PhilHealth</h4>
+                <p class="text-3xl font-black text-emerald-600 leading-none">₱{{ "{:,.0f}".format(metrics.compliance_totals.philhealth) }}</p>
+                <div class="mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Employee share (2.5%)</div>
+                <i class="bi bi-heart-pulse-fill absolute -right-6 -bottom-6 text-9xl text-gray-50 group-hover:scale-110 transition-transform duration-500"></i>
+            </div>
+            <div class="bg-white p-7 rounded-3xl shadow-sm border-2 border-gray-100 relative overflow-hidden group">
+                <h4 class="text-gray-400 text-xs font-black uppercase tracking-widest mb-4">Pag-IBIG</h4>
+                <p class="text-3xl font-black text-amber-500 leading-none">₱{{ "{:,.0f}".format(metrics.compliance_totals.pagibig) }}</p>
+                <div class="mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Employee share (2%)</div>
+                <i class="bi bi-house-heart-fill absolute -right-6 -bottom-6 text-9xl text-gray-50 group-hover:scale-110 transition-transform duration-500"></i>
+            </div>
+            <div class="bg-white p-7 rounded-3xl shadow-sm border-2 border-gray-100 relative overflow-hidden group">
+                <h4 class="text-gray-400 text-xs font-black uppercase tracking-widest mb-4">BIR Withholding</h4>
+                <p class="text-3xl font-black text-rose-600 leading-none">₱{{ "{:,.0f}".format(metrics.compliance_totals.bir) }}</p>
+                <div class="mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">TRAIN Law</div>
+                <i class="bi bi-receipt absolute -right-6 -bottom-6 text-9xl text-gray-50 group-hover:scale-110 transition-transform duration-500"></i>
+            </div>
+        </div>
+
+        <!-- Grand Total Banner -->
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+            <div>
+                <p class="text-indigo-100 text-xs font-black uppercase tracking-widest">Total Monthly Statutory Contributions</p>
+                <p class="text-4xl font-black text-white mt-1">₱{{ "{:,.2f}".format(metrics.compliance_totals.grand_total) }}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-indigo-100/70 text-xs font-bold">Based on {{ metrics.count }} active employees</p>
+                <p class="text-indigo-100/70 text-xs font-bold">SSS + PhilHealth + Pag-IBIG + BIR</p>
+            </div>
+        </div>
+
+        <!-- Per-Employee Compliance Table -->
+        <div class="bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-gray-100">
+            <div class="p-10 pb-4">
+                <h4 class="text-xl font-black text-gray-900">Per-Employee Contributions</h4>
+                <p class="text-sm text-gray-400 font-medium">Monthly statutory obligations per active staff</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Employee</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Base Salary</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">SSS</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">PhilHealth</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Pag-IBIG</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">BIR Tax</th>
+                            <th class="px-8 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        {% for emp in metrics.compliance_by_employee %}
+                        <tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="px-8 py-4">
+                                <div class="flex items-center">
+                                    <div class="w-9 h-9 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-xs mr-3">{{ emp.name[0]|upper }}</div>
+                                    <div>
+                                        <p class="text-sm font-bold text-gray-900">{{ emp.name }}</p>
+                                        <p class="text-[10px] font-black text-gray-400 uppercase">{{ emp.department }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-8 py-4 text-sm font-medium text-gray-600">₱{{ "{:,.2f}".format(emp.base_salary) }}</td>
+                            <td class="px-8 py-4 text-sm font-bold text-blue-600 text-right">₱{{ "{:,.2f}".format(emp.sss) }}</td>
+                            <td class="px-8 py-4 text-sm font-bold text-emerald-600 text-right">₱{{ "{:,.2f}".format(emp.philhealth) }}</td>
+                            <td class="px-8 py-4 text-sm font-bold text-amber-500 text-right">₱{{ "{:,.2f}".format(emp.pagibig) }}</td>
+                            <td class="px-8 py-4 text-sm font-bold text-rose-500 text-right">₱{{ "{:,.2f}".format(emp.bir) }}</td>
+                            <td class="px-8 py-4 text-right">
+                                <span class="text-sm font-black text-gray-900">₱{{ "{:,.2f}".format(emp.total_contributions) }}</span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="7" class="px-8 py-12 text-center text-gray-400 font-medium">No active compensation records found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- / Compliance Tab -->
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
-    Chart.defaults.color = '#94a3b8';
+    function showTab(name) {
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+            b.classList.add('border-transparent', 'text-gray-400');
+        });
+        document.getElementById('pane-' + name).classList.remove('hidden');
+        const btn = document.getElementById('tab-' + name);
+        btn.classList.remove('border-transparent', 'text-gray-400');
+        btn.classList.add('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+    }
+
 
     // 1. Department spending distribution
     const deptCtx = document.getElementById('deptBudgetChart').getContext('2d');
@@ -174,7 +297,7 @@
                     beginAtZero: true,
                     grid: { display: true, color: '#f8fafc', drawBorder: false },
                     ticks: {
-                        callback: function(value) { return '$' + (value / 1000) + 'k'; },
+                        callback: function(value) { return '₱' + (value / 1000) + 'k'; },
                         font: { weight: 'bold', size: 10 }
                     }
                 },

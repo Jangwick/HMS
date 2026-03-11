@@ -36,15 +36,15 @@
 
     {% if current_user.is_manager() %}
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between mb-4">
                 <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Average Salary</h4>
                 <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                    <i class="bi bi-currency-dollar"></i>
+                    <i class="bi bi-currency-exchange"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">${{ "{:,.2f}".format(avg_salary) }}</p>
+            <p class="text-3xl font-bold text-gray-900">₱{{ "{:,.2f}".format(avg_salary) }}</p>
             <p class="text-gray-400 text-sm font-medium mt-2">Per employee base</p>
         </div>
 
@@ -55,7 +55,7 @@
                     <i class="bi bi-cash-stack"></i>
                 </div>
             </div>
-            <p class="text-3xl font-bold text-gray-900">${{ "{:,.0f}".format(total_payroll) }}</p>
+            <p class="text-3xl font-bold text-gray-900">₱{{ "{:,.0f}".format(total_payroll) }}</p>
             <p class="text-blue-500 text-sm font-medium mt-2">Monthly base total</p>
         </div>
 
@@ -68,6 +68,23 @@
             </div>
             <p class="text-3xl font-bold text-gray-900">{{ total_grades }}</p>
             <p class="text-indigo-500 text-sm font-medium mt-2">Defined levels</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-sm font-bold uppercase tracking-wider">Active Benefits</h4>
+                <div class="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center text-teal-600">
+                    <i class="bi bi-heart-pulse"></i>
+                </div>
+            </div>
+            <p class="text-3xl font-bold text-teal-600">{{ active_benefits }}</p>
+            <p class="text-gray-400 text-sm font-medium mt-2">
+                {% if pending_claims > 0 %}
+                <span class="text-amber-500 font-bold">{{ pending_claims }} pending claim{{ pending_claims | pluralize if pending_claims != 1 else '' }}</span>
+                {% else %}
+                No pending claims
+                {% endif %}
+            </p>
         </div>
     </div>
 
@@ -88,7 +105,7 @@
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="font-bold text-indigo-600">${{ "{:,.0f}".format(update.base_salary) }}</p>
+                        <p class="font-bold text-indigo-600">₱{{ "{:,.0f}".format(update.base_salary) }}</p>
                         <p class="text-[10px] text-gray-400 font-bold uppercase">Base</p>
                     </div>
                 </div>
@@ -119,6 +136,10 @@
                 <a href="{{ url_for('hr4.analytics') }}" class="p-6 bg-amber-50 rounded-2xl hover:bg-amber-100 transition-colors group text-center">
                     <i class="bi bi-bar-chart text-2xl text-amber-600 mb-2 block mx-auto"></i>
                     <span class="font-bold text-amber-900 text-sm">HR Analytics</span>
+                </a>
+                <a href="{{ url_for('hr4.benefits') }}" class="p-6 bg-teal-50 rounded-2xl hover:bg-teal-100 transition-colors group text-center">
+                    <i class="bi bi-heart-pulse text-2xl text-teal-600 mb-2 block mx-auto"></i>
+                    <span class="font-bold text-teal-900 text-sm">Benefits & HMO</span>
                 </a>
                 <a href="{{ url_for('hr4.reports') }}" class="p-6 bg-rose-50 rounded-2xl hover:bg-rose-100 transition-colors group text-center">
                     <i class="bi bi-file-earmark-bar-graph text-2xl text-rose-600 mb-2 block mx-auto"></i>

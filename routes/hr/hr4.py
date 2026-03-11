@@ -173,6 +173,14 @@ def dashboard():
         payroll_processed = len(payroll_resp.data) > 0
         
         recent_updates = client.table('compensation_records').select('*, users(username)').order('effective_date', desc=True).limit(5).execute().data or []
+
+        # Benefits summary
+        benefits_res = client.table('employee_benefits').select('id, status').execute()
+        benefits_data = benefits_res.data or []
+        active_benefits = sum(1 for b in benefits_data if b.get('status') == 'Active')
+
+        claims_res = client.table('benefit_claims').select('id, status').eq('status', 'Pending').execute()
+        pending_claims = len(claims_res.data or [])
     except Exception as e:
         print(f"Error fetching HR4 stats: {e}")
         avg_salary = 0
@@ -180,14 +188,18 @@ def dashboard():
         total_grades = 0
         payroll_processed = False
         recent_updates = []
-    
-    return render_template('subsystems/hr/hr4/dashboard.html', 
+        active_benefits = 0
+        pending_claims = 0
+
+    return render_template('subsystems/hr/hr4/dashboard.html',
                            now=datetime.utcnow,
                            avg_salary=avg_salary,
                            total_payroll=total_payroll,
                            total_grades=total_grades,
                            payroll_processed=payroll_processed,
                            recent_updates=recent_updates,
+                           active_benefits=active_benefits,
+                           pending_claims=pending_claims,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -514,6 +526,91 @@ def analytics():
                 'total': float(r.get('base_salary', 0)) + float(r.get('allowances', 0)) + float(r.get('bonuses', 0))
             })
 
+        # 5. Compliance / Statutory Contributions (Philippine law)
+        def compute_sss(monthly_salary):
+            """SSS contribution table — simplified tiered brackets (employee share)."""
+            if monthly_salary < 4250: return 180.0
+            elif monthly_salary < 4750: return 202.5
+            elif monthly_salary < 5250: return 225.0
+            elif monthly_salary < 5750: return 247.5
+            elif monthly_salary < 6250: return 270.0
+            elif monthly_salary < 6750: return 292.5
+            elif monthly_salary < 7250: return 315.0
+            elif monthly_salary < 7750: return 337.5
+            elif monthly_salary < 8250: return 360.0
+            elif monthly_salary < 8750: return 382.5
+            elif monthly_salary < 9250: return 405.0
+            elif monthly_salary < 9750: return 427.5
+            elif monthly_salary < 10250: return 450.0
+            elif monthly_salary < 10750: return 472.5
+            elif monthly_salary < 11250: return 495.0
+            elif monthly_salary < 11750: return 517.5
+            elif monthly_salary < 12250: return 540.0
+            elif monthly_salary < 12750: return 562.5
+            elif monthly_salary < 13250: return 585.0
+            elif monthly_salary < 13750: return 607.5
+            elif monthly_salary < 14250: return 630.0
+            elif monthly_salary < 14750: return 652.5
+            elif monthly_salary < 15250: return 675.0
+            elif monthly_salary < 15750: return 697.5
+            elif monthly_salary < 16250: return 720.0
+            elif monthly_salary < 16750: return 742.5
+            elif monthly_salary < 17250: return 765.0
+            elif monthly_salary < 17750: return 787.5
+            elif monthly_salary < 18250: return 810.0
+            elif monthly_salary < 18750: return 832.5
+            elif monthly_salary < 19250: return 855.0
+            elif monthly_salary < 19750: return 877.5
+            elif monthly_salary < 20250: return 900.0
+            else: return min(monthly_salary * 0.045, 1350.0)
+
+        def compute_philhealth(monthly_salary):
+            """PhilHealth: 5% total, 2.5% employee share, capped at ₱2,500."""
+            return min(monthly_salary * 0.025, 2500.0)
+
+        def compute_pagibig(monthly_salary):
+            """Pag-IBIG: 2% employee share of salary credit up to ₱5,000, max ₱100."""
+            return min(monthly_salary * 0.02, 100.0)
+
+        def compute_bir(monthly_salary):
+            """BIR withholding tax — TRAIN law monthly brackets."""
+            annual = monthly_salary * 12
+            if annual <= 250000: return 0.0
+            elif annual <= 400000: return ((annual - 250000) * 0.15) / 12
+            elif annual <= 800000: return ((22500 + (annual - 400000) * 0.20)) / 12
+            elif annual <= 2000000: return ((102500 + (annual - 800000) * 0.25)) / 12
+            elif annual <= 8000000: return ((402500 + (annual - 2000000) * 0.30)) / 12
+            else: return ((2202500 + (annual - 8000000) * 0.35)) / 12
+
+        compliance_by_employee = []
+        total_sss = total_philhealth = total_pagibig = total_bir = 0.0
+        for r in records:
+            base = float(r.get('base_salary') or 0)
+            sss = round(compute_sss(base), 2)
+            ph = round(compute_philhealth(base), 2)
+            pi = round(compute_pagibig(base), 2)
+            bir = round(compute_bir(base), 2)
+            total_sss += sss; total_philhealth += ph
+            total_pagibig += pi; total_bir += bir
+            compliance_by_employee.append({
+                'name': r.get('users', {}).get('username', 'Unknown'),
+                'department': r.get('users', {}).get('department', 'N/A'),
+                'base_salary': base,
+                'sss': sss,
+                'philhealth': ph,
+                'pagibig': pi,
+                'bir': bir,
+                'total_contributions': sss + ph + pi + bir
+            })
+
+        compliance_totals = {
+            'sss': round(total_sss, 2),
+            'philhealth': round(total_philhealth, 2),
+            'pagibig': round(total_pagibig, 2),
+            'bir': round(total_bir, 2),
+            'grand_total': round(total_sss + total_philhealth + total_pagibig + total_bir, 2)
+        }
+
         metrics = {
             'total_annual_budget': total_salary + total_allowances + total_bonuses,
             'avg_salary': total_salary / len(records) if records else 0,
@@ -533,11 +630,13 @@ def analytics():
                 'labels': list(structure.keys()),
                 'data': list(structure.values())
             },
-            'top_earners': top_earners
+            'top_earners': top_earners,
+            'compliance_totals': compliance_totals,
+            'compliance_by_employee': compliance_by_employee
         }
     except Exception as e:
         print(f"Error calculating analytics: {e}")
-        metrics = {'total_annual_budget': 0, 'avg_salary': 0, 'total_allowances': 0, 'total_bonuses': 0, 'count': 0, 'dept_distribution': {'labels': [], 'data': []}, 'salary_ranges': {'labels': [], 'data': []}, 'structure': {'labels': [], 'data': []}, 'top_earners': []}
+        metrics = {'total_annual_budget': 0, 'avg_salary': 0, 'total_allowances': 0, 'total_bonuses': 0, 'count': 0, 'dept_distribution': {'labels': [], 'data': []}, 'salary_ranges': {'labels': [], 'data': []}, 'structure': {'labels': [], 'data': []}, 'top_earners': [], 'compliance_totals': {'sss': 0, 'philhealth': 0, 'pagibig': 0, 'bir': 0, 'grand_total': 0}, 'compliance_by_employee': []}
 
     return render_template('subsystems/hr/hr4/analytics.html',
                            metrics=metrics,
@@ -899,6 +998,263 @@ def decide_reimbursement(claim_id):
         flash(f'Error processing decision: {str(e)}', 'danger')
 
     return redirect(url_for('hr4.reimbursements'))
+
+
+# ─────────────────────────────────────────────
+#  BENEFITS & HMO ADMINISTRATION
+# ─────────────────────────────────────────────
+
+@hr4_bp.route('/benefits')
+@login_required
+def benefits():
+    if not current_user.is_manager():
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr4.dashboard'))
+
+    client = get_supabase_client()
+
+    # --- Users query is independent so it always loads even if benefits tables are missing ---
+    try:
+        users_res = client.table('users').select(
+            'id, username, full_name, department, role, status, is_active'
+        ).order('username').execute()
+        all_users = users_res.data or []
+        active_users = [
+            u for u in all_users
+            if (u.get('status') == 'Active' or u.get('is_active') is True)
+            and u.get('role') not in ('Applicant', 'Patient', None)
+            and u.get('department') not in ('PATIENT_PORTAL',)
+        ]
+    except Exception as e:
+        import traceback
+        print(f"Error loading users for benefits dropdown: {e}")
+        traceback.print_exc()
+        active_users = []
+
+    # --- Benefits & claims tables (may not exist yet) ---
+    try:
+        benefits_res = client.table('employee_benefits').select('*').order('created_at', desc=True).execute()
+        benefit_records = benefits_res.data or []
+
+        claims_res = client.table('benefit_claims').select('*').order('submitted_at', desc=True).execute()
+        claim_records = claims_res.data or []
+
+        # Enrich with user info using the already-fetched all_users list
+        users_map = {u['id']: u for u in all_users} if all_users else {}
+        for b in benefit_records:
+            uid = b.get('user_id')
+            gid = b.get('granted_by')
+            b['users'] = users_map.get(uid, {})
+            b['granter'] = users_map.get(gid, {})
+        for c in claim_records:
+            uid = c.get('user_id')
+            rid = c.get('reviewed_by')
+            bid = c.get('benefit_id')
+            c['users'] = users_map.get(uid, {})
+            c['reviewer'] = users_map.get(rid, {})
+            c['benefit'] = next((b for b in benefit_records if b.get('id') == bid), {})
+    except Exception as e:
+        import traceback
+        print(f"Error loading benefits/claims (tables may not exist yet): {e}")
+        traceback.print_exc()
+        benefit_records = []
+        claim_records = []
+
+    # --- Compute stats from loaded data ---
+    try:
+        # Benefit status breakdown
+        status_counts = {}
+        for b in benefit_records:
+            s = b.get('status', 'Unknown')
+            status_counts[s] = status_counts.get(s, 0) + 1
+
+        # Benefit type breakdown with coverage totals
+        type_breakdown = {}
+        for b in benefit_records:
+            if b.get('status') != 'Active':
+                continue
+            bt = b.get('benefit_type', 'Other')
+            if bt not in type_breakdown:
+                type_breakdown[bt] = {'count': 0, 'total_coverage': 0.0}
+            type_breakdown[bt]['count'] += 1
+            type_breakdown[bt]['total_coverage'] += float(b.get('coverage_amount') or 0)
+
+        # HMO-specific stats
+        hmo_records = [b for b in benefit_records if b.get('benefit_type') in ('HMO', 'Health Card')]
+        active_hmo = [b for b in hmo_records if b.get('status') == 'Active']
+        hmo_providers = {}
+        for b in active_hmo:
+            p = b.get('provider') or 'Unknown'
+            hmo_providers[p] = hmo_providers.get(p, 0) + 1
+
+        total_coverage = sum(float(b.get('coverage_amount') or 0) for b in benefit_records if b.get('status') == 'Active')
+        pending_claims = sum(1 for c in claim_records if c.get('status') == 'Pending')
+
+        hmo_stats = {
+            'enrollee_count': len(active_hmo),
+            'avg_coverage': (sum(float(b.get('coverage_amount') or 0) for b in active_hmo) / len(active_hmo)) if active_hmo else 0,
+            'total_coverage': sum(float(b.get('coverage_amount') or 0) for b in active_hmo),
+            'providers': hmo_providers
+        }
+    except Exception as e:
+        print(f"Error computing benefit stats: {e}")
+        status_counts = {}
+        type_breakdown = {}
+        total_coverage = 0
+        pending_claims = 0
+        hmo_stats = {'enrollee_count': 0, 'avg_coverage': 0, 'total_coverage': 0, 'providers': {}}
+
+    return render_template('subsystems/hr/hr4/benefits.html',
+                           benefit_records=benefit_records,
+                           claim_records=claim_records,
+                           active_users=active_users,
+                           status_counts=status_counts,
+                           type_breakdown=type_breakdown,
+                           total_coverage=total_coverage,
+                           pending_claims=pending_claims,
+                           hmo_stats=hmo_stats,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@hr4_bp.route('/benefits/assign', methods=['POST'])
+@login_required
+def assign_benefit():
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('hr4.benefits'))
+
+    client = get_supabase_client()
+    try:
+        user_id = int(request.form.get('user_id'))
+        benefit_type = request.form.get('benefit_type', '').strip()
+        provider = request.form.get('provider', '').strip()
+        coverage_amount = float(request.form.get('coverage_amount') or 0)
+        start_date = request.form.get('start_date') or datetime.utcnow().strftime('%Y-%m-%d')
+        end_date = request.form.get('end_date') or None
+        notes = request.form.get('notes', '').strip()
+
+        payload = {
+            'user_id': user_id,
+            'benefit_type': benefit_type,
+            'provider': provider or None,
+            'coverage_amount': coverage_amount,
+            'start_date': start_date,
+            'status': 'Active',
+            'notes': notes or None,
+            'granted_by': current_user.id
+        }
+        if end_date:
+            payload['end_date'] = end_date
+        client.table('employee_benefits').insert(payload).execute()
+        flash('Benefit assigned successfully.', 'success')
+    except Exception as e:
+        flash(f'Error assigning benefit: {str(e)}', 'danger')
+
+    return redirect(url_for('hr4.benefits'))
+
+
+@hr4_bp.route('/benefits/<int:benefit_id>/edit', methods=['POST'])
+@login_required
+def edit_benefit(benefit_id):
+    if not current_user.is_admin():
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr4.benefits'))
+
+    client = get_supabase_client()
+    try:
+        end_date_val = request.form.get('end_date') or None
+        updates = {
+            'benefit_type': request.form.get('benefit_type', '').strip(),
+            'provider': request.form.get('provider', '').strip() or None,
+            'coverage_amount': float(request.form.get('coverage_amount') or 0),
+            'start_date': request.form.get('start_date'),
+            'status': request.form.get('status', 'Active'),
+            'notes': request.form.get('notes', '').strip() or None,
+            'updated_at': datetime.utcnow().isoformat()
+        }
+        if end_date_val:
+            updates['end_date'] = end_date_val
+        client.table('employee_benefits').update(updates).eq('id', benefit_id).execute()
+        flash('Benefit updated.', 'success')
+    except Exception as e:
+        flash(f'Error updating benefit: {str(e)}', 'danger')
+
+    return redirect(url_for('hr4.benefits'))
+
+
+@hr4_bp.route('/benefits/<int:benefit_id>/delete', methods=['POST'])
+@login_required
+def delete_benefit(benefit_id):
+    if not current_user.is_admin():
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr4.benefits'))
+
+    client = get_supabase_client()
+    try:
+        client.table('employee_benefits').delete().eq('id', benefit_id).execute()
+        flash('Benefit record deleted.', 'info')
+    except Exception as e:
+        flash(f'Error deleting benefit: {str(e)}', 'danger')
+
+    return redirect(url_for('hr4.benefits'))
+
+
+@hr4_bp.route('/benefits/claims/submit', methods=['POST'])
+@login_required
+def submit_benefit_claim():
+    client = get_supabase_client()
+    try:
+        benefit_id = request.form.get('benefit_id')
+        claim_type = request.form.get('claim_type', '').strip()
+        amount = float(request.form.get('amount') or 0)
+        description = request.form.get('description', '').strip()
+
+        client.table('benefit_claims').insert({
+            'user_id': current_user.id,
+            'benefit_id': int(benefit_id) if benefit_id else None,
+            'claim_type': claim_type,
+            'amount': amount,
+            'description': description,
+            'status': 'Pending',
+            'submitted_at': datetime.utcnow().isoformat()
+        }).execute()
+        flash('Benefit claim submitted successfully.', 'success')
+    except Exception as e:
+        flash(f'Error submitting claim: {str(e)}', 'danger')
+
+    return redirect(url_for('hr4.benefits'))
+
+
+@hr4_bp.route('/benefits/claims/<int:claim_id>/decide', methods=['POST'])
+@login_required
+def decide_benefit_claim(claim_id):
+    if not current_user.is_admin():
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('hr4.benefits'))
+
+    client = get_supabase_client()
+    decision = request.form.get('decision')
+    notes = request.form.get('notes', '').strip()
+
+    if decision not in ('Approve', 'Reject'):
+        flash('Invalid decision.', 'danger')
+        return redirect(url_for('hr4.benefits'))
+
+    try:
+        status = 'Approved' if decision == 'Approve' else 'Rejected'
+        client.table('benefit_claims').update({
+            'status': status,
+            'reviewed_by': current_user.id,
+            'reviewed_at': datetime.utcnow().isoformat(),
+            'review_notes': notes
+        }).eq('id', claim_id).execute()
+        flash(f'Claim {status.lower()}.', 'success' if status == 'Approved' else 'info')
+    except Exception as e:
+        flash(f'Error processing claim: {str(e)}', 'danger')
+
+    return redirect(url_for('hr4.benefits'))
 
 
 @hr4_bp.route('/settings', methods=['GET', 'POST'])
