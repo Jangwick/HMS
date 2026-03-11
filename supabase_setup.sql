@@ -330,6 +330,36 @@ CREATE TABLE IF NOT EXISTS benefit_claims (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Fix: applicants.vacancy_id foreign key should allow vacancy deletion
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'applicants_vacancy_id_fkey' AND table_name = 'applicants'
+    ) THEN
+        ALTER TABLE applicants DROP CONSTRAINT applicants_vacancy_id_fkey;
+    END IF;
+    ALTER TABLE applicants ADD CONSTRAINT applicants_vacancy_id_fkey
+        FOREIGN KEY (vacancy_id) REFERENCES vacancies(id) ON DELETE SET NULL;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Could not update applicants_vacancy_id_fkey: %', SQLERRM;
+END $$;
+
+-- Fix: onboarding.position_id foreign key should allow vacancy deletion
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'onboarding_position_id_fkey' AND table_name = 'onboarding'
+    ) THEN
+        ALTER TABLE onboarding DROP CONSTRAINT onboarding_position_id_fkey;
+    END IF;
+    ALTER TABLE onboarding ADD CONSTRAINT onboarding_position_id_fkey
+        FOREIGN KEY (position_id) REFERENCES vacancies(id) ON DELETE SET NULL;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Could not update onboarding_position_id_fkey: %', SQLERRM;
+END $$;
+
 -- Safe column injections for employee_benefits (in case table was created without all columns)
 ALTER TABLE IF EXISTS employee_benefits ADD COLUMN IF NOT EXISTS provider VARCHAR(200);
 ALTER TABLE IF EXISTS employee_benefits ADD COLUMN IF NOT EXISTS coverage_amount DECIMAL(12,2) DEFAULT 0.00;
