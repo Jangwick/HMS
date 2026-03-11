@@ -1307,6 +1307,313 @@ def probation_detail(cycle_id):
                            blueprint_name=BLUEPRINT_NAME)
 
 
+@hr1_bp.route('/probation/<int:cycle_id>/export', methods=['GET'])
+@login_required
+def probation_export(cycle_id):
+    """Generate a PDF performance report for a probation cycle."""
+    import io
+    import json
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm, mm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, HRFlowable
+    from flask import send_file
+
+    client = get_supabase_client()
+
+    cycle_resp = client.table('probation_cycles').select('*').eq('id', cycle_id).single().execute()
+    if not cycle_resp.data:
+        flash('Probation cycle not found.', 'danger')
+        return redirect(url_for('hr1.probation_list'))
+    cycle = cycle_resp.data
+
+    employee = User.get_by_id(cycle['employee_id'])
+    supervisor = User.get_by_id(cycle['supervisor_id'])
+    kpis = client.table('probation_kpis').select('*').eq('cycle_id', cycle_id).order('created_at').execute().data or []
+    ack_resp = client.table('kpi_acknowledgements').select('*').eq('cycle_id', cycle_id).execute()
+    acknowledgement = ack_resp.data[0] if ack_resp.data else None
+    checkin_resp = client.table('mid_probation_checkins').select('*').eq('cycle_id', cycle_id).execute()
+    checkin = checkin_resp.data[0] if checkin_resp.data else None
+    eval_resp = client.table('final_evaluations').select('*').eq('cycle_id', cycle_id).execute()
+    evaluation = eval_resp.data[0] if eval_resp.data else None
+    rec_resp = client.table('probation_recommendations').select('*').eq('cycle_id', cycle_id).execute()
+    recommendation = rec_resp.data[0] if rec_resp.data else None
+    dec_resp = client.table('hr_decisions').select('*').eq('cycle_id', cycle_id).execute()
+    decision = dec_resp.data[0] if dec_resp.data else None
+    try:
+        monitoring_logs = client.table('probation_kpi_progress') \
+            .select('*, probation_kpis(kpi_name, weight, target_value)') \
+            .eq('cycle_id', cycle_id).order('created_at', desc=False).execute().data or []
+    except Exception:
+        monitoring_logs = []
+
+    emp_name = (employee.full_name or employee.username) if employee else 'N/A'
+    emp_dept = (employee.department or '—') if employee else '—'
+    sup_name = (supervisor.full_name or supervisor.username) if supervisor else 'N/A'
+
+    # ── Build PDF ──────────────────────────────────────────────────────────
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            rightMargin=1.5*cm, leftMargin=1.5*cm,
+                            topMargin=1.5*cm, bottomMargin=1.5*cm)
+
+    styles = getSampleStyleSheet()
+    small = ParagraphStyle('small', parent=styles['Normal'], fontSize=8, leading=10)
+    small_bold = ParagraphStyle('small_bold', parent=styles['Normal'], fontSize=8, leading=10, fontName='Helvetica-Bold')
+    DARK_BLUE = colors.HexColor('#1e3a5f')
+    LIGHT_ROW = colors.HexColor('#F8FAFC')
+
+    def h1(text):
+        return Paragraph(f'<font size="16"><b>{text}</b></font>', styles['Normal'])
+
+    def h2(text):
+        return Paragraph(f'<font size="11"><b>{text}</b></font>', styles['Normal'])
+
+    def body(text):
+        return Paragraph(f'<font size="9">{text}</font>', styles['Normal'])
+
+    def sp(n=3):
+        return Spacer(1, n*mm)
+
+    story = []
+
+    # ── Title ──────────────────────────────────────────────────────────────
+    story.append(h1('Probation Performance Report'))
+    story.append(sp(2))
+    story.append(HRFlowable(width='100%', thickness=2, color=DARK_BLUE, spaceAfter=3*mm))
+
+    # ── Summary info table ────────────────────────────────────────────────
+    info_data = [
+        [Paragraph('<b>Employee</b>', small), Paragraph(emp_name, small),
+         Paragraph('<b>Department</b>', small), Paragraph(emp_dept, small)],
+        [Paragraph('<b>Supervisor</b>', small), Paragraph(sup_name, small),
+         Paragraph('<b>Cycle Type</b>', small), Paragraph(cycle.get('cycle_type', '—'), small)],
+        [Paragraph('<b>Period</b>', small),
+         Paragraph(f"{cycle.get('start_date') or 'TBD'} → {cycle.get('end_date') or 'TBD'}", small),
+         Paragraph('<b>Status</b>', small), Paragraph(cycle.get('status', '—'), small)],
+        [Paragraph('<b>Report Date</b>', small),
+         Paragraph(datetime.utcnow().strftime('%B %d, %Y'), small), '', ''],
+    ]
+    info_table = Table(info_data, colWidths=[3*cm, 6*cm, 3*cm, 6*cm])
+    info_table.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F9FAFB')),
+        ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.HexColor('#F3F4F6')]),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    story.append(info_table)
+    story.append(sp(5))
+
+    # ── KPI Table ─────────────────────────────────────────────────────────
+    story.append(h2('Performance KPIs'))
+    story.append(sp(2))
+    if kpis:
+        eval_map = {}
+        if evaluation and evaluation.get('kpi_scores'):
+            try:
+                ks_list = evaluation['kpi_scores'] if isinstance(evaluation['kpi_scores'], list) \
+                    else json.loads(evaluation['kpi_scores'])
+                for ks in ks_list:
+                    eval_map[str(ks.get('kpi_id', ''))] = ks
+            except Exception:
+                pass
+
+        kpi_header = [Paragraph(t, small_bold) for t in
+                      ['KPI', 'Description', 'Target', 'Actual Result', 'Weight%', 'Score', 'Remarks']]
+        kpi_rows = [kpi_header]
+        for kpi in kpis:
+            ks = eval_map.get(str(kpi['id']), {})
+            kpi_rows.append([
+                Paragraph(kpi.get('kpi_name', ''), small),
+                Paragraph(kpi.get('description', '') or '—', small),
+                Paragraph(str(kpi.get('target_value', '') or '—'), small),
+                Paragraph(str(ks.get('actual_result', '') or '—'), small),
+                Paragraph(f"{kpi.get('weight', 0)}%", small),
+                Paragraph(str(ks.get('score', '—')), small),
+                Paragraph(str(ks.get('remarks', '') or '—'), small),
+            ])
+        total_weight = sum(k.get('weight', 0) for k in kpis)
+        kpi_rows.append([
+            Paragraph('<b>TOTAL</b>', small_bold), '', '', '',
+            Paragraph(f'<b>{total_weight}%</b>', small_bold),
+            Paragraph(f'<b>{evaluation.get("overall_score", "—") if evaluation else "—"}</b>', small_bold),
+            '',
+        ])
+        kpi_table = Table(kpi_rows, colWidths=[3*cm, 3.5*cm, 2*cm, 2.5*cm, 1.8*cm, 1.8*cm, 3.4*cm], repeatRows=1)
+        kpi_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), DARK_BLUE),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('ALIGN', (4, 0), (5, -1), 'CENTER'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#D1D5DB')),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F3F4F6')),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, LIGHT_ROW]),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(kpi_table)
+    else:
+        story.append(body('<i>No KPIs defined for this cycle.</i>'))
+    story.append(sp(5))
+
+    # ── KPI Acknowledgement ───────────────────────────────────────────────
+    if acknowledgement:
+        story.append(h2('KPI Acknowledgement'))
+        story.append(sp(2))
+        ack_date = (acknowledgement.get('acknowledged_at', '') or '')[:10] or 'N/A'
+        story.append(body(f'<b>Status:</b> {acknowledgement.get("status", "—")} &nbsp;&nbsp; '
+                          f'<b>Signed by:</b> {acknowledgement.get("digital_signature", "—")} on {ack_date}'))
+        story.append(sp(5))
+
+    # ── Monitoring Logs ───────────────────────────────────────────────────
+    if monitoring_logs:
+        story.append(h2('Monitoring Logs'))
+        story.append(sp(2))
+        mon_header = [Paragraph(t, small_bold) for t in ['Period', 'KPI', 'Score (%)', 'Notes', 'Date']]
+        mon_rows = [mon_header]
+        for log in monitoring_logs:
+            kpi_info = log.get('probation_kpis', {}) or {}
+            log_date = (log.get('created_at', '') or '')[:10] or 'N/A'
+            notes_raw = log.get('notes', '') or '—'
+            period_label = ''
+            notes_clean = notes_raw
+            if notes_raw.startswith('['):
+                bracket_end = notes_raw.find(']')
+                if bracket_end > 0:
+                    period_label = notes_raw[1:bracket_end]
+                    notes_clean = notes_raw[bracket_end + 2:].strip()
+            mon_rows.append([
+                Paragraph(period_label or '—', small),
+                Paragraph(str(kpi_info.get('kpi_name', '—')), small),
+                Paragraph(str(log.get('score', '—')), small),
+                Paragraph(str(notes_clean)[:300], small),
+                Paragraph(log_date, small),
+            ])
+        mon_table = Table(mon_rows, colWidths=[3*cm, 3.5*cm, 2*cm, 7*cm, 2.5*cm], repeatRows=1)
+        mon_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), DARK_BLUE),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#D1D5DB')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, LIGHT_ROW]),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(mon_table)
+        story.append(sp(5))
+
+    # ── Mid-Probation Check-in ─────────────────────────────────────────────
+    if checkin:
+        story.append(h2('Mid-Probation Check-in'))
+        story.append(sp(2))
+        story.append(body(f'<b>Overall Rating:</b> {checkin.get("overall_rating", "—")}'))
+        if checkin.get('gap_analysis'):
+            story.append(body(f'<b>Gap Analysis:</b> {checkin.get("gap_analysis", "—")}'))
+        if checkin.get('improvement_plan'):
+            story.append(body(f'<b>Improvement Plan:</b> {checkin.get("improvement_plan", "—")}'))
+        story.append(sp(5))
+
+    # ── Final Evaluation ──────────────────────────────────────────────────
+    if evaluation:
+        story.append(h2('Final Evaluation'))
+        story.append(sp(2))
+        kpi_scores_raw = evaluation.get('kpi_scores')
+        if kpi_scores_raw:
+            try:
+                ks_list = kpi_scores_raw if isinstance(kpi_scores_raw, list) else json.loads(kpi_scores_raw)
+                eval_header = [Paragraph(t, small_bold) for t in
+                               ['KPI', 'Target', 'Actual Result', 'Achievement%', 'Weight%', 'Score', 'Remarks']]
+                eval_rows = [eval_header]
+                for ks in ks_list:
+                    eval_rows.append([
+                        Paragraph(str(ks.get('name', '—')), small),
+                        Paragraph(str(ks.get('target', '') or '—'), small),
+                        Paragraph(str(ks.get('actual_result', '') or '—'), small),
+                        Paragraph(f"{ks.get('actual_pct', '—')}%", small),
+                        Paragraph(f"{ks.get('weight', '—')}%", small),
+                        Paragraph(str(ks.get('score', '—')), small),
+                        Paragraph(str(ks.get('remarks', '') or '—'), small),
+                    ])
+                eval_rows.append([
+                    Paragraph('<b>TOTAL SCORE</b>', small_bold), '', '', '', '',
+                    Paragraph(f'<b>{evaluation.get("overall_score", "—")}</b>', small_bold), '',
+                ])
+                eval_table = Table(eval_rows, colWidths=[3*cm, 2*cm, 2.5*cm, 2.2*cm, 1.8*cm, 1.8*cm, 3.7*cm], repeatRows=1)
+                eval_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), DARK_BLUE),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 8),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#D1D5DB')),
+                    ('BACKGROUND', (0, -1), (-1, -1), DARK_BLUE),
+                    ('TEXTCOLOR', (0, -1), (-1, -1), colors.white),
+                    ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, LIGHT_ROW]),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ]))
+                story.append(eval_table)
+            except Exception:
+                story.append(body('<i>Error rendering evaluation scorecard.</i>'))
+
+        overall = float(evaluation.get('overall_score', 0) or 0)
+        if overall >= 90:
+            rating_label = 'Outstanding'
+        elif overall >= 75:
+            rating_label = 'Exceeds Expectations'
+        elif overall >= 60:
+            rating_label = 'Meets Expectations'
+        elif overall >= 50:
+            rating_label = 'Needs Improvement'
+        else:
+            rating_label = 'Unsatisfactory'
+        story.append(sp(3))
+        story.append(body(f'<b>Overall Score:</b> {overall} / 100 &nbsp;&#8212;&nbsp; <b>Performance Rating:</b> {rating_label}'))
+        if evaluation.get('comments'):
+            story.append(body(f'<b>Comments:</b> {evaluation.get("comments")}'))
+        story.append(sp(5))
+
+    # ── Recommendation ────────────────────────────────────────────────────
+    if recommendation:
+        story.append(h2('Supervisor Recommendation'))
+        story.append(sp(2))
+        story.append(body(f'<b>Recommendation:</b> {recommendation.get("recommendation", "—")}'))
+        story.append(body(f'<b>Justification:</b> {recommendation.get("justification", "—")}'))
+        story.append(sp(5))
+
+    # ── HR Decision ───────────────────────────────────────────────────────
+    if decision:
+        story.append(h2('HR Final Decision'))
+        story.append(sp(2))
+        story.append(body(f'<b>Decision:</b> {decision.get("decision", "—")}'))
+        story.append(body(f'<b>Notes:</b> {decision.get("notes", "—")}'))
+        story.append(sp(5))
+
+    # ── Footer ────────────────────────────────────────────────────────────
+    story.append(HRFlowable(width='100%', thickness=1, color=colors.HexColor('#D1D5DB'), spaceAfter=3*mm))
+    story.append(Paragraph(
+        '<font size="7" color="gray">This report is generated from the HMS — HR1 Personnel Management system. '
+        'Document is confidential and intended for authorized personnel only.</font>',
+        styles['Normal']))
+
+    doc.build(story)
+    buf.seek(0)
+
+    safe_name = emp_name.replace(' ', '_').replace('/', '_')
+    filename = f"Probation_Report_{safe_name}_{cycle_id}.pdf"
+    return send_file(buf, mimetype='application/pdf', as_attachment=True, download_name=filename)
+
+
 @hr1_bp.route('/probation/<int:cycle_id>/set-period', methods=['POST'])
 @login_required
 @supervisor_required
