@@ -448,7 +448,7 @@ def clock_out():
 @hr3_bp.route('/attendance/force-clock-out/<int:log_id>', methods=['POST'])
 @login_required
 def force_clock_out(log_id):
-    if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr3'):
+    if not current_user.is_super_admin() and (not current_user.is_manager() or current_user.subsystem != 'hr3'):
         flash('Unauthorized: Administrative access required.', 'danger')
         return hr3_redirect_fallback()
 
@@ -825,7 +825,7 @@ def list_attendance():
     query = client.table('attendance_logs').select('*, users(username, avatar_url, full_name, department, subsystem)')
     
     # Non-admins only see their own logs
-    if not current_user.is_super_admin() and (current_user.role not in ['Admin', 'Administrator'] or current_user.subsystem != 'hr3'):
+    if not current_user.is_super_admin() and (current_user.role not in ['Admin', 'Administrator', 'Manager'] or current_user.subsystem != 'hr3'):
         query = query.eq('user_id', current_user.id)
         
     response = query.order('clock_in', desc=True).execute()
@@ -844,7 +844,7 @@ def list_attendance():
     missing_staff = []
     users_list = []
     sched_map = {}
-    if current_user.is_super_admin() or (current_user.is_admin() and current_user.subsystem == 'hr3'):
+    if current_user.is_super_admin() or (current_user.is_manager() and current_user.subsystem == 'hr3'):
         try:
             today = datetime.now().strftime('%Y-%m-%d')
             day_name = datetime.now().strftime('%A')
