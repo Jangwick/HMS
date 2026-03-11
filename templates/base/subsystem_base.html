@@ -426,6 +426,7 @@
 
                 <!-- HR4: Compensation & Analytics -->
                 {% elif blueprint_name == 'hr4' %}
+                {% if current_user.is_manager() %}
                 <a href="{{ url_for('hr4.compensation') }}"
                     class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent text-accent' if request.endpoint == 'hr4.compensation' }}">
                     <i class="bi bi-wallet2 mr-3"></i>
@@ -446,6 +447,7 @@
                     <i class="bi bi-bar-chart-line mr-3"></i>
                     <span>HR Analytics</span>
                 </a>
+                {% endif %}
                 <a href="{{ url_for('hr4.reimbursements') }}"
                     class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent text-accent' if request.endpoint == 'hr4.reimbursements' }}">
                     <i class="bi bi-receipt mr-3"></i>
@@ -456,7 +458,7 @@
                     <i class="bi bi-heart-pulse mr-3"></i>
                     <span>Benefits &amp; HMO</span>
                 </a>
-
+                {% if current_user.is_admin() %}
                 <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Payroll Reports
                 </div>
                 <a href="{{ url_for('hr4.reports') }}"
@@ -464,6 +466,7 @@
                     <i class="bi bi-file-earmark-bar-graph mr-3"></i>
                     <span>Reporting Center</span>
                 </a>
+                {% endif %}
                 {% endif %}
 
                 <!-- Core Transaction Subsystems -->

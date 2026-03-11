@@ -1007,7 +1007,7 @@ def decide_reimbursement(claim_id):
 @hr4_bp.route('/benefits')
 @login_required
 def benefits():
-    if not current_user.is_manager():
+    if not current_user.is_staff():
         flash('Unauthorized.', 'danger')
         return redirect(url_for('hr4.dashboard'))
 
