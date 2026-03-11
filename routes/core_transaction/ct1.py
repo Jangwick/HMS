@@ -218,6 +218,14 @@ def dashboard():
     occupied_beds = sum(1 for b in bed_resp.data if b['status'] == 'Occupied') if bed_resp.data else 0
 
     upcoming_appointments = Appointment.get_upcoming()
+
+    # Pending portal registrations
+    try:
+        pending_resp = client.table('users').select('id', count='exact')\
+            .eq('subsystem', 'patient').eq('status', 'Pending').execute()
+        pending_registrations = pending_resp.count or 0
+    except Exception:
+        pending_registrations = 0
     
     metrics = {
         'total_patients': total_patients,
@@ -225,7 +233,8 @@ def dashboard():
         'appointments_today': appointments_today,
         'occupied_beds': occupied_beds,
         'total_beds': total_beds,
-        'system_status': 'Operational'
+        'system_status': 'Operational',
+        'pending_registrations': pending_registrations,
     }
     
     if current_user.should_warn_password_expiry():
@@ -245,14 +254,13 @@ def dashboard():
 def list_patients():
     from utils.hms_models import Patient
     from datetime import datetime
-    
+
     client = get_supabase_client()
     patients = Patient.get_all()
-    
+
     # Calculate New This Month
     now = datetime.now()
     first_day_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
-    
     new_this_month = 0
     try:
         res = client.table('patients').select('id', count='exact').gte('created_at', first_day_month).execute()
@@ -260,13 +268,142 @@ def list_patients():
     except Exception as e:
         print(f"Error calculating monthly stats: {e}")
 
+    # ── Also load Portal Registrations for the merged tab ──────────────────
+    registrations = []
+    pending_count = approved_count = rejected_count = 0
+    try:
+        users_resp = client.table('users')\
+            .select('id, username, full_name, created_at, patient_id, status')\
+            .eq('subsystem', 'patient')\
+            .in_('status', ['Pending', 'Active', 'Rejected'])\
+            .order('created_at', desc=True)\
+            .execute()
+        for u in (users_resp.data or []):
+            pat_data = {}
+            if u.get('patient_id'):
+                try:
+                    pr = client.table('patients').select(
+                        'id, first_name, last_name, dob, gender, contact_number, '
+                        'address, gov_id_url, visit_type, temp_id, status, created_at'
+                    ).eq('id', u['patient_id']).single().execute()
+                    pat_data = pr.data or {}
+                except Exception:
+                    pass
+            registrations.append({'user': u, 'patient': pat_data})
+        pending_count  = sum(1 for r in registrations if r['user'].get('status') == 'Pending')
+        approved_count = sum(1 for r in registrations if r['user'].get('status') == 'Active')
+        rejected_count = sum(1 for r in registrations if r['user'].get('status') == 'Rejected')
+    except Exception as e:
+        print(f"Error loading portal registrations: {e}")
+
     return render_template('subsystems/core_transaction/ct1/patient_list.html',
                            now=datetime.utcnow,
                            patients=patients,
                            new_this_month=new_this_month,
+                           registrations=registrations,
+                           pending_count=pending_count,
+                           approved_count=approved_count,
+                           rejected_count=rejected_count,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+
+# ── Portal Registration Approval ──────────────────────────────────────────
+@ct1_bp.route('/portal-registrations')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def portal_registrations():
+    """Redirect to the merged Patient Registry page on the registrations tab."""
+    return redirect(url_for('ct1.list_patients', tab='registrations'))
+
+
+@ct1_bp.route('/portal-registrations/<user_id>/approve', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def approve_registration(user_id):
+    """Approve a pending portal self-registration."""
+    client = get_supabase_client()
+    try:
+        # Activate user
+        client.table('users').update({'status': 'Active', 'is_active': True})\
+            .eq('id', user_id).execute()
+        # Get linked patient_id and activate patient
+        u = client.table('users').select('patient_id, full_name').eq('id', user_id).single().execute()
+        if u.data and u.data.get('patient_id'):
+            client.table('patients').update({'status': 'Active'})\
+                .eq('id', u.data['patient_id']).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, 'Approve Portal Registration', BLUEPRINT_NAME,
+                     {'user_id': user_id, 'name': u.data.get('full_name', '')})
+        flash(f"Registration approved. <strong>{u.data.get('full_name', 'Patient')}</strong> can now log in.", 'success')
+    except Exception as e:
+        flash(f'Approval failed: {e}', 'danger')
+    return redirect(url_for('ct1.list_patients', tab='registrations'))
+
+
+@ct1_bp.route('/portal-registrations/<user_id>/reject', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def reject_registration(user_id):
+    """Reject a pending portal self-registration."""
+    client = get_supabase_client()
+    reason = (request.form.get('reason') or '').strip()
+    try:
+        client.table('users').update({'status': 'Rejected', 'is_active': False})\
+            .eq('id', user_id).execute()
+        u = client.table('users').select('patient_id, full_name').eq('id', user_id).single().execute()
+        if u.data and u.data.get('patient_id'):
+            client.table('patients').update({'status': 'Rejected'})\
+                .eq('id', u.data['patient_id']).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, 'Reject Portal Registration', BLUEPRINT_NAME,
+                     {'user_id': user_id, 'name': u.data.get('full_name', ''), 'reason': reason})
+        flash(f"Registration rejected for <strong>{u.data.get('full_name', 'Patient')}</strong>.", 'warning')
+    except Exception as e:
+        flash(f'Rejection failed: {e}', 'danger')
+    return redirect(url_for('ct1.list_patients', tab='registrations'))
+
+
+@ct1_bp.route('/gov-id-view/<int:patient_id>')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def gov_id_view(patient_id):
+    """Generate a short-lived signed URL for a patient's gov ID and redirect to it."""
+    from urllib.parse import urlparse
+    client = get_supabase_client()
+    try:
+        pr = client.table('patients').select('gov_id_url').eq('id', patient_id).single().execute()
+        gov_id_url = (pr.data or {}).get('gov_id_url', '')
+        if not gov_id_url:
+            flash('No government ID on file for this patient.', 'warning')
+            return redirect(url_for('ct1.list_patients', tab='registrations'))
+
+        # Extract the storage path from the stored URL
+        # URL format: https://<host>/storage/v1/object/public/<bucket>/<path>
+        parsed = urlparse(gov_id_url)
+        path_parts = parsed.path.split('/storage/v1/object/public/patient-documents/', 1)
+        if len(path_parts) != 2:
+            # Try signed URL format as fallback
+            path_parts = parsed.path.split('/storage/v1/object/sign/patient-documents/', 1)
+        if len(path_parts) != 2 or not path_parts[1]:
+            flash('Invalid government ID URL.', 'danger')
+            return redirect(url_for('ct1.list_patients', tab='registrations'))
+
+        storage_path = path_parts[1].split('?')[0]  # strip any query params
+
+        # Create a signed URL valid for 60 minutes
+        result = client.storage.from_('patient-documents').create_signed_url(storage_path, 3600)
+        signed_url = result.get('signedURL') or result.get('signed_url') or result.get('signedUrl', '')
+        if not signed_url:
+            flash('Could not generate secure link for the ID.', 'danger')
+            return redirect(url_for('ct1.list_patients', tab='registrations'))
+
+        return redirect(signed_url)
+    except Exception as e:
+        flash(f'Error viewing government ID: {e}', 'danger')
+        return redirect(url_for('ct1.list_patients', tab='registrations'))
+
 
 @ct1_bp.route('/register-patient', methods=['GET', 'POST'])
 @login_required

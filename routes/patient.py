@@ -57,6 +57,21 @@ def login():
         
         user = User.get_by_username(username, 'patient')
         if user and user.check_password(password):
+            # ── Block pending / rejected accounts ─────────────────────────
+            if getattr(user, 'status', None) == 'Pending':
+                flash(
+                    'Your account is <strong>pending approval</strong> by our staff. '
+                    'You will receive access once reviewed. Please check back later.',
+                    'warning'
+                )
+                return render_template('portal/patient_login.html', next=request.args.get('next'))
+            if getattr(user, 'status', None) == 'Rejected':
+                flash(
+                    'Your registration was <strong>not approved</strong>. '
+                    'Please contact the clinic for more information.',
+                    'danger'
+                )
+                return render_template('portal/patient_login.html', next=request.args.get('next'))
             if login_user(user):
                 flash('Welcome back to the HMS Patient Portal.', 'success')
                 return redirect(next_url or url_for('ct1.dashboard'))
@@ -199,7 +214,7 @@ def register():
                 'contact_number': contact_number,
                 'address': address,
                 'temp_id': temp_id,
-                'status': 'Temporary',
+                'status': 'Pending Approval',
                 'queue_number': queue_number,
                 'official_id': official_id,
                 'terms_agreed': True,
@@ -220,11 +235,11 @@ def register():
                         )
                         pub = _client.storage.from_('patient-documents').get_public_url(storage_path)
                         gov_id_url = pub if isinstance(pub, str) else pub.get('publicUrl', '')
-                        _client.table('patients').update({'gov_id_url': gov_id_url, 'status': 'Active'}).eq('id', patient.id).execute()
+                        _client.table('patients').update({'gov_id_url': gov_id_url}).eq('id', patient.id).execute()
                     except Exception:
                         pass  # ID upload failure is non-fatal
 
-                # 2. Create User account
+                # 2. Create User account (Pending until CT1 approves)
                 User.create(
                     username=username,
                     email=f"{username.lower()}@hms-patient.com",
@@ -232,7 +247,7 @@ def register():
                     subsystem='patient',
                     department='PATIENT_PORTAL',
                     role='Patient',
-                    status='Active',
+                    status='Pending',
                     full_name=f"{first_name} {last_name}",
                     patient_id=patient.id,
                     skip_validation=True
@@ -242,19 +257,17 @@ def register():
                 from utils.hms_models import Notification
                 Notification.create(
                     subsystem='ct1',
-                    title="New Digital Registration",
-                    message=f"A new patient ({first_name} {last_name}) has registered via the portal and is awaiting clinical onboarding.",
+                    title="New Portal Registration — Pending Approval",
+                    message=f"{first_name} {last_name} has registered via the Patient Portal and is awaiting your review.",
                     n_type="info",
                     sender_subsystem='patient',
-                    target_url=url_for('ct1.list_patients', _external=True)
+                    target_url=url_for('ct1.list_patients', tab='registrations', _external=True)
                 )
-                
+
                 flash(
-                    f'Account created successfully! '
-                    f'Temp ID: <strong>{temp_id}</strong> &nbsp;|&nbsp; '
-                    f'Queue: <strong>{queue_number}</strong> &nbsp;|&nbsp; '
-                    f'Patient ID: <strong>{official_id}</strong>. '
-                    f'You can now log in.',
+                    f'Registration submitted! Your account is <strong>pending approval</strong> by our staff. '
+                    f'You will be able to log in once approved. '
+                    f'Temp ID: <strong>{temp_id}</strong>',
                     'success'
                 )
                 return redirect(url_for('patient.login'))
