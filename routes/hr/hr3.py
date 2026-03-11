@@ -217,9 +217,31 @@ def dashboard():
         leave_resp = client.table('leave_requests').select('id', count='exact').eq('status', 'Pending').execute()
         pending_leaves = leave_resp.count if leave_resp.count is not None else 0
         
-        # Recent activity - Mix of new users and leave requests with avatars
+        # Recent activity - leaves
         recent_leaves = client.table('leave_requests').select('*, users:users!leave_requests_user_id_fkey(username, avatar_url)').order('created_at', desc=True).limit(3).execute().data or []
         
+        # Schedule changes
+        sched_q = client.table('schedule_change_requests').select(
+            '*, users:users!schedule_change_requests_user_id_fkey(username, avatar_url)'
+        )
+        if not (current_user.is_super_admin() or (current_user.is_admin() and current_user.subsystem == 'hr3')):
+            sched_q = sched_q.eq('user_id', current_user.id)
+        recent_schedule_changes = sched_q.order('created_at', desc=True).limit(3).execute().data or []
+        pending_schedule_changes = len([s for s in (client.table('schedule_change_requests').select('status').execute().data or []) if s.get('status') == 'Pending'])
+
+        # Reimbursements
+        reimb_q = client.table('reimbursement_claims').select(
+            '*, users:users!reimbursement_claims_user_id_fkey(username, avatar_url)'
+        )
+        if not (current_user.is_super_admin() or (current_user.is_admin() and current_user.subsystem == 'hr3')):
+            reimb_q = reimb_q.eq('user_id', current_user.id)
+        recent_reimbursements = reimb_q.order('created_at', desc=True).limit(3).execute().data or []
+        pending_reimbursements = len([r for r in (client.table('reimbursement_claims').select('workflow_step').execute().data or []) if r.get('workflow_step') == 'HR Review'])
+
+        # Directory preview
+        all_users_list = User.get_all()
+        directory_preview = [u for u in all_users_list if u.status == 'Active'][:6]
+
         # Get Current user's schedule for today
         day_name = datetime.now().strftime('%A')
         user_schedule = client.table('staff_schedules')\
@@ -235,6 +257,11 @@ def dashboard():
         today_attendance = 0
         pending_leaves = 0
         recent_leaves = []
+        recent_schedule_changes = []
+        pending_schedule_changes = 0
+        recent_reimbursements = []
+        pending_reimbursements = 0
+        directory_preview = []
         user_schedule = []
     
     return render_template('subsystems/hr/hr3/dashboard.html', 
@@ -243,6 +270,11 @@ def dashboard():
                           today_attendance=today_attendance,
                           pending_leaves=pending_leaves,
                           recent_leaves=recent_leaves,
+                          recent_schedule_changes=recent_schedule_changes,
+                          pending_schedule_changes=pending_schedule_changes,
+                          recent_reimbursements=recent_reimbursements,
+                          pending_reimbursements=pending_reimbursements,
+                          directory_preview=directory_preview,
                           user_schedule=user_schedule[0] if user_schedule else None,
                           is_clocked_in=is_clocked_in,
                           current_log=current_log,
