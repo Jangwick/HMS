@@ -879,6 +879,13 @@ def employee_dashboard():
     except Exception:
         my_schedule = None
 
+    # All weekly schedules for the schedule modal
+    try:
+        all_sched_resp = client.table('staff_schedules').select('*').eq('user_id', user.id).execute()
+        schedules = all_sched_resp.data or []
+    except Exception:
+        schedules = []
+
     # Upcoming interviews where user is the interviewer
     try:
         interview_now = datetime.now().isoformat()
@@ -898,6 +905,7 @@ def employee_dashboard():
                            today_attendance=today_attendance,
                            is_clocked_in=is_clocked_in,
                            my_schedule=my_schedule,
+                           schedules=schedules,
                            my_upcoming_interviews=my_upcoming_interviews,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
@@ -2097,4 +2105,23 @@ def recognition_types_admin():
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+
+# EMPLOYEE PORTAL REDIRECTS (FIX FOR HR1 DASHBOARD DIRECTING TO HR3)
+@hr1_bp.route('/request-leave', methods=['GET', 'POST'])
+@login_required
+def request_leave():
+    return redirect(url_for('hr3.request_leave'))
+
+
+@hr1_bp.route('/my_schedule')
+@login_required
+def my_schedule():
+    return redirect(url_for('hr3.my_schedule'))
+
+
+@hr1_bp.route('/clock-in', methods=['POST'])
+@login_required
+def clock_in():
+    return redirect(url_for('hr3.clock_in'), code=307)
 

@@ -62,8 +62,8 @@
 
     <!-- Quick Actions Bar -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <a href="{{ url_for('hr3.request_leave') }}"
-            class="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-200 transition-all group">
+        <button onclick="document.getElementById('leaveModal').classList.remove('hidden')"
+            class="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-200 transition-all group text-left">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-blue-50 text-blue-600 group-hover:bg-blue-100">
                 <i class="bi bi-calendar-plus"></i>
             </div>
@@ -71,7 +71,7 @@
                 <p class="text-sm font-bold text-gray-800">Apply Leave</p>
                 <p class="text-[11px] text-gray-400">Submit a request</p>
             </div>
-        </a>
+        </button>
         <a href="{{ url_for('hr1.schedule_interview') }}"
             class="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100">
@@ -92,8 +92,8 @@
                 <p class="text-[11px] text-gray-400">Recognise someone</p>
             </div>
         </a>
-        <a href="{{ url_for('hr3.my_schedule') }}"
-            class="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-green-200 transition-all group">
+        <button onclick="document.getElementById('scheduleModal').classList.remove('hidden')"
+            class="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-green-200 transition-all group text-left">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-green-50 text-green-600 group-hover:bg-green-100">
                 <i class="bi bi-calendar2-week"></i>
             </div>
@@ -101,7 +101,7 @@
                 <p class="text-sm font-bold text-gray-800">My Schedule</p>
                 <p class="text-[11px] text-gray-400">View full schedule</p>
             </div>
-        </a>
+        </button>
     </div>
 
     <!-- Quick Stats Row -->
@@ -207,15 +207,15 @@
                             <p class="text-xs text-gray-500 mt-2"><i class="bi bi-geo-alt mr-1"></i>{{ my_schedule.location }}</p>
                             {% endif %}
                         </div>
-                        <a href="{{ url_for('hr3.my_schedule') }}" class="text-xs font-bold hover:underline flex items-center gap-1" style="color: {{ accent_color }};">
+                        <button onclick="document.getElementById('scheduleModal').classList.remove('hidden')" class="text-xs font-bold hover:underline flex items-center gap-1" style="color: {{ accent_color }};">
                             View full schedule <i class="bi bi-arrow-right"></i>
-                        </a>
+                        </button>
                     </div>
                     {% else %}
                     <div class="text-center py-6">
                         <i class="bi bi-calendar2 text-4xl text-gray-200"></i>
                         <p class="text-gray-400 text-sm mt-3 font-medium">No schedule assigned for today.</p>
-                        <a href="{{ url_for('hr3.my_schedule') }}" class="text-xs font-bold mt-2 inline-block hover:underline" style="color: {{ accent_color }};">View My Schedules</a>
+                        <button onclick="document.getElementById('scheduleModal').classList.remove('hidden')" class="text-xs font-bold mt-2 inline-block hover:underline" style="color: {{ accent_color }};">View My Schedules</button>
                     </div>
                     {% endif %}
                 </div>
@@ -227,11 +227,11 @@
                     <h4 class="text-base font-bold text-gray-900 flex items-center gap-2">
                         <i class="bi bi-calendar-x" style="color: {{ accent_color }}"></i> My Leave Requests
                     </h4>
-                    <a href="{{ url_for('hr3.request_leave') }}"
+                    <button onclick="document.getElementById('leaveModal').classList.remove('hidden')"
                         class="px-3 py-1.5 text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity"
                         style="background: {{ accent_color }};">
                         <i class="bi bi-plus mr-1"></i> Apply Leave
-                    </a>
+                    </button>
                 </div>
                 {% if my_leaves %}
                 <div class="space-y-2">
@@ -467,11 +467,11 @@
                         <span class="text-sm font-extrabold text-red-700">{{ rejected_count }}</span>
                     </div>
                 </div>
-                <a href="{{ url_for('hr3.request_leave') }}"
+                <button onclick="document.getElementById('leaveModal').classList.remove('hidden')"
                     class="mt-4 w-full block text-center py-2 text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity"
                     style="background: {{ accent_color }};">
                     <i class="bi bi-plus mr-1"></i> New Leave Request
-                </a>
+                </button>
             </div>
 
             <!-- My Recognitions / Awards -->
@@ -506,4 +506,280 @@
         </div>
     </div>
 </div>
+
+<!-- ===================== APPLY LEAVE MODAL ===================== -->
+<div id="leaveModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.5);">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto relative">
+        <!-- Header -->
+        <div class="p-6 text-white rounded-t-3xl relative overflow-hidden" style="background: linear-gradient(135deg, {{ accent_color }}, #1e293b);">
+            <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="relative z-10 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xl font-extrabold flex items-center gap-2"><i class="bi bi-calendar-check"></i> Request Leave</h3>
+                    <p class="text-white/70 text-xs mt-1">Submit your time-off request for approval</p>
+                </div>
+                <button type="button" onclick="closeLeaveModal()" class="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors">
+                    <i class="bi bi-x-lg text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Approval pipeline -->
+        <div class="px-6 pt-5">
+            <div class="flex items-center gap-0 text-xs font-bold text-gray-400">
+                {% for step in [('1','Submit','bi-send'),('2','Supervisor','bi-person-check'),('3','HR Validate','bi-shield-check'),('4','Decision','bi-check-circle')] %}
+                <div class="flex items-center">
+                    <div class="flex flex-col items-center">
+                        <div class="w-7 h-7 rounded-full flex items-center justify-center {% if loop.first %}text-white{% else %}bg-gray-100 text-gray-400{% endif %}" {% if loop.first %}style="background:{{ accent_color }};"{% endif %}>
+                            <i class="bi {{ step[2] }} text-xs"></i>
+                        </div>
+                        <span class="mt-0.5 text-[10px] {% if loop.first %}font-bold{% endif %}" {% if loop.first %}style="color:{{ accent_color }};"{% endif %}>{{ step[1] }}</span>
+                    </div>
+                    {% if not loop.last %}<div class="w-8 h-0.5 bg-gray-200 mb-4 mx-0.5"></div>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Error banner (hidden by default) -->
+        <div id="leaveErrors" class="hidden mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 space-y-1"></div>
+
+        <!-- Form -->
+        <form id="leaveForm" enctype="multipart/form-data" class="p-6 space-y-4" onsubmit="submitLeaveForm(event)">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Leave Type <span class="text-red-400">*</span></label>
+                <select name="leave_type" id="leaveType" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
+                    <option value="" disabled selected>Select reason for leave</option>
+                    {% for opt in ['Sick Leave', 'Vacation', 'Emergency Leave', 'Maternity/Paternity', 'Unpaid Leave'] %}
+                    <option value="{{ opt }}">{{ opt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Start Date <span class="text-red-400">*</span></label>
+                    <input type="date" name="start_date" id="leaveStart" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">End Date <span class="text-red-400">*</span></label>
+                    <input type="date" name="end_date" id="leaveEnd" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Reason / Remarks <span class="text-red-400">*</span></label>
+                <textarea name="remarks" id="leaveRemarks" rows="3" placeholder="Briefly explain the reason (at least 10 characters)..."
+                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all resize-none"></textarea>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Supporting Document <span class="text-gray-400 font-normal">(Optional)</span></label>
+                <div class="relative flex items-center gap-3 w-full border-2 border-dashed border-gray-200 rounded-xl px-4 py-3 bg-gray-50 hover:bg-blue-50/40 hover:border-blue-300 transition-all" id="leaveDocBox">
+                    <i class="bi bi-cloud-arrow-up text-gray-400 text-xl pointer-events-none"></i>
+                    <span class="text-sm text-gray-400 pointer-events-none" id="leaveDocName">Click to upload (PDF, DOC, JPG, PNG)</span>
+                    <input type="file" id="leaveDocInput" name="document"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:10;">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button type="button" onclick="closeLeaveModal()" class="px-5 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" id="leaveSubmitBtn" class="px-6 py-2.5 text-white text-sm font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2" style="background: {{ accent_color }};">
+                    <i class="bi bi-send"></i> Submit Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===================== MY SCHEDULE MODAL ===================== -->
+<div id="scheduleModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.5);">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto relative">
+        <!-- Header -->
+        <div class="p-6 text-white rounded-t-3xl relative overflow-hidden" style="background: linear-gradient(135deg, #10b981, #1e293b);">
+            <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="relative z-10 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xl font-extrabold flex items-center gap-2"><i class="bi bi-calendar2-week"></i> My Schedule</h3>
+                    <p class="text-white/70 text-xs mt-1">Your assigned shifts for the week</p>
+                </div>
+                <button onclick="document.getElementById('scheduleModal').classList.add('hidden')" class="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors">
+                    <i class="bi bi-x-lg text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-3">
+            {% if schedules %}
+                {% set days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Daily'] %}
+                {% for day in days %}
+                    {% set day_sched = schedules | selectattr('day_of_week','equalto',day) | first %}
+                    {% if day_sched %}
+                    <div class="flex items-center justify-between p-4 rounded-2xl border {% if day_sched.is_active %}border-green-100 bg-green-50/40{% else %}border-gray-100 bg-gray-50{% endif %}">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl flex flex-col items-center justify-center text-center font-black {% if day_sched.is_active %}text-white{% else %}bg-gray-100 text-gray-400{% endif %}" {% if day_sched.is_active %}style="background:{{ accent_color }};"{% endif %}>
+                                <span class="text-[10px] uppercase tracking-tight">{{ day[:3] }}</span>
+                            </div>
+                            <div>
+                                <p class="font-bold text-gray-900 text-sm">{{ day }}</p>
+                                {% if day_sched.is_active %}
+                                <p class="text-xs font-bold" style="color:{{ accent_color }};">{{ day_sched.start_time[:5] }} — {{ day_sched.end_time[:5] }}</p>
+                                {% else %}
+                                <p class="text-xs text-gray-400">No shift assigned</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide {% if day_sched.is_active %}bg-emerald-100 text-emerald-700{% else %}bg-rose-50 text-rose-500 border border-rose-100{% endif %}">
+                            {% if day_sched.is_active %}Active{% else %}Off-Duty{% endif %}
+                        </span>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% elif my_schedule %}
+            <!-- Fallback: show today's schedule only -->
+            <div class="flex items-center justify-between p-4 rounded-2xl border border-green-100 bg-green-50/40">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl flex flex-col items-center justify-center text-white font-black" style="background:{{ accent_color }};">
+                        <span class="text-[10px] uppercase tracking-tight">{{ my_schedule.day_of_week[:3] }}</span>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-900 text-sm">{{ my_schedule.day_of_week }}</p>
+                        <p class="text-xs font-bold" style="color:{{ accent_color }};">{{ my_schedule.start_time[:5] }} — {{ my_schedule.end_time[:5] }}</p>
+                    </div>
+                </div>
+                <span class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide bg-emerald-100 text-emerald-700">Active</span>
+            </div>
+            {% else %}
+            <div class="text-center py-10">
+                <i class="bi bi-calendar2 text-5xl text-gray-200"></i>
+                <p class="text-gray-400 text-sm mt-3 font-medium">No schedule assigned yet.</p>
+                <p class="text-xs text-gray-400 mt-1">Contact HR3 Personnel Operations to set up your shift.</p>
+            </div>
+            {% endif %}
+
+            <div class="mt-2 p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-3">
+                <i class="bi bi-info-circle-fill text-amber-500 mt-0.5"></i>
+                <p class="text-xs text-amber-700 leading-relaxed">Schedules are managed by HR3 Administration. Contact Personnel Operations to request shift changes.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// File input display update
+document.getElementById('leaveDocInput').addEventListener('change', function() {
+    var nameEl  = document.getElementById('leaveDocName');
+    var box     = document.getElementById('leaveDocBox');
+    if (this.files && this.files.length > 0) {
+        nameEl.textContent = this.files[0].name;
+        nameEl.classList.remove('text-gray-400');
+        nameEl.classList.add('text-blue-600', 'font-semibold');
+        box.classList.add('border-blue-400', 'bg-blue-50/40');
+        box.classList.remove('border-gray-200');
+    } else {
+        nameEl.textContent = 'Click to upload (PDF, DOC, JPG, PNG)';
+        nameEl.classList.add('text-gray-400');
+        nameEl.classList.remove('text-blue-600', 'font-semibold');
+        box.classList.remove('border-blue-400', 'bg-blue-50/40');
+        box.classList.add('border-gray-200');
+    }
+});
+
+// Close leave modal and reset its state
+function closeLeaveModal() {
+    document.getElementById('leaveModal').classList.add('hidden');
+    document.getElementById('leaveForm').reset();
+    document.getElementById('leaveErrors').classList.add('hidden');
+    document.getElementById('leaveErrors').innerHTML = '';
+    var nameEl = document.getElementById('leaveDocName');
+    nameEl.textContent = 'Click to upload (PDF, DOC, JPG, PNG)';
+    nameEl.classList.add('text-gray-400');
+    nameEl.classList.remove('text-blue-600', 'font-semibold');
+    var box = document.getElementById('leaveDocBox');
+    box.classList.remove('border-blue-400', 'bg-blue-50/40');
+    box.classList.add('border-gray-200');
+    const btn = document.getElementById('leaveSubmitBtn');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-send"></i> Submit Request';
+}
+
+// Close modals on backdrop click
+['leaveModal','scheduleModal'].forEach(function(id){
+    document.getElementById(id).addEventListener('click', function(e){
+        if(e.target === this) {
+            if(id === 'leaveModal') { closeLeaveModal(); } else { this.classList.add('hidden'); }
+        }
+    });
+});
+
+// AJAX leave form submission — never navigates away from HR1
+async function submitLeaveForm(e) {
+    e.preventDefault();
+
+    const errBox  = document.getElementById('leaveErrors');
+    const btn     = document.getElementById('leaveSubmitBtn');
+    const errors  = [];
+
+    const leaveType  = document.getElementById('leaveType').value.trim();
+    const startDate  = document.getElementById('leaveStart').value;
+    const endDate    = document.getElementById('leaveEnd').value;
+    const remarks    = document.getElementById('leaveRemarks').value.trim();
+
+    if (!leaveType)                              errors.push('Leave type is required.');
+    if (!startDate)                              errors.push('Start date is required.');
+    if (!endDate)                                errors.push('End date is required.');
+    if (startDate && endDate && endDate < startDate) errors.push('End date cannot be before start date.');
+    if (!remarks || remarks.length < 10)         errors.push('Please provide a reason of at least 10 characters.');
+
+    if (errors.length) {
+        errBox.innerHTML = errors.map(err => `<div class="flex items-center gap-2"><i class="bi bi-exclamation-circle-fill text-red-400"></i>${err}</div>`).join('');
+        errBox.classList.remove('hidden');
+        return;
+    }
+
+    errBox.classList.add('hidden');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split animate-spin"></i> Submitting…';
+
+    try {
+        const fd = new FormData(document.getElementById('leaveForm'));
+        const resp = await fetch('{{ url_for("hr3.request_leave") }}', {
+            method: 'POST',
+            body: fd,
+            redirect: 'follow'
+        });
+
+        // Success if the server redirected us back (any 200 response after redirect means it went through)
+        if (resp.ok) {
+            // Show success banner, reset form, close modal, reload page
+            document.getElementById('leaveModal').classList.add('hidden');
+            document.getElementById('leaveForm').reset();
+            document.getElementById('leaveDocName').textContent = 'Click to upload (PDF, DOC, JPG, PNG)';
+
+            // Flash a success toast on the dashboard
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-6 right-6 z-[100] bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl text-sm font-bold flex items-center gap-2';
+            toast.innerHTML = '<i class="bi bi-check-circle-fill"></i> Leave request submitted successfully!';
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); location.reload(); }, 2500);
+        } else {
+            errBox.innerHTML = '<div class="flex items-center gap-2"><i class="bi bi-exclamation-circle-fill text-red-400"></i>Submission failed. Please try again.</div>';
+            errBox.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send"></i> Submit Request';
+        }
+    } catch(err) {
+        errBox.innerHTML = '<div class="flex items-center gap-2"><i class="bi bi-exclamation-circle-fill text-red-400"></i>Network error. Please check your connection and try again.</div>';
+        errBox.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send"></i> Submit Request';
+    }
+}
+</script>
 {% endblock %}
