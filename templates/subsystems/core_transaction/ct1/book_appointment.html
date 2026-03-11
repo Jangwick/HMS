@@ -55,14 +55,20 @@
                     <label class="block text-sm font-bold text-gray-700 ml-1">Assign Doctor / Consultant</label>
                     <div class="relative group">
                         <i class="bi bi-person-workspace absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors"></i>
-                        <select name="doctor_id" required
+                        <select name="doctor_id" id="appt_doctor_id" required
                             class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none appearance-none">
                             <option value="" disabled selected>Select a healthcare provider...</option>
+                            {% if prefill_session is defined and prefill_session %}
                             {% for doctor in doctors %}
-                            <option value="{{ doctor.id }}">
+                            <option value="{{ doctor.id }}" {% if doctor.id|string == prefill_session.doctor_id|string %}selected{% endif %}>
                                 Dr. {{ doctor.username }} ({{ doctor.subsystem|upper }})
                             </option>
                             {% endfor %}
+                            {% else %}
+                            {% for doctor in doctors %}
+                            <option value="{{ doctor.id }}">Dr. {{ doctor.username }} ({{ doctor.subsystem|upper }})</option>
+                            {% endfor %}
+                            {% endif %}
                         </select>
                         <i class="bi bi-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
                     </div>
@@ -73,8 +79,15 @@
                     <label class="block text-sm font-bold text-gray-700 ml-1">Appointment Date & Time</label>
                     <div class="relative group">
                         <i class="bi bi-clock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors"></i>
-                        <input type="datetime-local" name="appointment_date" required
+                        <input type="datetime-local" name="appointment_date" id="appt_datetime" required
                             class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none">
+                    </div>
+                    <p class="text-[10px] text-amber-600 font-bold ml-1"><i class="bi bi-clock-history mr-1"></i>Slots available Monday–Saturday, 7:00 AM – 3:00 PM only.</p>
+                    <p id="time_error" class="text-[10px] text-red-600 font-bold ml-1 hidden"><i class="bi bi-exclamation-triangle mr-1"></i>Appointment time must be between 7:00 AM and 3:00 PM.</p>
+                    <!-- §3.1 Occupied slots warning -->
+                    <div id="booked_slots_info" class="hidden mt-2 p-3 bg-orange-50 border border-orange-100 rounded-xl text-xs text-orange-800">
+                        <p class="font-bold mb-1"><i class="bi bi-clock-fill mr-1"></i> Already booked times for this doctor on selected date:</p>
+                        <p id="booked_slots_list" class="font-mono"></p>
                     </div>
                 </div>
 
@@ -85,14 +98,28 @@
                         <i class="bi bi-tag absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors"></i>
                         <select name="type" required
                             class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none appearance-none">
-                            <option value="Consultation">Consultation</option>
-                            <option value="Follow-up">Follow-up</option>
+                            <option value="Consultation" {% if prefill_session is defined and prefill_session %}selected{% endif %}>Consultation</option>
+                            <option value="Follow-up" {% if prefill_session is not defined or not prefill_session %}{% else %}{% endif %}>Follow-up</option>
                             <option value="Emergency">Emergency</option>
                             <option value="Routine Checkup">Routine Checkup</option>
                             <option value="Specialist Visit">Specialist Visit</option>
+                            <option value="Outpatient">Outpatient (F2F)</option>
                         </select>
                         <i class="bi bi-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
                     </div>
+                </div>
+            </div>
+            <!-- visit_type mirrors type for DB storage -->
+            <input type="hidden" name="visit_type" id="visit_type_hidden" value="General Consultation">
+
+            <!-- Appointment Policy Banner -->
+            <div class="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
+                <i class="bi bi-info-circle text-amber-500 text-lg mt-0.5 flex-shrink-0"></i>
+                <div class="text-xs text-amber-800 space-y-1">
+                    <p class="font-black uppercase tracking-widest mb-1">Appointment Policy</p>
+                    <p>• Appointments must be scheduled between <strong>7:00 AM and 3:00 PM</strong>, Monday to Saturday.</p>
+                    <p>• Cancellations made within <strong>24 hours</strong> of the appointment are subject to a <strong>₱560.00 administrative fee</strong>.</p>
+                    <p>• No-shows without prior notice incur a <strong>₱1,500.00 penalty</strong>. Three no-shows may restrict online booking.</p>
                 </div>
             </div>
 
@@ -109,12 +136,88 @@
                     class="px-6 py-3 text-gray-500 font-bold hover:text-gray-700 transition-colors text-sm">
                     Cancel
                 </a>
-                <button type="submit"
-                    class="px-12 py-4 bg-emerald-500 text-white font-bold rounded-2xl shadow-xl shadow-emerald-200 hover:bg-emerald-600 hover:scale-[1.02] transform transition-all">
+                <button type="submit" id="appt_submit_btn"
+                    class="px-12 py-4 bg-emerald-500 text-white font-bold rounded-2xl shadow-xl shadow-emerald-200 hover:bg-emerald-600 hover:scale-[1.02] transform transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                     Confirm Appointment
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+    (function () {
+        var dtInput  = document.getElementById('appt_datetime');
+        var docSelect = document.getElementById('appt_doctor_id');
+        var submitBtn = document.getElementById('appt_submit_btn');
+        var timeErr  = document.getElementById('time_error');
+        var slotsInfo = document.getElementById('booked_slots_info');
+        var slotsList = document.getElementById('booked_slots_list');
+        var visitHidden = document.getElementById('visit_type_hidden');
+
+        // Set min to now (no past bookings)
+        var now = new Date();
+        var pad = n => String(n).padStart(2, '0');
+        var minVal = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate())
+            + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+        if (dtInput) dtInput.min = minVal;
+
+        function validateTime() {
+            if (!dtInput || !dtInput.value) return true;
+            var parts = dtInput.value.split('T');
+            if (parts.length < 2) return true;
+            var timeParts = parts[1].split(':');
+            var hour = parseInt(timeParts[0], 10);
+            var min  = parseInt(timeParts[1] || '0', 10);
+            var totalMin = hour * 60 + min;
+            var valid = totalMin >= 420 && totalMin <= 900; // 7:00–15:00
+            if (timeErr) timeErr.classList.toggle('hidden', valid);
+            return valid;
+        }
+
+        // §3.1 §4.3 Fetch booked slots for the selected doctor on the selected date
+        function fetchBookedSlots() {
+            if (!dtInput || !dtInput.value || !docSelect || !docSelect.value) return;
+            var datePart = dtInput.value.split('T')[0];  // YYYY-MM-DD
+            var doctorId = docSelect.value;
+            fetch("{{ url_for('ct1.booked_slots') }}?doctor_id=" + encodeURIComponent(doctorId) + "&date=" + encodeURIComponent(datePart))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var slots = data.slots || [];
+                    if (slots.length && slotsInfo && slotsList) {
+                        slotsList.textContent = slots.join(', ');
+                        slotsInfo.classList.remove('hidden');
+                    } else if (slotsInfo) {
+                        slotsInfo.classList.add('hidden');
+                    }
+                })
+                .catch(function() {});
+        }
+
+        if (dtInput) {
+            dtInput.addEventListener('change', function() { validateTime(); fetchBookedSlots(); });
+        }
+        if (docSelect) {
+            docSelect.addEventListener('change', fetchBookedSlots);
+        }
+        // Mirror type → visit_type
+        var typeSelect = document.querySelector('select[name="type"]');
+        if (typeSelect && visitHidden) {
+            typeSelect.addEventListener('change', function() { visitHidden.value = this.value; });
+            visitHidden.value = typeSelect.value;
+        }
+
+        // Double-click protection
+        if (submitBtn) {
+            submitBtn.closest('form').addEventListener('submit', function (e) {
+                if (!validateTime()) {
+                    e.preventDefault();
+                    return;
+                }
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Booking...';
+            });
+        }
+    })();
+</script>
 {% endblock %}

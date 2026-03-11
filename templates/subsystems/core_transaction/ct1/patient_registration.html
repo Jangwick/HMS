@@ -39,18 +39,23 @@
                     <div class="form-group">
                         <label class="block text-sm font-bold text-gray-700 mb-2">First Name</label>
                         <input type="text" name="first_name" required
+                            pattern="[A-Za-z\u00C0-\u024F\s\-']+"
+                            title="First name must contain letters only (spaces, hyphens, apostrophes allowed)"
                             class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
                             placeholder="e.g. John">
                     </div>
                     <div class="form-group">
                         <label class="block text-sm font-bold text-gray-700 mb-2">Last Name</label>
                         <input type="text" name="last_name" required
+                            pattern="[A-Za-z\u00C0-\u024F\s\-']+"
+                            title="Last name must contain letters only (spaces, hyphens, apostrophes allowed)"
                             class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
                             placeholder="e.g. Doe">
                     </div>
                     <div class="form-group">
                         <label class="block text-sm font-bold text-gray-700 mb-2">Date of Birth</label>
-                        <input type="date" name="dob" required
+                        <input type="date" name="dob" id="ct1_reg_dob" required
+                            min="1900-01-01"
                             class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none">
                     </div>
                     <div class="form-group">
@@ -79,8 +84,10 @@
                     <div class="form-group col-span-1">
                         <label class="block text-sm font-bold text-gray-700 mb-2">Contact Number</label>
                         <input type="tel" name="contact_number" required
+                            pattern="[0-9+\-\s()]{7,20}"
+                            title="Enter a valid phone number using digits, +, -, spaces, or parentheses"
                             class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
-                            placeholder="+1 (555) 000-0000">
+                            placeholder="09XXXXXXXXX or +639XXXXXXXXX">
                     </div>
                     <div class="form-group col-span-1 md:col-span-2">
                         <label class="block text-sm font-bold text-gray-700 mb-2">Residential Address</label>
@@ -110,12 +117,16 @@
                     <div class="form-group">
                         <label class="block text-sm font-bold text-emerald-800 mb-2">Policy #</label>
                         <input type="text" name="policy_number"
+                            pattern="[A-Za-z0-9\-]*"
+                            title="Policy number must contain letters, digits, and hyphens only"
                             class="w-full px-4 py-2 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                             placeholder="POL-00000">
                     </div>
                     <div class="form-group">
                         <label class="block text-sm font-bold text-emerald-800 mb-2">Group #</label>
                         <input type="text" name="group_number"
+                            pattern="[A-Za-z0-9\-]*"
+                            title="Group number must contain letters, digits, and hyphens only"
                             class="w-full px-4 py-2 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                             placeholder="GRP-00000">
                         <!-- Section 4: Portal Account -->
@@ -191,4 +202,14 @@
         </form>
     </div>
 </div>
+
+<script>
+    // Enforce max DOB = today (prevents future dates and implicitly limits year to 4 digits)
+    (function () {
+        var dobInput = document.getElementById('ct1_reg_dob');
+        if (dobInput) {
+            dobInput.max = new Date().toISOString().split('T')[0];
+        }
+    })();
+</script>
 {% endblock %}

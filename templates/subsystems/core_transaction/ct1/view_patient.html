@@ -208,6 +208,13 @@
                             <div class="text-right">
                                 <p class="text-xs text-gray-400">Attending Physician</p>
                                 <p class="text-sm font-bold text-gray-900">Dr. ID: {{ appt.doctor_id }}</p>
+                                {% if appt.status == 'Scheduled' %}
+                                <button type="button"
+                                        onclick="openViewReschedule({{ appt.id }}, '{{ appt.appointment_date }}')"
+                                        class="mt-2 px-3 py-1 bg-blue-50 border border-blue-200 text-blue-600 text-[10px] font-black rounded-lg hover:bg-blue-100 transition-all">
+                                    <i class="bi bi-calendar-event mr-1"></i>Reschedule
+                                </button>
+                                {% endif %}
                             </div>
                         </div>
                         {% if appt.notes %}
@@ -351,6 +358,76 @@
             const modal = document.getElementById(id);
             modal.classList.toggle('hidden');
         }
+        function openViewReschedule(apptId, currentDate) {
+            var form = document.getElementById('viewRescheduleForm');
+            form.action = '/ct1/appointment/' + apptId + '/reschedule';
+            var dtInput = document.getElementById('view_resched_dt');
+            if (dtInput) {
+                var now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                dtInput.min = now.toISOString().slice(0,16);
+            }
+            document.getElementById('viewRescheduleModal').classList.remove('hidden');
+        }
     </script>
+
+    <!-- Document Upload Section -->
+    <div class="glass-card rounded-3xl overflow-hidden shadow-lg mt-6">
+        <div class="px-8 py-5 border-b border-gray-100 flex items-center">
+            <i class="bi bi-cloud-upload text-emerald-500 mr-3 text-xl"></i>
+            <h3 class="text-lg font-bold text-gray-900">Upload Medical Document</h3>
+        </div>
+        <form action="{{ url_for('ct1.upload_patient_document', patient_id=patient.id) }}" method="POST"
+              enctype="multipart/form-data" class="p-8 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Document Label</label>
+                    <input type="text" name="label" placeholder="e.g., Lab Results, X-Ray"
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-semibold text-gray-900">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">File <span class="text-gray-300">(PDF, JPG, PNG — max 10 MB)</span></label>
+                    <input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png" required
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm">
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="px-8 py-3 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 transition-all shadow-lg text-sm">
+                    <i class="bi bi-cloud-upload mr-2"></i>Upload Document
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
+
+<!-- Reschedule Modal -->
+<div id="viewRescheduleModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-black text-gray-900"><i class="bi bi-calendar-event mr-2 text-blue-500"></i> Reschedule</h3>
+            <button onclick="document.getElementById('viewRescheduleModal').classList.add('hidden')"
+                    class="w-9 h-9 rounded-full hover:bg-gray-100 text-gray-400 flex items-center justify-center">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="viewRescheduleForm" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-4">
+                <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-2">New Date &amp; Time</label>
+                <input type="datetime-local" name="new_appointment_date" id="view_resched_dt" required
+                    class="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-blue-500 outline-none font-semibold text-gray-900 transition-all">
+                <p class="text-[10px] text-gray-400 mt-1">7:00 AM – 3:00 PM window. Max 1 reschedule with 24h notice.</p>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('viewRescheduleModal').classList.add('hidden')"
+                    class="px-6 py-3 bg-gray-100 text-gray-600 font-bold rounded-2xl hover:bg-gray-200 transition-all text-sm">Cancel</button>
+                <button type="submit" class="px-6 py-3 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all shadow-lg text-sm">
+                    Confirm Reschedule
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}

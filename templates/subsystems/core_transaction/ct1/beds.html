@@ -32,9 +32,33 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <!-- Status Filter Buttons -->
+    <div class="flex flex-wrap gap-2">
+        <button onclick="filterBeds('all')" id="filter_all"
+            class="filter-btn px-4 py-2 text-xs font-bold rounded-xl border transition-all bg-gray-900 text-white border-gray-900">
+            All Beds <span id="count_all" class="ml-1 opacity-70">({{ beds|length }})</span>
+        </button>
+        <button onclick="filterBeds('Available')" id="filter_Available"
+            class="filter-btn px-4 py-2 text-xs font-bold rounded-xl border transition-all bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+            Available <span id="count_Available" class="ml-1 opacity-70">({{ beds|selectattr('status','equalto','Available')|list|length }})</span>
+        </button>
+        <button onclick="filterBeds('Occupied')" id="filter_Occupied"
+            class="filter-btn px-4 py-2 text-xs font-bold rounded-xl border transition-all bg-white text-red-700 border-red-200 hover:bg-red-50">
+            Occupied <span id="count_Occupied" class="ml-1 opacity-70">({{ beds|selectattr('status','equalto','Occupied')|list|length }})</span>
+        </button>
+        <button onclick="filterBeds('Cleaning')" id="filter_Cleaning"
+            class="filter-btn px-4 py-2 text-xs font-bold rounded-xl border transition-all bg-white text-amber-700 border-amber-200 hover:bg-amber-50">
+            Cleaning <span id="count_Cleaning" class="ml-1 opacity-70">({{ beds|selectattr('status','equalto','Cleaning')|list|length }})</span>
+        </button>
+        <button onclick="filterBeds('Reserved')" id="filter_Reserved"
+            class="filter-btn px-4 py-2 text-xs font-bold rounded-xl border transition-all bg-white text-blue-700 border-blue-200 hover:bg-blue-50">
+            Reserved <span id="count_Reserved" class="ml-1 opacity-70">({{ beds|selectattr('status','equalto','Reserved')|list|length }})</span>
+        </button>
+    </div>
+
+    <div id="beds-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {% for bed in beds %}
-        <div
+        <div data-status="{{ bed.status }}"
             class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all flex flex-col">
             <div class="flex justify-between items-start mb-4">
                 <div>
@@ -86,6 +110,10 @@
                         <i class="bi bi-person-dash"></i> Discharge / Unassign
                     </button>
                 </form>
+                <a href="{{ url_for('ct1.bed_discharge_report', bed_id=bed.id) }}" target="_blank"
+                    class="mt-1 w-full py-1.5 bg-white text-gray-500 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1">
+                    <i class="bi bi-file-earmark-pdf"></i> Discharge Report
+                </a>
                 {% endif %}
             </div>
             {% elif bed.status == 'Available' and current_user.is_admin() %}
@@ -103,10 +131,11 @@
                 <form action="{{ url_for('ct1.update_bed', bed_id=bed.id) }}" method="POST" class="flex-1">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     {% if bed.status == 'Available' %}
-                    <input type="hidden" name="status" value="Occupied">
-                    <button type="submit"
-                        class="w-full py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors">
-                        Mark Occupied
+                    {# §5.2: "Mark Occupied" removed — beds become Occupied only via Assign Patient flow #}
+                    <button type="button" disabled
+                        class="w-full py-2 bg-gray-100 text-gray-400 text-xs font-bold rounded-lg cursor-not-allowed"
+                        title="Assign a patient to mark this bed occupied">
+                        Assign Patient to Occupy
                     </button>
                     {% elif bed.status == 'Occupied' %}
                     <input type="hidden" name="status" value="Cleaning">
@@ -274,6 +303,37 @@
 {% endif %}
 
 <script>
+    function filterBeds(status) {
+        var cards = document.querySelectorAll('#beds-grid > [data-status]');
+        cards.forEach(function (card) {
+            if (status === 'all' || card.dataset.status === status) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        document.querySelectorAll('.filter-btn').forEach(function (btn) {
+            btn.classList.remove('bg-gray-900', 'text-white', 'border-gray-900',
+                'bg-emerald-600', 'border-emerald-600',
+                'bg-red-600', 'border-red-600',
+                'bg-amber-500', 'border-amber-500',
+                'bg-blue-600', 'border-blue-600');
+            btn.classList.add('bg-white');
+        });
+        var activeBtn = document.getElementById('filter_' + status);
+        if (activeBtn) {
+            activeBtn.classList.remove('bg-white');
+            var colorMap = {
+                'all': ['bg-gray-900', 'text-white', 'border-gray-900'],
+                'Available': ['bg-emerald-600', 'text-white', 'border-emerald-600'],
+                'Occupied': ['bg-red-600', 'text-white', 'border-red-600'],
+                'Cleaning': ['bg-amber-500', 'text-white', 'border-amber-500'],
+                'Reserved': ['bg-blue-600', 'text-white', 'border-blue-600']
+            };
+            (colorMap[status] || []).forEach(cls => activeBtn.classList.add(cls));
+        }
+    }
+
     function toggleModal(id) {
         const modal = document.getElementById(id);
         if (modal) {
@@ -289,7 +349,6 @@
         document.getElementById('assignBedLabel').textContent = `Room ${roomNumber}`;
         document.getElementById('assignWardLabel').textContent = wardName;
 
-        // Reset search
         const searchInput = document.getElementById('patientSearchInput');
         if (searchInput) searchInput.value = '';
         filterPatients('');

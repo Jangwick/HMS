@@ -539,7 +539,7 @@ def new_surgery():
                 message=f"Your surgery ({data['surgery_name']}) has been scheduled for {date_str}.",
                 n_type="warning",
                 sender_subsystem=BLUEPRINT_NAME,
-                target_url=url_for('patient.dashboard')
+                target_url=url_for('ct1.dashboard')
             )
             
         flash('Surgery scheduled successfully!', 'success')
@@ -769,7 +769,7 @@ def dispense_meds():
                     message=f"Your medication ({med_name}, qty: {qty}) has been dispensed.",
                     n_type="success",
                     sender_subsystem=BLUEPRINT_NAME,
-                    target_url=url_for('patient.dashboard')
+                    target_url=url_for('ct1.dashboard')
                 )
             
             return redirect(url_for('ct2.pharmacy_inventory'))

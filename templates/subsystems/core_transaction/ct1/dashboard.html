@@ -191,6 +191,28 @@
                                     <i class="bi bi-eye-fill"></i>
                                 </a>
                                 {% if appt.status == 'Scheduled' %}
+                                <!-- Mark Arrived -->
+                                <form action="{{ url_for('ct1.mark_arrived', appointment_id=appt.id) }}" method="POST" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-all border border-emerald-200" title="Mark Arrived">
+                                        <i class="bi bi-person-check-fill"></i>
+                                    </button>
+                                </form>
+                                <!-- No-Show -->
+                                <form action="{{ url_for('ct1.flag_noshow', appointment_id=appt.id) }}" method="POST" class="inline" onsubmit="return confirm('Flag as No-Show? A ₱1,500 penalty will be applied.')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="w-8 h-8 rounded-lg bg-orange-50 text-orange-500 hover:bg-orange-100 flex items-center justify-center transition-all border border-orange-200" title="Flag No-Show">
+                                        <i class="bi bi-person-dash-fill"></i>
+                                    </button>
+                                </form>
+                                <!-- Reschedule: opens modal -->
+                                <button type="button"
+                                        onclick="openRescheduleModal({{ appt.id }}, '{{ appt.appointment_date }}')"
+                                        class="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 flex items-center justify-center transition-all border border-blue-200"
+                                        title="Reschedule">
+                                    <i class="bi bi-calendar-event-fill"></i>
+                                </button>
+                                <!-- Cancel -->
                                 <form action="{{ url_for('ct1.cancel_appointment', appointment_id=appt.id) }}" method="POST" class="inline" onsubmit="return confirm('Cancel this appointment?')">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="w-8 h-8 rounded-lg bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-all border border-gray-100"
@@ -216,3 +238,54 @@
     </div>
 </div>
 {% endblock %}
+
+<!-- ── Reschedule Modal ──────────────────────────────────────────────────────── -->
+<div id="rescheduleModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-black text-gray-900"><i class="bi bi-calendar-event mr-2 text-blue-500"></i> Reschedule Appointment</h3>
+            <button onclick="document.getElementById('rescheduleModal').classList.add('hidden')" class="w-9 h-9 rounded-full hover:bg-gray-100 text-gray-400 flex items-center justify-center">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form id="rescheduleForm" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-4">
+                <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-2">New Date &amp; Time</label>
+                <input type="datetime-local" name="new_appointment_date" id="resched_datetime" required
+                    class="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 outline-none font-semibold text-gray-900 transition-all">
+                <p class="text-[10px] text-gray-400 mt-1">Clinic hours: 7:00 AM – 3:00 PM. Max 1 reschedule per appointment (24h advance required).</p>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('rescheduleModal').classList.add('hidden')"
+                    class="px-6 py-3 bg-gray-100 text-gray-600 font-bold rounded-2xl hover:bg-gray-200 transition-all text-sm">Cancel</button>
+                <button type="submit" class="px-6 py-3 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all shadow-lg text-sm">
+                    Confirm Reschedule
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openRescheduleModal(apptId, currentDate) {
+    var form = document.getElementById('rescheduleForm');
+    form.action = '/ct1/appointment/' + apptId + '/reschedule';
+    var dtInput = document.getElementById('resched_datetime');
+    if (dtInput) {
+        var now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        dtInput.min = now.toISOString().slice(0,16);
+    }
+    document.getElementById('rescheduleModal').classList.remove('hidden');
+}
+
+// §3.4 Auto no-show check on page load (fires silently in background)
+document.addEventListener('DOMContentLoaded', function () {
+    var csrf = document.querySelector('[name=csrf_token]');
+    fetch("{{ url_for('ct1.auto_noshow_check') }}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf ? csrf.value : '' }
+    }).catch(function() {});
+});
+</script>

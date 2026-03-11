@@ -67,12 +67,12 @@
                         <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Patient</th>
                         <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Provider</th>
                         <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
-                        <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Access Link</th>
+                        <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Access</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
                     {% for session in sessions %}
-                    <tr class="hover:bg-gray-50/50 transition-all group">
+                    <tr class="hover:bg-gray-50/50 transition-all group" data-scheduled="{{ session.scheduled_at }}" data-session-id="{{ session.id }}" data-link="{{ session.meeting_link or '' }}">
                         <td class="px-8 py-5">
                             <div class="flex flex-col">
                                 <span class="text-sm font-black text-gray-900">{{ session.scheduled_at }}</span>
@@ -94,20 +94,29 @@
                             </div>
                         </td>
                         <td class="px-8 py-5 text-center">
-                            <span class="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider {{ 'bg-green-100 text-green-600 border border-green-200' if session.status == 'Scheduled' else 'bg-blue-100 text-blue-600 border border-blue-200' }}">
+                            <span class="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider {{ 'bg-green-100 text-green-600 border border-green-200' if session.status == 'Scheduled' else ('bg-blue-100 text-blue-600 border border-blue-200' if session.status == 'In Progress' else 'bg-gray-100 text-gray-500 border border-gray-200') }}">
                                 {{ session.status }}
                             </span>
                         </td>
                         <td class="px-8 py-5 text-right">
-                            {% if session.meeting_link %}
-                            <a href="{{ session.meeting_link }}" target="_blank" 
-                                class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-indigo-600 hover:text-white transition-all">
-                                <i class="bi bi-box-arrow-up-right"></i>
-                                <span>Join Session</span>
-                            </a>
-                            {% else %}
-                            <span class="text-[10px] font-bold text-gray-300 uppercase italic">Link Pending</span>
-                            {% endif %}
+                            <div class="flex flex-col items-end gap-1.5">
+                                <!-- Time-gate Join button (filled by JS for Scheduled/In Progress) -->
+                                <div class="join-cell"></div>
+                                {% if session.status == 'Completed' %}
+                                <!-- §4.7 Prescription PDF -->
+                                <a href="{{ url_for('ct1.prescription_pdf', session_id=session.id) }}"
+                                   class="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black rounded-xl hover:bg-emerald-100 transition-all flex items-center gap-1"
+                                   title="Download Prescription PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i> Prescription
+                                </a>
+                                <!-- §4.12 Follow-up scheduling -->
+                                <a href="{{ url_for('ct1.telehealth_follow_up', session_id=session.id) }}"
+                                   class="px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-black rounded-xl hover:bg-blue-100 transition-all flex items-center gap-1"
+                                   title="Schedule Follow-up">
+                                    <i class="bi bi-calendar-plus"></i> Follow-up
+                                </a>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% else %}
@@ -208,5 +217,52 @@
     function toggleModal(id) {
         document.getElementById(id).classList.toggle('hidden');
     }
+
+    // ── Join Time Gate ─────────────────────────────────────────────────────────
+    // Join button is available 15 minutes before up to 30 minutes after scheduled time
+    (function () {
+        var OPEN_BEFORE_MS  = 15 * 60 * 1000;  // 15 min
+        var OPEN_AFTER_MS   = 30 * 60 * 1000;  // 30 min
+
+        function updateJoinCells() {
+            var now = Date.now();
+            document.querySelectorAll('tr[data-scheduled]').forEach(function (row) {
+                var scheduledStr = row.dataset.scheduled;
+                var link = row.dataset.link;
+                var cell = row.querySelector('.join-cell');
+                if (!cell) return;
+
+                var scheduledMs = new Date(scheduledStr.replace(' ', 'T')).getTime();
+                if (isNaN(scheduledMs)) {
+                    cell.innerHTML = '<span class="text-[10px] font-bold text-gray-300 uppercase italic">Invalid time</span>';
+                    return;
+                }
+
+                var diffMs = scheduledMs - now;
+
+                if (diffMs > OPEN_BEFORE_MS) {
+                    // Too early — show countdown
+                    var minsLeft = Math.ceil(diffMs / 60000);
+                    var hrsLeft = Math.floor(minsLeft / 60);
+                    var minPart = minsLeft % 60;
+                    var label = hrsLeft > 0 ? hrsLeft + 'h ' + minPart + 'm' : minsLeft + ' min';
+                    cell.innerHTML = '<span class="text-[10px] font-bold text-amber-600 uppercase"><i class="bi bi-clock mr-1"></i>Opens in ' + label + '</span>';
+                } else if (diffMs >= -OPEN_AFTER_MS) {
+                    // Within join window
+                    if (link) {
+                        cell.innerHTML = '<a href="' + link + '" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-indigo-700 transition-all animate-pulse"><i class="bi bi-camera-video-fill"></i><span>Join Now</span></a>';
+                    } else {
+                        cell.innerHTML = '<span class="text-[10px] font-bold text-red-400 uppercase"><i class="bi bi-exclamation-circle mr-1"></i>No Link Set</span>';
+                    }
+                } else {
+                    // Expired
+                    cell.innerHTML = '<span class="text-[10px] font-bold text-gray-300 uppercase italic">Session Ended</span>';
+                }
+            });
+        }
+
+        updateJoinCells();
+        setInterval(updateJoinCells, 30000); // refresh every 30 seconds
+    })();
 </script>
 {% endblock %}

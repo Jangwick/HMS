@@ -103,7 +103,7 @@
         </div>
 
         <div class="glass-login rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 border border-white/50">
-            <form method="POST" id="registrationForm" class="space-y-6">
+            <form method="POST" id="registrationForm" class="space-y-6" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <!-- Page 1: Personal Information -->
@@ -114,45 +114,75 @@
                         Personal Information
                     </h2>
 
+                    <!-- Validation error banner -->
+                    <div id="step1_error_banner" style="display:none;" class="mb-4 px-4 py-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
+                        <i class="bi bi-exclamation-circle-fill text-red-500 text-base"></i>
+                        <span id="step1_error_msg">Please fill in all required fields before continuing.</span>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label
-                                class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">First
-                                Name</label>
-                            <input type="text" name="first_name" required
-                                class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 placeholder-gray-400 shadow-sm"
+                            <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">
+                                First Name <span class="text-red-500">*</span></label>
+                            <input type="text" name="first_name" id="reg_first_name" required
+                                pattern="[A-Za-z\u00C0-\u024F\s\-']+"
+                                title="First name must contain letters only (spaces, hyphens, apostrophes allowed)"
+                                oninput="blockNumbers(this,'first_name_hint')"
+                                class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 placeholder-gray-400 shadow-sm field-validate"
                                 placeholder="John">
+                            <p id="first_name_hint" style="display:none;color:#ef4444;font-size:11px;font-weight:700;margin-top:4px;margin-left:4px;"></p>
                         </div>
                         <div>
-                            <label
-                                class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">Last
-                                Name</label>
-                            <input type="text" name="last_name" required
-                                class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 placeholder-gray-400 shadow-sm"
+                            <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">
+                                Last Name <span class="text-red-500">*</span></label>
+                            <input type="text" name="last_name" id="reg_last_name" required
+                                pattern="[A-Za-z\u00C0-\u024F\s\-']+"
+                                title="Last name must contain letters only (spaces, hyphens, apostrophes allowed)"
+                                oninput="blockNumbers(this,'last_name_hint')"
+                                class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 placeholder-gray-400 shadow-sm field-validate"
                                 placeholder="Doe">
+                            <p id="last_name_hint" style="display:none;color:#ef4444;font-size:11px;font-weight:700;margin-top:4px;margin-left:4px;"></p>
                         </div>
                         <div>
-                            <label
-                                class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">Date
-                                of Birth</label>
-                            <input type="date" name="dob" required
-                                class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 placeholder-gray-400 shadow-sm">
+                            <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">
+                                Date of Birth <span class="text-red-500">*</span></label>
+                            <input type="date" name="dob" id="portal_dob" required
+                                min="1900-01-01"
+                                class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 placeholder-gray-400 shadow-sm field-validate">
+                            <p id="dob_hint" style="display:none;color:#ef4444;font-size:11px;font-weight:700;margin-top:4px;margin-left:4px;"></p>
                         </div>
                         <div>
-                            <label
-                                class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">Gender</label>
-                            <select name="gender" required
+                            <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">
+                                Gender <span class="text-red-500">*</span></label>
+                            <select name="gender" id="reg_gender" required
                                 class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 shadow-sm appearance-none">
                                 <option value="" disabled selected>Select Gender</option>
                                 <option value="Male">Male</option>
                                 <option value="Female">Female</option>
                                 <option value="Other">Other</option>
                             </select>
+                            <p id="gender_hint" style="display:none;color:#ef4444;font-size:11px;font-weight:700;margin-top:4px;margin-left:4px;"></p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">
+                                Visit Type <span class="text-red-500">*</span></label>
+                            <select name="visit_type" id="reg_visit_type" required
+                                class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 shadow-sm appearance-none">
+                                <option value="" disabled selected>Select Visit Type</option>
+                                <option value="New Patient">New Patient</option>
+                                <option value="Follow-up">Follow-up</option>
+                                <option value="Emergency">Emergency</option>
+                                <option value="Telehealth">Telehealth</option>
+                            </select>
+                            <p id="visit_type_hint" style="display:none;color:#ef4444;font-size:11px;font-weight:700;margin-top:4px;margin-left:4px;"></p>
                         </div>
                     </div>
 
-                    <div class="mt-8 flex justify-end">
-                        <button type="button" onclick="nextStep(2)"
+                    <!-- Step 1 required-fields note -->
+                    <p class="text-[10px] text-gray-400 mt-4 ml-1"><span class="text-red-500">*</span> All fields are required.</p>
+
+                    <div class="mt-6 flex justify-end">
+                        <button type="button" onclick="validateAndNextStep()"
                             class="px-10 py-4 bg-gray-950 text-white font-black rounded-2xl shadow-xl hover:bg-emerald-600 hover:-translate-y-1 active:scale-95 transition-all uppercase tracking-[0.2em] text-[11px] flex items-center">
                             Next Step <i class="bi bi-arrow-right ml-2 text-lg"></i>
                         </button>
@@ -169,45 +199,80 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="md:col-span-2">
-                            <label
-                                class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">Contact
-                                Number</label>
-                            <input type="tel" name="contact_number" required
+                            <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">
+                                Contact Number <span class="text-red-500">*</span></label>
+                            <input type="tel" name="contact_number" id="contact_number" required
+                                pattern="(09|\+639)[0-9]{9}"
+                                title="Enter a valid Philippine mobile number: 09XXXXXXXXX or +639XXXXXXXXX"
+                                maxlength="13"
                                 class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 placeholder-gray-400 shadow-sm"
-                                placeholder="+1 (555) 000-0000">
+                                placeholder="09XXXXXXXXX or +639XXXXXXXXX">
+                            <p class="text-[10px] text-gray-400 mt-1 ml-1">Format: 09XXXXXXXXX or +639XXXXXXXXX</p>
+                            <p id="phone_hint" class="text-[10px] mt-1 ml-1 hidden"></p>
                         </div>
                         <div class="md:col-span-2">
-                            <label
-                                class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">Residential
-                                Address</label>
-                            <textarea name="address" required rows="2"
-                                class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 placeholder-gray-400 shadow-sm"
+                            <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">
+                                Residential Address <span class="text-red-500">*</span></label>
+                            <textarea name="address" id="reg_address" required rows="2"
+                                class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 placeholder-gray-400 shadow-sm field-validate"
                                 placeholder="Street, City, State, ZIP"></textarea>
+                            <p id="address_hint" class="text-[10px] mt-1 ml-1 hidden"></p>
+                        </div>
+                        <!-- §2.9 Government ID Upload -->
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">
+                                Government-Issued ID <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input type="file" name="gov_id" id="gov_id_upload" accept=".pdf,.jpg,.jpeg,.png" required
+                                    class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 shadow-sm text-sm">
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-1 ml-1">Accepted: PDF, JPG, PNG — max 5 MB. Used for identity verification.</p>
+                            <p id="gov_id_hint" class="text-[10px] mt-1 ml-1 hidden"></p>
                         </div>
                         <div class="md:col-span-2">
-                            <label
-                                class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1 text-emerald-600">Portal
-                                Username</label>
-                            <input type="text" name="username" required
+                            <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1 text-emerald-600">
+                                Portal Username <span class="text-red-500">*</span></label>
+                            <input type="text" name="username" id="portal_username" required
                                 class="w-full px-5 py-4 bg-emerald-50/30 border border-emerald-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-bold text-gray-900 placeholder-gray-300 shadow-sm"
                                 placeholder="Choose a unique username">
+                            <p id="username_hint" class="text-[10px] mt-1 ml-1 hidden"></p>
                         </div>
                         <div>
-                            <label
-                                class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">Secure
-                                Key</label>
-                            <input type="password" name="password" required
+                            <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">
+                                Password <span class="text-red-500">*</span></label>
+                            <input type="password" name="password" id="reg_password" required
+                                minlength="6"
                                 class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 placeholder-gray-400 shadow-sm"
-                                placeholder="Create password">
+                                placeholder="Create password (min. 6 chars)">
+                            <p id="password_hint" class="text-[10px] mt-1 ml-1 hidden"></p>
                         </div>
                         <div>
-                            <label
-                                class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">Confirm
-                                Key</label>
-                            <input type="password" name="confirm_password" required
+                            <label class="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">
+                                Confirm Password <span class="text-red-500">*</span></label>
+                            <input type="password" name="confirm_password" id="reg_confirm_password" required
+                                minlength="6"
                                 class="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all outline-none font-semibold text-gray-900 placeholder-gray-400 shadow-sm"
                                 placeholder="Retype password">
+                            <p id="confirm_password_hint" class="text-[10px] mt-1 ml-1 hidden"></p>
                         </div>
+                    </div>
+
+                    <!-- Terms & Conditions Gate -->
+                    <div class="mt-6 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                        <label class="flex items-start gap-3 cursor-pointer">
+                            <input type="checkbox" id="terms_agree" name="terms_agreed" value="1" required
+                                class="mt-1 w-4 h-4 accent-emerald-600" onchange="updateSubmitBtn()">
+                            <span class="text-xs text-gray-600 font-semibold leading-relaxed">
+                                I have read and agree to the
+                                <button type="button" onclick="document.getElementById('termsModal').classList.remove('hidden')"
+                                    class="text-emerald-600 hover:underline font-bold">Terms & Conditions</button>
+                                and
+                                <button type="button" onclick="document.getElementById('termsModal').classList.remove('hidden')"
+                                    class="text-emerald-600 hover:underline font-bold">Privacy Policy</button>.
+                                I consent to the collection and processing of my health data for medical purposes.
+                            </span>
+                        </label>
                     </div>
 
                     <div class="mt-8 flex items-center justify-between">
@@ -215,8 +280,8 @@
                             class="px-8 py-4 bg-white text-gray-400 font-black rounded-2xl border border-gray-100 hover:text-gray-900 hover:border-gray-200 transition-all uppercase tracking-[0.2em] text-[10px]">
                             Go Back
                         </button>
-                        <button type="submit"
-                            class="px-12 py-4 bg-emerald-600 text-white font-black rounded-2xl shadow-xl shadow-emerald-200 hover:bg-emerald-700 hover:-translate-y-1 active:scale-95 transition-all uppercase tracking-[0.2em] text-[11px]">
+                        <button type="submit" id="submitBtn" disabled
+                            class="px-12 py-4 bg-emerald-600 text-white font-black rounded-2xl shadow-xl shadow-emerald-200 hover:bg-emerald-700 hover:-translate-y-1 active:scale-95 transition-all uppercase tracking-[0.2em] text-[11px] disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none">
                             Implement Account
                         </button>
                     </div>
@@ -244,11 +309,266 @@
     </div>
 </div>
 
+<!-- Terms & Privacy Policy Modal -->
+<div id="termsModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+        <div class="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+            <h3 class="text-lg font-black text-gray-900 flex items-center">
+                <i class="bi bi-file-earmark-text mr-3 text-emerald-500"></i> Terms & Privacy Policy
+            </h3>
+            <button onclick="document.getElementById('termsModal').classList.add('hidden')"
+                class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-200 text-gray-400 transition-colors">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="overflow-y-auto p-8 space-y-6 text-sm text-gray-700 leading-relaxed">
+            <div>
+                <h4 class="font-black text-gray-900 mb-2 text-base">1. Data Collection & Use</h4>
+                <p>By registering on the HMS Patient Portal, you consent to the collection, storage, and processing of your personal and health-related information. This data is used solely for the purpose of providing medical care, coordinating treatment, managing appointments, and communicating health information to you.</p>
+            </div>
+            <div>
+                <h4 class="font-black text-gray-900 mb-2 text-base">2. Appointment Policy</h4>
+                <p>Appointments must be cancelled or rescheduled at least <strong>24 hours</strong> in advance. Late cancellations (within 24 hours) are subject to a <strong>₱560.00 administrative fee</strong>. Patients who fail to attend a scheduled appointment without prior notice will be charged a <strong>₱1,500.00 no-show penalty</strong>. Three (3) no-show incidents may result in temporary suspension of online booking privileges.</p>
+            </div>
+            <div>
+                <h4 class="font-black text-gray-900 mb-2 text-base">3. Privacy & Confidentiality</h4>
+                <p>Your health records are protected under applicable medical privacy laws. Your data will not be shared with third parties without your explicit written consent, except where required by law or for direct care coordination.</p>
+            </div>
+            <div>
+                <h4 class="font-black text-gray-900 mb-2 text-base">4. Portal Access</h4>
+                <p>You are responsible for maintaining the confidentiality of your portal credentials. Unauthorized use of your account must be reported immediately. The hospital reserves the right to suspend accounts engaged in misuse.</p>
+            </div>
+            <div>
+                <h4 class="font-black text-gray-900 mb-2 text-base">5. Telehealth Consent</h4>
+                <p>If you use telehealth services, you consent to electronic communication of health information and acknowledge that technical limitations may affect service quality. Telehealth services do not replace in-person emergency care.</p>
+            </div>
+        </div>
+        <div class="px-8 py-5 border-t border-gray-100 flex justify-end bg-gray-50">
+            <button onclick="document.getElementById('terms_agree').checked=true; updateSubmitBtn(); document.getElementById('termsModal').classList.add('hidden');"
+                class="px-8 py-3 bg-emerald-600 text-white font-black rounded-2xl hover:bg-emerald-700 transition-all text-sm">
+                <i class="bi bi-check-circle mr-2"></i> I Agree & Close
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
+    // ── Regex constants (declared first so all functions can reference them) ──
+    var _nameRe  = /^[A-Za-z\u00C0-\u024F\s\-']+$/;
+    var _phonePH = /^(09|\+639)\d{9}$/;
+
+    // ── Block numbers in name fields ─────────────────────────────────────────
+    function blockNumbers(el, hintId) {
+        var before = el.value;
+        el.value = el.value.replace(/[0-9]/g, '');
+        var hint = document.getElementById(hintId);
+        if (before !== el.value) {
+            // A digit was stripped — show error
+            el.style.borderColor = '#f87171';
+            if (hint) {
+                hint.textContent = '✗ Numbers are not allowed in names.';
+                hint.style.display = 'block';
+                hint.style.color = '#ef4444';
+                hint.style.fontSize = '11px';
+                hint.style.fontWeight = '700';
+                hint.style.marginTop = '4px';
+                hint.style.marginLeft = '4px';
+            }
+        } else if (el.value.trim().length > 0) {
+            // Valid characters present — clear error
+            el.style.borderColor = '#34d399';
+            if (hint) { hint.textContent = ''; hint.style.display = 'none'; }
+        } else {
+            // Empty — reset border
+            el.style.borderColor = '';
+            if (hint) { hint.textContent = ''; hint.style.display = 'none'; }
+        }
+    }
+
+    // ── Step navigation ─────────────────────────────────────────────────────
     function nextStep(step) {
         document.querySelectorAll('.form-step').forEach(el => el.classList.remove('active'));
         document.getElementById('step-' + step).classList.add('active');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+    // ── Validate Step 1 before advancing ──────────────────────────────
+    function validateAndNextStep() {
+        try {
+            var fields = [
+                { el: document.getElementById('reg_first_name'),  hint: 'first_name_hint',  check: function(v) { return v.trim().length > 0 && _nameRe.test(v.trim()); }, msg: 'First name is required (letters only).' },
+                { el: document.getElementById('reg_last_name'),   hint: 'last_name_hint',   check: function(v) { return v.trim().length > 0 && _nameRe.test(v.trim()); }, msg: 'Last name is required (letters only).' },
+                { el: document.getElementById('portal_dob'),      hint: 'dob_hint',         check: function(v) { return v.trim().length > 0 && new Date(v) <= new Date() && new Date(v) >= new Date('1900-01-01'); }, msg: 'Date of birth is required.' },
+                { el: document.getElementById('reg_gender'),      hint: 'gender_hint',      check: function(v) { return v.trim() !== ''; }, msg: 'Please select a gender.' },
+                { el: document.getElementById('reg_visit_type'),  hint: 'visit_type_hint',  check: function(v) { return v.trim() !== ''; }, msg: 'Please select a visit type.' },
+            ];
+            var errors = [];
+            fields.forEach(function(f) {
+                if (!f.el) return;
+                var val = f.el.value || '';
+                var valid = f.check(val);
+                // Red border on the input/select
+                f.el.style.borderColor = valid ? '#34d399' : '#f87171';
+                f.el.style.borderWidth = '2px';
+                // Show/hide inline hint
+                var hint = document.getElementById(f.hint);
+                if (hint) {
+                    hint.textContent = valid ? '' : ('\u2717 ' + f.msg);
+                    hint.style.display = valid ? 'none' : 'block';
+                }
+                if (!valid) errors.push(f.msg);
+            });
+            var banner = document.getElementById('step1_error_banner');
+            var bannerMsg = document.getElementById('step1_error_msg');
+            if (errors.length === 0) {
+                if (banner) banner.style.display = 'none';
+                nextStep(2);
+            } else {
+                if (banner) { banner.style.display = 'flex'; banner.style.marginBottom = '16px'; }
+                if (bannerMsg) bannerMsg.textContent = 'Please complete all required fields before continuing.';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        } catch(e) {
+            console.error('validateAndNextStep error:', e);
+        }
+    }
+    // Set max DOB = today
+    (function () {
+        var dob = document.getElementById('portal_dob');
+        if (dob) dob.max = new Date().toISOString().split('T')[0];
+    })();
+
+    // ── Submit gate ─────────────────────────────────────────────────────────
+    function updateSubmitBtn() {
+        var btn = document.getElementById('submitBtn');
+        var agreed = document.getElementById('terms_agree').checked;
+        var usernameOk = !window._usernameTaken;
+        var phoneOk    = !window._phoneTaken;
+        var nameDobOk  = !window._nameDobExists;
+        btn.disabled = !(agreed && usernameOk && phoneOk && nameDobOk);
+    }
+
+    window._usernameTaken  = false;
+    window._phoneTaken     = false;
+    window._nameDobExists  = false;
+
+    // ── AJAX duplicate-check helpers ────────────────────────────────────────
+    function checkDuplicate(type, value, hintId, flagName, okMsg, failMsg) {
+        if (!value) return;
+        fetch('/portal/check-duplicate?type=' + type + '&value=' + encodeURIComponent(value))
+            .then(r => r.json())
+            .then(data => {
+                var hint = document.getElementById(hintId);
+                if (data.exists) {
+                    window[flagName] = true;
+                    hint.textContent = failMsg;
+                    hint.className   = 'text-[10px] mt-1 ml-1 text-red-500 font-bold';
+                } else {
+                    window[flagName] = false;
+                    hint.textContent = okMsg;
+                    hint.className   = 'text-[10px] mt-1 ml-1 text-emerald-600 font-bold';
+                }
+                hint.classList.remove('hidden');
+                updateSubmitBtn();
+            })
+            .catch(() => { window[flagName] = false; updateSubmitBtn(); });
+    }
+
+    // ── §2.5 Per-field visual validation ────────────────────────────────────
+    function setFieldState(el, hintId, ok, errMsg) {
+        if (!el) return;
+        el.style.borderColor = ok ? '#34d399' : '#f87171';
+        el.style.borderWidth  = '2px';
+        var hint = document.getElementById(hintId);
+        if (hint) {
+            hint.textContent   = ok ? '' : ('\u2717 ' + errMsg);
+            hint.style.display = ok ? 'none' : 'block';
+        }
+    }
+
+    // ── Name + DOB duplicate check (§2.10) ──────────────────────────────────
+    function checkNameDob() {
+        var fn  = (document.getElementById('reg_first_name')  || {}).value || '';
+        var ln  = (document.getElementById('reg_last_name')   || {}).value || '';
+        var dob = (document.getElementById('portal_dob')      || {}).value || '';
+        if (!fn.trim() || !ln.trim() || !dob) return;
+        var combo = fn.trim() + '|' + ln.trim() + '|' + dob;
+        checkDuplicate('name_dob', combo, 'dob_hint', '_nameDobExists',
+            '✓ No existing record found.',
+            '✗ A patient with this name and date of birth already exists. Please contact the clinic.');
+    }
+
+    // ── Government ID file validation ────────────────────────────────────────
+    function validateGovId(input) {
+        var hint  = document.getElementById('gov_id_hint');
+        var allow = ['pdf','jpg','jpeg','png'];
+        if (!input.files || !input.files[0]) return;
+        var f    = input.files[0];
+        var ext  = f.name.split('.').pop().toLowerCase();
+        var size = f.size;
+        if (!allow.includes(ext)) {
+            hint.textContent = '✗ Only PDF, JPG, PNG are accepted.';
+            hint.className   = 'text-[10px] mt-1 ml-1 text-red-500 font-bold';
+            input.value = '';
+            return;
+        }
+        if (size > 5 * 1024 * 1024) {
+            hint.textContent = '✗ File must be smaller than 5 MB.';
+            hint.className   = 'text-[10px] mt-1 ml-1 text-red-500 font-bold';
+            input.value = '';
+            return;
+        }
+        hint.textContent = '✓ ' + f.name + ' ready to upload.';
+        hint.className   = 'text-[10px] mt-1 ml-1 text-emerald-600 font-bold';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var firstEl    = document.getElementById('reg_first_name');
+        var lastEl     = document.getElementById('reg_last_name');
+        var dobEl      = document.getElementById('portal_dob');
+        var phoneEl    = document.getElementById('contact_number');
+        var addrEl     = document.getElementById('reg_address');
+        var usernameEl = document.getElementById('portal_username');
+        var govIdEl    = document.getElementById('gov_id_upload');
+        var passEl     = document.getElementById('reg_password');
+        var confirmEl  = document.getElementById('reg_confirm_password');
+
+        if (firstEl) firstEl.addEventListener('blur', function () {
+            setFieldState(this, 'first_name_hint', _nameRe.test(this.value.trim()), 'First name must contain letters only.');
+            checkNameDob();
+        });
+        if (lastEl) lastEl.addEventListener('blur', function () {
+            setFieldState(this, 'last_name_hint', _nameRe.test(this.value.trim()), 'Last name must contain letters only.');
+            checkNameDob();
+        });
+        if (dobEl) dobEl.addEventListener('blur', function () {
+            var today = new Date(); var v = this.value;
+            var ok = v && new Date(v) <= today && new Date(v) >= new Date('1900-01-01');
+            setFieldState(this, 'dob_hint', ok, 'Please enter a valid date of birth.');
+            if (ok) checkNameDob();
+        });
+        if (addrEl) addrEl.addEventListener('blur', function () {
+            setFieldState(this, 'address_hint', this.value.trim().length >= 5, 'Please enter a valid address.');
+        });
+        if (phoneEl) phoneEl.addEventListener('blur', function () {
+            var ph = this.value.trim();
+            var ok = _phonePH.test(ph);
+            setFieldState(this, 'phone_hint', ok, 'Enter a valid Philippine mobile number (09XXXXXXXXX).');
+            if (ok) checkDuplicate('phone', ph, 'phone_hint', '_phoneTaken', '✓ Phone number is available.', '✗ Phone number already registered.');
+        });
+        if (usernameEl) usernameEl.addEventListener('blur', function () {
+            var v = this.value.trim();
+            setFieldState(this, 'username_hint', v.length >= 3, 'Username must be at least 3 characters.');
+            if (v.length >= 3) checkDuplicate('username', v, 'username_hint', '_usernameTaken', '✓ Username is available.', '✗ Username already taken.');
+        });
+        if (govIdEl) govIdEl.addEventListener('change', function () { validateGovId(this); });
+
+        if (passEl) passEl.addEventListener('blur', function () {
+            setFieldState(this, 'password_hint', this.value.length >= 6, 'Password must be at least 6 characters.');
+        });
+        if (confirmEl) confirmEl.addEventListener('blur', function () {
+            var pw = (document.getElementById('reg_password') || {}).value || '';
+            setFieldState(this, 'confirm_password_hint', this.value === pw && this.value.length >= 6, 'Passwords do not match.');
+        });
+    });
 </script>
 {% endblock %}

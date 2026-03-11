@@ -30,7 +30,7 @@
                     {% elif category == 'warning' %}<i class="bi bi-exclamation-circle-fill"></i>
                     {% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
                 </div>
-                <div class="text-sm font-bold pr-8">{{ message }}</div>
+                <div class="text-sm font-bold pr-8">{{ message | safe }}</div>
                 <button onclick="this.parentElement.parentElement.remove()"
                     class="ml-auto -mx-1.5 -my-1.5 p-1.5 inline-flex items-center justify-center h-8 w-8 text-gray-400 hover:text-gray-900 focus:outline-none transition-colors">
                     <i class="bi bi-x-lg text-xs"></i>

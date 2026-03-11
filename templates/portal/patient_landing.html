@@ -87,7 +87,7 @@
                     <i class="bi bi-briefcase-fill mr-1.5"></i> Careers
                 </a>
                 {% if current_user.is_authenticated and current_user.role == 'Patient' %}
-                <a href="{{ url_for('patient.dashboard') }}"
+                <a href="{{ url_for('ct1.dashboard') }}"
                     class="flex items-center space-x-2 sm:space-x-3 p-1 pr-3 sm:pr-4 bg-emerald-50/50 rounded-full border border-emerald-100/50 hover:border-emerald-200 hover:bg-emerald-50 transition-all group">
                     <div
                         class="w-8 h-8 shrink-0 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shadow-sm group-hover:scale-110 transition-transform">
@@ -264,7 +264,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch auto-rows-fr">
                 <!-- Facility Stay -->
-                <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('patient.dashboard') }}#stays{% else %}{{ url_for('patient.login', next=url_for('patient.dashboard') + '#stays') }}{% endif %}"
+                <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('ct1.dashboard') }}#stays{% else %}{{ url_for('patient.login', next=url_for('ct1.dashboard') + '#stays') }}{% endif %}"
                     class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden h-full flex flex-col">
                     <div class="h-3 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
                     <div class="p-8 flex flex-col h-full">
@@ -290,7 +290,7 @@
                 </a>
 
                 <!-- Specialist Direct -->
-                <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('patient.dashboard') }}#clinical-timeline{% else %}{{ url_for('patient.login', next=url_for('patient.dashboard') + '#clinical-timeline') }}{% endif %}"
+                <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('ct1.dashboard') }}#clinical-timeline{% else %}{{ url_for('patient.login', next=url_for('ct1.dashboard') + '#clinical-timeline') }}{% endif %}"
                     class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden h-full flex flex-col">
                     <div class="h-3 bg-gradient-to-r from-teal-400 to-teal-600"></div>
                     <div class="p-8 flex flex-col h-full">
@@ -316,7 +316,7 @@
                 </a>
 
                 <!-- Clinical insights -->
-                <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('patient.dashboard') }}#clinical-timeline{% else %}{{ url_for('patient.login', next=url_for('patient.dashboard') + '#clinical-timeline') }}{% endif %}"
+                <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('ct1.dashboard') }}#clinical-timeline{% else %}{{ url_for('patient.login', next=url_for('ct1.dashboard') + '#clinical-timeline') }}{% endif %}"
                     class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden h-full flex flex-col">
                     <div class="h-3 bg-gradient-to-r from-blue-400 to-blue-600"></div>
                     <div class="p-8 flex flex-col h-full">
@@ -341,7 +341,7 @@
                 </a>
 
                 <!-- Financial Clarity -->
-                <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('patient.dashboard') }}#financials{% else %}{{ url_for('patient.login', next=url_for('patient.dashboard') + '#financials') }}{% endif %}"
+                <a href="{% if current_user.is_authenticated and current_user.role == 'Patient' %}{{ url_for('ct1.dashboard') }}#financials{% else %}{{ url_for('patient.login', next=url_for('ct1.dashboard') + '#financials') }}{% endif %}"
                     class="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden h-full flex flex-col">
                     <div class="h-3 bg-gradient-to-r from-purple-400 to-purple-600"></div>
                     <div class="p-8 flex flex-col h-full">

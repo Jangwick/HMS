@@ -1653,3 +1653,91 @@ CREATE POLICY "Public Delete Receipts" ON storage.objects FOR DELETE USING (buck
 ALTER TABLE reimbursement_claims
     ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50),       -- 'Direct Payment' | 'Payroll'
     ADD COLUMN IF NOT EXISTS payroll_included BOOLEAN DEFAULT FALSE; -- TRUE once included in a payroll run
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- CT1 Migration: Patient registration & appointment enhancements
+-- Safe idempotent ALTER TABLE blocks — run after initial schema creation
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- § patients table extensions
+ALTER TABLE patients
+    ADD COLUMN IF NOT EXISTS temp_id            VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS status             VARCHAR(20)  DEFAULT 'Temporary',
+    ADD COLUMN IF NOT EXISTS no_show_count      INTEGER      DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS is_banned          BOOLEAN      DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS ban_reason         TEXT,
+    ADD COLUMN IF NOT EXISTS queue_number       VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS terms_agreed       BOOLEAN      DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS terms_agreed_at    TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS visit_type         VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS gov_id_url         TEXT,
+    ADD COLUMN IF NOT EXISTS official_id        VARCHAR(30);
+
+-- § appointments table extensions
+ALTER TABLE appointments
+    ADD COLUMN IF NOT EXISTS visit_type            VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS reschedule_count      INTEGER    DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS last_rescheduled_at   TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS original_date         TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS cancellation_fee      DECIMAL(10,2) DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS no_show_fee           DECIMAL(10,2) DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS checked_in_at         TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS terms_agreed          BOOLEAN    DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS room_number           VARCHAR(30);
+
+-- § telehealth_sessions table extensions
+ALTER TABLE telehealth_sessions
+    ADD COLUMN IF NOT EXISTS started_at            TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS ended_at              TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS duration_minutes      INTEGER,
+    ADD COLUMN IF NOT EXISTS prescription_url      TEXT,
+    ADD COLUMN IF NOT EXISTS no_show_fee_applied   BOOLEAN    DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS diagnosis             TEXT,
+    ADD COLUMN IF NOT EXISTS follow_up_date        DATE;
+
+-- § beds table extensions
+ALTER TABLE beds
+    ADD COLUMN IF NOT EXISTS assigned_at           TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS discharged_at         TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS cleaned_at            TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS discharge_report_url  TEXT;
+
+-- § medical_records table (create if not exists for post-session records)
+CREATE TABLE IF NOT EXISTS medical_records (
+    id              SERIAL PRIMARY KEY,
+    patient_id      INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+    appointment_id  INTEGER REFERENCES appointments(id),
+    session_id      INTEGER REFERENCES telehealth_sessions(id),
+    record_type     VARCHAR(30) DEFAULT 'Telehealth',   -- Telehealth | Outpatient | Inpatient
+    diagnosis       TEXT,
+    notes           TEXT,
+    prescription    TEXT,
+    follow_up_date  DATE,
+    recorded_by     INTEGER REFERENCES users(id),
+    created_at      TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE IF EXISTS medical_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on medical_records" ON medical_records;
+CREATE POLICY "Allow all on medical_records" ON medical_records FOR ALL USING (true) WITH CHECK (true);
+
+-- § patient-documents storage bucket
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('patient-documents', 'patient-documents', false)
+ON CONFLICT (id) DO UPDATE SET public = false;
+
+DROP POLICY IF EXISTS "Authenticated read patient-documents" ON storage.objects;
+CREATE POLICY "Authenticated read patient-documents" ON storage.objects
+    FOR SELECT USING (bucket_id = 'patient-documents');
+
+DROP POLICY IF EXISTS "Authenticated upload patient-documents" ON storage.objects;
+CREATE POLICY "Authenticated upload patient-documents" ON storage.objects
+    FOR INSERT WITH CHECK (bucket_id = 'patient-documents');
+
+DROP POLICY IF EXISTS "Authenticated update patient-documents" ON storage.objects;
+CREATE POLICY "Authenticated update patient-documents" ON storage.objects
+    FOR UPDATE WITH CHECK (bucket_id = 'patient-documents');
+
+DROP POLICY IF EXISTS "Authenticated delete patient-documents" ON storage.objects;
+CREATE POLICY "Authenticated delete patient-documents" ON storage.objects
+    FOR DELETE USING (bucket_id = 'patient-documents');

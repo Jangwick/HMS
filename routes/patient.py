@@ -1,11 +1,17 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 import os
+import re
 from flask_login import login_user, logout_user, login_required, current_user
 from utils.supabase_client import User, get_supabase_client, format_db_error
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
 from utils.policy import policy_required
 from datetime import datetime
+
+# ── Validation helpers ─────────────────────────────────────────────────────────
+_NAME_RE    = re.compile(r"^[A-Za-z\u00C0-\u024F\s\-']+$")
+_PHONE_PH   = re.compile(r"^(09|\+639)\d{9}$")
+_ALNUM_DASH = re.compile(r"^[A-Za-z0-9\-]*$")
 
 patient_bp = Blueprint('patient', __name__)
 
@@ -42,7 +48,7 @@ def landing():
 @patient_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('patient.dashboard'))
+        return redirect(url_for('ct1.dashboard'))
         
     if request.method == 'POST':
         username = request.form.get('username')
@@ -53,7 +59,7 @@ def login():
         if user and user.check_password(password):
             if login_user(user):
                 flash('Welcome back to the HMS Patient Portal.', 'success')
-                return redirect(next_url or url_for('patient.dashboard'))
+                return redirect(next_url or url_for('ct1.dashboard'))
         
         flash('Invalid credentials. Please try again.', 'danger')
         
@@ -62,7 +68,7 @@ def login():
 @patient_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('patient.dashboard'))
+        return redirect(url_for('ct1.dashboard'))
         
     if request.method == 'POST':
         from utils.hms_models import Patient
@@ -76,29 +82,148 @@ def register():
         username = request.form.get('username')
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
-        
+        terms_agreed = request.form.get('terms_agreed')
+
+        if not terms_agreed:
+            flash('You must agree to the Terms & Conditions to register.', 'danger')
+            return render_template('portal/patient_register.html')
+
+        # ── Presence checks on all required fields ─────────────────────────────
+        required_map = {
+            'First name': first_name,
+            'Last name': last_name,
+            'Date of birth': dob,
+            'Gender': request.form.get('gender'),
+            'Visit type': request.form.get('visit_type'),
+            'Contact number': request.form.get('contact_number'),
+            'Address': request.form.get('address'),
+            'Username': username,
+            'Password': password,
+        }
+        for label, val in required_map.items():
+            if not val or not str(val).strip():
+                flash(f'{label} is required.', 'danger')
+                return render_template('portal/patient_register.html')
+
         if password != confirm_password:
             flash('Passwords do not match.', 'danger')
             return render_template('portal/patient_register.html')
-            
+
+        # ── Server-side input validation ───────────────────────────────────────
+        if not first_name or not _NAME_RE.match(first_name.strip()):
+            flash('First name must contain letters only (spaces, hyphens, apostrophes allowed).', 'danger')
+            return render_template('portal/patient_register.html')
+        if not last_name or not _NAME_RE.match(last_name.strip()):
+            flash('Last name must contain letters only (spaces, hyphens, apostrophes allowed).', 'danger')
+            return render_template('portal/patient_register.html')
+        if contact_number and not _PHONE_PH.match(contact_number.strip()):
+            flash('Contact number must be a valid Philippine mobile number (09XXXXXXXXX or +639XXXXXXXXX).', 'danger')
+            return render_template('portal/patient_register.html')
+        if dob:
+            try:
+                dob_parsed = datetime.strptime(dob, '%Y-%m-%d')
+                if dob_parsed.year < 1900 or dob_parsed > datetime.now():
+                    flash('Date of birth must be between 1900 and today.', 'danger')
+                    return render_template('portal/patient_register.html')
+            except ValueError:
+                flash('Invalid date of birth format.', 'danger')
+                return render_template('portal/patient_register.html')
+        visit_type = request.form.get('visit_type', 'General Consultation')
+        gov_id_file = request.files.get('gov_id')
+
+        # ── Duplicate phone check ──────────────────────────────────────────────
+        _client = get_supabase_client()
+        if contact_number:
+            dup_phone = _client.table('patients').select('id').eq('contact_number', contact_number.strip()).execute()
+            if dup_phone.data:
+                flash('A patient with this contact number is already registered.', 'danger')
+                return render_template('portal/patient_register.html')
+
+        # ── §2.10 Full duplicate patient check (name + DOB) ────────────────────
+        if first_name and last_name and dob:
+            dup_name = _client.table('patients').select('id, first_name, last_name').ilike(
+                'first_name', first_name.strip()).ilike('last_name', last_name.strip()).eq('dob', dob).execute()
+            if dup_name.data:
+                flash(
+                    f'A patient named {first_name.strip()} {last_name.strip()} with the same date of birth '
+                    f'already exists in the system (ID #{dup_name.data[0]["id"]}). '
+                    'If this is you, please log in or contact the clinic to retrieve your account.',
+                    'warning'
+                )
+                return render_template('portal/patient_register.html')
+
+        # ── §2.9 Government ID upload validation ──────────────────────────────
+        gov_id_url = None
+        if not gov_id_file or not gov_id_file.filename:
+            flash('A government-issued ID file is required for registration.', 'danger')
+            return render_template('portal/patient_register.html')
+        allowed_ext = {'pdf', 'jpg', 'jpeg', 'png'}
+        ext = gov_id_file.filename.rsplit('.', 1)[-1].lower() if '.' in gov_id_file.filename else ''
+        if ext not in allowed_ext:
+            flash('Government ID must be PDF, JPG, or PNG.', 'danger')
+            return render_template('portal/patient_register.html')
+        gov_id_file.seek(0, 2)
+        size = gov_id_file.tell()
+        gov_id_file.seek(0)
+        if size > 5 * 1024 * 1024:
+            flash('Government ID file must be smaller than 5 MB.', 'danger')
+            return render_template('portal/patient_register.html')
+
         # Check if username exists
         if User.get_by_username(username):
             flash('Username already exists. Please choose another.', 'danger')
             return render_template('portal/patient_register.html')
-            
+
         try:
+            now = datetime.now()
+
+            # ── §2.7 Generate Temp Patient ID ─────────────────────────────────
+            import random, string
+            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+            temp_id = f"TMP-{now.strftime('%Y%m%d')}-{suffix}"
+
+            # ── §2.13 Queue number ─────────────────────────────────────────────
+            queue_number = f"Q-{now.strftime('%H%M%S')}"
+
+            # ── §2.11 Official Patient ID (sequential PT-YYYY-NNNNN) ──────────
+            count_resp = _client.table('patients').select('id', count='exact').execute()
+            seq = (count_resp.count or 0) + 1
+            official_id = f"PT-{now.year}-{seq:05d}"
+
             # 1. Create Patient record
             patient_data = {
-                'first_name': first_name,
-                'last_name': last_name,
+                'first_name': first_name.strip(),
+                'last_name': last_name.strip(),
                 'dob': dob,
                 'gender': gender,
                 'contact_number': contact_number,
-                'address': address
+                'address': address,
+                'temp_id': temp_id,
+                'status': 'Temporary',
+                'queue_number': queue_number,
+                'official_id': official_id,
+                'terms_agreed': True,
+                'terms_agreed_at': now.isoformat(),
+                'visit_type': visit_type,
             }
             patient = Patient.create(patient_data)
             
             if patient:
+                # ── §2.9 Upload Government ID ──────────────────────────────
+                if gov_id_file and gov_id_file.filename:
+                    try:
+                        file_bytes = gov_id_file.read()
+                        storage_path = f"gov_ids/{patient.id}_{now.strftime('%Y%m%d%H%M%S')}.{ext}"
+                        _client.storage.from_('patient-documents').upload(
+                            storage_path, file_bytes,
+                            {'content-type': gov_id_file.content_type or 'application/octet-stream'}
+                        )
+                        pub = _client.storage.from_('patient-documents').get_public_url(storage_path)
+                        gov_id_url = pub if isinstance(pub, str) else pub.get('publicUrl', '')
+                        _client.table('patients').update({'gov_id_url': gov_id_url, 'status': 'Active'}).eq('id', patient.id).execute()
+                    except Exception:
+                        pass  # ID upload failure is non-fatal
+
                 # 2. Create User account
                 User.create(
                     username=username,
@@ -124,7 +249,14 @@ def register():
                     target_url=url_for('ct1.list_patients', _external=True)
                 )
                 
-                flash('Account created successfully! You can now log in.', 'success')
+                flash(
+                    f'Account created successfully! '
+                    f'Temp ID: <strong>{temp_id}</strong> &nbsp;|&nbsp; '
+                    f'Queue: <strong>{queue_number}</strong> &nbsp;|&nbsp; '
+                    f'Patient ID: <strong>{official_id}</strong>. '
+                    f'You can now log in.',
+                    'success'
+                )
                 return redirect(url_for('patient.login'))
             else:
                 flash('Failed to create patient record. Please contact support.', 'danger')
@@ -133,7 +265,33 @@ def register():
             
     return render_template('portal/patient_register.html')
 
-@patient_bp.route('/dashboard')
+@patient_bp.route('/check-duplicate')
+def check_duplicate():
+    """AJAX endpoint: check if a username or phone number is already taken."""
+    from flask import jsonify
+    check_type = request.args.get('type')  # 'username' or 'phone'
+    value = (request.args.get('value') or '').strip()
+    if not check_type or not value:
+        return jsonify({'exists': False})
+    try:
+        client = get_supabase_client()
+        if check_type == 'username':
+            res = client.table('users').select('id').eq('username', value).eq('subsystem', 'patient').execute()
+        elif check_type == 'phone':
+            res = client.table('patients').select('id').eq('contact_number', value).execute()
+        elif check_type == 'name_dob':
+            # value format: "FirstName|LastName|YYYY-MM-DD"
+            parts = value.split('|')
+            if len(parts) == 3:
+                res = client.table('patients').select('id').ilike(
+                    'first_name', parts[0]).ilike('last_name', parts[1]).eq('dob', parts[2]).execute()
+            else:
+                return jsonify({'exists': False})
+        else:
+            return jsonify({'exists': False})
+        return jsonify({'exists': bool(res.data)})
+    except Exception:
+        return jsonify({'exists': False})
 @login_required
 def dashboard():
     if current_user.role != 'Patient' or not current_user.patient_id:
@@ -502,7 +660,7 @@ def profile():
     except Exception as e:
         print(f"Error fetching profile data: {e}")
         flash('Error loading profile information.', 'danger')
-        return redirect(url_for('patient.dashboard'))
+        return redirect(url_for('ct1.dashboard'))
 
 @patient_bp.route('/profile/upload-avatar', methods=['POST'])
 @login_required
