@@ -11,6 +11,12 @@
             Back to Procurement
         </a>
         <div class="flex space-x-3">
+            <form action="{{ url_for('log1.submit_po_finance_approval', po_id=po.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="px-6 py-2 bg-amber-100 text-amber-700 font-bold rounded-xl shadow hover:bg-amber-200 transition-all">
+                    Submit Finance Approval
+                </button>
+            </form>
             {% if po.status == 'Draft' %}
             <form action="{{ url_for('log1.update_po_status', po_id=po.id) }}" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -141,7 +147,78 @@
                         <span class="text-gray-400">PO ID</span>
                         <span class="font-mono text-gray-900">#{{ po.id }}</span>
                     </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-400">Finance Approval</span>
+                        <span class="font-bold
+                            {% if finance_approval and finance_approval.status == 'APPROVED' %}text-emerald-600
+                            {% elif finance_approval and finance_approval.status == 'REJECTED' %}text-red-600
+                            {% else %}text-amber-600{% endif %}">
+                            {{ finance_approval.status if finance_approval else (po.finance_approval_status or 'PENDING_FINANCE') }}
+                        </span>
+                    </div>
                 </div>
+
+                {% if current_user.is_admin() %}
+                <div class="mt-6 pt-6 border-t border-gray-100 space-y-3">
+                    <form action="{{ url_for('log1.approve_finance_budget', po_id=po.id) }}" method="POST" class="space-y-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="number" step="0.01" min="0" name="approved_amount" value="{{ po.total_amount or 0 }}"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="Approved Amount">
+                        <input type="text" name="finance_remarks" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="Finance remarks (optional)">
+                        <button type="submit" class="w-full px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition-all">Approve Budget</button>
+                    </form>
+                    <form action="{{ url_for('log1.reject_finance_budget', po_id=po.id) }}" method="POST" class="space-y-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="text" name="finance_remarks" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="Rejection reason">
+                        <button type="submit" class="w-full px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-all">Reject Budget</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Receiving Discrepancy</h4>
+                {% if current_user.is_admin() %}
+                <form action="{{ url_for('log1.create_discrepancy_report', po_id=po.id) }}" method="POST" class="space-y-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select name="issue_type" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                        <option value="SHORT_DELIVERY">Short Delivery</option>
+                        <option value="WRONG_ITEM">Wrong Item</option>
+                        <option value="DAMAGED">Damaged</option>
+                        <option value="EXPIRED">Expired</option>
+                        <option value="OTHER">Other</option>
+                    </select>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" step="0.01" min="0" name="expected_qty" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="Expected Qty">
+                        <input type="number" step="0.01" min="0" name="received_qty" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="Received Qty">
+                    </div>
+                    <textarea name="remarks" rows="2" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="Remarks"></textarea>
+                    <button type="submit" class="w-full px-4 py-2 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-all">Create Discrepancy Report</button>
+                </form>
+                {% endif %}
+
+                {% if discrepancy_reports %}
+                <div class="mt-4 space-y-2">
+                    {% for dr in discrepancy_reports %}
+                    <div class="p-3 rounded-lg bg-gray-50 border border-gray-100">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-gray-700">{{ dr.report_no }}</span>
+                            <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-700">{{ dr.status }}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">{{ dr.issue_type }} · Qty Gap: {{ dr.discrepancy_qty or 0 }}</p>
+                        {% if current_user.is_admin() and dr.status != 'SUPPLIER_NOTIFIED' %}
+                        <form action="{{ url_for('log1.notify_discrepancy_supplier', report_id=dr.id) }}" method="POST" class="mt-2 flex gap-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="text" name="message" class="flex-1 px-2 py-1.5 border border-gray-200 rounded text-xs" placeholder="Supplier notification message">
+                            <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700">Notify Supplier</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-400">No discrepancy reports yet.</p>
+                {% endif %}
             </div>
         </div>
     </div>

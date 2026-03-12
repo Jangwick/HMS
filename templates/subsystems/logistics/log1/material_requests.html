@@ -1,0 +1,76 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Material Requests - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Material Requests{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Warehouse Material Requests</h3>
+            <p class="text-gray-500">Department and project requests, stock decisions, and delivery status</p>
+        </div>
+        <a href="{{ url_for('log1.list_inventory') }}" class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 font-bold hover:bg-gray-50">
+            <i class="bi bi-arrow-left mr-2"></i>Back to Inventory
+        </a>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+        <table class="w-full text-left">
+            <thead class="bg-gray-50 text-xs uppercase tracking-wider text-gray-500 font-bold">
+                <tr>
+                    <th class="px-6 py-4">Request #</th>
+                    <th class="px-6 py-4">Item</th>
+                    <th class="px-6 py-4">Qty</th>
+                    <th class="px-6 py-4">Recipient</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for req in requests %}
+                <tr>
+                    <td class="px-6 py-4 font-bold text-gray-900">{{ req.request_no or ('MR-' ~ req.id) }}</td>
+                    <td class="px-6 py-4 text-gray-700">#{{ req.item_id }}</td>
+                    <td class="px-6 py-4 text-gray-700">{{ req.quantity }}</td>
+                    <td class="px-6 py-4 text-gray-700">{{ req.recipient_name or 'N/A' }}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase
+                            {% if req.status == 'DELIVERED' %}bg-emerald-100 text-emerald-700
+                            {% elif req.status == 'REJECTED_OUT_OF_STOCK' %}bg-red-100 text-red-700
+                            {% elif req.status == 'FOR_DELIVERY' %}bg-blue-100 text-blue-700
+                            {% else %}bg-amber-100 text-amber-700{% endif %}">
+                            {{ req.status or 'PENDING' }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="inline-flex items-center gap-2">
+                            {% if current_user.is_admin() and req.status == 'PENDING' %}
+                            <form method="POST" action="{{ url_for('log1.approve_material_request', request_id=req.id) }}" class="inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100">Approve</button>
+                            </form>
+                            <form method="POST" action="{{ url_for('log1.reject_material_request_out_of_stock', request_id=req.id) }}" class="inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-bold hover:bg-red-100">Reject OOS</button>
+                            </form>
+                            {% endif %}
+                            {% if current_user.is_admin() and req.status == 'FOR_DELIVERY' %}
+                            <form method="POST" action="{{ url_for('log1.deliver_material_request', request_id=req.id) }}" class="inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100">Mark Delivered</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-6 py-10 text-center text-gray-400">No material requests found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

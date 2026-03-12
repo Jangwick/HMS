@@ -15,6 +15,131 @@ SUBSYSTEM_NAME = 'LOG1 - Inventory Management'
 ACCENT_COLOR = '#F59E0B'
 BLUEPRINT_NAME = 'log1'
 
+
+def _safe_float(value, default=0.0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _notify(subsystem, title, message, n_type='info', target_url=None, user_id=None, role=None):
+    try:
+        Notification.create(
+            user_id=user_id,
+            subsystem=subsystem,
+            role=role,
+            title=title,
+            message=message,
+            n_type=n_type,
+            sender_subsystem=BLUEPRINT_NAME,
+            target_url=target_url
+        )
+    except Exception:
+        pass
+
+
+def _insert_supplier_document_record(client, doc_type, po=None, receiving_id=None, document_no=None, file_url=None, metadata=None):
+    payload = {
+        'title': f"{doc_type} {document_no or ''}".strip(),
+        'doc_type': doc_type,
+        'doc_number': document_no,
+        'file_url': file_url or '#',
+        'status': 'Recorded',
+        'uploaded_by': current_user.id if current_user and getattr(current_user, 'id', None) else None,
+        'metadata': metadata or {}
+    }
+    try:
+        client.table('supplier_documents').insert({
+            'doc_type': doc_type,
+            'document_no': document_no,
+            'supplier_id': po.get('supplier_id') if po else None,
+            'requisition_id': po.get('id') if po else None,
+            'receiving_id': receiving_id,
+            'file_path': file_url,
+            'metadata': metadata or {},
+            'captured_via': 'AUTO_LINK',
+            'created_by': payload['uploaded_by']
+        }).execute()
+    except Exception:
+        try:
+            client.table('log_documents').insert(payload).execute()
+        except Exception:
+            pass
+
+
+def _create_finance_approval_for_po(client, po_id, requested_amount, requested_by):
+    approval_payload = {
+        'requisition_id': po_id,
+        'requested_amount': requested_amount,
+        'status': 'PENDING_FINANCE',
+        'requested_by': requested_by,
+        'requested_at': datetime.utcnow().isoformat()
+    }
+    try:
+        client.table('procurement_budget_approvals').insert(approval_payload).execute()
+        return True
+    except Exception:
+        try:
+            client.table('purchase_orders').update({
+                'finance_approval_status': 'PENDING_FINANCE',
+                'finance_requested_at': datetime.utcnow().isoformat()
+            }).eq('id', po_id).execute()
+            return True
+        except Exception:
+            return False
+
+
+def _create_purchase_requisition_for_out_of_stock(client, item_name, quantity, notes=None, project_id=None):
+    requisition_no = f"PR-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    payload = {
+        'requisition_no': requisition_no,
+        'item_name': item_name,
+        'quantity': quantity,
+        'status': 'Pending Finance Approval',
+        'requested_by': current_user.id,
+        'notes': notes or 'Auto-generated from out-of-stock material request.'
+    }
+    if project_id is not None:
+        payload['project_id'] = project_id
+
+    try:
+        req_resp = client.table('purchase_requisitions').insert(payload).execute()
+        requisition_id = req_resp.data[0]['id'] if req_resp.data else None
+    except Exception:
+        # Fallback: create PO draft directly if requisition table is unavailable
+        po_number = f"PO-AUTO-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        po_resp = client.table('purchase_orders').insert({
+            'po_number': po_number,
+            'supplier_id': None,
+            'total_amount': 0,
+            'status': 'Pending Finance Approval',
+            'requested_by': current_user.id,
+            'notes': f"Auto-generated for out-of-stock item: {item_name} x {quantity}"
+        }).execute()
+        requisition_id = po_resp.data[0]['id'] if po_resp.data else None
+
+    if requisition_id:
+        try:
+            client.table('procurement_budget_approvals').insert({
+                'requisition_id': requisition_id,
+                'requested_amount': 0,
+                'status': 'PENDING_FINANCE',
+                'requested_by': current_user.id,
+                'requested_at': datetime.utcnow().isoformat()
+            }).execute()
+        except Exception:
+            pass
+
+    return requisition_id
+
 @log1_bp.route('/login', methods=['GET', 'POST'])
 def login():
     # Check IP-based lockout first
@@ -381,6 +506,11 @@ def dispense_item():
     
     item_id = request.form.get('item_id')
     quantity_to_dispense = int(request.form.get('quantity', 0))
+    storage_location = request.form.get('storage_location') or request.form.get('location') or 'Warehouse'
+    recipient_name = request.form.get('recipient_name', '').strip()
+    recipient_lang = request.form.get('recipient_lang', '').strip()
+    project_id = request.form.get('project_id')
+    project_id = _safe_int(project_id, None) if project_id else None
     
     try:
         # Get current quantity
@@ -394,7 +524,57 @@ def dispense_item():
         item_name = item_resp.data.get('item_name')
 
         if current_qty < quantity_to_dispense:
-            flash(f'Insufficient stock for {item_name}.', 'danger')
+            try:
+                client.table('material_requests').insert({
+                    'request_no': f"MR-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                    'project_id': project_id,
+                    'requested_by': current_user.id,
+                    'requesting_department_id': 0,
+                    'item_id': _safe_int(item_id),
+                    'storage_location_id': 0,
+                    'quantity': quantity_to_dispense,
+                    'recipient_name': recipient_name or current_user.username,
+                    'recipient_lang': recipient_lang,
+                    'status': 'REJECTED_OUT_OF_STOCK',
+                    'rejection_reason': 'Out of Stock',
+                    'created_at': datetime.utcnow().isoformat(),
+                    'updated_at': datetime.utcnow().isoformat()
+                }).execute()
+            except Exception:
+                pass
+
+            requisition_id = _create_purchase_requisition_for_out_of_stock(
+                client,
+                item_name=item_name,
+                quantity=quantity_to_dispense,
+                notes=f"Requested by {recipient_name or current_user.username}; location: {storage_location}",
+                project_id=project_id
+            )
+
+            _notify(
+                subsystem=BLUEPRINT_NAME,
+                user_id=current_user.id,
+                title='Material Request Rejected: Out of Stock',
+                message=f"Request for {item_name} ({quantity_to_dispense}) cannot be fulfilled. Procurement requisition has been generated.",
+                n_type='warning',
+                target_url=url_for('log1.list_inventory')
+            )
+            _notify(
+                subsystem='log2',
+                title='New Purchase Requisition',
+                message=f"Out-of-stock escalation: {item_name} x {quantity_to_dispense}. Requisition ID: {requisition_id or 'N/A'}.",
+                n_type='info',
+                target_url=url_for('log1.procurement')
+            )
+            _notify(
+                subsystem='ct3',
+                title='Finance Approval Needed',
+                message=f"Budget approval required for out-of-stock requisition ({item_name} x {quantity_to_dispense}).",
+                n_type='warning',
+                target_url=url_for('log1.procurement')
+            )
+
+            flash(f'Insufficient stock for {item_name}. Request marked Out of Stock, requestor notified, and procurement requisition created.', 'warning')
             return redirect(url_for('log1.list_inventory'))
             
         # Update quantity
@@ -408,6 +588,39 @@ def dispense_item():
             'dispensed_by': current_user.id,
             'notes': request.form.get('notes', 'Standard dispensing')
         }).execute()
+
+        # Record inbound department/project request fulfillment if table exists
+        try:
+            client.table('material_requests').insert({
+                'request_no': f"MR-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                'project_id': project_id,
+                'requested_by': current_user.id,
+                'requesting_department_id': 0,
+                'item_id': _safe_int(item_id),
+                'storage_location_id': 0,
+                'quantity': quantity_to_dispense,
+                'recipient_name': recipient_name or current_user.username,
+                'recipient_lang': recipient_lang,
+                'status': 'DELIVERED',
+                'created_at': datetime.utcnow().isoformat(),
+                'updated_at': datetime.utcnow().isoformat()
+            }).execute()
+        except Exception:
+            pass
+
+        if project_id:
+            try:
+                client.table('project_material_tracking').insert({
+                    'project_id': project_id,
+                    'material_request_id': None,
+                    'stage': 'DELIVERING_MATERIALS',
+                    'status': 'COMPLETED',
+                    'notes': f"Delivered {quantity_to_dispense} of {item_name} from {storage_location}.",
+                    'updated_by': current_user.id,
+                    'updated_at': datetime.utcnow().isoformat()
+                }).execute()
+            except Exception:
+                pass
 
         # Low stock notification for Procurement (LOG2)
         if new_qty <= reorder_level:
@@ -426,6 +639,196 @@ def dispense_item():
         flash(f'Error dispensing item: {str(e)}', 'danger')
         
     return redirect(url_for('log1.list_inventory'))
+
+
+@log1_bp.route('/requests')
+@login_required
+def list_material_requests():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    status_filter = request.args.get('status', '').strip()
+
+    requests_data = []
+    try:
+        query = client.table('material_requests').select('*').order('created_at', desc=True)
+        if status_filter:
+            query = query.eq('status', status_filter)
+        resp = query.execute()
+        requests_data = resp.data or []
+    except Exception as e:
+        flash(f'Unable to load material requests: {e}', 'warning')
+
+    return render_template('subsystems/logistics/log1/material_requests.html',
+                           requests=requests_data,
+                           status_filter=status_filter,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@log1_bp.route('/requests/create', methods=['POST'])
+@login_required
+def create_material_request():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    item_id = _safe_int(request.form.get('item_id'))
+    storage_location_id = _safe_int(request.form.get('storage_location_id'))
+    quantity = _safe_float(request.form.get('quantity'))
+    recipient_name = (request.form.get('recipient_name') or '').strip()
+    recipient_lang = (request.form.get('recipient_lang') or '').strip()
+    project_id = request.form.get('project_id')
+    project_id = _safe_int(project_id, None) if project_id else None
+
+    if not item_id or not storage_location_id or quantity <= 0 or not recipient_name:
+        flash('Item, storage location, quantity, and recipient are required.', 'danger')
+        return redirect(url_for('log1.list_inventory'))
+
+    try:
+        request_no = f"MR-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        client.table('material_requests').insert({
+            'request_no': request_no,
+            'project_id': project_id,
+            'requested_by': current_user.id,
+            'requesting_department_id': _safe_int(request.form.get('requesting_department_id')),
+            'item_id': item_id,
+            'storage_location_id': storage_location_id,
+            'quantity': quantity,
+            'recipient_name': recipient_name,
+            'recipient_lang': recipient_lang,
+            'status': 'PENDING',
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat()
+        }).execute()
+
+        _notify(
+            subsystem=BLUEPRINT_NAME,
+            title='New Material Request',
+            message=f"{recipient_name} requested item #{item_id}, qty {quantity}.",
+            n_type='info',
+            target_url=url_for('log1.list_material_requests')
+        )
+
+        flash('Material request created successfully.', 'success')
+    except Exception as e:
+        flash(f'Error creating material request: {e}', 'danger')
+
+    return redirect(url_for('log1.list_material_requests'))
+
+
+@log1_bp.route('/requests/<int:request_id>/approve', methods=['POST'])
+@login_required
+def approve_material_request(request_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_material_requests'))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('material_requests').update({
+            'status': 'FOR_DELIVERY',
+            'updated_at': datetime.utcnow().isoformat()
+        }).eq('id', request_id).execute()
+        flash('Request approved and marked for delivery.', 'success')
+    except Exception as e:
+        flash(f'Error approving request: {e}', 'danger')
+    return redirect(url_for('log1.list_material_requests'))
+
+
+@log1_bp.route('/requests/<int:request_id>/reject-out-of-stock', methods=['POST'])
+@login_required
+def reject_material_request_out_of_stock(request_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_material_requests'))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        req_resp = client.table('material_requests').select('*').eq('id', request_id).single().execute()
+        req = req_resp.data or {}
+
+        client.table('material_requests').update({
+            'status': 'REJECTED_OUT_OF_STOCK',
+            'rejection_reason': 'Out of Stock',
+            'updated_at': datetime.utcnow().isoformat()
+        }).eq('id', request_id).execute()
+
+        requisition_id = _create_purchase_requisition_for_out_of_stock(
+            client,
+            item_name=f"Item #{req.get('item_id')}",
+            quantity=_safe_float(req.get('quantity')),
+            notes='Escalated from material request rejection.',
+            project_id=req.get('project_id')
+        )
+
+        _notify(
+            subsystem=BLUEPRINT_NAME,
+            user_id=req.get('requested_by'),
+            title='Request Rejected: Out of Stock',
+            message=f"Your material request #{request_id} was rejected due to insufficient stock.",
+            n_type='warning',
+            target_url=url_for('log1.list_material_requests')
+        )
+        _notify(
+            subsystem='log2',
+            title='Out-of-Stock Requisition Created',
+            message=f"Material request #{request_id} escalated to procurement (Requisition ID: {requisition_id or 'N/A'}).",
+            n_type='info',
+            target_url=url_for('log1.procurement')
+        )
+        flash('Request rejected as out-of-stock, requestor notified, and procurement escalation created.', 'success')
+    except Exception as e:
+        flash(f'Error rejecting request: {e}', 'danger')
+    return redirect(url_for('log1.list_material_requests'))
+
+
+@log1_bp.route('/requests/<int:request_id>/deliver', methods=['POST'])
+@login_required
+def deliver_material_request(request_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_material_requests'))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        req_resp = client.table('material_requests').select('*').eq('id', request_id).single().execute()
+        req = req_resp.data or {}
+
+        client.table('material_requests').update({
+            'status': 'DELIVERED',
+            'updated_at': datetime.utcnow().isoformat()
+        }).eq('id', request_id).execute()
+
+        if req.get('project_id'):
+            try:
+                client.table('project_material_tracking').insert({
+                    'project_id': req.get('project_id'),
+                    'material_request_id': request_id,
+                    'stage': 'DELIVERING_MATERIALS',
+                    'status': 'COMPLETED',
+                    'notes': f"Material request #{request_id} delivered.",
+                    'updated_by': current_user.id,
+                    'updated_at': datetime.utcnow().isoformat()
+                }).execute()
+            except Exception:
+                pass
+
+        _notify(
+            subsystem=BLUEPRINT_NAME,
+            user_id=req.get('requested_by'),
+            title='Material Request Delivered',
+            message=f"Your material request #{request_id} has been delivered.",
+            n_type='success',
+            target_url=url_for('log1.list_material_requests')
+        )
+
+        flash('Request marked as delivered and requestor notified.', 'success')
+    except Exception as e:
+        flash(f'Error delivering request: {e}', 'danger')
+    return redirect(url_for('log1.list_material_requests'))
 
 @log1_bp.route('/procurement')
 @login_required
@@ -481,6 +884,7 @@ def add_purchase_order():
             'supplier_id': request.form.get('supplier_id'),
             'total_amount': float(request.form.get('total_amount', 0)),
             'status': 'Draft',
+            'finance_approval_status': 'PENDING_FINANCE',
             'requested_by': current_user.id,
             'notes': request.form.get('notes')
         }
@@ -489,6 +893,7 @@ def add_purchase_order():
         po_resp = client.table('purchase_orders').insert(po_data).execute()
         if po_resp.data:
             po_id = po_resp.data[0]['id']
+            _create_finance_approval_for_po(client, po_id, po_data['total_amount'], current_user.id)
             # Get items from hidden field (sent as JSON string from JS)
             items_json = request.form.get('po_items_json')
             if items_json:
@@ -513,10 +918,26 @@ def view_po(po_id):
     try:
         po = client.table('purchase_orders').select('*, suppliers(*)').eq('id', po_id).single().execute()
         items = client.table('po_items').select('*').eq('po_id', po_id).execute()
+
+        finance_approval = None
+        try:
+            approval_resp = client.table('procurement_budget_approvals').select('*').eq('requisition_id', po_id).order('requested_at', desc=True).limit(1).execute()
+            finance_approval = approval_resp.data[0] if approval_resp.data else None
+        except Exception:
+            pass
+
+        discrepancy_reports = []
+        try:
+            dr_resp = client.table('discrepancy_reports').select('*').eq('receiving_id', po_id).order('created_at', desc=True).execute()
+            discrepancy_reports = dr_resp.data or []
+        except Exception:
+            pass
         
         return render_template('subsystems/logistics/log1/po_detail.html',
                                po=po.data,
                                items=items.data if items.data else [],
+                               finance_approval=finance_approval,
+                               discrepancy_reports=discrepancy_reports,
                                subsystem_name=SUBSYSTEM_NAME,
                                accent_color=ACCENT_COLOR,
                                blueprint_name=BLUEPRINT_NAME)
@@ -544,6 +965,20 @@ def update_po_status(po_id):
             
         old_status = po_resp.data['status']
         
+        # Finance gate: cannot send/approve/receive without finance approval
+        finance_approved = False
+        try:
+            fa_resp = client.table('procurement_budget_approvals').select('*').eq('requisition_id', po_id).order('requested_at', desc=True).limit(1).execute()
+            if fa_resp.data and (fa_resp.data[0].get('status') == 'APPROVED'):
+                finance_approved = True
+        except Exception:
+            # fallback to PO column
+            finance_approved = (po_resp.data.get('finance_approval_status') == 'APPROVED')
+
+        if new_status in ['Sent', 'Approved', 'Received'] and not finance_approved:
+            flash('Finance budget approval is required before progressing this PO.', 'warning')
+            return redirect(url_for('log1.view_po', po_id=po_id))
+
         # Update status
         client.table('purchase_orders').update({'status': new_status}).eq('id', po_id).execute()
         
@@ -578,6 +1013,15 @@ def update_po_status(po_id):
                 }).execute()
                 flash('Vendor Invoice automatically generated in Financials.', 'info')
 
+                _insert_supplier_document_record(
+                    client,
+                    doc_type='PO',
+                    po=po_resp.data,
+                    receiving_id=None,
+                    document_no=po_resp.data.get('po_number'),
+                    metadata={'source': 'purchase_orders', 'po_id': po_id}
+                )
+
         # AUDIT LOG
         from utils.hms_models import AuditLog
         AuditLog.log(current_user.id, "Update PO Status", BLUEPRINT_NAME, 
@@ -604,6 +1048,15 @@ def update_po_status(po_id):
                             'unit': 'units',
                             'location': 'Warehouse'
                         }).execute()
+
+                _insert_supplier_document_record(
+                    client,
+                    doc_type='DR',
+                    po=po_resp.data,
+                    receiving_id=po_id,
+                    document_no=f"DR-{po_resp.data.get('po_number')}",
+                    metadata={'source': 'receiving', 'po_id': po_id}
+                )
                 flash('PO status updated to Received. Inventory has been automatically updated.', 'success')
             else:
                 flash(f'PO status updated to {new_status}.', 'success')
@@ -614,6 +1067,211 @@ def update_po_status(po_id):
         flash(f'Error updating PO status: {str(e)}', 'danger')
         
     return redirect(url_for('log1.view_po', po_id=po_id))
+
+
+@log1_bp.route('/procurement/po/<int:po_id>/submit-finance', methods=['POST'])
+@login_required
+def submit_po_finance_approval(po_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.procurement'))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        po_resp = client.table('purchase_orders').select('*').eq('id', po_id).single().execute()
+        po = po_resp.data or {}
+        ok = _create_finance_approval_for_po(client, po_id, _safe_float(po.get('total_amount')), current_user.id)
+        if ok:
+            client.table('purchase_orders').update({'finance_approval_status': 'PENDING_FINANCE'}).eq('id', po_id).execute()
+            _notify(
+                subsystem='ct3',
+                title='Procurement Budget Approval Request',
+                message=f"PO {po.get('po_number')} requires finance approval.",
+                n_type='warning',
+                target_url=url_for('log1.view_po', po_id=po_id)
+            )
+            flash('PO submitted for finance budget approval.', 'success')
+        else:
+            flash('Unable to create finance approval record.', 'danger')
+    except Exception as e:
+        flash(f'Error submitting finance approval: {e}', 'danger')
+
+    return redirect(url_for('log1.view_po', po_id=po_id))
+
+
+@log1_bp.route('/finance/approvals/<int:po_id>/approve', methods=['POST'])
+@login_required
+def approve_finance_budget(po_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.procurement'))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        approved_amount = _safe_float(request.form.get('approved_amount'))
+        remarks = request.form.get('finance_remarks', '').strip()
+        updated = False
+        try:
+            client.table('procurement_budget_approvals').update({
+                'status': 'APPROVED',
+                'approved_amount': approved_amount,
+                'finance_remarks': remarks,
+                'approved_by': current_user.id,
+                'decided_at': datetime.utcnow().isoformat()
+            }).eq('requisition_id', po_id).execute()
+            updated = True
+        except Exception:
+            pass
+
+        client.table('purchase_orders').update({'finance_approval_status': 'APPROVED'}).eq('id', po_id).execute()
+        _notify(
+            subsystem='log2',
+            title='Budget Approved',
+            message=f"Finance approved budget for PO #{po_id}.",
+            n_type='success',
+            target_url=url_for('log1.view_po', po_id=po_id)
+        )
+        flash('Finance budget approved.', 'success')
+    except Exception as e:
+        flash(f'Error approving finance budget: {e}', 'danger')
+    return redirect(url_for('log1.view_po', po_id=po_id))
+
+
+@log1_bp.route('/finance/approvals/<int:po_id>/reject', methods=['POST'])
+@login_required
+def reject_finance_budget(po_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.procurement'))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        remarks = request.form.get('finance_remarks', '').strip()
+        try:
+            client.table('procurement_budget_approvals').update({
+                'status': 'REJECTED',
+                'finance_remarks': remarks,
+                'approved_by': current_user.id,
+                'decided_at': datetime.utcnow().isoformat()
+            }).eq('requisition_id', po_id).execute()
+        except Exception:
+            pass
+        client.table('purchase_orders').update({'finance_approval_status': 'REJECTED'}).eq('id', po_id).execute()
+        _notify(
+            subsystem='log2',
+            title='Budget Rejected',
+            message=f"Finance rejected budget for PO #{po_id}. Remarks: {remarks or 'N/A'}",
+            n_type='danger',
+            target_url=url_for('log1.view_po', po_id=po_id)
+        )
+        flash('Finance budget rejected.', 'warning')
+    except Exception as e:
+        flash(f'Error rejecting finance budget: {e}', 'danger')
+    return redirect(url_for('log1.view_po', po_id=po_id))
+
+
+@log1_bp.route('/receiving/<int:po_id>/discrepancy', methods=['POST'])
+@login_required
+def create_discrepancy_report(po_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.view_po', po_id=po_id))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        po_resp = client.table('purchase_orders').select('*').eq('id', po_id).single().execute()
+        po = po_resp.data or {}
+        expected_qty = _safe_float(request.form.get('expected_qty'))
+        received_qty = _safe_float(request.form.get('received_qty'))
+        discrepancy_qty = max(0.0, expected_qty - received_qty)
+
+        payload = {
+            'report_no': f"DRPT-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+            'receiving_id': po_id,
+            'supplier_id': po.get('supplier_id'),
+            'issue_type': request.form.get('issue_type') or 'SHORT_DELIVERY',
+            'expected_qty': expected_qty,
+            'received_qty': received_qty,
+            'discrepancy_qty': discrepancy_qty,
+            'remarks': request.form.get('remarks'),
+            'status': 'OPEN',
+            'created_by': current_user.id,
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat()
+        }
+
+        created_id = None
+        try:
+            result = client.table('discrepancy_reports').insert(payload).execute()
+            created_id = result.data[0]['id'] if result.data else None
+        except Exception:
+            # fallback via generic docs log to preserve trace
+            client.table('log_documents').insert({
+                'title': f"Discrepancy Report for {po.get('po_number')}",
+                'doc_type': 'Discrepancy Report',
+                'doc_number': payload['report_no'],
+                'file_url': '#',
+                'status': 'Open',
+                'uploaded_by': current_user.id,
+                'metadata': payload
+            }).execute()
+
+        flash('Discrepancy report created successfully.', 'success')
+    except Exception as e:
+        flash(f'Error creating discrepancy report: {e}', 'danger')
+    return redirect(url_for('log1.view_po', po_id=po_id))
+
+
+@log1_bp.route('/discrepancies/<int:report_id>/notify-supplier', methods=['POST'])
+@login_required
+def notify_discrepancy_supplier(report_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.procurement'))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        dr_resp = client.table('discrepancy_reports').select('*').eq('id', report_id).single().execute()
+        report = dr_resp.data or {}
+        supplier_id = report.get('supplier_id')
+
+        try:
+            client.table('supplier_notifications').insert({
+                'discrepancy_report_id': report_id,
+                'supplier_id': supplier_id,
+                'channel': request.form.get('channel') or 'PORTAL',
+                'subject': f"Discrepancy Notice {report.get('report_no')}",
+                'message': request.form.get('message') or 'Please review discrepancy report and provide correction.',
+                'status': 'SENT',
+                'sent_by': current_user.id,
+                'sent_at': datetime.utcnow().isoformat()
+            }).execute()
+            client.table('discrepancy_reports').update({
+                'status': 'SUPPLIER_NOTIFIED',
+                'updated_at': datetime.utcnow().isoformat()
+            }).eq('id', report_id).execute()
+        except Exception:
+            pass
+
+        _notify(
+            subsystem=BLUEPRINT_NAME,
+            title='Supplier Notified',
+            message=f"Supplier notified for discrepancy report #{report.get('report_no') or report_id}.",
+            n_type='info',
+            target_url=url_for('log1.procurement')
+        )
+        flash('Supplier notified successfully.', 'success')
+    except Exception as e:
+        flash(f'Error notifying supplier: {e}', 'danger')
+    return redirect(url_for('log1.procurement'))
 
 @log1_bp.route('/procurement/suppliers/add', methods=['POST'])
 @login_required
@@ -877,6 +1535,53 @@ def add_document():
         
     return redirect(url_for('log1.list_documents'))
 
+
+@log1_bp.route('/documents/auto-record', methods=['POST'])
+@login_required
+def auto_record_supplier_document():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    doc_type = (request.form.get('doc_type') or '').strip().upper()
+    if doc_type not in ['PO', 'DR']:
+        flash('Invalid document type. Use PO or DR.', 'danger')
+        return redirect(url_for('log1.list_documents'))
+
+    po_id = _safe_int(request.form.get('po_id'), None)
+    receiving_id = _safe_int(request.form.get('receiving_id'), None)
+    document_no = (request.form.get('document_no') or '').strip()
+    file_url = (request.form.get('file_url') or '').strip() or '#'
+
+    po_data = None
+    if po_id:
+        try:
+            po_resp = client.table('purchase_orders').select('*').eq('id', po_id).single().execute()
+            po_data = po_resp.data or None
+            if not document_no:
+                document_no = po_data.get('po_number') if po_data else None
+        except Exception:
+            po_data = None
+
+    try:
+        _insert_supplier_document_record(
+            client,
+            doc_type=doc_type,
+            po=po_data,
+            receiving_id=receiving_id,
+            document_no=document_no,
+            file_url=file_url,
+            metadata={
+                'source': 'manual_auto_record_endpoint',
+                'po_id': po_id,
+                'receiving_id': receiving_id
+            }
+        )
+        flash(f'{doc_type} document recorded successfully.', 'success')
+    except Exception as e:
+        flash(f'Error auto-recording document: {e}', 'danger')
+
+    return redirect(url_for('log1.list_documents'))
+
 @log1_bp.route('/documents/status/<int:doc_id>/<string:status>')
 @login_required
 def update_doc_status(doc_id, status):
@@ -1048,6 +1753,13 @@ def view_project(project_id):
             activities = activities_resp.data if activities_resp.data else []
         except Exception:
             activities = []
+
+        # Fetch project material tracking (real-time flow)
+        try:
+            tracking_resp = client.table('project_material_tracking').select('*').eq('project_id', project_id).order('updated_at', desc=True).execute()
+            material_tracking = tracking_resp.data if tracking_resp.data else []
+        except Exception:
+            material_tracking = []
         
         return render_template('subsystems/logistics/log1/project_detail.html',
                                project=project_resp.data,
@@ -1056,6 +1768,7 @@ def view_project(project_id):
                                expenses=expenses,
                                total_spent=total_spent,
                                activities=activities,
+                               material_tracking=material_tracking,
                                subsystem_name=SUBSYSTEM_NAME,
                                accent_color=ACCENT_COLOR,
                                blueprint_name=BLUEPRINT_NAME)
@@ -1157,6 +1870,146 @@ def update_project_status(project_id, status):
     except Exception as e:
         flash(f'Error updating project status: {str(e)}', 'danger')
     
+    return redirect(url_for('log1.view_project', project_id=project_id))
+
+
+@log1_bp.route('/projects/<int:project_id>/materials-request', methods=['POST'])
+@login_required
+def request_project_materials(project_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    item_id = _safe_int(request.form.get('item_id'))
+    storage_location_id = _safe_int(request.form.get('storage_location_id'))
+    quantity = _safe_float(request.form.get('quantity'))
+    recipient_name = (request.form.get('recipient_name') or current_user.username).strip()
+    recipient_lang = (request.form.get('recipient_lang') or '').strip()
+
+    if not item_id or not storage_location_id or quantity <= 0:
+        flash('Item, storage location, and quantity are required.', 'danger')
+        return redirect(url_for('log1.view_project', project_id=project_id))
+
+    try:
+        req_no = f"MR-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        req_resp = client.table('material_requests').insert({
+            'request_no': req_no,
+            'project_id': project_id,
+            'requested_by': current_user.id,
+            'requesting_department_id': 0,
+            'item_id': item_id,
+            'storage_location_id': storage_location_id,
+            'quantity': quantity,
+            'recipient_name': recipient_name,
+            'recipient_lang': recipient_lang,
+            'status': 'PENDING',
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat()
+        }).execute()
+        material_request_id = req_resp.data[0]['id'] if req_resp.data else None
+
+        client.table('project_material_tracking').insert({
+            'project_id': project_id,
+            'material_request_id': material_request_id,
+            'stage': 'REQUEST_PROJECT_MATERIALS',
+            'status': 'IN_PROGRESS',
+            'notes': f"Requested item #{item_id} qty {quantity}",
+            'updated_by': current_user.id,
+            'updated_at': datetime.utcnow().isoformat()
+        }).execute()
+
+        # Optional immediate stock check and escalation
+        try:
+            inv_resp = client.table('inventory').select('*').eq('id', item_id).single().execute()
+            inv = inv_resp.data or {}
+            current_qty = _safe_float(inv.get('quantity'))
+            item_name = inv.get('item_name') or f"Item #{item_id}"
+
+            if current_qty < quantity:
+                client.table('material_requests').update({
+                    'status': 'REJECTED_OUT_OF_STOCK',
+                    'rejection_reason': 'Out of Stock',
+                    'updated_at': datetime.utcnow().isoformat()
+                }).eq('id', material_request_id).execute()
+
+                requisition_id = _create_purchase_requisition_for_out_of_stock(
+                    client,
+                    item_name=item_name,
+                    quantity=quantity,
+                    notes=f"Project #{project_id} request auto-escalated.",
+                    project_id=project_id
+                )
+
+                client.table('project_material_tracking').insert({
+                    'project_id': project_id,
+                    'material_request_id': material_request_id,
+                    'stage': 'REQUEST_PROJECT_MATERIALS',
+                    'status': 'BLOCKED',
+                    'notes': f"Out of stock. Escalated to procurement requisition {requisition_id or 'N/A'}.",
+                    'updated_by': current_user.id,
+                    'updated_at': datetime.utcnow().isoformat()
+                }).execute()
+
+                _notify(
+                    subsystem=BLUEPRINT_NAME,
+                    user_id=current_user.id,
+                    title='Project Material Request Blocked',
+                    message=f"Insufficient stock for {item_name}. Escalated to procurement.",
+                    n_type='warning',
+                    target_url=url_for('log1.view_project', project_id=project_id)
+                )
+
+                flash('Project material request is out of stock and has been escalated to procurement.', 'warning')
+                return redirect(url_for('log1.view_project', project_id=project_id))
+        except Exception:
+            pass
+
+        flash('Project material request submitted.', 'success')
+    except Exception as e:
+        flash(f'Error requesting project materials: {e}', 'danger')
+
+    return redirect(url_for('log1.view_project', project_id=project_id))
+
+
+@log1_bp.route('/projects/<int:project_id>/materials-status', methods=['POST'])
+@login_required
+def update_project_material_status(project_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.view_project', project_id=project_id))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    stage = request.form.get('stage') or 'DELIVERING_MATERIALS'
+    status = request.form.get('status') or 'IN_PROGRESS'
+    notes = request.form.get('notes') or ''
+    material_request_id = _safe_int(request.form.get('material_request_id'), None)
+
+    try:
+        client.table('project_material_tracking').insert({
+            'project_id': project_id,
+            'material_request_id': material_request_id,
+            'stage': stage,
+            'status': status,
+            'notes': notes,
+            'updated_by': current_user.id,
+            'updated_at': datetime.utcnow().isoformat()
+        }).execute()
+
+        if stage == 'DELIVERING_MATERIALS' and status == 'COMPLETED':
+            if material_request_id:
+                try:
+                    client.table('material_requests').update({
+                        'status': 'DELIVERED',
+                        'updated_at': datetime.utcnow().isoformat()
+                    }).eq('id', material_request_id).execute()
+                except Exception:
+                    pass
+
+        flash('Project materials tracking updated.', 'success')
+    except Exception as e:
+        flash(f'Error updating project materials tracking: {e}', 'danger')
+
     return redirect(url_for('log1.view_project', project_id=project_id))
 
 # --- Milestones ---

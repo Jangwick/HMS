@@ -262,6 +262,63 @@
             </div>
         </div>
         {% endif %}
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <h4 class="text-lg font-bold text-gray-900"><i class="bi bi-box-seam text-[#F59E0B] mr-2"></i>Project Materials Tracking</h4>
+            </div>
+
+            <form method="POST" action="{{ url_for('log1.request_project_materials', project_id=project.id) }}" class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="number" min="1" name="item_id" required placeholder="Item ID" class="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <input type="number" min="1" name="storage_location_id" required placeholder="Location ID" class="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <input type="number" min="0.01" step="0.01" name="quantity" required placeholder="Qty" class="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <input type="text" name="recipient_name" placeholder="Recipient" value="{{ current_user.username }}" class="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <button type="submit" class="px-4 py-2 bg-[#F59E0B] text-white font-bold rounded-lg hover:bg-amber-600 transition-all text-sm">Request Project Materials</button>
+            </form>
+
+            {% if current_user.is_admin() %}
+            <form method="POST" action="{{ url_for('log1.update_project_material_status', project_id=project.id) }}" class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <select name="stage" class="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                    <option value="REQUEST_PROJECT_MATERIALS">Request Project Materials</option>
+                    <option value="DELIVERING_MATERIALS">Delivering Materials</option>
+                    <option value="MATERIALS_DELIVERED">Materials Delivered</option>
+                </select>
+                <select name="status" class="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="BLOCKED">Blocked</option>
+                </select>
+                <input type="number" min="1" name="material_request_id" placeholder="Material Request ID" class="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <input type="text" name="notes" placeholder="Notes" class="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <button type="submit" class="px-4 py-2 bg-gray-900 text-white font-bold rounded-lg hover:bg-black transition-all text-sm">Update Material Stage</button>
+            </form>
+            {% endif %}
+
+            <div class="bg-gray-50 rounded-xl p-4">
+                <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Real-time Timeline</h5>
+                {% if material_tracking %}
+                <div class="space-y-2 max-h-52 overflow-y-auto">
+                    {% for row in material_tracking %}
+                    <div class="p-3 bg-white border border-gray-100 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-bold text-gray-900">{{ row.stage }}</span>
+                            <span class="text-[10px] font-bold px-2 py-1 rounded-full
+                                {% if row.status == 'COMPLETED' %}bg-emerald-100 text-emerald-700
+                                {% elif row.status == 'BLOCKED' %}bg-red-100 text-red-700
+                                {% else %}bg-blue-100 text-blue-700{% endif %}">{{ row.status }}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">{{ row.notes or 'No notes' }}</p>
+                        <p class="text-[10px] text-gray-400 mt-1">{{ row.updated_at }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-400">No material tracking records yet.</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
     <!-- ==================== TASKS TAB ==================== -->

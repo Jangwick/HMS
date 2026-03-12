@@ -12,6 +12,10 @@
             <p class="text-gray-500">Track and manage hospital supplies and equipment</p>
         </div>
         <div class="flex space-x-3">
+            <a href="{{ url_for('log1.list_material_requests') }}"
+                class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                <i class="bi bi-inboxes mr-2"></i> Requests
+            </a>
             <a href="{{ url_for('log1.inventory_history') }}"
                 class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
                 <i class="bi bi-clock-history mr-2"></i> History
@@ -136,6 +140,35 @@
                 <label class="text-sm font-bold text-gray-700">Quantity to Dispense</label>
                 <input type="number" name="quantity" id="dispense_input_qty" required min="1"
                     class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#F59E0B] outline-none transition-all font-bold">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700">Storage Location</label>
+                    <input type="text" name="storage_location" required value="Warehouse"
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#F59E0B] outline-none transition-all">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700">Recipient</label>
+                    <input type="text" name="recipient_name" required
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#F59E0B] outline-none transition-all"
+                        placeholder="Requesting person/department">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700">Recipient Lang/Label</label>
+                    <input type="text" name="recipient_lang"
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#F59E0B] outline-none transition-all"
+                        placeholder="e.g. EN / Ward A">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-bold text-gray-700">Project ID (Optional)</label>
+                    <input type="number" name="project_id" min="1"
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#F59E0B] outline-none transition-all"
+                        placeholder="Link to project materials request">
+                </div>
             </div>
 
             <div class="space-y-2">
