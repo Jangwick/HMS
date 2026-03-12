@@ -628,18 +628,17 @@ def delete_patient(patient_id):
     
     client = get_supabase_client()
     try:
-        # Check if patient has appointments
-        res = client.table('appointments').select('id').eq('patient_id', patient_id).execute()
-        if res.data:
-            flash('Cannot delete patient with existing appointment history.', 'warning')
-            return redirect(url_for('ct1.view_patient', patient_id=patient_id))
-
         # ── Detach any portal user accounts linked to this patient ──────────
-        # users.patient_id has no ON DELETE CASCADE so we must null it first
         client.table('users').update({'patient_id': None}).eq('patient_id', patient_id).execute()
 
-        # ── Null out any medical_records.recorded_by references (safety) ────
-        # (medical_records.patient_id cascades, but recorded_by may not)
+        # ── Delete appointments (and nullify billing appointment refs) ───────
+        try:
+            client.table('billing_records').update({'appointment_id': None}).eq('patient_id', patient_id).execute()
+        except Exception:
+            pass
+        client.table('appointments').delete().eq('patient_id', patient_id).execute()
+
+        # ── Null out medical_records.recorded_by references (safety) ────────
         try:
             client.table('medical_records').update({'recorded_by': None}).eq('patient_id', patient_id).execute()
         except Exception:
