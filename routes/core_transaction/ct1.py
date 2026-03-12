@@ -1319,12 +1319,27 @@ def update_triage_status(triage_id):
 def telehealth():
     from utils.hms_models import Patient, TelehealthSession
     client = get_supabase_client()
-    
-    sessions = TelehealthSession.get_all()
-    patients = Patient.get_all()
-    # Doctors for meeting
-    doctors = client.table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
-    
+
+    sessions = []
+    patients = []
+    doctors = []
+    load_error = None
+    try:
+        sessions = TelehealthSession.get_all() or []
+    except Exception as e:
+        load_error = f'Could not load sessions: {str(e)}'
+    try:
+        patients = Patient.get_all() or []
+    except Exception:
+        pass
+    try:
+        doctors = client.table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
+    except Exception:
+        pass
+
+    if load_error:
+        flash(f'Connection error — retrying may resolve this. ({load_error})', 'warning')
+
     return render_template('subsystems/core_transaction/ct1/telehealth.html',
                            sessions=sessions,
                            patients=patients,
@@ -1671,7 +1686,10 @@ def patient_book_telehealth():
                     sender_subsystem='ct1'
                 )
             flash(f'Telehealth session booked! Meeting link: {meeting_link}', 'success')
-            return redirect(url_for('patient.dashboard'))
+            # Redirect back to telehealth dashboard — works for both staff and patient roles
+            if getattr(current_user, 'role', None) == 'Patient':
+                return redirect(url_for('patient.dashboard'))
+            return redirect(url_for('ct1.telehealth'))
         except Exception as e:
             flash(f'Booking error: {str(e)}', 'danger')
 

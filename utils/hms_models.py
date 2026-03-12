@@ -459,15 +459,33 @@ class ERTriage:
 class TelehealthSession:
     @staticmethod
     def get_all():
-        client = get_supabase_client()
-        response = client.table('telehealth_sessions').select('*, patients(*), users(*)').order('scheduled_at', desc=True).execute()
-        return response.data
+        import time
+        last_exc = None
+        for attempt in range(3):
+            try:
+                client = get_supabase_client()
+                response = client.table('telehealth_sessions').select('*, patients(*), users(*)').order('scheduled_at', desc=True).execute()
+                return response.data
+            except Exception as e:
+                last_exc = e
+                if attempt < 2:
+                    time.sleep(0.5 * (attempt + 1))  # 0.5s, 1.0s backoff
+        raise last_exc
 
     @staticmethod
     def create(data: dict):
-        client = get_supabase_client()
-        response = client.table('telehealth_sessions').insert(data).execute()
-        return response.data[0] if response.data else None
+        import time
+        last_exc = None
+        for attempt in range(3):
+            try:
+                client = get_supabase_client()
+                response = client.table('telehealth_sessions').insert(data).execute()
+                return response.data[0] if response.data else None
+            except Exception as e:
+                last_exc = e
+                if attempt < 2:
+                    time.sleep(0.5 * (attempt + 1))
+        raise last_exc
 
 class Notification:
     @staticmethod

@@ -281,14 +281,14 @@
     }
     function openDiagnosisModal(sessionId, patientName) {
         document.getElementById('diag_patient_name').textContent = patientName;
-        document.getElementById('diagnosisForm').action = `/ct1/telehealth/${sessionId}/save-diagnosis`;
+        document.getElementById('diagnosisForm').action = `/core-transaction/ct1/telehealth/${sessionId}/save-diagnosis`;
         document.getElementById('diagnosisModal').classList.remove('hidden');
     }
     function openPrescriptionModal(sessionId, patientName, patientId, doctorId) {
         document.getElementById('rx_patient_name').textContent = patientName;
         document.getElementById('rx_patient_id_field').value = patientId;
         document.getElementById('rx_doctor_id_field').value = doctorId;
-        document.getElementById('prescriptionForm').action = `/ct1/telehealth/${sessionId}/issue-prescription`;
+        document.getElementById('prescriptionForm').action = `/core-transaction/ct1/telehealth/${sessionId}/issue-prescription`;
         document.getElementById('prescriptionModal').classList.remove('hidden');
     }
     // ── Join Time Gate ─────────────────────────────────────────────────────────
@@ -323,7 +323,7 @@
                 } else if (diffMs >= -OPEN_AFTER_MS) {
                     // Within join window — use server-side join tracking route
                     var sessionId = row.dataset.sessionId;
-                    var joinUrl = '/ct1/telehealth/' + sessionId + '/join';
+                    var joinUrl = '/core-transaction/ct1/telehealth/' + sessionId + '/join';
                     cell.innerHTML = '<a href="' + joinUrl + '" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-indigo-700 transition-all animate-pulse"><i class="bi bi-camera-video-fill"></i><span>Join Now</span></a>';
                 } else {
                     // Expired
