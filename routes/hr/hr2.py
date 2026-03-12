@@ -1806,6 +1806,23 @@ def employee_self_service():
     except Exception:
         pass
 
+    # ── My Schedule Change Requests ──
+    my_schedule_changes = []
+    schedule_changes_summary = {'Pending': 0, 'Approved': 0, 'Rejected': 0}
+    try:
+        sc_resp = client.table('schedule_change_requests') \
+            .select('id, current_day, current_start, current_end, requested_day, requested_start, requested_end, reason, status, created_at') \
+            .eq('user_id', uid) \
+            .order('created_at', desc=True) \
+            .execute()
+        my_schedule_changes = sc_resp.data or []
+        for sc in my_schedule_changes:
+            s = sc.get('status', '')
+            if s in schedule_changes_summary:
+                schedule_changes_summary[s] += 1
+    except Exception:
+        pass
+
     return render_template('subsystems/hr/hr2/ess.html',
                            career_assignment=career_assignment,
                            assessment_counts=assessment_counts,
@@ -1822,6 +1839,8 @@ def employee_self_service():
                            leave_days_used=leave_days_used,
                            leave_entitlements=leave_entitlements,
                            my_schedules=my_schedules,
+                           my_schedule_changes=my_schedule_changes,
+                           schedule_changes_summary=schedule_changes_summary,
                            subsystem_name=display_name,
                            accent_color=accent,
                            blueprint_name=context)

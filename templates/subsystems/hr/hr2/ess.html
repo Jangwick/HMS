@@ -15,7 +15,7 @@
     </div>
 
     <!-- ── Quick stat strip ── -->
-    <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4">
         <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
             <p class="text-3xl font-black text-gray-900">{{ assessment_counts.Competent }}</p>
             <p class="text-[11px] font-black text-green-600 uppercase tracking-widest mt-1">Competencies</p>
@@ -39,6 +39,10 @@
         <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
             <p class="text-3xl font-black {{ 'text-amber-500' if attendance_summary['Late'] else 'text-gray-300' }}">{{ attendance_summary['Late'] }}</p>
             <p class="text-[11px] font-black uppercase tracking-widest mt-1 {{ 'text-amber-400' if attendance_summary['Late'] else 'text-gray-400' }}">Late (Recent)</p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-center">
+            <p class="text-3xl font-black {{ 'text-orange-500' if schedule_changes_summary['Pending'] else 'text-gray-300' }}">{{ schedule_changes_summary['Pending'] }}</p>
+            <p class="text-[11px] font-black text-orange-400 uppercase tracking-widest mt-1">Sched. Pending</p>
         </div>
     </div>
 
@@ -343,6 +347,74 @@
                 </div>
             </div>
 
+            <!-- My Schedule Change Requests card -->
+            <div class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+                <div class="px-6 py-5 flex items-center gap-3 border-b border-gray-100" style="background: linear-gradient(to right, #F9731615, transparent)">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-orange-500">
+                        <i class="bi bi-arrow-left-right text-sm"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h2 class="font-black text-gray-900 text-sm">Schedule Change Requests</h2>
+                        <p class="text-[11px] text-gray-400">Shift change history &amp; status</p>
+                    </div>
+                    {% if schedule_changes_summary['Pending'] %}
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-50 text-orange-600">{{ schedule_changes_summary['Pending'] }} Pending</span>
+                    {% endif %}
+                </div>
+                <div class="p-6 flex-1">
+                    <div class="flex items-center gap-4 mb-5">
+                        <div class="text-center">
+                            <p class="text-2xl font-black text-orange-500">{{ schedule_changes_summary['Pending'] }}</p>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">Pending</p>
+                        </div>
+                        <div class="w-px h-10 bg-gray-100"></div>
+                        <div class="text-center">
+                            <p class="text-2xl font-black text-green-600">{{ schedule_changes_summary['Approved'] }}</p>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">Approved</p>
+                        </div>
+                        <div class="w-px h-10 bg-gray-100"></div>
+                        <div class="text-center">
+                            <p class="text-2xl font-black text-red-500">{{ schedule_changes_summary['Rejected'] }}</p>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">Rejected</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        {% for sc in my_schedule_changes[:4] %}
+                        <div class="flex items-start justify-between py-2 border-b border-gray-50 last:border-0">
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs font-bold text-gray-700">
+                                    {% if sc.current_day %}{{ sc.current_day }} &rarr; {% endif %}{{ sc.requested_day }}
+                                </p>
+                                <p class="text-[10px] text-gray-400">
+                                    {{ sc.requested_start[:5] if sc.requested_start else '' }}
+                                    {% if sc.requested_end %}&ndash; {{ sc.requested_end[:5] }}{% endif %}
+                                </p>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black ml-2 flex-shrink-0
+                                {{ 'bg-amber-50 text-amber-700' if sc.status == 'Pending'
+                                   else 'bg-green-50 text-green-700' if sc.status == 'Approved'
+                                   else 'bg-red-50 text-red-600' if sc.status == 'Rejected'
+                                   else 'bg-gray-50 text-gray-500' }}">
+                                {{ sc.status or '—' }}
+                            </span>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-arrow-left-right text-3xl text-gray-200 block mb-2"></i>
+                            <p class="text-sm text-gray-400">No schedule change requests yet.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                    <a href="{{ url_for('hr3.list_schedule_changes') }}" class="text-xs font-black text-orange-500 hover:underline">View all &rarr;</a>
+                    <button onclick="openModal('modalScheduleChange')"
+                       class="px-3 py-1.5 rounded-xl text-[11px] font-black text-white bg-orange-500 hover:bg-orange-600 transition-all">
+                        <i class="bi bi-plus mr-1"></i>New Request
+                    </button>
+                </div>
+            </div>
+
             <!-- My Leave Requests card -->
             <div class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
                 <div class="px-6 py-5 flex items-center gap-3 border-b border-gray-100" style="background: linear-gradient(to right, #EC489915, transparent)">
@@ -472,6 +544,11 @@
                class="group bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all text-center flex flex-col items-center gap-2 w-full">
                 <i class="bi bi-calendar-check text-2xl text-pink-500"></i>
                 <span class="text-xs font-black text-gray-700 group-hover:text-gray-900">Request Leave</span>
+            </button>
+            <button onclick="openModal('modalScheduleChange')"
+               class="group bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all text-center flex flex-col items-center gap-2 w-full">
+                <i class="bi bi-arrow-left-right text-2xl text-orange-500"></i>
+                <span class="text-xs font-black text-gray-700 group-hover:text-gray-900">Change Schedule</span>
             </button>
         </div>
     </div>
@@ -720,6 +797,100 @@
     </div>
 </div>
 
+{# ── Modal: Request Schedule Change ── #}
+<div id="modalScheduleChange" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="px-6 py-5 flex items-center justify-between border-b border-gray-100"
+             style="background: linear-gradient(to right, #F9731615, transparent)">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-orange-500">
+                    <i class="bi bi-arrow-left-right text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-gray-900">Request Schedule Change</h3>
+                    <p class="text-[11px] text-gray-400">Submit a shift change request</p>
+                </div>
+            </div>
+            <button onclick="closeAllModals()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <form method="POST"
+              action="{{ url_for('hr3.request_schedule_change') }}?next={{ url_for('hr2.employee_self_service', context=blueprint_name) | urlencode }}"
+              class="p-6 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ url_for('hr2.employee_self_service', context=blueprint_name) }}">
+
+            <p class="text-xs text-gray-500">Current shift <span class="text-gray-400">(optional — fill from your assigned schedule)</span></p>
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-black text-gray-700 mb-1">Current Day</label>
+                    <select name="current_day"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+                        <option value="">None</option>
+                        {% for sc in my_schedule_changes[:1] %}{# just to have access in loop; unused #}{% endfor %}
+                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Daily'] %}
+                        <option value="{{ day }}">{{ day }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-black text-gray-700 mb-1">Start Time</label>
+                    <input type="time" name="current_start"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+                </div>
+                <div>
+                    <label class="block text-xs font-black text-gray-700 mb-1">End Time</label>
+                    <input type="time" name="current_end"
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+                </div>
+            </div>
+
+            <p class="text-xs font-black text-gray-700">Requested shift <span class="text-red-500">*</span></p>
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-black text-gray-700 mb-1">New Day <span class="text-red-500">*</span></label>
+                    <select name="requested_day" required
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+                        <option value="">Select…</option>
+                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Daily'] %}
+                        <option value="{{ day }}">{{ day }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-black text-gray-700 mb-1">Start Time <span class="text-red-500">*</span></label>
+                    <input type="time" name="requested_start" required
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+                </div>
+                <div>
+                    <label class="block text-xs font-black text-gray-700 mb-1">End Time <span class="text-red-500">*</span></label>
+                    <input type="time" name="requested_end" required
+                           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-black text-gray-700 mb-1.5">Reason <span class="text-red-500">*</span></label>
+                <textarea name="reason" rows="3" required minlength="10"
+                          placeholder="Please explain why you need this change (at least 10 characters)…"
+                          class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none"></textarea>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="submit"
+                        class="flex-1 py-3 rounded-2xl text-sm font-black text-white bg-orange-500 hover:bg-orange-600 transition-all">
+                    <i class="bi bi-send-check mr-2"></i>Submit Request
+                </button>
+                <button type="button" onclick="closeAllModals()"
+                        class="px-5 py-3 rounded-2xl text-sm font-black text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {# ── Modal: New Leave Request ── #}
 <div id="modalLeaveRequest" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
@@ -808,7 +979,7 @@ function openModal(id) {
     document.body.style.overflow = 'hidden';
 }
 function closeAllModals() {
-    ['modalSchedule','modalAttendance','modalLeaveHistory','modalLeaveRequest'].forEach(function(id) {
+    ['modalSchedule','modalAttendance','modalLeaveHistory','modalLeaveRequest','modalScheduleChange'].forEach(function(id) {
         document.getElementById(id).classList.add('hidden');
     });
     document.getElementById('modalBackdrop').classList.add('hidden');

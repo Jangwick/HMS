@@ -1542,7 +1542,8 @@ def request_schedule_change():
                                sender_subsystem=BLUEPRINT_NAME,
                                target_url=target_url)
             flash('Schedule change request submitted successfully.', 'success')
-            return redirect(url_for('hr3.list_schedule_changes'))
+            next_url = request.form.get('next') or request.args.get('next') or url_for('hr3.list_schedule_changes')
+            return redirect(next_url)
         except Exception as e:
             flash(f'Error submitting request: {str(e)}', 'danger')
 
