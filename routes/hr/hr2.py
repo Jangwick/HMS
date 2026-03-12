@@ -1138,6 +1138,114 @@ def evaluate_assessment(assessment_id):
     return redirect(url_for('hr2.list_competencies'))
 
 
+@hr2_bp.route('/competencies/record-onsite/<int:assessment_id>', methods=['POST'])
+@login_required
+def record_onsite_result(assessment_id):
+    """HR/Assessor directly records the result of an on-site assessment (bypasses employee submission)."""
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+    client = get_supabase_client()
+
+    outcome           = request.form.get('outcome')          # 'Competent' or 'Not Yet Competent'
+    score             = request.form.get('score') or None
+    level             = request.form.get('level') or None
+    evaluator_notes   = request.form.get('evaluator_notes') or None
+    corrective_action = request.form.get('corrective_action') or None
+
+    try:
+        rec = client.table('staff_competencies') \
+            .select('user_id, competency_id, status, location_type') \
+            .eq('id', assessment_id).maybe_single().execute()
+        data_rec = rec.data if rec else {}
+
+        if not data_rec:
+            flash('Assessment record not found.', 'danger')
+            return redirect(url_for('hr2.list_competencies'))
+
+        if data_rec.get('location_type') != 'On-site':
+            flash('This action is only valid for On-site assessments.', 'warning')
+            return redirect(url_for('hr2.list_competencies'))
+
+        if data_rec.get('status') not in ('Scheduled',):
+            flash('This assessment has already been evaluated.', 'warning')
+            return redirect(url_for('hr2.list_competencies'))
+
+        user_id  = data_rec.get('user_id')
+        comp_id  = data_rec.get('competency_id')
+
+        comp = client.table('competencies').select('skill_name').eq('id', comp_id).maybe_single().execute()
+        skill_name = comp.data.get('skill_name', 'Competency') if comp and comp.data else 'Competency'
+
+        update_data = {
+            'status': outcome,
+            'evaluated_by': current_user.id,
+            'evaluated_at': datetime.utcnow().isoformat(),
+        }
+        if score is not None:
+            try:
+                update_data['score'] = float(score)
+            except (ValueError, TypeError):
+                pass
+        if level:
+            update_data['level'] = level
+        if evaluator_notes:
+            update_data['evaluator_notes'] = evaluator_notes
+        if corrective_action:
+            update_data['corrective_action'] = corrective_action
+
+        client.table('staff_competencies').update(update_data).eq('id', assessment_id).execute()
+
+        # Notify employee of outcome
+        if user_id:
+            if outcome == 'Competent':
+                msg = f'Congratulations! You have been assessed as Competent in "{skill_name}" (On-site). Your profile has been updated.'
+                n_type = 'success'
+            else:
+                msg = (f'Your "{skill_name}" on-site assessment has been recorded. Outcome: Not Yet Competent.'
+                       + (f' Corrective action: {corrective_action}' if corrective_action else ''))
+                n_type = 'warning'
+
+            Notification.create(
+                user_id=int(user_id),
+                subsystem='hr2',
+                title=f'On-site Assessment Result: {skill_name}',
+                message=msg,
+                n_type=n_type,
+                sender_subsystem='hr2'
+            )
+
+        # Not Yet Competent → auto-enroll in linked remediation training
+        if outcome == 'Not Yet Competent' and comp_id and user_id:
+            try:
+                linked = client.table('trainings').select('id, title') \
+                    .eq('competency_id', comp_id).eq('status', 'Scheduled').execute()
+                if linked.data:
+                    t = linked.data[0]
+                    existing_enroll = client.table('training_participants').select('id') \
+                        .eq('training_id', t['id']).eq('user_id', user_id).execute()
+                    if not existing_enroll.data:
+                        client.table('training_participants').insert({
+                            'training_id': t['id'],
+                            'user_id': int(user_id),
+                        }).execute()
+                        Notification.create(
+                            user_id=int(user_id),
+                            subsystem='hr2',
+                            title=f'Enrolled in Remediation: {t["title"]}',
+                            message=f'You have been enrolled in "{t["title"]}" as a remediation step following your "{skill_name}" on-site assessment outcome.',
+                            n_type='info',
+                            sender_subsystem='hr2'
+                        )
+            except Exception:
+                pass  # Non-critical
+
+        flash(f'On-site assessment recorded as {outcome}!', 'success')
+    except Exception as e:
+        flash(f'Error recording on-site result: {str(e)}', 'danger')
+
+    return redirect(url_for('hr2.list_competencies'))
+
+
 @hr2_bp.route('/my-assessments')
 @login_required
 def my_assessments():

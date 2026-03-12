@@ -381,6 +381,70 @@
     </div>
 </div>
 
+<!-- Record On-site Result Modal -->
+<div id="onsiteModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-indigo-50">
+            <div>
+                <h3 class="text-xl font-black text-gray-900">Record On-site Result</h3>
+                <p id="onsite_staff_name" class="text-indigo-700 font-medium text-sm"></p>
+            </div>
+            <button onclick="document.getElementById('onsiteModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="overflow-y-auto flex-1 p-6">
+            <p class="text-sm text-gray-500 mb-4">You are recording the result on behalf of the assessor for this on-site assessment. The employee will be notified of the outcome.</p>
+        </div>
+        <form id="onsiteForm" method="POST" class="p-6 border-t border-gray-100 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Outcome <span class="text-red-500">*</span></label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                        <input type="radio" name="outcome" value="Competent" required class="accent-green-600">
+                        <span class="text-sm font-bold text-gray-700">Competent</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl cursor-pointer border-2 border-transparent has-[:checked]:border-red-500 has-[:checked]:bg-red-50">
+                        <input type="radio" name="outcome" value="Not Yet Competent" class="accent-red-600">
+                        <span class="text-sm font-bold text-gray-700">Not Yet Competent</span>
+                    </label>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Score (%)</label>
+                    <input type="number" name="score" min="0" max="100" placeholder="e.g. 85"
+                        class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-indigo-400 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Proficiency Level</label>
+                    <select name="level" class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-indigo-400 text-sm">
+                        <option value="">— Select —</option>
+                        <option value="Beginner">Beginner</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Advanced">Advanced</option>
+                        <option value="Expert">Expert</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Assessor Notes</label>
+                <textarea name="evaluator_notes" rows="3" placeholder="Observations, remarks from the on-site assessor..."
+                    class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-indigo-400 resize-none text-sm"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Corrective Action <span class="text-gray-400 font-normal">(if Not Yet Competent)</span></label>
+                <textarea name="corrective_action" rows="2" placeholder="Recommended corrective steps..."
+                    class="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-red-300 resize-none text-sm"></textarea>
+            </div>
+            <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all">
+                <i class="bi bi-clipboard2-check mr-2"></i>Save On-site Result
+            </button>
+        </form>
+    </div>
+</div>
+
 <script>
     function openEditModal(competency) {
         document.getElementById('edit_skill_name').value = competency.skill_name;
@@ -431,6 +495,7 @@
                 };
                 const statusClass = statusMap[status] || 'bg-gray-50 text-gray-600';
                 const canEvaluate = status === 'Submitted';
+                const canRecordOnsite = status === 'Scheduled' && rec.location_type === 'On-site';
                 
                 const item = document.createElement('div');
                 item.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-2xl';
@@ -448,6 +513,7 @@
                         <span class="px-3 py-1 rounded-full text-xs font-bold ${statusClass}">${status}</span>
                         <p class="text-[10px] text-gray-400 uppercase font-bold">${rec.assessment_date || ''}</p>
                         ${canEvaluate ? `<button onclick="openEvaluateModal(${rec.id}, '${rec.users.username}')" class="mt-1 px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-all"><i class="bi bi-check2-circle mr-1"></i>Evaluate</button>` : ''}
+                        ${canRecordOnsite ? `<button onclick="openOnsiteModal(${rec.id}, '${rec.users.username}')" class="mt-1 px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-all"><i class="bi bi-clipboard2-check mr-1"></i>Record Result</button>` : ''}
                     </div>
                 `;
                 list.appendChild(item);
@@ -589,6 +655,18 @@
             });
 
         document.getElementById('evaluateModal').classList.remove('hidden');
+    }
+
+    // ── On-site Result Modal ────────────────────────────────────────────────
+
+    function openOnsiteModal(assessmentId, staffName) {
+        document.getElementById('onsite_staff_name').textContent = staffName;
+        document.getElementById('onsiteForm').action = `/hr/hr2/competencies/record-onsite/${assessmentId}`;
+        // Reset fields
+        document.getElementById('onsiteModal').querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+        document.getElementById('onsiteModal').querySelectorAll('input[type="number"], select, textarea').forEach(el => el.value = '');
+        document.getElementById('detailsModal').classList.add('hidden');
+        document.getElementById('onsiteModal').classList.remove('hidden');
     }
 </script>
 {% endblock %}
