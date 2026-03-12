@@ -48,7 +48,7 @@ def landing():
 @patient_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('ct1.dashboard'))
+        return redirect(url_for('patient.dashboard'))
         
     if request.method == 'POST':
         username = request.form.get('username')
@@ -74,7 +74,7 @@ def login():
                 return render_template('portal/patient_login.html', next=request.args.get('next'))
             if login_user(user):
                 flash('Welcome back to the HMS Patient Portal.', 'success')
-                return redirect(next_url or url_for('ct1.dashboard'))
+                return redirect(next_url or url_for('patient.dashboard'))
         
         flash('Invalid credentials. Please try again.', 'danger')
         
@@ -83,7 +83,7 @@ def login():
 @patient_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('ct1.dashboard'))
+        return redirect(url_for('patient.dashboard'))
         
     if request.method == 'POST':
         from utils.hms_models import Patient
@@ -305,6 +305,8 @@ def check_duplicate():
         return jsonify({'exists': bool(res.data)})
     except Exception:
         return jsonify({'exists': False})
+
+@patient_bp.route('/dashboard')
 @login_required
 def dashboard():
     if current_user.role != 'Patient' or not current_user.patient_id:
@@ -334,69 +336,92 @@ def dashboard():
         # 1. Fetch Patient Info
         patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
         data['patient'] = patient_resp.data
-        
-        # 2. Fetch Stay Info (CT1/CT3) - Use JSONB workaround since beds table has no patient_id column
-        patient_insurance = data['patient'].get('insurance_info') or {}
+    except Exception as e:
+        print(f'Patient fetch error: {e}')
+        data['patient'] = {'first_name': 'Patient', 'last_name': 'User'}
+
+    try:
+        # 2. Fetch Stay Info
+        patient_insurance = (data['patient'] or {}).get('insurance_info') or {}
         current_bed_id = patient_insurance.get('current_bed_id')
         if current_bed_id:
             bed_resp = client.table('beds').select('*').eq('id', int(current_bed_id)).execute()
             data['bed_info'] = bed_resp.data[0] if bed_resp.data else None
-        
-        # 3. Fetch Clinical Data (CT2)
+    except Exception as e:
+        print(f'Bed fetch error: {e}')
+
+    try:
+        # 3a. Labs
         labs_resp = client.table('lab_orders').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
-        data['labs'] = labs_resp.data
-        
+        data['labs'] = labs_resp.data or []
+    except Exception as e:
+        print(f'Labs fetch error: {e}')
+
+    try:
+        # 3b. Radiology
         radio_resp = client.table('radiology_orders').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
-        data['radiology'] = radio_resp.data
-        
+        data['radiology'] = radio_resp.data or []
+    except Exception as e:
+        print(f'Radiology fetch error: {e}')
+
+    try:
+        # 3c. Prescriptions
         prescriptions_resp = client.table('prescriptions').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
-        data['prescriptions'] = prescriptions_resp.data
-        
-        # 4. Fetch Vitals & Medical Records (CT3)
+        data['prescriptions'] = prescriptions_resp.data or []
+    except Exception as e:
+        print(f'Prescriptions fetch error: {e}')
+
+    try:
+        # 4. Vitals / Medical Records
         records_resp = client.table('medical_records').select('*').eq('patient_id', patient_id).order('visit_date', desc=True).execute()
         if records_resp.data:
-            # Find most recent vitals
             for record in records_resp.data:
                 if record.get('vitals'):
                     data['vitals'] = record['vitals']
                     break
-        
-        # 5. Fetch Nutrition (CT2 - DNMS)
+    except Exception as e:
+        print(f'Medical records fetch error: {e}')
+
+    try:
+        # 5. Nutrition
         diet_resp = client.table('diet_plans').select('*').eq('patient_id', patient_id).eq('status', 'Active').order('created_at', desc=True).execute()
         data['diet'] = diet_resp.data[0] if diet_resp.data else None
-        
-        meals_resp = client.table('meal_tracking').select('*').eq('patient_id', patient_id).order('created_at', desc=True).limit(5).execute()
-        data['meals'] = meals_resp.data
-        
-        # 6. Fetch Billing (CT3 / Financials)
-        billing_resp = client.table('billing_records').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
-        data['bills'] = billing_resp.data
-        data['total_due'] = sum(float(b['total_amount']) for b in billing_resp.data if b['status'] != 'Paid') if billing_resp.data else 0.0
-        
-        # 7. Fetch Appointments (CT1)
-        appt_resp = client.table('appointments').select('*, users(full_name)').eq('patient_id', patient_id).order('appointment_date').execute()
-        data['appointments'] = appt_resp.data
+    except Exception as e:
+        print(f'Diet fetch error: {e}')
 
+    try:
+        meals_resp = client.table('meal_tracking').select('*').eq('patient_id', patient_id).order('created_at', desc=True).limit(5).execute()
+        data['meals'] = meals_resp.data or []
+    except Exception as e:
+        print(f'Meals fetch error: {e}')
+
+    try:
+        # 6. Billing — table is 'invoices', amount field is 'amount'
+        billing_resp = client.table('invoices').select('*').eq('patient_id', patient_id).order('issued_at', desc=True).execute()
+        data['bills'] = billing_resp.data or []
+        data['total_due'] = sum(float(b['amount']) for b in data['bills'] if b.get('status') != 'Paid') if data['bills'] else 0.0
+    except Exception as e:
+        print(f'Billing fetch error: {e}')
+
+    try:
+        # 7. Appointments
+        appt_resp = client.table('appointments').select('*, users(full_name)').eq('patient_id', patient_id).order('appointment_date').execute()
+        data['appointments'] = appt_resp.data or []
+    except Exception as e:
+        print(f'Appointments fetch error: {e}')
+
+    try:
         # 8. Construct Unified Timeline
-        # Combine different events into a single sorted list
         timeline = []
         for lab in data['labs']:
-            timeline.append({'type': 'lab', 'title': lab['test_name'], 'date': lab['created_at'], 'status': lab['status']})
+            timeline.append({'type': 'lab', 'title': lab.get('test_name', 'Lab'), 'date': lab.get('created_at', ''), 'status': lab.get('status', '')})
         for rad in data['radiology']:
-            timeline.append({'type': 'radiology', 'title': rad['imaging_type'], 'date': rad['created_at'], 'status': rad['status']})
+            timeline.append({'type': 'radiology', 'title': rad.get('imaging_type', 'Radiology'), 'date': rad.get('created_at', ''), 'status': rad.get('status', '')})
         for appt in data['appointments']:
-            timeline.append({'type': 'appointment', 'title': f"Consultation: {appt['type']}", 'date': appt['appointment_date'], 'status': appt['status']})
-        
-        # Sort timeline by date descending
+            timeline.append({'type': 'appointment', 'title': f"Consultation: {appt.get('type','')}", 'date': appt.get('appointment_date', ''), 'status': appt.get('status', '')})
         data['timeline'] = sorted(timeline, key=lambda x: x['date'], reverse=True)[:10]
-
     except Exception as e:
-        import traceback
-        print(f"Error fetching unified care data: {e}")
-        traceback.print_exc()
-        flash('Data synchronization partial. Some modules may be unavailable.', 'warning')
-        if not data['patient']:
-            data['patient'] = {'first_name': 'Patient', 'last_name': 'User'}
+        print(f'Timeline build error: {e}')
 
     return render_template('portal/patient_dashboard.html', **data)
 
@@ -673,7 +698,7 @@ def profile():
     except Exception as e:
         print(f"Error fetching profile data: {e}")
         flash('Error loading profile information.', 'danger')
-        return redirect(url_for('ct1.dashboard'))
+        return redirect(url_for('patient.dashboard'))
 
 @patient_bp.route('/profile/upload-avatar', methods=['POST'])
 @login_required

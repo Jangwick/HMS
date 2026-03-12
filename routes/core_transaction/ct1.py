@@ -1430,7 +1430,7 @@ def patient_book_telehealth():
 
         if not patient_rec:
             flash('No patient record found for your account. Please contact the clinic.', 'danger')
-            return redirect(url_for('ct1.dashboard'))
+            return redirect(url_for('patient.dashboard'))
 
         room_token = uuid.uuid4().hex[:16]
         meeting_link = f'https://meet.jit.si/hms-{room_token}'
@@ -1456,7 +1456,7 @@ def patient_book_telehealth():
                     sender_subsystem='ct1'
                 )
             flash(f'Telehealth session booked! Meeting link: {meeting_link}', 'success')
-            return redirect(url_for('ct1.dashboard'))
+            return redirect(url_for('patient.dashboard'))
         except Exception as e:
             flash(f'Booking error: {str(e)}', 'danger')
 

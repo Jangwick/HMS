@@ -1299,7 +1299,27 @@ def probation_detail(cycle_id):
     except Exception:
         monitoring_logs = []
 
-    # Filter unpublished notes for employees
+    # Group monitoring logs into rounds by [PeriodType: PeriodLabel] prefix
+    import re as _re
+    _period_re = _re.compile(r'^\[([^\]]+)\]\s*')
+    _rounds: dict = {}
+    for log in monitoring_logs:
+        raw_notes = log.get('notes') or ''
+        m = _period_re.match(raw_notes)
+        period_key = m.group(1) if m else (log.get('created_at', '')[:10] or 'Unknown Period')
+        plain_notes = _period_re.sub('', raw_notes).strip()
+        _rounds.setdefault(period_key, {'period': period_key, 'date': log.get('created_at', '')[:10], 'entries': []})
+        _rounds[period_key]['entries'].append({
+            'kpi_name': (log.get('probation_kpis') or {}).get('kpi_name', 'KPI'),
+            'weight': (log.get('probation_kpis') or {}).get('weight', ''),
+            'target': (log.get('probation_kpis') or {}).get('target_value', '—'),
+            'score': log.get('score'),
+            'notes': plain_notes,
+        })
+    monitoring_rounds = list(_rounds.values())
+
+    # Pop sticky form values (set after a successful save)
+    last_monitoring_form = session.pop(f'last_monitoring_{cycle_id}', {})
     if current_user.id == cycle['employee_id']:
         notes = [n for n in notes if n.get('is_published', False)]
 
@@ -1318,6 +1338,8 @@ def probation_detail(cycle_id):
                            recommendation=recommendation,
                            decision=decision,
                            monitoring_logs=monitoring_logs,
+                           monitoring_rounds=monitoring_rounds,
+                           last_monitoring_form=last_monitoring_form,
                            progress=progress,
                            current_stage_idx=current_stage_idx,
                            stages=ProbationStage,
@@ -1683,6 +1705,12 @@ def probation_log_monitoring_round(cycle_id):
                 }).execute()
                 inserted += 1
         flash(f'Monitoring round logged for {period_label} ({inserted} KPIs recorded).', 'success')
+        # ── Persist form values in session so the form re-fills on redirect ──
+        saved = {'period_type': period_type, 'period_label': period_label}
+        for kpi in kpis:
+            saved[f'score_{kpi["id"]}'] = request.form.get(f'score_{kpi["id"]}', '')
+            saved[f'notes_{kpi["id"]}'] = request.form.get(f'notes_{kpi["id"]}', '')
+        session[f'last_monitoring_{cycle_id}'] = saved
     except Exception as e:
         flash(f'Error logging monitoring round: {str(e)}', 'danger')
     return redirect(url_for('hr1.probation_detail', cycle_id=cycle_id))
