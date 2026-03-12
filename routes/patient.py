@@ -792,6 +792,144 @@ def update_profile():
         
     return redirect(url_for('patient.profile'))
 
+
+@patient_bp.route('/book-appointment', methods=['GET', 'POST'])
+@login_required
+def book_appointment():
+    """Patient self-service appointment booking."""
+    if current_user.role != 'Patient' or not current_user.patient_id:
+        flash('Access restricted to registered patients.', 'warning')
+        return redirect(url_for('portal.index'))
+
+    client = get_supabase_client()
+    patient_id = current_user.patient_id
+
+    # Fetch patient record
+    patient_rec = None
+    try:
+        pr = client.table('patients').select('*').eq('id', patient_id).single().execute()
+        patient_rec = pr.data
+    except Exception:
+        pass
+
+    if not patient_rec:
+        flash('Patient record not found. Please contact reception.', 'danger')
+        return redirect(url_for('patient.dashboard'))
+
+    # Check ban / no-show restriction
+    is_banned = patient_rec.get('is_banned') or False
+    no_show_count = max(
+        int(patient_rec.get('no_show_count') or 0),
+        int((patient_rec.get('insurance_info') or {}).get('no_show_count', 0))
+    )
+    if is_banned or no_show_count >= 3:
+        flash(
+            f'Your account has {no_show_count} recorded no-shows and is currently restricted from self-booking. '
+            'Please contact reception to resolve outstanding fees.',
+            'warning'
+        )
+        return redirect(url_for('patient.dashboard'))
+
+    # Available doctors
+    doctors = client.table('users').select('id, username, full_name, subsystem') \
+        .in_('subsystem', ['ct2', 'ct3']).execute().data or []
+
+    if request.method == 'POST':
+        from datetime import datetime as _dt
+        appt_dt_str = request.form.get('appointment_date', '').strip()
+        doctor_id   = request.form.get('doctor_id', '').strip()
+        visit_type  = request.form.get('visit_type', 'General Consultation').strip()
+        appt_type   = request.form.get('type', 'Outpatient').strip()
+        notes       = request.form.get('notes', '').strip()
+
+        # Validate datetime
+        if not appt_dt_str or not doctor_id:
+            flash('Please fill in all required fields.', 'warning')
+            return render_template('portal/patient_book_appointment.html',
+                                   patient=patient_rec, doctors=doctors,
+                                   now=datetime.utcnow)
+
+        try:
+            appt_dt = _dt.fromisoformat(appt_dt_str.replace('T', ' '))
+            if appt_dt < _dt.now():
+                flash('Appointment cannot be scheduled in the past.', 'danger')
+                return render_template('portal/patient_book_appointment.html',
+                                       patient=patient_rec, doctors=doctors, now=datetime.utcnow)
+            if not (7 <= appt_dt.hour < 15):
+                flash('Appointments are only available between 7:00 AM and 3:00 PM.', 'danger')
+                return render_template('portal/patient_book_appointment.html',
+                                       patient=patient_rec, doctors=doctors, now=datetime.utcnow)
+        except ValueError:
+            flash('Invalid date/time format.', 'danger')
+            return render_template('portal/patient_book_appointment.html',
+                                   patient=patient_rec, doctors=doctors, now=datetime.utcnow)
+
+        date_part = appt_dt_str[:10]
+
+        # Duplicate same-day check for this patient
+        dup_q = client.table('appointments') \
+            .select('id') \
+            .eq('patient_id', patient_id) \
+            .in_('status', ['Scheduled', 'Arrived']) \
+            .gte('appointment_date', date_part + 'T00:00:00') \
+            .lt('appointment_date',  date_part + 'T23:59:59') \
+            .execute()
+        if dup_q.data:
+            flash('You already have an appointment scheduled on that date. '
+                  'Please choose a different day or contact reception.', 'danger')
+            return render_template('portal/patient_book_appointment.html',
+                                   patient=patient_rec, doctors=doctors, now=datetime.utcnow)
+
+        # Duplicate doctor slot check
+        doc_dup = client.table('appointments') \
+            .select('id') \
+            .eq('doctor_id', doctor_id) \
+            .eq('appointment_date', appt_dt_str) \
+            .in_('status', ['Scheduled', 'Arrived']) \
+            .execute()
+        if doc_dup.data:
+            flash('That time slot is already taken. Please choose a different time.', 'danger')
+            return render_template('portal/patient_book_appointment.html',
+                                   patient=patient_rec, doctors=doctors, now=datetime.utcnow)
+
+        try:
+            result = client.table('appointments').insert({
+                'patient_id':       patient_id,
+                'doctor_id':        doctor_id,
+                'appointment_date': appt_dt_str,
+                'type':             appt_type,
+                'visit_type':       visit_type,
+                'notes':            notes,
+                'status':           'Scheduled',
+                'terms_agreed':     True,
+            }).execute()
+
+            if result.data:
+                appt_id = result.data[0]['id']
+                # Notify doctor
+                from utils.hms_models import Notification
+                Notification.create(
+                    user_id=int(doctor_id),
+                    subsystem='ct2',
+                    title='New Appointment (Self-Booked)',
+                    message=f'{patient_rec.get("first_name","")} {patient_rec.get("last_name","")} '
+                            f'has self-booked an appointment on {appt_dt_str}.',
+                    n_type='info',
+                    sender_subsystem='patient'
+                )
+                flash('Your appointment has been booked successfully!', 'success')
+                return redirect(url_for('patient.dashboard'))
+            else:
+                flash('Booking failed. Please try again.', 'danger')
+        except Exception as e:
+            flash(f'Booking error: {str(e)}', 'danger')
+
+    return render_template('portal/patient_book_appointment.html',
+                           patient=patient_rec,
+                           doctors=doctors,
+                           now=datetime.utcnow)
+
+
 @patient_bp.route('/logout')
 @login_required
 def logout():

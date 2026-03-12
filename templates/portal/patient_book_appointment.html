@@ -1,0 +1,140 @@
+{% extends "portal/_patient_layout.html" %}
+{% set active_page = 'book' %}
+
+{% block title %}Book an Appointment{% endblock %}
+
+{% block patient_content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+
+    <!-- Header -->
+    <div class="mb-8">
+        <a href="{{ url_for('patient.dashboard') }}"
+           class="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-700 mb-4 transition-colors">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Book an Appointment</h1>
+        <p class="text-gray-400 mt-1 text-sm">Fill in the details below to schedule your visit. All fields marked <span class="text-red-500">*</span> are required.</p>
+    </div>
+
+    <!-- Patient info strip -->
+    {% if patient %}
+    <div class="flex items-center gap-4 bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-4 mb-8">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-extrabold text-lg flex-shrink-0">
+            {{ (patient.first_name or 'P')[0] | upper }}
+        </div>
+        <div class="min-w-0">
+            <p class="font-extrabold text-gray-900 text-sm leading-tight">{{ patient.first_name }} {{ patient.last_name }}</p>
+            <p class="text-[11px] text-gray-400">{{ patient.patient_id_alt or '' }} &middot; DOB: {{ patient.dob or '—' }}</p>
+        </div>
+        <span class="ml-auto px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 flex-shrink-0">
+            Verified Patient
+        </span>
+    </div>
+    {% endif %}
+
+    <!-- Booking Form -->
+    <form method="POST" action="{{ url_for('patient.book_appointment') }}"
+          class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="px-8 py-6 border-b border-gray-50 bg-gray-50/50">
+            <h2 class="font-extrabold text-gray-800 text-sm uppercase tracking-widest">Appointment Details</h2>
+        </div>
+
+        <div class="px-8 py-7 space-y-6">
+
+            <!-- Doctor -->
+            <div>
+                <label class="block text-xs font-black text-gray-700 mb-2 uppercase tracking-wide">
+                    Physician <span class="text-red-500">*</span>
+                </label>
+                <select name="doctor_id" required
+                        class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white">
+                    <option value="">Select a doctor…</option>
+                    {% for doc in doctors %}
+                    <option value="{{ doc.id }}">
+                        {{ doc.full_name or doc.username }}
+                        ({{ 'CT2 – Clinical' if doc.subsystem == 'ct2' else 'CT3 – Records' }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Date & Time -->
+            <div>
+                <label class="block text-xs font-black text-gray-700 mb-2 uppercase tracking-wide">
+                    Date & Time <span class="text-red-500">*</span>
+                </label>
+                <input type="datetime-local" name="appointment_date" required
+                       min="{{ now().strftime('%Y-%m-%dT07:00') }}"
+                       class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                <p class="text-[11px] text-gray-400 mt-1.5">
+                    <i class="bi bi-clock mr-1"></i>Available slots: 7:00 AM – 3:00 PM only.
+                </p>
+            </div>
+
+            <!-- Visit Type & Appointment Type -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-black text-gray-700 mb-2 uppercase tracking-wide">
+                        Visit Type <span class="text-red-500">*</span>
+                    </label>
+                    <select name="visit_type" required
+                            class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white">
+                        <option value="General Consultation">General Consultation</option>
+                        <option value="Follow-up">Follow-up</option>
+                        <option value="Specialist Visit">Specialist Visit</option>
+                        <option value="Wellness Check">Wellness Check</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-black text-gray-700 mb-2 uppercase tracking-wide">
+                        Type
+                    </label>
+                    <select name="type"
+                            class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white">
+                        <option value="Outpatient">Outpatient</option>
+                        <option value="Consultation">Consultation</option>
+                        <option value="Emergency">Emergency</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div>
+                <label class="block text-xs font-black text-gray-700 mb-2 uppercase tracking-wide">
+                    Reason / Notes <span class="text-gray-400 font-medium normal-case">(optional)</span>
+                </label>
+                <textarea name="notes" rows="3"
+                          placeholder="Briefly describe your reason for the visit…"
+                          class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"></textarea>
+            </div>
+
+            <!-- Policy reminder -->
+            <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-start gap-3">
+                <i class="bi bi-exclamation-triangle-fill text-amber-500 mt-0.5 flex-shrink-0"></i>
+                <div class="text-xs text-amber-700 leading-relaxed">
+                    <p class="font-black mb-0.5">Cancellation Policy</p>
+                    Cancellations within <strong>24 hours</strong> incur a <strong>₱560.00</strong> administrative fee.
+                    No-shows are charged <strong>₱1,500.00</strong>. Three no-shows restrict self-booking.
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="px-8 py-5 border-t border-gray-100 bg-gray-50/50 flex items-center gap-3">
+            <button type="submit"
+                    class="flex-1 py-3.5 rounded-2xl text-sm font-extrabold text-white shadow-lg shadow-emerald-200 transition-all hover:opacity-90"
+                    style="background: linear-gradient(135deg, #10B981, #059669);">
+                <i class="bi bi-calendar-check mr-2"></i>Confirm Appointment
+            </button>
+            <a href="{{ url_for('patient.dashboard') }}"
+               class="px-6 py-3.5 rounded-2xl text-sm font-extrabold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-all">
+                Cancel
+            </a>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

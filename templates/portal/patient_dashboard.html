@@ -265,6 +265,15 @@ else %}Patient{% endif %}{% endblock %}
                             <p class="text-xs text-gray-400">Account & info</p>
                         </div>
                     </a>
+                    <a href="{{ url_for('patient.book_appointment') }}" class="quick-action">
+                        <div class="qa-icon bg-amber-50 text-amber-600">
+                            <i class="bi bi-calendar-plus"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-900">Book Appointment</p>
+                            <p class="text-xs text-gray-400">Schedule a consultation</p>
+                        </div>
+                    </a>
                 </div>
             </div>
 
