@@ -4,6 +4,8 @@
 {% block header_title %}Patient Profile{% endblock %}
 
 {% block content %}
+{% set billing_records = billing_records if billing_records is defined else [] %}
+{% set outstanding_balance = outstanding_balance if outstanding_balance is defined else 0 %}
 <div class="space-y-8 pb-12">
     <!-- Breadcrumbs -->
     <nav class="flex text-sm" aria-label="Breadcrumb">
@@ -148,6 +150,58 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Outstanding Balance -->
+    <div class="glass-card rounded-3xl overflow-hidden shadow-lg mt-6 {% if outstanding_balance > 0 %}ring-2 ring-red-200{% endif %}">
+        <div class="px-8 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="bi bi-receipt text-xl {% if outstanding_balance > 0 %}text-red-500{% else %}text-gray-400{% endif %}"></i>
+                <h4 class="text-lg font-bold text-gray-900">Billing &amp; Outstanding Fees</h4>
+            </div>
+            <span class="px-4 py-1.5 rounded-full text-sm font-black
+                {% if outstanding_balance > 0 %}bg-red-100 text-red-700{% else %}bg-emerald-100 text-emerald-700{% endif %}">
+                {% if outstanding_balance > 0 %}₱{{ "%.2f"|format(outstanding_balance) }} Due{% else %}No Balance{% endif %}
+            </span>
+        </div>
+        {% if billing_records %}
+        <div class="divide-y divide-gray-50">
+            {% for rec in billing_records %}
+            {% set is_unpaid = rec.status in ('Unpaid', 'Partially Paid', 'Pending') %}
+            <div class="px-8 py-4 flex items-center justify-between hover:bg-gray-50/60 transition-colors">
+                <div class="flex items-center gap-4">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
+                        {% if is_unpaid %}bg-red-100 text-red-500{% else %}bg-emerald-100 text-emerald-600{% endif %}">
+                        <i class="bi bi-{% if is_unpaid %}exclamation-circle{% else %}check-circle{% endif %}"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-900">{{ rec.description or 'Billing Record' }}</p>
+                        <p class="text-[11px] text-gray-400">
+                            {{ (rec.billing_date or rec.created_at or '')[:10] }}
+                            {% if rec.category %}&nbsp;&bull;&nbsp;{{ rec.category }}{% endif %}
+                        </p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-black {% if is_unpaid %}text-red-600{% else %}text-emerald-600{% endif %}">
+                        ₱{{ "%.2f"|format(rec.total_amount|float) }}
+                    </p>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full
+                        {% if rec.status == 'Unpaid' or rec.status == 'Pending' %}bg-red-100 text-red-600
+                        {% elif rec.status == 'Partially Paid' %}bg-amber-100 text-amber-600
+                        {% else %}bg-emerald-100 text-emerald-600{% endif %}">
+                        {{ rec.status }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="px-8 py-8 text-center text-gray-400">
+            <i class="bi bi-check2-circle text-4xl mb-2 block text-emerald-400"></i>
+            <p class="text-sm font-semibold">No billing records found.</p>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Appointment History -->
@@ -387,6 +441,56 @@
     </script>
 
     <!-- Document Upload Section -->
+    <div class="glass-card rounded-3xl overflow-hidden shadow-lg mt-6">
+        <div class="px-8 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div class="flex items-center">
+                <i class="bi bi-folder2-open text-emerald-500 mr-3 text-xl"></i>
+                <h3 class="text-lg font-bold text-gray-900">Medical Documents</h3>
+            </div>
+            <span class="text-xs font-bold text-gray-400">{{ medical_documents|length }} file{{ 's' if medical_documents|length != 1 else '' }}</span>
+        </div>
+        {% if medical_documents %}
+        <div class="divide-y divide-gray-50">
+            {% for doc in medical_documents %}
+            {% set label = doc.notes | replace('Uploaded: ', '') if doc.notes else 'Document' %}
+            {% set url   = doc.prescription %}
+            {% set ext   = url.split('.')[-1].lower() if url else '' %}
+            <div class="px-8 py-4 flex items-center justify-between hover:bg-gray-50/60 transition-colors">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
+                        {% if ext == 'pdf' %}bg-red-100 text-red-500
+                        {% elif ext in ('jpg','jpeg','png') %}bg-blue-100 text-blue-500
+                        {% else %}bg-gray-100 text-gray-500{% endif %}">
+                        <i class="bi bi-{% if ext == 'pdf' %}file-earmark-pdf{% elif ext in ('jpg','jpeg','png') %}file-image{% else %}file-earmark{% endif %} text-lg"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-900">{{ label }}</p>
+                        <p class="text-[11px] text-gray-400">
+                            {{ doc.created_at[:10] if doc.created_at else '' }}
+                            &nbsp;&bull;&nbsp;
+                            {{ ext.upper() if ext else 'FILE' }}
+                        </p>
+                    </div>
+                </div>
+                {% if doc.prescription %}
+                <a href="{{ url_for('ct1.view_patient_document', patient_id=patient.id, record_id=doc.id) }}"
+                   target="_blank" rel="noopener noreferrer"
+                   class="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-xl hover:bg-emerald-100 transition-all">
+                    <i class="bi bi-box-arrow-up-right"></i> View
+                </a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="px-8 py-10 text-center text-gray-400">
+            <i class="bi bi-folder2 text-4xl mb-2 block"></i>
+            <p class="text-sm font-semibold">No documents uploaded yet.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Document Upload Form -->
     <div class="glass-card rounded-3xl overflow-hidden shadow-lg mt-6">
         <div class="px-8 py-5 border-b border-gray-100 flex items-center">
             <i class="bi bi-cloud-upload text-emerald-500 mr-3 text-xl"></i>

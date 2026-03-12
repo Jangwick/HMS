@@ -136,3 +136,9 @@ ALTER TABLE medical_records ALTER COLUMN diagnosis DROP NOT NULL;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_patient_id_fkey;
 ALTER TABLE users ADD CONSTRAINT users_patient_id_fkey
     FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE SET NULL;
+
+-- -------------------------------------------------------
+-- Patch billing_records: add category column and fix status
+-- -------------------------------------------------------
+ALTER TABLE billing_records ADD COLUMN IF NOT EXISTS category VARCHAR(60) DEFAULT 'General';
+ALTER TABLE billing_records ADD COLUMN IF NOT EXISTS appointment_id INTEGER REFERENCES appointments(id) ON DELETE SET NULL;

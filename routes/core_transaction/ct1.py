@@ -527,11 +527,36 @@ def view_patient(patient_id):
         # Note: We need to use a join query that Supabase understands or separate queries
         appointments_res = client.table('appointments').select('*, users!appointments_doctor_id_fkey(username, department, subsystem)').eq('patient_id', patient_id).execute()
         appointments = appointments_res.data or []
-        
+
+        # Get uploaded medical documents for this patient
+        docs_res = client.table('medical_records') \
+            .select('id, record_type, notes, prescription, created_at, recorded_by') \
+            .eq('patient_id', patient_id) \
+            .eq('record_type', 'Document') \
+            .order('created_at', desc=True) \
+            .execute()
+        medical_documents = docs_res.data or []
+
+        # Get outstanding (Unpaid) billing records for this patient
+        billing_res = client.table('billing_records') \
+            .select('id, description, total_amount, status, category, billing_date, created_at') \
+            .eq('patient_id', patient_id) \
+            .order('created_at', desc=True) \
+            .execute()
+        billing_records_data = billing_res.data or []
+        outstanding_balance = sum(
+            float(r.get('total_amount') or 0)
+            for r in billing_records_data
+            if r.get('status') in ('Unpaid', 'Partially Paid', 'Pending')
+        )
+
         return render_template('subsystems/core_transaction/ct1/view_patient.html',
                                now=datetime.utcnow,
                                patient=patient,
                                appointments=appointments,
+                               medical_documents=medical_documents,
+                               billing_records=billing_records_data,
+                               outstanding_balance=outstanding_balance,
                                subsystem_name=SUBSYSTEM_NAME,
                                accent_color=ACCENT_COLOR,
                                blueprint_name=BLUEPRINT_NAME)
@@ -1658,9 +1683,10 @@ def cancel_appointment(appointment_id):
             try:
                 client.table('billing_records').insert({
                     'patient_id': appt['patient_id'],
+                    'appointment_id': appointment_id,
                     'description': 'Late Cancellation Fee (< 24h notice)',
                     'total_amount': 560.00,
-                    'status': 'Pending',
+                    'status': 'Unpaid',
                     'category': 'Administrative Fee'
                 }).execute()
                 flash('Appointment cancelled. A ₱560.00 late cancellation fee has been recorded (within 24h of appointment).', 'warning')
@@ -1697,9 +1723,10 @@ def flag_noshow(appointment_id):
             try:
                 client.table('billing_records').insert({
                     'patient_id': patient_id,
+                    'appointment_id': appointment_id,
                     'description': 'No-Show Penalty',
                     'total_amount': 1500.00,
-                    'status': 'Pending',
+                    'status': 'Unpaid',
                     'category': 'Administrative Fee'
                 }).execute()
             except Exception:
@@ -2024,21 +2051,45 @@ def upload_patient_document(patient_id):
             path, data,
             {'content-type': file.content_type or 'application/octet-stream'}
         )
-        pub = client.storage.from_('patient-documents').get_public_url(path)
-        url = pub if isinstance(pub, str) else pub.get('publicUrl', path)
-        # Store URL in medical_records
+        # Store the raw storage path — a signed URL is generated on-demand when viewing
         client.table('medical_records').insert({
             'patient_id': patient_id,
             'record_type': 'Document',
             'diagnosis': f'Document upload: {label}',
             'notes': f'Uploaded: {label}',
-            'prescription': url,
+            'prescription': path,          # storage path, NOT public URL
             'recorded_by': current_user.id,
         }).execute()
         flash(f'Document "{label}" uploaded successfully.', 'success')
     except Exception as e:
         flash(f'Upload error: {str(e)}', 'danger')
     return redirect(request.referrer or url_for('ct1.list_patients'))
+
+
+# ─── §4.9 View a medical document via signed URL ─────────────────────────────
+@ct1_bp.route('/patient/<int:patient_id>/document/<int:record_id>/view')
+@login_required
+def view_patient_document(patient_id, record_id):
+    """Generate a 1-hour signed URL for a stored medical document and redirect to it."""
+    client = get_supabase_client()
+    try:
+        rec = client.table('medical_records').select('prescription').eq('id', record_id).eq('patient_id', patient_id).single().execute()
+        storage_path = (rec.data or {}).get('prescription', '')
+        if not storage_path:
+            flash('Document not found.', 'danger')
+            return redirect(url_for('ct1.view_patient', patient_id=patient_id))
+        # Strip any accidental full URL prefix — keep only the path portion
+        if '/patient-documents/' in storage_path:
+            storage_path = storage_path.split('/patient-documents/', 1)[1].split('?')[0]
+        result = client.storage.from_('patient-documents').create_signed_url(storage_path, 3600)
+        signed_url = result.get('signedURL') or result.get('signed_url') or result.get('signedUrl', '')
+        if not signed_url:
+            flash('Could not generate secure link for this document.', 'danger')
+            return redirect(url_for('ct1.view_patient', patient_id=patient_id))
+        return redirect(signed_url)
+    except Exception as e:
+        flash(f'Error viewing document: {e}', 'danger')
+        return redirect(url_for('ct1.view_patient', patient_id=patient_id))
 
 
 # ─── §4.12 Follow-up scheduling from completed telehealth session ─────────────
