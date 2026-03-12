@@ -267,7 +267,6 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
 <!-- ── Reschedule Modal ──────────────────────────────────────────────────────── -->
 <div id="rescheduleModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -297,10 +296,13 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
 function openRescheduleModal(apptId, currentDate) {
     var form = document.getElementById('rescheduleForm');
-    form.action = '/ct1/appointment/' + apptId + '/reschedule';
+    form.action = "{{ url_for('ct1.reschedule_appointment', appointment_id=0) }}".replace('/0', '/' + apptId);
     var dtInput = document.getElementById('resched_datetime');
     if (dtInput) {
         var now = new Date();
@@ -319,3 +321,4 @@ document.addEventListener('DOMContentLoaded', function () {
     }).catch(function() {});
 });
 </script>
+{% endblock %}
