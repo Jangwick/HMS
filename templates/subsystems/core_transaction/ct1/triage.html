@@ -90,11 +90,11 @@
                 <span class="px-3 py-1 bg-white border border-gray-200 rounded-full text-[10px] font-bold text-gray-500 uppercase">Auto-refreshing</span>
             </div>
             <div class="flex gap-2">
-                <input type="text" placeholder="Search by name or ID..." class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 w-64 outline-none">
+                <input type="text" id="boardSearchInput" onkeyup="filterBoard()" placeholder="Search by name or ID..." class="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 w-64 outline-none">
             </div>
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="w-full text-left border-collapse" id="patientBoard">
                 <thead>
                     <tr class="border-b border-gray-100">
                         <th class="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Patient Details</th>
@@ -279,10 +279,10 @@
                     </div>
                     <div>
                         <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Pain intensity (1-10)</label>
-                        <input type="range" name="pain_score" min="1" max="10" value="0" step="1" 
+                        <input type="range" name="pain_score" min="1" max="10" value="1" step="1" 
                             class="w-full h-3 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-red-600 mt-6"
                             oninput="this.nextElementSibling.value = this.value">
-                        <output class="block text-center font-black text-gray-900 mt-2">5</output>
+                        <output class="block text-center font-black text-gray-900 mt-2">1</output>
                     </div>
                 </div>
 
@@ -300,23 +300,33 @@
                     <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                         <div class="space-y-2">
                             <span class="text-[9px] font-black text-gray-500 ml-2 uppercase">BP (mmHg)</span>
-                            <input type="text" name="bp" placeholder="120/80" class="w-full px-4 py-3 bg-white border-2 border-transparent rounded-xl focus:border-red-500 font-bold text-sm outline-none">
+                            <input type="text" name="bp" placeholder="120/80" 
+                                pattern="\d{2,3}/\d{2,3}" title="Format: Sys/Dia (e.g., 120/80)"
+                                class="w-full px-4 py-3 bg-white border-2 border-transparent rounded-xl focus:border-red-500 font-bold text-sm outline-none">
                         </div>
                         <div class="space-y-2">
                             <span class="text-[9px] font-black text-gray-500 ml-2 uppercase">HR (bpm)</span>
-                            <input type="text" name="hr" placeholder="72" class="w-full px-4 py-3 bg-white border-2 border-transparent rounded-xl focus:border-red-500 font-bold text-sm outline-none">
+                            <input type="text" name="hr" placeholder="72" 
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '')" inputmode="numeric"
+                                class="w-full px-4 py-3 bg-white border-2 border-transparent rounded-xl focus:border-red-500 font-bold text-sm outline-none">
                         </div>
                         <div class="space-y-2">
                             <span class="text-[9px] font-black text-gray-500 ml-2 uppercase">Temp (°C)</span>
-                            <input type="text" name="temp" placeholder="36.5" class="w-full px-4 py-3 bg-white border-2 border-transparent rounded-xl focus:border-red-500 font-bold text-sm outline-none">
+                            <input type="text" name="temp" placeholder="36.5" 
+                                oninput="this.value = this.value.replace(/[^0-9.]/g, '')" inputmode="decimal"
+                                class="w-full px-4 py-3 bg-white border-2 border-transparent rounded-xl focus:border-red-500 font-bold text-sm outline-none">
                         </div>
                         <div class="space-y-2">
                             <span class="text-[9px] font-black text-gray-500 ml-2 uppercase">Resp</span>
-                            <input type="text" name="resp" placeholder="16" class="w-full px-4 py-3 bg-white border-2 border-transparent rounded-xl focus:border-red-500 font-bold text-sm outline-none">
+                            <input type="text" name="resp" placeholder="16" 
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '')" inputmode="numeric"
+                                class="w-full px-4 py-3 bg-white border-2 border-transparent rounded-xl focus:border-red-500 font-bold text-sm outline-none">
                         </div>
                         <div class="space-y-2">
                             <span class="text-[9px] font-black text-gray-500 ml-2 uppercase">SpO2 (%)</span>
-                            <input type="text" name="spo2" placeholder="98" class="w-full px-4 py-3 bg-white border-2 border-transparent rounded-xl focus:border-red-500 font-bold text-sm outline-none">
+                            <input type="text" name="spo2" placeholder="98" 
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '')" inputmode="numeric"
+                                class="w-full px-4 py-3 bg-white border-2 border-transparent rounded-xl focus:border-red-500 font-bold text-sm outline-none">
                         </div>
                     </div>
                 </div>
@@ -340,6 +350,25 @@
 <script>
     function toggleModal(id) {
         document.getElementById(id).classList.toggle('hidden');
+    }
+
+    function filterBoard() {
+        const input = document.getElementById('boardSearchInput');
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById('patientBoard');
+        const tr = table.getElementsByTagName('tr');
+
+        for (let i = 1; i < tr.length; i++) {
+            const td = tr[i].getElementsByTagName('td')[0];
+            if (td) {
+                const text = td.textContent || td.innerText;
+                if (text.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
     }
 </script>
 {% endblock %}

@@ -493,11 +493,13 @@ def register_patient():
 @login_required
 def search_patients():
     from datetime import datetime
-    query = request.args.get('q', '')
+    query = (request.args.get('q') or '').strip()
     from utils.hms_models import Patient
     patients = []
     if query:
+        # Search in both first_name+last_name and ID (patient_id_alt)
         patients = Patient.search(query)
+    
     return render_template('subsystems/core_transaction/ct1/patient_search.html', 
                            now=datetime.utcnow,
                            patients=patients,
@@ -897,10 +899,28 @@ def unassign_patient_from_bed(bed_id):
         
         if assigned.data:
             for p in assigned.data:
+                patient_id = p['id']
+                
+                # --- Billing Clearance Check ---
+                # Ensure the patient has no 'Unpaid' invoices before being unassigned/discharged from the bed
+                try:
+                    unpaid_invoices = client.table('invoices').select('id')\
+                        .eq('patient_id', patient_id)\
+                        .eq('status', 'Unpaid')\
+                        .execute()
+                    
+                    if unpaid_invoices.data and len(unpaid_invoices.data) > 0:
+                        flash(f'Cannot unassign: Patient has {len(unpaid_invoices.data)} outstanding unpaid invoice(s).', 'danger')
+                        return redirect(url_for('ct1.bed_management'))
+                except Exception as b_err:
+                    # Log error but don't block if table is missing or query fails due to schema
+                    print(f"Billing check skipped for bed unassign: {b_err}")
+                # -------------------------------
+
                 insurance = p.get('insurance_info') or {}
                 if 'current_bed_id' in insurance:
                     del insurance['current_bed_id']
-                client.table('patients').update({'insurance_info': insurance}).eq('id', p['id']).execute()
+                client.table('patients').update({'insurance_info': insurance}).eq('id', patient_id).execute()
         
         # 2. Mark bed for cleaning
         client.table('beds').update({
@@ -1146,7 +1166,29 @@ def emergency_triage():
 def update_triage_status(triage_id):
     client = get_supabase_client()
     new_status = request.form.get('status')
+    
     try:
+        # Check if patient has cleared billing before discharging
+        if new_status == 'Discharged':
+            # Check for any 'Unpaid' invoices for this patient
+            # We first need to find the patient_id from the triage record
+            triage_rec = client.table('er_triage').select('patient_id').eq('id', triage_id).maybe_single().execute()
+            if triage_rec and triage_rec.data:
+                pid = triage_rec.data['patient_id']
+                # Try to check invoices table (assuming billing system exists)
+                try:
+                    invoices = client.table('invoices').select('id')\
+                        .eq('patient_id', pid)\
+                        .eq('status', 'Unpaid')\
+                        .execute()
+                    
+                    if invoices.data and len(invoices.data) > 0:
+                        flash('Cannot discharge: Patient has outstanding unpaid billing.', 'danger')
+                        return redirect(url_for('ct1.emergency_triage'))
+                except Exception as b_err:
+                    # If table doesn't exist yet, we allow discharge but log a warning (or proceed)
+                    print(f"Billing check skipped: {b_err}")
+
         client.table('er_triage').update({'status': new_status}).eq('id', triage_id).execute()
         flash(f'Triage status updated to {new_status}.', 'success')
     except Exception as e:
