@@ -1,4 +1,5 @@
 import os
+import tempfile
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,10 +22,12 @@ class Config:
     
     # Session Configuration
     SESSION_TYPE = 'filesystem'
-    if os.environ.get('VERCEL'):
+    if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
         SESSION_FILE_DIR = '/tmp/flask_session'
     else:
         SESSION_FILE_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'flask_session')
+    if not SESSION_FILE_DIR:
+        SESSION_FILE_DIR = os.path.join(tempfile.gettempdir(), 'flask_session')
     SESSION_PERMANENT = False
     PERMANENT_SESSION_LIFETIME = 1800  # 30 minutes
 

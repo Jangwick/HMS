@@ -4,6 +4,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_session import Session
 from config import Config
 import os
+import tempfile
 
 # Initialize extensions
 csrf = CSRFProtect()
@@ -26,7 +27,10 @@ def create_app(config_class=Config):
         if session_dir and app.config.get('SESSION_TYPE') == 'filesystem':
             os.makedirs(session_dir, exist_ok=True)
     except OSError:
-        pass
+        fallback_dir = os.path.join(tempfile.gettempdir(), 'flask_session')
+        app.config['SESSION_FILE_DIR'] = fallback_dir
+        if app.config.get('SESSION_TYPE') == 'filesystem':
+            os.makedirs(fallback_dir, exist_ok=True)
 
     # Initialize extensions
     csrf.init_app(app)
