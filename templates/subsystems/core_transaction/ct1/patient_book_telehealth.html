@@ -1,0 +1,94 @@
+{% extends "base/subsystem_base.html" %}
+
+{% block title %}Book Telehealth — {{ subsystem_name }}{% endblock %}
+{% block header_title %}Book a Telehealth Consultation{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-8 animate-in fade-in duration-500">
+
+    <!-- Header -->
+    <div class="flex items-start gap-4">
+        <div class="p-3 bg-indigo-100 rounded-2xl">
+            <i class="bi bi-camera-video-fill text-2xl text-indigo-600"></i>
+        </div>
+        <div>
+            <h3 class="text-2xl font-black text-gray-900">Request a Virtual Consultation</h3>
+            <p class="text-gray-500 mt-1">Choose your preferred doctor and time. A meeting link will be generated automatically.</p>
+        </div>
+    </div>
+
+    <!-- Patient Info Banner -->
+    {% if patient %}
+    <div class="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-lg shrink-0">
+            {{ patient.first_name[0] }}
+        </div>
+        <div>
+            <p class="font-bold text-gray-900">{{ patient.first_name }} {{ patient.last_name }}</p>
+            <p class="text-xs text-gray-500 font-mono">{{ patient.patient_id_alt }}</p>
+        </div>
+        <span class="ml-auto px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl border border-emerald-200">Your Account</span>
+    </div>
+    {% else %}
+    <div class="p-5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-700 text-sm font-bold flex items-center gap-3">
+        <i class="bi bi-exclamation-triangle-fill text-xl"></i>
+        No patient record linked to your account. Please contact the clinic desk to register your profile first.
+    </div>
+    {% endif %}
+
+    <!-- Booking Form -->
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-50 bg-gray-50/30">
+            <h4 class="font-black text-gray-900">Appointment Details</h4>
+        </div>
+        <form action="{{ url_for('ct1.patient_book_telehealth') }}" method="POST" class="p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Doctor selection with availability info -->
+            <div>
+                <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Select Doctor</label>
+                <select name="doctor_id" required id="doctorSelect" onchange="loadDoctorSlots(this.value)"
+                    class="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-indigo-500 font-bold text-gray-900 outline-none transition-all">
+                    <option value="">— Choose a Doctor —</option>
+                    {% for d in doctors %}
+                    <option value="{{ d.id }}">Dr. {{ (d.full_name or d.username) | capitalize }} ({{ d.subsystem | upper }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Preferred date & time -->
+            <div>
+                <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Preferred Date & Time</label>
+                <input type="datetime-local" name="scheduled_at" required
+                    class="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-indigo-500 font-bold text-gray-900 outline-none transition-all">
+                <p class="text-xs text-gray-400 mt-2 ml-1"><i class="bi bi-info-circle mr-1"></i>Appointments are typically available Mon–Fri, 8:00 AM – 5:00 PM.</p>
+            </div>
+
+            <!-- Reason / Notes -->
+            <div>
+                <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Reason for Consultation</label>
+                <textarea name="notes" rows="3" placeholder="Describe your symptoms or reason for the visit..."
+                    class="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-indigo-500 font-bold text-gray-900 outline-none transition-all resize-none"></textarea>
+            </div>
+
+            <!-- Auto-link notice -->
+            <div class="p-4 bg-indigo-50 rounded-2xl text-sm text-indigo-700 flex items-start gap-2">
+                <i class="bi bi-link-45deg text-xl flex-shrink-0"></i>
+                <span>A unique, private meeting link will be automatically generated and sent to you once the appointment is confirmed.</span>
+            </div>
+
+            <div class="flex gap-4 pt-2">
+                <a href="{{ url_for('ct1.dashboard') }}"
+                    class="flex-1 py-4 bg-gray-100 text-gray-600 font-bold rounded-2xl hover:bg-gray-200 transition-all text-center">
+                    Cancel
+                </a>
+                <button type="submit" {% if not patient %}disabled{% endif %}
+                    class="flex-1 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all {% if not patient %}opacity-50 cursor-not-allowed{% endif %}">
+                    <i class="bi bi-calendar-check mr-2"></i>Book Session
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

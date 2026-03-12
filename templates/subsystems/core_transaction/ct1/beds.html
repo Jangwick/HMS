@@ -50,10 +50,6 @@
             class="filter-btn px-4 py-2 text-xs font-bold rounded-xl border transition-all bg-white text-amber-700 border-amber-200 hover:bg-amber-50">
             Cleaning <span id="count_Cleaning" class="ml-1 opacity-70">({{ beds|selectattr('status','equalto','Cleaning')|list|length }})</span>
         </button>
-        <button onclick="filterBeds('Reserved')" id="filter_Reserved"
-            class="filter-btn px-4 py-2 text-xs font-bold rounded-xl border transition-all bg-white text-blue-700 border-blue-200 hover:bg-blue-50">
-            Reserved <span id="count_Reserved" class="ml-1 opacity-70">({{ beds|selectattr('status','equalto','Reserved')|list|length }})</span>
-        </button>
     </div>
 
     <div id="beds-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -138,10 +134,11 @@
                         Assign Patient to Occupy
                     </button>
                     {% elif bed.status == 'Occupied' %}
-                    <input type="hidden" name="status" value="Cleaning">
-                    <button type="submit"
-                        class="w-full py-2 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600 transition-colors">
-                        Mark Cleaning
+                    {# Mark Cleaning removed—bed auto-sets to Cleaning after Discharge/Unassign #}
+                    <button type="button" disabled
+                        class="w-full py-2 bg-amber-50 text-amber-400 text-xs font-bold rounded-lg cursor-not-allowed border border-amber-100"
+                        title="Use Discharge / Unassign above to release this bed">
+                        <i class="bi bi-info-circle mr-1"></i> Discharge to Clean
                     </button>
                     {% else %}
                     <input type="hidden" name="status" value="Available">
@@ -327,8 +324,7 @@
                 'all': ['bg-gray-900', 'text-white', 'border-gray-900'],
                 'Available': ['bg-emerald-600', 'text-white', 'border-emerald-600'],
                 'Occupied': ['bg-red-600', 'text-white', 'border-red-600'],
-                'Cleaning': ['bg-amber-500', 'text-white', 'border-amber-500'],
-                'Reserved': ['bg-blue-600', 'text-white', 'border-blue-600']
+                'Cleaning': ['bg-amber-500', 'text-white', 'border-amber-500']
             };
             (colorMap[status] || []).forEach(cls => activeBtn.classList.add(cls));
         }

@@ -5,6 +5,7 @@ from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_suc
 from utils.password_validator import PasswordValidationError
 from utils.policy import policy_required
 from datetime import datetime
+import re
 
 ct1_bp = Blueprint('ct1', __name__, template_folder='templates')
 
@@ -1081,11 +1082,14 @@ def add_bed():
         room_number = request.form.get('room_number', '').strip()
         ward_name = request.form.get('ward_name', '').strip()
 
-        # ── Duplicate room/ward check ──────────────────────────────────────────
-        dup = client.table('beds').select('id').eq('room_number', room_number).eq('ward_name', ward_name).execute()
-        if dup.data:
-            flash(f'Room "{room_number}" already exists in "{ward_name}". Please use a unique room number.', 'warning')
-            return redirect(url_for('ct1.bed_management'))
+        # ── Duplicate room/ward check (normalized: ignore spaces, hyphens, case) ─
+        def _norm(s): return re.sub(r'[\s\-_]+', '', s).lower()
+        room_norm = _norm(room_number)
+        existing_rooms = client.table('beds').select('room_number').eq('ward_name', ward_name).execute()
+        for row in (existing_rooms.data or []):
+            if _norm(row['room_number']) == room_norm:
+                flash(f'Room "{row["room_number"]}" already exists in "{ward_name}" (conflicts with "{room_number}"). Please use a unique room number.', 'warning')
+                return redirect(url_for('ct1.bed_management'))
 
         bed_data = {
             'room_number': room_number,
@@ -1244,12 +1248,12 @@ def schedule_telehealth():
 @ct1_bp.route('/telehealth/<int:session_id>/start', methods=['POST'])
 @login_required
 def start_telehealth_session(session_id):
-    """Record session start time and mark In Progress."""
+    """Record session start time and mark On-going."""
     from datetime import datetime
     client = get_supabase_client()
     try:
         client.table('telehealth_sessions').update({
-            'status': 'In Progress',
+            'status': 'On-going',
             'started_at': datetime.utcnow().isoformat()
         }).eq('id', session_id).execute()
         flash('Session started. Duration tracking begun.', 'success')
@@ -1271,7 +1275,7 @@ def end_telehealth_session(session_id):
             started = datetime.fromisoformat(sess_res.data['started_at'].replace('Z', '+00:00'))
             duration_minutes = int((datetime.utcnow() - started.replace(tzinfo=None)).total_seconds() / 60)
         update_data = {
-            'status': 'Completed',
+            'status': 'Session Ended',
             'ended_at': datetime.utcnow().isoformat()
         }
         if duration_minutes is not None:
@@ -1295,11 +1299,174 @@ def end_telehealth_session(session_id):
         except Exception:
             pass  # non-fatal
 
-        msg = f'Session completed. Duration: {duration_minutes} min.' if duration_minutes is not None else 'Session completed.'
+        # ── Auto-generate bill after session ends ──────────────────────────
+        try:
+            sess_bill = client.table('telehealth_sessions').select(
+                'patient_id, doctor_id').eq('id', session_id).single().execute()
+            if sess_bill.data:
+                from datetime import datetime as _dt
+                base_fee = 500.00  # default telehealth consultation fee
+                client.table('invoices').insert({
+                    'patient_id': sess_bill.data.get('patient_id'),
+                    'session_id': session_id,
+                    'invoice_type': 'Telehealth Consultation',
+                    'amount': base_fee,
+                    'status': 'Unpaid',
+                    'issued_at': _dt.utcnow().isoformat(),
+                    'notes': f'Auto-generated for telehealth session #{session_id}',
+                }).execute()
+        except Exception:
+            pass  # non-fatal — invoices table may not exist yet
+
+        msg = f'Session ended. Duration: {duration_minutes} min.' if duration_minutes is not None else 'Session ended.'
         flash(msg, 'success')
     except Exception as e:
         flash(f'Error ending session: {str(e)}', 'danger')
     return redirect(url_for('ct1.telehealth'))
+
+
+@ct1_bp.route('/telehealth/<int:session_id>/join')
+@login_required
+def join_telehealth_session(session_id):
+    """Record that a user joined the meeting, then redirect to the meeting link."""
+    from datetime import datetime
+    client = get_supabase_client()
+    try:
+        sess_res = client.table('telehealth_sessions').select(
+            'meeting_link, status, patient_id, doctor_id, started_at'
+        ).eq('id', session_id).single().execute()
+        if not sess_res.data:
+            flash('Session not found.', 'danger')
+            return redirect(url_for('ct1.telehealth'))
+
+        sess = sess_res.data
+        meeting_link = sess.get('meeting_link', '')
+
+        # Record who joined and when
+        now_iso = datetime.utcnow().isoformat()
+        update = {}
+        if current_user.id == sess.get('doctor_id'):
+            update['doctor_joined_at'] = now_iso
+            # Auto-start session when doctor joins if still Scheduled
+            if sess.get('status') == 'Scheduled':
+                update['status'] = 'On-going'
+                update['started_at'] = now_iso
+        elif current_user.id == sess.get('patient_id') or True:  # patient
+            update['patient_joined_at'] = now_iso
+
+        if update:
+            try:
+                client.table('telehealth_sessions').update(update).eq('id', session_id).execute()
+            except Exception:
+                pass  # graceful — new columns may not exist yet
+
+        if meeting_link:
+            from flask import redirect as fr
+            return fr(meeting_link)
+        else:
+            flash('No meeting link has been set for this session.', 'warning')
+    except Exception as e:
+        flash(f'Error joining session: {str(e)}', 'danger')
+    return redirect(url_for('ct1.telehealth'))
+
+
+@ct1_bp.route('/telehealth/<int:session_id>/save-diagnosis', methods=['POST'])
+@login_required
+def save_telehealth_diagnosis(session_id):
+    """Doctor records diagnosis and prescription notes after session ends."""
+    from datetime import datetime
+    client = get_supabase_client()
+    diagnosis = request.form.get('diagnosis', '').strip()
+    prescription = request.form.get('prescription', '').strip()
+    notes = request.form.get('notes', '').strip()
+    try:
+        update_data = {}
+        if diagnosis:
+            update_data['diagnosis'] = diagnosis
+        if prescription:
+            update_data['prescription_url'] = prescription  # stored as text in this field
+        if notes:
+            update_data['notes'] = notes
+        if update_data:
+            client.table('telehealth_sessions').update(update_data).eq('id', session_id).execute()
+        flash('Diagnosis and prescription saved successfully.', 'success')
+    except Exception as e:
+        flash(f'Error saving diagnosis: {str(e)}', 'danger')
+    return redirect(url_for('ct1.telehealth'))
+
+
+@ct1_bp.route('/patient/book-telehealth', methods=['GET', 'POST'])
+@login_required
+def patient_book_telehealth():
+    """Patient-facing route to book a telehealth appointment."""
+    import uuid
+    from utils.hms_models import Patient, TelehealthSession
+    client = get_supabase_client()
+
+    # Find the patient record linked to the logged-in user
+    patient_rec = None
+    try:
+        pr = client.table('patients').select('*').eq('user_id', current_user.id).maybe_single().execute()
+        if pr and pr.data:
+            patient_rec = pr.data
+    except Exception:
+        pass
+    # Fallback: try matching by username or email
+    if not patient_rec:
+        try:
+            pr = client.table('patients').select('*')\
+                .ilike('first_name', f"%{current_user.username.split()[0]}%").limit(1).execute()
+            patient_rec = pr.data[0] if pr.data else None
+        except Exception:
+            pass
+
+    doctors = client.table('users').select('id, username, full_name, subsystem')\
+        .in_('subsystem', ['ct2', 'ct3']).execute().data or []
+
+    if request.method == 'POST':
+        doctor_id = request.form.get('doctor_id')
+        scheduled_at = request.form.get('scheduled_at')
+        notes = request.form.get('notes', '').strip()
+
+        if not patient_rec:
+            flash('No patient record found for your account. Please contact the clinic.', 'danger')
+            return redirect(url_for('ct1.dashboard'))
+
+        room_token = uuid.uuid4().hex[:16]
+        meeting_link = f'https://meet.jit.si/hms-{room_token}'
+
+        try:
+            data = {
+                'patient_id': patient_rec['id'],
+                'doctor_id': doctor_id,
+                'scheduled_at': scheduled_at,
+                'meeting_link': meeting_link,
+                'notes': notes,
+                'status': 'Scheduled',
+            }
+            TelehealthSession.create(data)
+            from utils.hms_models import Notification
+            if doctor_id:
+                Notification.create(
+                    user_id=int(doctor_id),
+                    subsystem='ct1',
+                    title='New Telehealth Booking',
+                    message=f'Patient {patient_rec.get("first_name","")} {patient_rec.get("last_name","")} has booked a telehealth session on {scheduled_at}.',
+                    n_type='info',
+                    sender_subsystem='ct1'
+                )
+            flash(f'Telehealth session booked! Meeting link: {meeting_link}', 'success')
+            return redirect(url_for('ct1.dashboard'))
+        except Exception as e:
+            flash(f'Booking error: {str(e)}', 'danger')
+
+    return render_template('subsystems/core_transaction/ct1/patient_book_telehealth.html',
+                           doctors=doctors,
+                           patient=patient_rec,
+                           subsystem_name='CT1 — Core Transactions',
+                           accent_color='#10B981',
+                           blueprint_name='ct1')
+
 
 @ct1_bp.route('/logout')
 @login_required
