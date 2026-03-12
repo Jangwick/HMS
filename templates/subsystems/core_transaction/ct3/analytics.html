@@ -7,7 +7,52 @@
 <div class="space-y-8">
     <div>
         <h3 class="text-2xl font-bold text-gray-900">Analytics Overview</h3>
-        <p class="text-gray-500">Key performance indicators and demographic distribution</p>
+        <p class="text-gray-500">Key performance indicators and operational metrics</p>
+    </div>
+
+    <!-- Status Distribution & Activity Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Patient Status Distribution Chart -->
+        <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            <h4 class="text-lg font-bold text-gray-900 mb-6">Patient Status Distribution</h4>
+            <canvas id="statusChart" height="200"></canvas>
+        </div>
+
+        <!-- Activity Summary -->
+        <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            <h4 class="text-lg font-bold text-gray-900 mb-6">Hospital Activity</h4>
+            <div class="space-y-4">
+                {% if status_dist %}
+                {% for status, count in status_dist.items() %}
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="font-bold text-gray-700">{{ status }}</span>
+                        <span class="text-gray-500">{{ count }} patients</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2">
+                        <div class="h-2 rounded-full" style="width: {{ (count / (status_dist.values()|sum) * 100) if status_dist.values()|sum > 0 else 0 }}%; background: {{ accent_color }}"></div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+                <div class="mt-6 pt-6 border-t border-gray-100">
+                    <p class="text-xs font-bold text-gray-500 uppercase mb-2">Total Activity Events</p>
+                    <p class="text-3xl font-bold text-gray-900">{{ total_activities or 0 }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admissions Trend -->
+    <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+        <h4 class="text-lg font-bold text-gray-900 mb-6">Admissions Trend (Last 30 Days)</h4>
+        <canvas id="admissionsChart" height="80"></canvas>
+    </div>
+
+    <!-- Revenue Trend -->
+    <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+        <h4 class="text-lg font-bold text-gray-900 mb-6">Revenue Trend (Last 30 Days)</h4>
+        <canvas id="revenueChart" height="80"></canvas>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -22,7 +67,7 @@
                         <span class="text-gray-500">{{ count }} patients</span>
                     </div>
                     <div class="w-full bg-gray-100 rounded-full h-2">
-                        <div class="bg-emerald-500 h-2 rounded-full" style="width: {{ (count / (demographics.values()|sum) * 100) if demographics.values()|sum > 0 else 0 }}%"></div>
+                        <div class="h-2 rounded-full" style="width: {{ (count / (demographics.values()|sum) * 100) if demographics.values()|sum > 0 else 0 }}%; background: {{ accent_color }}"></div>
                     </div>
                 </div>
                 {% endfor %}
@@ -35,11 +80,11 @@
             <div class="grid grid-cols-2 gap-4">
                 <div class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                     <p class="text-xs font-bold text-emerald-600 uppercase mb-1">Total Paid</p>
-                    <p class="text-2xl font-bold text-emerald-900">${{ "%.2f"|format(financials.Paid or 0) }}</p>
+                    <p class="text-2xl font-bold text-emerald-900">₱{{ "%.2f"|format(financials.Paid or 0) }}</p>
                 </div>
                 <div class="p-4 bg-amber-50 rounded-2xl border border-amber-100">
                     <p class="text-xs font-bold text-amber-600 uppercase mb-1">Outstanding</p>
-                    <p class="text-2xl font-bold text-amber-900">${{ "%.2f"|format(financials.Unpaid or 0) }}</p>
+                    <p class="text-2xl font-bold text-amber-900">₱{{ "%.2f"|format(financials.Unpaid or 0) }}</p>
                 </div>
             </div>
             <div class="mt-6">
@@ -68,10 +113,119 @@
                 <p class="text-sm text-gray-500 uppercase tracking-widest font-bold mt-1">Processed Payments</p>
             </div>
             <div class="text-center">
-                 <p class="text-3xl font-bold text-gray-900">0</p>
-                <p class="text-sm text-gray-500 uppercase tracking-widest font-bold mt-1">Insurance Denials</p>
+                 <p class="text-3xl font-bold text-gray-900">{{ total_activities or 0 }}</p>
+                <p class="text-sm text-gray-500 uppercase tracking-widest font-bold mt-1">Activity Events</p>
             </div>
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// Status Distribution Donut Chart
+fetch("{{ url_for('ct3.analytics_status_distribution') }}")
+    .then(res => res.json())
+    .then(data => {
+        const ctx = document.getElementById('statusChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: data.colors,
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: { size: 12, weight: 'bold' }
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+// Admissions Trend Line Chart
+fetch("{{ url_for('ct3.analytics_admissions_trend') }}")
+    .then(res => res.json())
+    .then(data => {
+        const ctx = document.getElementById('admissionsChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Admissions',
+                    data: data.values,
+                    borderColor: '{{ accent_color }}',
+                    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
+                    }
+                }
+            }
+        });
+    });
+
+// Revenue Trend Line Chart
+fetch("{{ url_for('ct3.analytics_revenue_trend') }}")
+    .then(res => res.json())
+    .then(data => {
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Revenue (₱)',
+                    data: data.values,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₱' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
 {% endblock %}

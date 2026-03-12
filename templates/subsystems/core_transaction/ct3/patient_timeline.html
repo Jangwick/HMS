@@ -1,0 +1,66 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Patient Timeline - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Patient Timeline{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-3xl mx-auto">
+    <a href="{{ url_for('ct3.patient_status_panel', patient_id=patient.id) }}" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
+        <i class="bi bi-arrow-left mr-2"></i>Back to Status Panel
+    </a>
+
+    <!-- Patient Header -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
+             style="background: {{ accent_color }}">
+            {{ patient.first_name[0] if patient.first_name else '?' }}
+        </div>
+        <div>
+            <h3 class="font-bold text-gray-900 text-lg">{{ patient.first_name }} {{ patient.last_name }}</h3>
+            <p class="text-sm text-gray-500">{{ patient.patient_id_alt }} · {{ patient.gender or 'N/A' }}</p>
+        </div>
+        <div class="ml-auto flex gap-2">
+            <a href="{{ url_for('ct3.patient_documents', patient_id=patient.id) }}"
+               class="px-3 py-1.5 text-xs font-bold rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all">
+                <i class="bi bi-folder mr-1"></i>Documents
+            </a>
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h4 class="font-bold text-gray-900 mb-6">Full Lifecycle Timeline</h4>
+        {% if events %}
+        <div class="relative">
+            <div class="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-emerald-200 to-gray-100"></div>
+            <div class="space-y-5">
+                {% for ev in events %}
+                <div class="relative flex gap-4 pl-12">
+                    <div class="absolute left-3 w-4 h-4 rounded-full border-2 border-white shadow flex items-center justify-center"
+                         style="background: {{ ev.color }}; top: 2px;">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-2 mb-0.5">
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full"
+                                  style="background: {{ ev.color }}20; color: {{ ev.color }}">
+                                <i class="bi {{ ev.icon }} mr-1"></i>{{ ev.type }}
+                            </span>
+                        </div>
+                        <p class="text-sm font-semibold text-gray-900">{{ ev.title }}</p>
+                        {% if ev.detail %}
+                        <p class="text-sm text-gray-600 mt-0.5">{{ ev.detail }}</p>
+                        {% endif %}
+                        <p class="text-xs text-gray-400 mt-1">{{ (ev.date or '')[:19].replace('T', ' ') }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center py-10 text-gray-400">
+            <i class="bi bi-clock-history text-4xl block mb-2 opacity-30"></i>
+            No events recorded for this patient.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

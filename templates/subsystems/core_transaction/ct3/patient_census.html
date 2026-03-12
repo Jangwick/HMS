@@ -1,0 +1,131 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Patient Census - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Patient Census{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Patient Census</h3>
+            <p class="text-gray-500 text-sm">Authoritative patient lifecycle status registry</p>
+        </div>
+        <a href="{{ url_for('ct3.status_board') }}"
+           class="px-5 py-2.5 rounded-xl font-bold text-white text-sm shadow-lg transition-all hover:opacity-90"
+           style="background: {{ accent_color }};">
+            <i class="bi bi-grid-3x3-gap mr-2"></i>Live Status Board
+        </a>
+    </div>
+
+    <!-- Status Summary Bar -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {% set status_icons = {
+            'Registered': 'bi-person-plus',
+            'Waiting': 'bi-hourglass-split',
+            'Admitted': 'bi-hospital',
+            'Under Consultation': 'bi-stethoscope',
+            'Under Treatment': 'bi-bandaid',
+            'Under Observation': 'bi-eye',
+            'In Surgery / Procedure': 'bi-scissors',
+            'Recovered / Stable': 'bi-heart-pulse',
+            'Discharged': 'bi-door-open',
+            'Transferred': 'bi-arrow-right-square',
+            'Deceased': 'bi-x-circle'
+        } %}
+        {% for s, color in status_colors.items() %}
+        <a href="{{ url_for('ct3.patient_census', status=s) }}"
+           class="rounded-2xl p-4 text-center shadow-sm border transition-all hover:scale-105 {{ 'ring-2 ring-offset-1' if status_filter == s }}"
+           style="background: {{ color }}15; border-color: {{ color }}40; {{ ('ring-color:' + color) if status_filter == s else '' }}">
+            <div class="text-2xl font-extrabold" style="color: {{ color }}">{{ status_counts.get(s, 0) }}</div>
+            <div class="text-[10px] font-semibold mt-1 truncate" style="color: {{ color }}">{{ s }}</div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <form method="GET" class="flex flex-col sm:flex-row gap-3">
+            <input type="text" name="search" value="{{ search }}"
+                   placeholder="Search by name or patient ID..."
+                   class="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300">
+            <select name="status" class="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                <option value="">All Statuses</option>
+                {% for s in all_statuses %}
+                <option value="{{ s }}" {{ 'selected' if status_filter == s }}>{{ s }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="px-5 py-2.5 rounded-xl font-bold text-white text-sm transition-all hover:opacity-90"
+                    style="background: {{ accent_color }};">
+                <i class="bi bi-search mr-1"></i> Filter
+            </button>
+            {% if status_filter or search %}
+            <a href="{{ url_for('ct3.patient_census') }}" class="px-5 py-2.5 rounded-xl font-bold text-gray-600 bg-gray-100 text-sm hover:bg-gray-200 transition-all">
+                Clear
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Patient Table -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4">Patient</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4">Last Updated</th>
+                        <th class="px-6 py-4">Admission Date</th>
+                        <th class="px-6 py-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% if patients %}
+                    {% for p in patients %}
+                    {% set s = p.get('current_status') or 'Registered' %}
+                    {% set color = status_colors.get(s, '#6B7280') %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-gray-900 text-sm">{{ p.first_name }} {{ p.last_name }}</div>
+                            <div class="text-xs text-gray-500">{{ p.patient_id_alt }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold" style="background: {{ color }}20; color: {{ color }}">
+                                {{ s }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500">
+                            {{ (p.status_updated_at or '')[:10] or '—' }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500">
+                            {{ (p.admission_date or '')[:10] or '—' }}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex gap-2 flex-wrap">
+                                <a href="{{ url_for('ct3.patient_status_panel', patient_id=p.id) }}"
+                                   class="px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all hover:opacity-80"
+                                   style="background: {{ accent_color }}">
+                                    <i class="bi bi-pencil mr-1"></i>Update Status
+                                </a>
+                                <a href="{{ url_for('ct3.patient_timeline', patient_id=p.id) }}"
+                                   class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all">
+                                    <i class="bi bi-clock-history mr-1"></i>Timeline
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                            <i class="bi bi-people text-4xl block mb-2 opacity-30"></i>
+                            No patients found{% if status_filter %} with status "{{ status_filter }}"{% endif %}.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

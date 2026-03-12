@@ -1,0 +1,37 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Patient Activity - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Patient Activity{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-2xl mx-auto">
+    <a href="{{ url_for('ct3.patient_status_panel', patient_id=patient.id) }}" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
+        <i class="bi bi-arrow-left mr-2"></i>Back
+    </a>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <h3 class="font-bold text-gray-900">Activity: {{ patient.first_name }} {{ patient.last_name }}</h3>
+        <p class="text-sm text-gray-500">{{ patient.patient_id_alt }}</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
+        {% if logs %}
+        {% for log in logs %}
+        <div class="flex items-start gap-4 px-6 py-4 hover:bg-gray-50">
+            <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 flex-shrink-0 mt-0.5">
+                <i class="bi bi-lightning-fill text-xs"></i>
+            </div>
+            <div class="flex-1">
+                <div class="flex items-center gap-2 mb-0.5">
+                    <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ log.activity_type }}</span>
+                </div>
+                <p class="text-sm text-gray-700">{{ log.description or '—' }}</p>
+                <p class="text-xs text-gray-400 mt-1">{{ (log.created_at or '')[:19].replace('T', ' ') }}
+                    {% if log.user_obj %} · {{ log.user_obj.username }}{% endif %}
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="px-6 py-10 text-center text-gray-400">No activity recorded for this patient.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

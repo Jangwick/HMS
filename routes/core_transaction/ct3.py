@@ -127,7 +127,7 @@ def change_password():
             flash('New passwords do not match.', 'danger')
             return render_template('shared/change_password.html',
                 subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR,
-                blueprint_name=BLUEBlueprint_NAME, is_expired=is_expired)
+                blueprint_name=BLUEPRINT_NAME, is_expired=is_expired)
         
         try:
             user.set_password(new_password)
@@ -170,9 +170,29 @@ def dashboard():
         response = client.table('medical_records').select('id', count='exact').gte('visit_date', today).execute()
         records_today = response.count if response.count is not None else 0
         
-        # Get recent activity
-        activity_resp = client.table('medical_records').select('*, patients(first_name, last_name, patient_id_alt)').order('visit_date', desc=True).limit(5).execute()
+        # Patient status distribution for dashboard
+        status_resp = client.table('patients').select('current_status').execute()
+        status_counts = {}
+        for p in (status_resp.data or []):
+            s = p.get('current_status') or 'Registered'
+            status_counts[s] = status_counts.get(s, 0) + 1
+
+        admitted_count   = status_counts.get('Admitted', 0)
+        waiting_count    = status_counts.get('Waiting', 0)
+        in_surgery_count = status_counts.get('In Surgery / Procedure', 0)
+        discharged_today = 0
+        try:
+            dt_resp = client.table('patients').select('id', count='exact').eq('current_status', 'Discharged').gte('discharge_date', today).execute()
+            discharged_today = dt_resp.count or 0
+        except Exception:
+            pass
+
+        # Get recent activity from new activity log, fallback to medical_records
+        activity_resp = client.table('hospital_activity_log').select('*').order('created_at', desc=True).limit(8).execute()
         recent_activity = activity_resp.data if activity_resp.data else []
+        if not recent_activity:
+            fallback = client.table('medical_records').select('*, patients(first_name, last_name, patient_id_alt)').order('visit_date', desc=True).limit(5).execute()
+            recent_activity = fallback.data if fallback.data else []
         
     except Exception as e:
         print(f"Error fetching stats: {e}")
@@ -181,17 +201,28 @@ def dashboard():
         pending_bills = 0
         records_today = 0
         recent_activity = []
+        status_counts    = {}
+        admitted_count   = 0
+        waiting_count    = 0
+        in_surgery_count = 0
+        discharged_today = 0
     
     if current_user.should_warn_password_expiry():
         days_left = current_user.days_until_password_expiry()
         flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
     return render_template('subsystems/core_transaction/ct3/dashboard.html', 
-                           now=datetime.utcnow,
+                           now=datetime.utcnow(),
                            patients_count=patients_count,
                            revenue=revenue,
                            pending_bills=pending_bills,
                            records_today=records_today,
                            recent_activity=recent_activity,
+                           status_counts=status_counts,
+                           admitted_count=admitted_count,
+                           waiting_count=waiting_count,
+                           in_surgery_count=in_surgery_count,
+                           discharged_today=discharged_today,
+                           status_colors=STATUS_COLORS,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -340,6 +371,7 @@ def security_logs():
                            logs=logs,
                            active_sessions=active_sessions,
                            security_alerts=security_alerts,
+                           now=datetime.utcnow(),
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -447,6 +479,7 @@ def patient_records():
     return render_template('subsystems/core_transaction/ct3/patient_records.html',
                            patients=patients,
                            search_query=search_query,
+                           now=datetime.utcnow(),
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -589,37 +622,47 @@ def delete_medical_record(patient_id, record_id):
 
 @ct3_bp.route('/analytics')
 @login_required
+@policy_required(BLUEPRINT_NAME)
 def analytics():
-    if not current_user.is_admin():
-        flash('Unauthorized: Access restricted to administrators.', 'error')
-        return redirect(url_for('ct3.dashboard'))
-
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
-    
+
     try:
-        # Get patient demographics (Simplified)
-        patients_resp = client.table('patients').select('gender').execute()
+        patients_resp = client.table('patients').select('gender, current_status').execute()
+        all_patients = patients_resp.data or []
+
         demographics = {'Male': 0, 'Female': 0, 'Other': 0}
-        for p in patients_resp.data:
-            gen = p.get('gender', 'Other')
+        status_dist  = {}
+        for p in all_patients:
+            gen = p.get('gender', 'Other') or 'Other'
             demographics[gen] = demographics.get(gen, 0) + 1
-            
-        # Get billing stats
+            s = p.get('current_status') or 'Registered'
+            status_dist[s] = status_dist.get(s, 0) + 1
+
         billing_resp = client.table('billing_records').select('status, total_amount').execute()
         financials = {'Paid': 0.0, 'Unpaid': 0.0}
-        for b in billing_resp.data:
+        for b in (billing_resp.data or []):
             status = b.get('status', 'Unpaid')
-            financials[status] = financials.get(status, 0.0) + float(b['total_amount'])
-            
+            financials[status] = financials.get(status, 0.0) + float(b.get('total_amount', 0))
+
+        # Recent activity count
+        activity_resp = client.table('hospital_activity_log').select('id', count='exact').execute()
+        total_activities = activity_resp.count or 0
+
     except Exception as e:
         print(f"Analytics error: {e}")
-        demographics = {}
-        financials = {}
-        
+        demographics   = {}
+        financials     = {}
+        status_dist    = {}
+        total_activities = 0
+
     return render_template('subsystems/core_transaction/ct3/analytics.html',
                            demographics=demographics,
                            financials=financials,
+                           status_dist=status_dist,
+                           status_colors=STATUS_COLORS,
+                           total_activities=total_activities,
+                           now=datetime.utcnow(),
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -698,6 +741,7 @@ def discharge():
         
     return render_template('subsystems/core_transaction/ct3/discharge.html',
                            admitted=admitted,
+                           now=datetime.utcnow(),
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -744,6 +788,1394 @@ def logout():
     AuditLog.log(current_user.id, "Logout", BLUEPRINT_NAME)
     logout_user()
     return redirect(url_for('ct3.login'))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 1 — PATIENT STATUS ENGINE
+# ─────────────────────────────────────────────────────────────────────────────
+
+STATUS_COLORS = {
+    'Registered':              '#6B7280',
+    'Waiting':                 '#F59E0B',
+    'Admitted':                '#3B82F6',
+    'Under Consultation':      '#6366F1',
+    'Under Treatment':         '#6366F1',
+    'Under Observation':       '#06B6D4',
+    'In Surgery / Procedure':  '#F97316',
+    'Recovered / Stable':      '#22C55E',
+    'Discharged':              '#14B8A6',
+    'Transferred':             '#A855F7',
+    'Deceased':                '#9F1239',
+}
+
+ALLOWED_TRANSITIONS = {
+    'Registered':             ['Waiting'],
+    'Waiting':                ['Under Consultation', 'Admitted'],
+    'Admitted':               ['Under Consultation', 'Under Observation', 'In Surgery / Procedure'],
+    'Under Consultation':     ['Under Observation', 'In Surgery / Procedure', 'Recovered / Stable', 'Discharged'],
+    'Under Treatment':        ['Under Observation', 'In Surgery / Procedure', 'Recovered / Stable', 'Discharged'],
+    'Under Observation':      ['Recovered / Stable', 'Under Consultation', 'Admitted'],
+    'In Surgery / Procedure': ['Under Observation', 'Recovered / Stable'],
+    'Recovered / Stable':     ['Discharged', 'Under Observation'],
+    'Discharged':             [],
+    'Transferred':            [],
+    'Deceased':               [],
+}
+TERMINAL_STATUSES = {'Discharged', 'Transferred', 'Deceased'}
+REQUIRES_REASON  = {'Discharged', 'Transferred', 'Deceased'}
+
+# Any status → Transferred/Deceased is always allowed (with reason)
+def get_allowed_transitions(current_status):
+    base = list(ALLOWED_TRANSITIONS.get(current_status, []))
+    if current_status not in TERMINAL_STATUSES:
+        if 'Transferred' not in base:
+            base.append('Transferred')
+        if 'Deceased' not in base:
+            base.append('Deceased')
+    return base
+
+
+@ct3_bp.route('/patients')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def patient_census():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    status_filter = request.args.get('status', '')
+    search = request.args.get('search', '')
+
+    try:
+        q = client.table('patients').select('*')
+        if status_filter:
+            q = q.eq('current_status', status_filter)
+        if search:
+            q = q.or_(
+                f"first_name.ilike.%{search}%,"
+                f"last_name.ilike.%{search}%,"
+                f"patient_id_alt.ilike.%{search}%"
+            )
+        resp = q.order('last_name').execute()
+        patients = resp.data or []
+    except Exception as e:
+        flash(f'Error fetching patient census: {e}', 'danger')
+        patients = []
+
+    status_counts = {}
+    try:
+        all_resp = client.table('patients').select('current_status').execute()
+        for p in (all_resp.data or []):
+            s = p.get('current_status') or 'Registered'
+            status_counts[s] = status_counts.get(s, 0) + 1
+    except Exception:
+        pass
+
+    return render_template('subsystems/core_transaction/ct3/patient_census.html',
+                           patients=patients,
+                           status_filter=status_filter,
+                           search=search,
+                           status_counts=status_counts,
+                           status_colors=STATUS_COLORS,
+                           all_statuses=list(STATUS_COLORS.keys()),
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/patients/<int:patient_id>/status')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def patient_status_panel(patient_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        p_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
+        patient = p_resp.data or {}
+        current_status = patient.get('current_status') or 'Registered'
+        allowed = get_allowed_transitions(current_status)
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        return redirect(url_for('ct3.patient_census'))
+
+    return render_template('subsystems/core_transaction/ct3/patient_status_panel.html',
+                           patient=patient,
+                           current_status=current_status,
+                           allowed_transitions=allowed,
+                           requires_reason=REQUIRES_REASON,
+                           status_colors=STATUS_COLORS,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/patients/<int:patient_id>/status/update', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def update_patient_status(patient_id):
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import AuditLog
+    client = get_supabase_client()
+
+    new_status = request.form.get('new_status', '').strip()
+    reason = request.form.get('reason', '').strip()
+    metadata_raw = request.form.get('metadata', '{}')
+
+    try:
+        import json
+        metadata = json.loads(metadata_raw) if metadata_raw else {}
+    except Exception:
+        metadata = {}
+
+    try:
+        p_resp = client.table('patients').select('id, current_status').eq('id', patient_id).single().execute()
+        patient = p_resp.data
+        if not patient:
+            flash('Patient not found.', 'danger')
+            return redirect(url_for('ct3.patient_census'))
+
+        old_status = patient.get('current_status') or 'Registered'
+        allowed = get_allowed_transitions(old_status)
+
+        if new_status not in allowed:
+            flash(f'Transition from "{old_status}" to "{new_status}" is not allowed.', 'danger')
+            return redirect(url_for('ct3.patient_status_panel', patient_id=patient_id))
+
+        if new_status in REQUIRES_REASON and not reason:
+            flash(f'A reason is required when setting status to "{new_status}".', 'danger')
+            return redirect(url_for('ct3.patient_status_panel', patient_id=patient_id))
+
+        # Insert history record
+        history_data = {
+            'patient_id': patient_id,
+            'old_status': old_status,
+            'new_status': new_status,
+            'changed_by': current_user.id,
+            'reason': reason or None,
+            'metadata': metadata or None,
+        }
+        client.table('patient_status_history').insert(history_data).execute()
+
+        # Build update dict
+        update_data = {
+            'current_status': new_status,
+            'status_updated_at': datetime.utcnow().isoformat(),
+            'status_updated_by': current_user.id,
+        }
+        if new_status == 'Admitted':
+            update_data['admission_date'] = datetime.utcnow().isoformat()
+        if new_status in TERMINAL_STATUSES:
+            update_data['discharge_date'] = datetime.utcnow().isoformat()
+
+        client.table('patients').update(update_data).eq('id', patient_id).execute()
+
+        # Activity log
+        _log_activity('Status Change', patient_id=patient_id, performed_by=current_user.id,
+                      description=f'Status changed from {old_status} → {new_status}',
+                      metadata={'old': old_status, 'new': new_status, 'reason': reason})
+        AuditLog.log(current_user.id, "Patient Status Change", BLUEPRINT_NAME,
+                     {"patient_id": patient_id, "from": old_status, "to": new_status})
+
+        flash(f'Patient status updated to "{new_status}".', 'success')
+    except Exception as e:
+        flash(f'Error updating status: {e}', 'danger')
+
+    return redirect(url_for('ct3.patient_status_panel', patient_id=patient_id))
+
+
+@ct3_bp.route('/patients/<int:patient_id>/status/history')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def patient_status_history(patient_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        p_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt, current_status').eq('id', patient_id).single().execute()
+        patient = p_resp.data or {}
+        h_resp = client.table('patient_status_history').select('*').eq('patient_id', patient_id).order('changed_at', desc=True).execute()
+        history = h_resp.data or []
+
+        user_ids = list({r['changed_by'] for r in history if r.get('changed_by')})
+        users_map = {}
+        if user_ids:
+            u_resp = client.table('users').select('id, username').in_('id', user_ids).execute()
+            users_map = {u['id']: u for u in (u_resp.data or [])}
+        for r in history:
+            r['changer'] = users_map.get(r.get('changed_by'))
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        patient = {}
+        history = []
+
+    return render_template('subsystems/core_transaction/ct3/patient_status_history.html',
+                           patient=patient,
+                           history=history,
+                           status_colors=STATUS_COLORS,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/status-board')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def status_board():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        resp = client.table('patients').select('id, first_name, last_name, patient_id_alt, current_status, status_updated_at').execute()
+        patients = resp.data or []
+        # Group by status
+        by_status = {}
+        for s in STATUS_COLORS:
+            by_status[s] = []
+        for p in patients:
+            s = p.get('current_status') or 'Registered'
+            by_status.setdefault(s, []).append(p)
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        by_status = {}
+
+    return render_template('subsystems/core_transaction/ct3/status_board.html',
+                           by_status=by_status,
+                           status_colors=STATUS_COLORS,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 2 — ACTIVITY FEED
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _log_activity(activity_type, patient_id=None, performed_by=None,
+                  source_module='ct3', description='', metadata=None):
+    """Insert a row into hospital_activity_log. Silently fails so it never breaks callers."""
+    try:
+        from utils.supabase_client import get_supabase_client
+        client = get_supabase_client()
+        data = {
+            'activity_type': activity_type,
+            'source_module': source_module,
+            'description': description,
+        }
+        if patient_id is not None:
+            data['patient_id'] = patient_id
+        if performed_by is not None:
+            data['performed_by'] = performed_by
+        if metadata is not None:
+            data['metadata'] = metadata
+        client.table('hospital_activity_log').insert(data).execute()
+    except Exception:
+        pass
+
+
+@ct3_bp.route('/activity')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def activity_feed():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    page = int(request.args.get('page', 1))
+    per_page = 50
+    offset = (page - 1) * per_page
+    activity_type = request.args.get('type', '')
+
+    try:
+        q = client.table('hospital_activity_log').select('*')
+        if activity_type:
+            q = q.eq('activity_type', activity_type)
+        q = q.order('created_at', desc=True).range(offset, offset + per_page - 1)
+        resp = q.execute()
+        logs = resp.data or []
+
+        patient_ids = list({r['patient_id'] for r in logs if r.get('patient_id')})
+        user_ids    = list({r['performed_by'] for r in logs if r.get('performed_by')})
+        patients_map = {}
+        users_map    = {}
+        if patient_ids:
+            pr = client.table('patients').select('id, first_name, last_name, patient_id_alt').in_('id', patient_ids).execute()
+            patients_map = {p['id']: p for p in (pr.data or [])}
+        if user_ids:
+            ur = client.table('users').select('id, username').in_('id', user_ids).execute()
+            users_map = {u['id']: u for u in (ur.data or [])}
+        for r in logs:
+            r['patient_obj'] = patients_map.get(r.get('patient_id'))
+            r['user_obj']    = users_map.get(r.get('performed_by'))
+    except Exception as e:
+        flash(f'Error fetching activity: {e}', 'danger')
+        logs = []
+
+    activity_types = [
+        'Status Change', 'Admission', 'Discharge', 'Transfer',
+        'Procedure Started', 'Procedure Ended', 'Death',
+        'Billing Event', 'Record Created', 'Record Updated', 'Alert Raised',
+    ]
+    return render_template('subsystems/core_transaction/ct3/activity_feed.html',
+                           logs=logs,
+                           page=page,
+                           activity_type=activity_type,
+                           activity_types=activity_types,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/activity/patient/<int:patient_id>')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def patient_activity(patient_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        p_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt').eq('id', patient_id).single().execute()
+        patient = p_resp.data or {}
+        resp = client.table('hospital_activity_log').select('*').eq('patient_id', patient_id).order('created_at', desc=True).limit(100).execute()
+        logs = resp.data or []
+        user_ids = list({r['performed_by'] for r in logs if r.get('performed_by')})
+        users_map = {}
+        if user_ids:
+            ur = client.table('users').select('id, username').in_('id', user_ids).execute()
+            users_map = {u['id']: u for u in (ur.data or [])}
+        for r in logs:
+            r['user_obj'] = users_map.get(r.get('performed_by'))
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        patient = {}
+        logs = []
+
+    return render_template('subsystems/core_transaction/ct3/patient_activity.html',
+                           patient=patient,
+                           logs=logs,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/activity/export')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def export_activity():
+    if not current_user.is_admin():
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('ct3.activity_feed'))
+    import csv, io
+    from flask import Response
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        resp = client.table('hospital_activity_log').select('*').order('created_at', desc=True).execute()
+        logs = resp.data or []
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Date', 'Type', 'Patient ID', 'Performed By', 'Module', 'Description'])
+        for r in logs:
+            writer.writerow([r.get('created_at', '')[:19], r.get('activity_type'), r.get('patient_id'), r.get('performed_by'), r.get('source_module'), r.get('description')])
+        output.seek(0)
+        return Response(output.getvalue(), mimetype='text/csv',
+                        headers={'Content-Disposition': f'attachment; filename=activity_log_{datetime.now().strftime("%Y%m%d")}.csv'})
+    except Exception as e:
+        flash(f'Export error: {e}', 'danger')
+        return redirect(url_for('ct3.activity_feed'))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 3 — PATIENT TIMELINE
+# ─────────────────────────────────────────────────────────────────────────────
+
+@ct3_bp.route('/patients/<int:patient_id>/timeline')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def patient_timeline(patient_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        p_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
+        patient = p_resp.data or {}
+    except Exception:
+        patient = {}
+
+    events = []
+
+    def _safe(func):
+        try:
+            return func() or []
+        except Exception:
+            return []
+
+    # Patient registration event
+    if patient.get('created_at'):
+        events.append({
+            'date': patient['created_at'],
+            'type': 'Registration',
+            'icon': 'bi-person-plus',
+            'color': '#6B7280',
+            'title': 'Patient Registered',
+            'detail': f"ID: {patient.get('patient_id_alt', '')}",
+        })
+
+    # Status changes
+    for r in _safe(lambda: client.table('patient_status_history').select('*').eq('patient_id', patient_id).execute().data):
+        events.append({'date': r.get('changed_at', ''), 'type': 'Status Change', 'icon': 'bi-arrow-right-circle',
+                       'color': STATUS_COLORS.get(r.get('new_status', ''), '#6B7280'),
+                       'title': f"Status → {r.get('new_status')}", 'detail': r.get('reason', '')})
+
+    # Medical records
+    for r in _safe(lambda: client.table('medical_records').select('*').eq('patient_id', patient_id).execute().data):
+        events.append({'date': r.get('visit_date', ''), 'type': 'Medical Record',
+                       'icon': 'bi-file-earmark-medical', 'color': '#6366F1',
+                       'title': f"Diagnosis: {r.get('diagnosis', 'N/A')}", 'detail': r.get('treatment', '')})
+
+    # Billing records
+    for r in _safe(lambda: client.table('billing_records').select('*').eq('patient_id', patient_id).execute().data):
+        events.append({'date': r.get('created_at', ''), 'type': 'Billing',
+                       'icon': 'bi-receipt', 'color': '#059669',
+                       'title': f"Bill #{r.get('id')} — ₱{r.get('total_amount', 0)}", 'detail': r.get('status', '')})
+
+    # Activity logs
+    for r in _safe(lambda: client.table('hospital_activity_log').select('*').eq('patient_id', patient_id).execute().data):
+        events.append({'date': r.get('created_at', ''), 'type': r.get('activity_type', 'Activity'),
+                       'icon': 'bi-lightning', 'color': '#F59E0B',
+                       'title': r.get('activity_type', 'Activity'), 'detail': r.get('description', '')})
+
+    # Sort by date descending
+    events.sort(key=lambda x: x.get('date', ''), reverse=True)
+
+    return render_template('subsystems/core_transaction/ct3/patient_timeline.html',
+                           patient=patient,
+                           events=events,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 4 — CENSUS BOARD
+# ─────────────────────────────────────────────────────────────────────────────
+
+@ct3_bp.route('/census')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def census_board():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        beds_resp = client.table('beds').select('*').execute()
+        beds = beds_resp.data or []
+        patients_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt, current_status, admission_date').execute()
+        patients = patients_resp.data or []
+    except Exception as e:
+        flash(f'Census error: {e}', 'danger')
+        beds = []
+        patients = []
+
+    total_beds     = len(beds)
+    occupied_count = sum(1 for b in beds if b.get('status') == 'Occupied')
+    available_count = sum(1 for b in beds if b.get('status') == 'Available')
+
+    active_statuses  = ['Admitted', 'Under Consultation', 'Under Treatment', 'Under Observation', 'In Surgery / Procedure', 'Recovered / Stable']
+    active_patients  = [p for p in patients if p.get('current_status') in active_statuses]
+    waiting_patients = [p for p in patients if p.get('current_status') == 'Waiting']
+
+    return render_template('subsystems/core_transaction/ct3/census_board.html',
+                           beds=beds,
+                           total_beds=total_beds,
+                           occupied_count=occupied_count,
+                           available_count=available_count,
+                           active_patients=active_patients,
+                           waiting_patients=waiting_patients,
+                           status_colors=STATUS_COLORS,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/census/export')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def census_export():
+    if not current_user.is_admin():
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('ct3.census_board'))
+    import csv, io
+    from flask import Response
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        resp = client.table('patients').select('*').execute()
+        patients = resp.data or []
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Patient ID', 'Name', 'Status', 'Admission Date', 'Status Updated'])
+        for p in patients:
+            writer.writerow([p.get('patient_id_alt'), f"{p.get('first_name')} {p.get('last_name')}",
+                             p.get('current_status', 'Registered'), (p.get('admission_date') or '')[:10],
+                             (p.get('status_updated_at') or '')[:10]])
+        output.seek(0)
+        return Response(output.getvalue(), mimetype='text/csv',
+                        headers={'Content-Disposition': f'attachment; filename=census_{datetime.now().strftime("%Y%m%d")}.csv'})
+    except Exception as e:
+        flash(f'Export error: {e}', 'danger')
+        return redirect(url_for('ct3.census_board'))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 5 — DISCHARGE PLANNER
+# ─────────────────────────────────────────────────────────────────────────────
+
+@ct3_bp.route('/discharge/queue')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def discharge_queue():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        resp = client.table('discharge_plans').select('*').in_('plan_status', ['Pending', 'Reviewing']).order('created_at', desc=True).execute()
+        plans = resp.data or []
+        patient_ids = list({r['patient_id'] for r in plans if r.get('patient_id')})
+        patients_map = {}
+        if patient_ids:
+            pr = client.table('patients').select('id, first_name, last_name, patient_id_alt, current_status').in_('id', patient_ids).execute()
+            patients_map = {p['id']: p for p in (pr.data or [])}
+        for plan in plans:
+            plan['patient_obj'] = patients_map.get(plan.get('patient_id'))
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        plans = []
+
+    return render_template('subsystems/core_transaction/ct3/discharge_queue.html',
+                           plans=plans,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/discharge/initiate/<int:patient_id>', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def initiate_discharge(patient_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        existing = client.table('discharge_plans').select('id').eq('patient_id', patient_id).in_('plan_status', ['Pending', 'Reviewing']).execute()
+        if existing.data:
+            flash('A discharge plan already exists for this patient.', 'warning')
+            return redirect(url_for('ct3.discharge_plan_view', plan_id=existing.data[0]['id']))
+        data = {
+            'patient_id': patient_id,
+            'created_by': current_user.id,
+            'plan_status': 'Pending',
+        }
+        resp = client.table('discharge_plans').insert(data).execute()
+        plan_id = resp.data[0]['id'] if resp.data else None
+        _log_activity('Discharge Initiated', patient_id=patient_id, performed_by=current_user.id,
+                      description='Discharge plan initiated')
+        flash('Discharge plan initiated.', 'success')
+        if plan_id:
+            return redirect(url_for('ct3.discharge_plan_view', plan_id=plan_id))
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+    return redirect(url_for('ct3.patient_census'))
+
+
+@ct3_bp.route('/discharge/plan/<int:plan_id>', methods=['GET', 'POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def discharge_plan_view(plan_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        plan_resp = client.table('discharge_plans').select('*').eq('id', plan_id).single().execute()
+        plan = plan_resp.data or {}
+        patient_resp = client.table('patients').select('*').eq('id', plan.get('patient_id')).single().execute()
+        patient = patient_resp.data or {}
+
+        # Check clearances
+        patient_id = plan.get('patient_id')
+        bills_resp = client.table('billing_records').select('status').eq('patient_id', patient_id).execute()
+        labs_resp = client.table('lab_orders').select('status').eq('patient_id', patient_id).execute()
+        bills = bills_resp.data or []
+        labs  = labs_resp.data or []
+        billing_cleared = bool(bills) and all(b['status'] == 'Paid' for b in bills)
+        labs_cleared    = not labs or all(l['status'] == 'Resulted' for l in labs)
+        fully_cleared   = billing_cleared and labs_cleared and bool(plan.get('discharge_summary'))
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        return redirect(url_for('ct3.discharge_queue'))
+
+    if request.method == 'POST':
+        action = request.form.get('action', 'save')
+        try:
+            update = {
+                'discharge_summary':    request.form.get('discharge_summary', ''),
+                'diagnosis':  request.form.get('discharge_diagnosis', ''),
+                'follow_up_date':       request.form.get('follow_up_date') or None,
+                'follow_up_instructions':      request.form.get('follow_up_notes', ''),
+                'activity_restrictions': request.form.get('activity_restrictions', ''),
+                'diet_instructions':    request.form.get('diet_instructions', ''),
+                'wound_care_instructions':     request.form.get('wound_care_notes', ''),
+                'plan_status': 'Reviewing',
+            }
+            if action == 'clear':
+                update['plan_status'] = 'Cleared'
+                update['cleared_by'] = current_user.id
+                update['cleared_at'] = datetime.utcnow().isoformat()
+                # Change patient status to Discharged
+                client.table('patients').update({'current_status': 'Discharged', 'discharge_date': datetime.utcnow().isoformat()}).eq('id', plan.get('patient_id')).execute()
+                _log_activity('Discharge', patient_id=plan.get('patient_id'), performed_by=current_user.id,
+                              description='Patient cleared for discharge')
+            client.table('discharge_plans').update(update).eq('id', plan_id).execute()
+            flash('Discharge plan saved.' if action != 'clear' else 'Patient cleared for discharge.', 'success')
+            return redirect(url_for('ct3.discharge_plan_view', plan_id=plan_id))
+        except Exception as e:
+            flash(f'Error saving: {e}', 'danger')
+
+    return render_template('subsystems/core_transaction/ct3/discharge_plan.html',
+                           plan=plan,
+                           patient=patient,
+                           billing_cleared=billing_cleared,
+                           labs_cleared=labs_cleared,
+                           fully_cleared=fully_cleared,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/discharge/plan/<int:plan_id>/print')
+@login_required
+def discharge_plan_print(plan_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        plan_resp = client.table('discharge_plans').select('*').eq('id', plan_id).single().execute()
+        plan = plan_resp.data or {}
+        patient_resp = client.table('patients').select('*').eq('id', plan.get('patient_id')).single().execute()
+        patient = patient_resp.data or {}
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        return redirect(url_for('ct3.discharge_queue'))
+    return render_template('subsystems/core_transaction/ct3/discharge_print.html',
+                           plan=plan, patient=patient, now=datetime.utcnow())
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 6 — TRANSFER MANAGEMENT
+# ─────────────────────────────────────────────────────────────────────────────
+
+@ct3_bp.route('/transfers')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def transfers():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        resp = client.table('patient_transfers').select('*').order('initiated_at', desc=True).limit(100).execute()
+        transfers_list = resp.data or []
+        patient_ids = list({r['patient_id'] for r in transfers_list if r.get('patient_id')})
+        patients_map = {}
+        if patient_ids:
+            pr = client.table('patients').select('id, first_name, last_name, patient_id_alt').in_('id', patient_ids).execute()
+            patients_map = {p['id']: p for p in (pr.data or [])}
+        for t in transfers_list:
+            t['patient_obj'] = patients_map.get(t.get('patient_id'))
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        transfers_list = []
+
+    # Patients eligible for transfer (non-terminal status)
+    eligible = []
+    try:
+        pr = client.table('patients').select('id, first_name, last_name, patient_id_alt, current_status').not_.in_('current_status', list(TERMINAL_STATUSES)).execute()
+        eligible = pr.data or []
+    except Exception:
+        pass
+
+    return render_template('subsystems/core_transaction/ct3/transfers.html',
+                           transfers_list=transfers_list,
+                           eligible_patients=eligible,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/transfers/new/<int:patient_id>', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def new_transfer(patient_id):
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import AuditLog
+    client = get_supabase_client()
+    try:
+        data = {
+            'patient_id':             patient_id,
+            'transfer_type':          request.form.get('transfer_type', 'Internal'),
+            'from_location':          request.form.get('from_location', '') or None,
+            'to_location':            request.form.get('to_location') or request.form.get('destination_department') or 'TBD',
+            'destination_hospital':   request.form.get('destination_hospital', '') or None,
+            'destination_department': request.form.get('destination_department', '') or None,
+            'reason':                 request.form.get('reason', ''),
+            'transport_mode':         request.form.get('transport_mode', '') or None,
+            'clinical_summary':       request.form.get('clinical_summary', '') or None,
+            'initiated_by':           current_user.id,
+            'status':                 'Pending',
+        }
+        resp = client.table('patient_transfers').insert(data).execute()
+        transfer_id = resp.data[0]['id'] if resp.data else None
+        _log_activity('Transfer', patient_id=patient_id, performed_by=current_user.id,
+                      description=f"Transfer initiated ({data['transfer_type']})")
+        AuditLog.log(current_user.id, "Patient Transfer Initiated", BLUEPRINT_NAME, {"patient_id": patient_id})
+        flash('Transfer initiated.', 'success')
+        if transfer_id:
+            return redirect(url_for('ct3.transfer_detail', transfer_id=transfer_id))
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+    return redirect(url_for('ct3.transfers'))
+
+
+@ct3_bp.route('/transfers/<int:transfer_id>')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def transfer_detail(transfer_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        t_resp = client.table('patient_transfers').select('*').eq('id', transfer_id).single().execute()
+        transfer = t_resp.data or {}
+        patient_resp = client.table('patients').select('*').eq('id', transfer.get('patient_id')).single().execute()
+        patient = patient_resp.data or {}
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        return redirect(url_for('ct3.transfers'))
+    return render_template('subsystems/core_transaction/ct3/transfer_detail.html',
+                           transfer=transfer, patient=patient, now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/transfers/<int:transfer_id>/complete', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def complete_transfer(transfer_id):
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import AuditLog
+    client = get_supabase_client()
+    try:
+        t_resp = client.table('patient_transfers').select('patient_id').eq('id', transfer_id).single().execute()
+        patient_id = t_resp.data['patient_id'] if t_resp.data else None
+        client.table('patient_transfers').update({'status': 'Completed', 'completed_at': datetime.utcnow().isoformat()}).eq('id', transfer_id).execute()
+        if patient_id:
+            client.table('patients').update({'current_status': 'Transferred', 'status_updated_at': datetime.utcnow().isoformat(), 'status_updated_by': current_user.id}).eq('id', patient_id).execute()
+            _log_activity('Transfer', patient_id=patient_id, performed_by=current_user.id, description='Transfer completed')
+        AuditLog.log(current_user.id, "Transfer Completed", BLUEPRINT_NAME, {"transfer_id": transfer_id})
+        flash('Transfer marked as completed.', 'success')
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+    return redirect(url_for('ct3.transfers'))
+
+
+@ct3_bp.route('/transfers/<int:transfer_id>/cancel', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def cancel_transfer(transfer_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('patient_transfers').update({'status': 'Cancelled'}).eq('id', transfer_id).execute()
+        flash('Transfer cancelled.', 'info')
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+    return redirect(url_for('ct3.transfers'))
+
+
+@ct3_bp.route('/transfers/<int:transfer_id>/print')
+@login_required
+def transfer_print(transfer_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        t_resp = client.table('patient_transfers').select('*').eq('id', transfer_id).single().execute()
+        transfer = t_resp.data or {}
+        patient_resp = client.table('patients').select('*').eq('id', transfer.get('patient_id')).single().execute()
+        patient = patient_resp.data or {}
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        return redirect(url_for('ct3.transfers'))
+    return render_template('subsystems/core_transaction/ct3/transfer_print.html',
+                           transfer=transfer, patient=patient, now=datetime.utcnow())
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 7 — DOCUMENT VAULT
+# ─────────────────────────────────────────────────────────────────────────────
+
+@ct3_bp.route('/documents')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def documents():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    search = request.args.get('search', '')
+    doc_type = request.args.get('type', '')
+    try:
+        q = client.table('patient_documents').select('*').is_('deleted_at', 'null')
+        if doc_type:
+            q = q.eq('document_type', doc_type)
+        if search:
+            q = q.ilike('title', f'%{search}%')
+        resp = q.order('uploaded_at', desc=True).limit(100).execute()
+        docs = resp.data or []
+        patient_ids = list({d['patient_id'] for d in docs if d.get('patient_id')})
+        patients_map = {}
+        if patient_ids:
+            pr = client.table('patients').select('id, first_name, last_name, patient_id_alt').in_('id', patient_ids).execute()
+            patients_map = {p['id']: p for p in (pr.data or [])}
+        for d in docs:
+            d['patient_obj'] = patients_map.get(d.get('patient_id'))
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        docs = []
+
+    patients_list = []
+    try:
+        pr = client.table('patients').select('id, first_name, last_name, patient_id_alt').order('last_name').execute()
+        patients_list = pr.data or []
+    except Exception:
+        pass
+
+    doc_types = ['Consent Form', 'Lab Report', 'Imaging Report', 'Clinical Summary',
+                 'Discharge Summary', 'Referral Letter', 'Prescription', 'Transfer Note', 'Other']
+
+    return render_template('subsystems/core_transaction/ct3/documents.html',
+                           docs=docs,
+                           search=search,
+                           doc_type=doc_type,
+                           doc_types=doc_types,
+                           patients_list=patients_list,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/documents/patient/<int:patient_id>')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def patient_documents(patient_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        p_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt').eq('id', patient_id).single().execute()
+        patient = p_resp.data or {}
+        resp = client.table('patient_documents').select('*').eq('patient_id', patient_id).is_('deleted_at', 'null').order('uploaded_at', desc=True).execute()
+        docs = resp.data or []
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        patient = {}
+        docs = []
+    doc_types = ['Consent Form', 'Lab Report', 'Imaging Report', 'Clinical Summary',
+                 'Discharge Summary', 'Referral Letter', 'Prescription', 'Transfer Note', 'Other']
+    return render_template('subsystems/core_transaction/ct3/patient_documents.html',
+                           patient=patient, docs=docs, doc_types=doc_types,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/documents/upload', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def upload_document():
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import AuditLog
+    client = get_supabase_client()
+    try:
+        data = {
+            'patient_id':    int(request.form.get('patient_id')),
+            'document_type': request.form.get('document_type', 'Other'),
+            'title':         request.form.get('title', ''),
+            'description':   request.form.get('description', '') or None,
+            'file_url':      request.form.get('file_url', '') or None,
+            'file_name':     request.form.get('file_name', '') or None,
+            'is_confidential': request.form.get('is_confidential') == '1',
+            'uploaded_by':   current_user.id,
+        }
+        client.table('patient_documents').insert(data).execute()
+        _log_activity('Record Created', patient_id=data['patient_id'], performed_by=current_user.id,
+                      description=f"Document uploaded: {data['title']}")
+        AuditLog.log(current_user.id, "Document Upload", BLUEPRINT_NAME, {"patient_id": data['patient_id'], "title": data['title']})
+        flash('Document uploaded successfully.', 'success')
+    except Exception as e:
+        flash(f'Error uploading: {e}', 'danger')
+    redirect_to = request.form.get('redirect_patient_id')
+    if redirect_to:
+        return redirect(url_for('ct3.patient_documents', patient_id=int(redirect_to)))
+    return redirect(url_for('ct3.documents'))
+
+
+@ct3_bp.route('/documents/<int:doc_id>/delete', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def delete_document(doc_id):
+    if not current_user.is_admin():
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('ct3.documents'))
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('patient_documents').update({'deleted_at': datetime.utcnow().isoformat()}).eq('id', doc_id).execute()
+        flash('Document removed.', 'info')
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+    return redirect(url_for('ct3.documents'))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 8 — BILLING ENHANCEMENT
+# ─────────────────────────────────────────────────────────────────────────────
+
+@ct3_bp.route('/billing/<int:bill_id>/detail')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def billing_detail(bill_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        b_resp = client.table('billing_records').select('*').eq('id', bill_id).single().execute()
+        bill = b_resp.data or {}
+        p_resp = client.table('patients').select('*').eq('id', bill.get('patient_id')).single().execute()
+        patient = p_resp.data or {}
+        items_resp = client.table('billing_line_items').select('*').eq('billing_id', bill_id).order('posted_at').execute()
+        line_items = items_resp.data or []
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        return redirect(url_for('ct3.billing'))
+    return render_template('subsystems/core_transaction/ct3/billing_detail.html',
+                           bill=bill, patient=patient, line_items=line_items,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/billing/<int:bill_id>/add-item', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def add_billing_item(bill_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        qty = int(request.form.get('quantity', 1))
+        unit_price = float(request.form.get('unit_price', 0))
+        discount   = float(request.form.get('discount', 0))
+        line_total = qty * unit_price - discount
+        data = {
+            'billing_id':   bill_id,
+            'description':  request.form.get('description', ''),
+            'quantity':     qty,
+            'unit_price':   unit_price,
+            'discount':     discount,
+            'line_total':   line_total,
+            'source_module': request.form.get('source_module', 'CT3'),
+        }
+        client.table('billing_line_items').insert(data).execute()
+        # Recalculate bill total
+        items = client.table('billing_line_items').select('line_total').eq('billing_id', bill_id).execute().data or []
+        new_total = sum(float(i['line_total']) for i in items)
+        client.table('billing_records').update({'total_amount': new_total}).eq('id', bill_id).execute()
+        flash('Line item added.', 'success')
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+    return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+
+@ct3_bp.route('/billing/<int:bill_id>/remove-item/<int:item_id>', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def remove_billing_item(bill_id, item_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('billing_line_items').delete().eq('id', item_id).execute()
+        items = client.table('billing_line_items').select('line_total').eq('billing_id', bill_id).execute().data or []
+        new_total = sum(float(i['line_total']) for i in items)
+        client.table('billing_records').update({'total_amount': new_total}).eq('id', bill_id).execute()
+        flash('Item removed.', 'info')
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+    return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+
+@ct3_bp.route('/billing/<int:bill_id>/apply-discount', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def apply_billing_discount(bill_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        update_data = {}
+        for field in ['insurance_provider', 'insurance_policy_no', 'payment_method']:
+            val = request.form.get(field, '').strip()
+            if val:
+                update_data[field] = val
+        for field in ['insurance_coverage', 'philhealth_coverage', 'senior_discount', 'pwd_discount']:
+            try:
+                update_data[field] = float(request.form.get(field, 0) or 0)
+            except ValueError:
+                update_data[field] = 0
+        # Recalculate net_amount
+        b = client.table('billing_records').select('total_amount').eq('id', bill_id).single().execute().data or {}
+        total = float(b.get('total_amount', 0))
+        discounts = sum(update_data.get(f, 0) for f in ['insurance_coverage', 'philhealth_coverage', 'senior_discount', 'pwd_discount'])
+        update_data['net_amount'] = max(0, total - discounts)
+        client.table('billing_records').update(update_data).eq('id', bill_id).execute()
+        flash('Discounts applied.', 'success')
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+    return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+
+@ct3_bp.route('/billing/<int:bill_id>/print')
+@login_required
+def billing_print(bill_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        b_resp = client.table('billing_records').select('*').eq('id', bill_id).single().execute()
+        bill = b_resp.data or {}
+        p_resp = client.table('patients').select('*').eq('id', bill.get('patient_id')).single().execute()
+        patient = p_resp.data or {}
+        items_resp = client.table('billing_line_items').select('*').eq('billing_id', bill_id).execute()
+        line_items = items_resp.data or []
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        return redirect(url_for('ct3.billing'))
+    return render_template('subsystems/core_transaction/ct3/billing_print.html',
+                           bill=bill, patient=patient, line_items=line_items, now=datetime.utcnow())
+
+
+@ct3_bp.route('/billing/summary')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def billing_summary():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        resp = client.table('billing_records').select('*').execute()
+        all_bills = resp.data or []
+        total_billed    = sum(float(b.get('total_amount', 0)) for b in all_bills)
+        total_collected = sum(float(b.get('total_amount', 0)) for b in all_bills if b.get('status') == 'Paid')
+        total_outstanding = total_billed - total_collected
+        by_method = {}
+        for b in all_bills:
+            m = b.get('payment_method') or 'Cash'
+            if b.get('status') == 'Paid':
+                by_method[m] = by_method.get(m, 0) + float(b.get('total_amount', 0))
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        all_bills = []
+        total_billed = total_collected = total_outstanding = 0
+        by_method = {}
+    return render_template('subsystems/core_transaction/ct3/billing_summary.html',
+                           all_bills=all_bills,
+                           total_billed=total_billed,
+                           total_collected=total_collected,
+                           total_outstanding=total_outstanding,
+                           by_method=by_method,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 9 — REPORTING CENTER
+# ─────────────────────────────────────────────────────────────────────────────
+
+@ct3_bp.route('/reports')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def reports_hub():
+    return render_template('subsystems/core_transaction/ct3/reports_hub.html',
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/reports/census')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def report_census():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    date_from = request.args.get('date_from', '')
+    date_to   = request.args.get('date_to', '')
+    try:
+        resp = client.table('patients').select('*').execute()
+        patients = resp.data or []
+        beds_resp = client.table('beds').select('*').execute()
+        beds = beds_resp.data or []
+        total_beds      = len(beds)
+        occupied        = sum(1 for b in beds if b.get('status') == 'Occupied')
+        occupancy_rate  = round(occupied / total_beds * 100, 1) if total_beds else 0
+        status_dist = {}
+        for p in patients:
+            s = p.get('current_status') or 'Registered'
+            status_dist[s] = status_dist.get(s, 0) + 1
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        patients = []
+        beds = []
+        total_beds = occupied = occupancy_rate = 0
+        status_dist = {}
+    return render_template('subsystems/core_transaction/ct3/report_census.html',
+                           patients=patients, beds=beds,
+                           total_beds=total_beds, occupied=occupied,
+                           occupancy_rate=occupancy_rate, status_dist=status_dist,
+                           status_colors=STATUS_COLORS,
+                           date_from=date_from, date_to=date_to,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/reports/admissions')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def report_admissions():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    date_from = request.args.get('date_from', '')
+    date_to   = request.args.get('date_to', '')
+    try:
+        q = client.table('patient_status_history').select('*').eq('new_status', 'Admitted')
+        if date_from:
+            q = q.gte('changed_at', date_from)
+        if date_to:
+            q = q.lte('changed_at', date_to + 'T23:59:59')
+        resp = q.order('changed_at', desc=True).execute()
+        admissions = resp.data or []
+        patient_ids = list({r['patient_id'] for r in admissions if r.get('patient_id')})
+        patients_map = {}
+        if patient_ids:
+            pr = client.table('patients').select('id, first_name, last_name, patient_id_alt, gender').in_('id', patient_ids).execute()
+            patients_map = {p['id']: p for p in (pr.data or [])}
+        for r in admissions:
+            r['patient_obj'] = patients_map.get(r.get('patient_id'))
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        admissions = []
+    return render_template('subsystems/core_transaction/ct3/report_admissions.html',
+                           admissions=admissions, date_from=date_from, date_to=date_to,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/reports/discharges')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def report_discharges():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    date_from = request.args.get('date_from', '')
+    date_to   = request.args.get('date_to', '')
+    try:
+        q = client.table('patients').select('*').eq('current_status', 'Discharged')
+        if date_from:
+            q = q.gte('discharge_date', date_from)
+        if date_to:
+            q = q.lte('discharge_date', date_to + 'T23:59:59')
+        resp = q.order('discharge_date', desc=True).execute()
+        discharged = resp.data or []
+        # Calculate LOS
+        for p in discharged:
+            try:
+                adm = datetime.fromisoformat(p['admission_date'][:19]) if p.get('admission_date') else None
+                dis = datetime.fromisoformat(p['discharge_date'][:19]) if p.get('discharge_date') else datetime.utcnow()
+                p['los_days'] = (dis - adm).days if adm else None
+            except Exception:
+                p['los_days'] = None
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        discharged = []
+    return render_template('subsystems/core_transaction/ct3/report_discharges.html',
+                           discharged=discharged, date_from=date_from, date_to=date_to,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/reports/billing')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def report_billing():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    date_from = request.args.get('date_from', '')
+    date_to   = request.args.get('date_to', '')
+    try:
+        q = client.table('billing_records').select('*')
+        if date_from:
+            q = q.gte('created_at', date_from)
+        if date_to:
+            q = q.lte('created_at', date_to + 'T23:59:59')
+        resp = q.order('created_at', desc=True).execute()
+        bills = resp.data or []
+        patient_ids = list({b['patient_id'] for b in bills if b.get('patient_id')})
+        patients_map = {}
+        if patient_ids:
+            pr = client.table('patients').select('id, first_name, last_name, patient_id_alt').in_('id', patient_ids).execute()
+            patients_map = {p['id']: p for p in (pr.data or [])}
+        for b in bills:
+            b['patient_obj'] = patients_map.get(b.get('patient_id'))
+        total_billed = sum(float(b.get('total_amount', 0)) for b in bills)
+        total_paid   = sum(float(b.get('total_amount', 0)) for b in bills if b.get('status') == 'Paid')
+        total_unpaid = total_billed - total_paid
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        bills = []
+        total_billed = total_paid = total_unpaid = 0
+    return render_template('subsystems/core_transaction/ct3/report_billing.html',
+                           bills=bills, total_billed=total_billed,
+                           total_paid=total_paid, total_unpaid=total_unpaid,
+                           date_from=date_from, date_to=date_to,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/reports/mortality')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def report_mortality():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    date_from = request.args.get('date_from', '')
+    date_to   = request.args.get('date_to', '')
+    try:
+        q = client.table('patient_status_history').select('*').eq('new_status', 'Deceased')
+        if date_from:
+            q = q.gte('changed_at', date_from)
+        if date_to:
+            q = q.lte('changed_at', date_to + 'T23:59:59')
+        resp = q.order('changed_at', desc=True).execute()
+        records = resp.data or []
+        patient_ids = list({r['patient_id'] for r in records if r.get('patient_id')})
+        patients_map = {}
+        if patient_ids:
+            pr = client.table('patients').select('id, first_name, last_name, patient_id_alt, gender').in_('id', patient_ids).execute()
+            patients_map = {p['id']: p for p in (pr.data or [])}
+        for r in records:
+            r['patient_obj'] = patients_map.get(r.get('patient_id'))
+    except Exception as e:
+        flash(f'Error: {e}', 'danger')
+        records = []
+    return render_template('subsystems/core_transaction/ct3/report_mortality.html',
+                           records=records, date_from=date_from, date_to=date_to,
+                           now=datetime.utcnow(),
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/reports/generate', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def generate_report():
+    report_type = request.form.get('report_type', 'census')
+    date_from = request.form.get('date_from', '')
+    date_to   = request.form.get('date_to', '')
+    routes_map = {
+        'census':     'ct3.report_census',
+        'admissions': 'ct3.report_admissions',
+        'discharges': 'ct3.report_discharges',
+        'billing':    'ct3.report_billing',
+        'mortality':  'ct3.report_mortality',
+    }
+    target_route = routes_map.get(report_type, 'ct3.reports_hub')
+    return redirect(url_for(target_route, date_from=date_from, date_to=date_to))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 10 — ANALYTICS DASHBOARD (enhanced)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@ct3_bp.route('/analytics/api/status-distribution')
+@login_required
+def analytics_status_distribution():
+    from flask import jsonify
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        resp = client.table('patients').select('current_status').execute()
+        counts = {}
+        for p in (resp.data or []):
+            s = p.get('current_status') or 'Registered'
+            counts[s] = counts.get(s, 0) + 1
+        return jsonify({'labels': list(counts.keys()), 'values': list(counts.values()),
+                        'colors': [STATUS_COLORS.get(s, '#6B7280') for s in counts]})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@ct3_bp.route('/analytics/api/admissions-trend')
+@login_required
+def analytics_admissions_trend():
+    from flask import jsonify
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        # Last 30 days admissions
+        from datetime import timedelta
+        start = (datetime.utcnow() - timedelta(days=29)).strftime('%Y-%m-%d')
+        resp = client.table('patient_status_history').select('changed_at').eq('new_status', 'Admitted').gte('changed_at', start).execute()
+        day_counts = {}
+        for r in (resp.data or []):
+            day = r['changed_at'][:10]
+            day_counts[day] = day_counts.get(day, 0) + 1
+        # Build last 30 days consistent range
+        from datetime import timedelta
+        labels, values = [], []
+        for i in range(29, -1, -1):
+            d = (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
+            labels.append(d)
+            values.append(day_counts.get(d, 0))
+        return jsonify({'labels': labels, 'values': values})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@ct3_bp.route('/analytics/api/revenue-trend')
+@login_required
+def analytics_revenue_trend():
+    from flask import jsonify
+    from utils.supabase_client import get_supabase_client
+    from datetime import timedelta
+    client = get_supabase_client()
+    try:
+        start = (datetime.utcnow() - timedelta(days=29)).strftime('%Y-%m-%d')
+        resp = client.table('billing_records').select('created_at, total_amount, status').gte('created_at', start).execute()
+        day_revenue = {}
+        for r in (resp.data or []):
+            if r.get('status') == 'Paid':
+                day = r['created_at'][:10]
+                day_revenue[day] = day_revenue.get(day, 0) + float(r.get('total_amount', 0))
+        labels, values = [], []
+        for i in range(29, -1, -1):
+            d = (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
+            labels.append(d)
+            values.append(round(day_revenue.get(d, 0), 2))
+        return jsonify({'labels': labels, 'values': values})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Official Receipt - Bill #{{ bill.id }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            padding: 40px;
+            background: white;
+            color: #1f2937;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #059669;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 { font-size: 24px; color: #059669; margin-bottom: 5px; }
+        .header p { font-size: 12px; color: #6b7280; }
+        .doc-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .info-box {
+            flex: 1;
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-right: 15px;
+        }
+        .info-box:last-child { margin-right: 0; }
+        .info-box label {
+            display: block;
+            font-size: 10px;
+            color: #6b7280;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .info-box p {
+            font-size: 14px;
+            color: #1f2937;
+            font-weight: 600;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        thead {
+            background: #f3f4f6;
+        }
+        th {
+            padding: 12px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #6b7280;
+            font-weight: bold;
+            border-bottom: 2px solid #d1d5db;
+        }
+        td {
+            padding: 10px 12px;
+            font-size: 13px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        td.text-right, th.text-right { text-align: right; }
+        .totals {
+            margin-top: 30px;
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .total-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .total-line.grand {
+            font-size: 18px;
+            font-weight: bold;
+            color: #059669;
+            border-top: 2px solid #d1d5db;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+        .footer {
+            margin-top: 50px;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 20px;
+            text-align: center;
+        }
+        .signature-area {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 60px;
+        }
+        .signature-box {
+            flex: 1;
+            text-align: center;
+        }
+        .signature-line {
+            border-top: 2px solid #1f2937;
+            margin-bottom: 5px;
+            width: 200px;
+            display: inline-block;
+        }
+        .signature-label {
+            font-size: 11px;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+        @media print {
+            body { padding: 20px; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Hospital Management System</h1>
+            <p>123 Medical Plaza, Healthcare City | Tel: (02) 1234-5678 | Email: billing@hms.com</p>
+        </div>
+
+        <div class="doc-title">Official Receipt</div>
+
+        <div class="info-row">
+            <div class="info-box">
+                <label>Bill No.</label>
+                <p>#{{ bill.id }}</p>
+            </div>
+            <div class="info-box">
+                <label>Date Issued</label>
+                <p>{{ bill.created_at.strftime('%B %d, %Y') if bill.created_at else 'N/A' }}</p>
+            </div>
+            <div class="info-box">
+                <label>Status</label>
+                <p>{{ bill.status }}</p>
+            </div>
+        </div>
+
+        <div class="info-row">
+            <div class="info-box" style="flex: 2;">
+                <label>Patient Name</label>
+                <p>{{ patient.first_name }} {{ patient.last_name }}</p>
+            </div>
+            <div class="info-box">
+                <label>Patient ID</label>
+                <p>{{ patient.patient_id_alt }}</p>
+            </div>
+        </div>
+
+        <div class="info-row">
+            <div class="info-box">
+                <label>Payment Method</label>
+                <p>{{ bill.payment_method or 'Cash' }}</p>
+            </div>
+            <div class="info-box">
+                <label>Admission Date</label>
+                <p>{{ patient.admission_date.strftime('%B %d, %Y') if patient.admission_date else 'N/A' }}</p>
+            </div>
+            <div class="info-box">
+                <label>Discharge Date</label>
+                <p>{{ patient.discharge_date.strftime('%B %d, %Y') if patient.discharge_date else 'N/A' }}</p>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th class="text-right">Qty</th>
+                    <th class="text-right">Unit Price</th>
+                    <th class="text-right">Discount</th>
+                    <th class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if line_items %}
+                {% for item in line_items %}
+                <tr>
+                    <td>{{ item.description }}</td>
+                    <td class="text-right">{{ item.quantity }}</td>
+                    <td class="text-right">₱{{ "%.2f"|format(item.unit_price) }}</td>
+                    <td class="text-right">₱{{ "%.2f"|format(item.discount or 0) }}</td>
+                    <td class="text-right">₱{{ "%.2f"|format(item.line_total) }}</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr><td colspan="5" style="text-align: center; color: #9ca3af;">No line items recorded.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <div class="total-line">
+                <span>Subtotal:</span>
+                <span>₱{{ "%.2f"|format(bill.total_amount or 0) }}</span>
+            </div>
+            {% if bill.insurance_coverage %}
+            <div class="total-line">
+                <span>Insurance Coverage:</span>
+                <span>- ₱{{ "%.2f"|format(bill.insurance_coverage) }}</span>
+            </div>
+            {% endif %}
+            {% if bill.philhealth_coverage %}
+            <div class="total-line">
+                <span>PhilHealth Coverage:</span>
+                <span>- ₱{{ "%.2f"|format(bill.philhealth_coverage) }}</span>
+            </div>
+            {% endif %}
+            {% if bill.senior_discount %}
+            <div class="total-line">
+                <span>Senior Citizen Discount:</span>
+                <span>- ₱{{ "%.2f"|format(bill.senior_discount) }}</span>
+            </div>
+            {% endif %}
+            {% if bill.pwd_discount %}
+            <div class="total-line">
+                <span>PWD Discount:</span>
+                <span>- ₱{{ "%.2f"|format(bill.pwd_discount) }}</span>
+            </div>
+            {% endif %}
+            <div class="total-line grand">
+                <span>Total Amount Due:</span>
+                <span>₱{{ "%.2f"|format(bill.net_amount or bill.total_amount or 0) }}</span>
+            </div>
+        </div>
+
+        {% if bill.insurance_provider %}
+        <div class="info-row" style="margin-top: 30px;">
+            <div class="info-box">
+                <label>Insurance Provider</label>
+                <p>{{ bill.insurance_provider }}</p>
+            </div>
+            <div class="info-box">
+                <label>Policy Number</label>
+                <p>{{ bill.insurance_policy_no or 'N/A' }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="signature-area">
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="signature-label">Patient / Guardian Signature</div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="signature-label">Billing Officer</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p style="font-size: 11px; color: #6b7280;">
+                This is a computer-generated receipt. For inquiries, contact the Billing Office.
+            </p>
+            <p style="font-size: 10px; color: #9ca3af; margin-top: 5px;">
+                Printed on: {{ now.strftime('%B %d, %Y %I:%M %p') }}
+            </p>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() { window.print(); }
+    </script>
+</body>
+</html>

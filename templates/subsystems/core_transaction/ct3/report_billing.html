@@ -1,0 +1,239 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Billing Report - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Billing Report{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Billing & Revenue Report</h3>
+            <p class="text-sm text-gray-500">
+                {% if start_date and end_date %}
+                Period: {{ start_date }} to {{ end_date }}
+                {% else %}
+                All Time
+                {% endif %}
+            </p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{{ url_for('ct3.reports_hub') }}" class="text-sm text-gray-500 hover:text-gray-700">
+                <i class="bi bi-arrow-left mr-2"></i>Back to Reports
+            </a>
+            <button onclick="window.print()"
+                    class="px-4 py-2 rounded-lg font-bold text-white text-sm shadow transition-all hover:opacity-90"
+                    style="background: {{ accent_color }};">
+                <i class="bi bi-printer mr-2"></i>Print
+            </button>
+        </div>
+    </div>
+
+    <!-- Revenue Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white">
+            <i class="bi bi-currency-exchange text-3xl opacity-80 mb-2"></i>
+            <p class="text-sm uppercase tracking-wide font-bold opacity-90 mb-1">Total Billed</p>
+            <p class="text-3xl font-bold">₱{{ "%.2f"|format(total_billed) }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white">
+            <i class="bi bi-check-circle text-3xl opacity-80 mb-2"></i>
+            <p class="text-sm uppercase tracking-wide font-bold opacity-90 mb-1">Total Collected</p>
+            <p class="text-3xl font-bold">₱{{ "%.2f"|format(total_collected) }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl shadow-lg p-6 text-white">
+            <i class="bi bi-hourglass-split text-3xl opacity-80 mb-2"></i>
+            <p class="text-sm uppercase tracking-wide font-bold opacity-90 mb-1">Outstanding</p>
+            <p class="text-3xl font-bold">₱{{ "%.2f"|format(outstanding) }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
+            <i class="bi bi-percent text-3xl opacity-80 mb-2"></i>
+            <p class="text-sm uppercase tracking-wide font-bold opacity-90 mb-1">Collection Rate</p>
+            <p class="text-3xl font-bold">{{ "%.1f"|format(collection_rate) }}%</p>
+        </div>
+    </div>
+
+    <!-- Bill Status Breakdown -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h4 class="font-bold text-gray-900 mb-4">Bill Status Breakdown</h4>
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-emerald-50 rounded-xl p-4 border-2 border-emerald-200">
+                <p class="text-2xl font-bold text-emerald-600">{{ paid_bills }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">Paid Bills</p>
+                <p class="text-xs text-gray-500 mt-1">₱{{ "%.2f"|format(paid_amount) }}</p>
+            </div>
+            <div class="bg-amber-50 rounded-xl p-4 border-2 border-amber-200">
+                <p class="text-2xl font-bold text-amber-600">{{ pending_bills }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">Pending Bills</p>
+                <p class="text-xs text-gray-500 mt-1">₱{{ "%.2f"|format(pending_amount) }}</p>
+            </div>
+            <div class="bg-red-50 rounded-xl p-4 border-2 border-red-200">
+                <p class="text-2xl font-bold text-red-600">{{ overdue_bills }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">Overdue Bills</p>
+                <p class="text-xs text-gray-500 mt-1">₱{{ "%.2f"|format(overdue_amount) }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Methods -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+            <h4 class="font-bold text-gray-900">Revenue by Payment Method</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Payment Method</th>
+                        <th class="px-6 py-3 text-right">Bill Count</th>
+                        <th class="px-6 py-3 text-right">Total Amount</th>
+                        <th class="px-6 py-3 text-right">Percentage</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if payment_methods %}
+                    {% for method in payment_methods %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ method.payment_method }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ method.count }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-right" style="color: {{ accent_color }}">
+                            ₱{{ "%.2f"|format(method.total) }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ "%.1f"|format(method.percentage) }}%</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="4" class="px-6 py-8 text-center text-gray-400 text-sm">No payment data available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Insurance & Discounts -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+            <h4 class="font-bold text-gray-900">Insurance Coverage & Discounts</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Type</th>
+                        <th class="px-6 py-3 text-right">Bill Count</th>
+                        <th class="px-6 py-3 text-right">Total Coverage/Discount</th>
+                        <th class="px-6 py-3 text-right">% of Total Billed</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">Insurance Coverage</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ insurance_count }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-blue-600 text-right">₱{{ "%.2f"|format(total_insurance) }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ "%.1f"|format(insurance_percent) }}%</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">PhilHealth Coverage</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ philhealth_count }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-emerald-600 text-right">₱{{ "%.2f"|format(total_philhealth) }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ "%.1f"|format(philhealth_percent) }}%</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">Senior Citizen Discount</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ senior_count }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-amber-600 text-right">₱{{ "%.2f"|format(total_senior) }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ "%.1f"|format(senior_percent) }}%</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">PWD Discount</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ pwd_count }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-purple-600 text-right">₱{{ "%.2f"|format(total_pwd) }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ "%.1f"|format(pwd_percent) }}%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Top Revenue Services -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+            <h4 class="font-bold text-gray-900">Top Revenue-Generating Services</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Service/Item</th>
+                        <th class="px-6 py-3 text-right">Quantity Sold</th>
+                        <th class="px-6 py-3 text-right">Avg Unit Price</th>
+                        <th class="px-6 py-3 text-right">Total Revenue</th>
+                        <th class="px-6 py-3 text-right">% of Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if top_services %}
+                    {% for service in top_services %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ service.description }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ service.quantity }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">₱{{ "%.2f"|format(service.avg_price) }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-right" style="color: {{ accent_color }}">
+                            ₱{{ "%.2f"|format(service.total_revenue) }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ "%.1f"|format(service.percentage) }}%</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="5" class="px-6 py-8 text-center text-gray-400 text-sm">No service data available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Monthly Revenue Trend -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+            <h4 class="font-bold text-gray-900">Monthly Revenue Trend</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Month</th>
+                        <th class="px-6 py-3 text-right">Bills Issued</th>
+                        <th class="px-6 py-3 text-right">Total Billed</th>
+                        <th class="px-6 py-3 text-right">Collected</th>
+                        <th class="px-6 py-3 text-right">Outstanding</th>
+                        <th class="px-6 py-3 text-right">Collection %</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if monthly_trend %}
+                    {% for month in monthly_trend %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ month.month_name }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ month.bill_count }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-right" style="color: {{ accent_color }}">
+                            ₱{{ "%.2f"|format(month.total_billed) }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-emerald-600 font-semibold text-right">
+                            ₱{{ "%.2f"|format(month.collected) }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-amber-600 font-semibold text-right">
+                            ₱{{ "%.2f"|format(month.outstanding) }}
+                        </td>
+                        <td class="px-6 py-4 text-sm font-bold text-right"
+                            style="color: {{ '#22c55e' if month.collection_rate >= 80 else '#f59e0b' }}">
+                            {{ "%.1f"|format(month.collection_rate) }}%
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-gray-400 text-sm">No monthly data available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

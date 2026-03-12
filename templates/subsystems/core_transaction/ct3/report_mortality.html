@@ -1,0 +1,238 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Mortality Report - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Mortality Report{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Mortality Report</h3>
+            <p class="text-sm text-gray-500">
+                {% if start_date and end_date %}
+                Period: {{ start_date }} to {{ end_date }}
+                {% else %}
+                All Time
+                {% endif %}
+            </p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{{ url_for('ct3.reports_hub') }}" class="text-sm text-gray-500 hover:text-gray-700">
+                <i class="bi bi-arrow-left mr-2"></i>Back to Reports
+            </a>
+            <button onclick="window.print()"
+                    class="px-4 py-2 rounded-lg font-bold text-white text-sm shadow transition-all hover:opacity-90"
+                    style="background: {{ accent_color }};">
+                <i class="bi bi-printer mr-2"></i>Print
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl shadow-lg p-6 text-white">
+            <i class="bi bi-heartbreak-fill text-3xl opacity-80 mb-2"></i>
+            <p class="text-sm uppercase tracking-wide font-bold opacity-90 mb-1">Total Deaths</p>
+            <p class="text-3xl font-bold">{{ total_deaths }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl shadow-lg p-6 text-white">
+            <i class="bi bi-percent text-3xl opacity-80 mb-2"></i>
+            <p class="text-sm uppercase tracking-wide font-bold opacity-90 mb-1">Mortality Rate</p>
+            <p class="text-3xl font-bold">{{ "%.2f"|format(mortality_rate) }}%</p>
+        </div>
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
+            <i class="bi bi-clock-history text-3xl opacity-80 mb-2"></i>
+            <p class="text-sm uppercase tracking-wide font-bold opacity-90 mb-1">Avg LOS Before Death</p>
+            <p class="text-3xl font-bold">{{ "%.1f"|format(avg_los_deceased) }}</p>
+            <p class="text-xs opacity-80 mt-1">days</p>
+        </div>
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
+            <i class="bi bi-hospital text-3xl opacity-80 mb-2"></i>
+            <p class="text-sm uppercase tracking-wide font-bold opacity-90 mb-1">Total Admissions</p>
+            <p class="text-3xl font-bold">{{ total_admissions }}</p>
+        </div>
+    </div>
+
+    <!-- Mortality by Ward -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+            <h4 class="font-bold text-gray-900">Mortality by Ward</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Ward</th>
+                        <th class="px-6 py-3 text-right">Total Admissions</th>
+                        <th class="px-6 py-3 text-right">Deaths</th>
+                        <th class="px-6 py-3 text-right">Mortality Rate</th>
+                        <th class="px-6 py-3 text-right">Avg LOS (Days)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if ward_stats %}
+                    {% for ward in ward_stats %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ ward.ward_name or 'Unassigned' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ ward.total_admissions }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-red-600 text-right">{{ ward.deaths }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-right"
+                            style="color: {{ '#ef4444' if ward.mortality_rate > 5 else '#f59e0b' if ward.mortality_rate > 2 else accent_color }}">
+                            {{ "%.2f"|format(ward.mortality_rate) }}%
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 font-semibold text-right">
+                            {{ "%.1f"|format(ward.avg_los or 0) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="5" class="px-6 py-8 text-center text-gray-400 text-sm">No ward data available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Cause of Death -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+            <h4 class="font-bold text-gray-900">Leading Causes of Death</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Cause of Death / Diagnosis</th>
+                        <th class="px-6 py-3 text-right">Count</th>
+                        <th class="px-6 py-3 text-right">Percentage</th>
+                        <th class="px-6 py-3 text-right">Avg LOS (Days)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if causes_of_death %}
+                    {% for cause in causes_of_death %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ cause.diagnosis or 'Unspecified' }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-red-600 text-right">{{ cause.count }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ "%.1f"|format(cause.percentage) }}%</td>
+                        <td class="px-6 py-4 text-sm text-gray-900 font-semibold text-right">
+                            {{ "%.1f"|format(cause.avg_los or 0) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="4" class="px-6 py-8 text-center text-gray-400 text-sm">No cause of death data available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Age Group Distribution -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h4 class="font-bold text-gray-900 mb-4">Mortality by Age Group</h4>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="bg-red-50 rounded-xl p-4 border-2 border-red-200 text-center">
+                <p class="text-2xl font-bold text-red-600">{{ age_0_18 }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">0-18 Years</p>
+            </div>
+            <div class="bg-red-50 rounded-xl p-4 border-2 border-red-200 text-center">
+                <p class="text-2xl font-bold text-red-600">{{ age_19_40 }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">19-40 Years</p>
+            </div>
+            <div class="bg-red-50 rounded-xl p-4 border-2 border-red-200 text-center">
+                <p class="text-2xl font-bold text-red-600">{{ age_41_60 }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">41-60 Years</p>
+            </div>
+            <div class="bg-red-50 rounded-xl p-4 border-2 border-red-200 text-center">
+                <p class="text-2xl font-bold text-red-600">{{ age_61_80 }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">61-80 Years</p>
+            </div>
+            <div class="bg-red-50 rounded-xl p-4 border-2 border-red-200 text-center">
+                <p class="text-2xl font-bold text-red-600">{{ age_81_plus }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">81+ Years</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Mortality Trend -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+            <h4 class="font-bold text-gray-900">Monthly Mortality Trend</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Month</th>
+                        <th class="px-6 py-3 text-right">Total Admissions</th>
+                        <th class="px-6 py-3 text-right">Deaths</th>
+                        <th class="px-6 py-3 text-right">Mortality Rate</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if monthly_trend %}
+                    {% for month in monthly_trend %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ month.month_name }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ month.admissions }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-red-600 text-right">{{ month.deaths }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-right"
+                            style="color: {{ '#ef4444' if month.mortality_rate > 5 else '#f59e0b' if month.mortality_rate > 2 else accent_color }}">
+                            {{ "%.2f"|format(month.mortality_rate) }}%
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="4" class="px-6 py-8 text-center text-gray-400 text-sm">No monthly data available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Deceased Patients Record -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+            <h4 class="font-bold text-gray-900">Deceased Patients Record</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Patient ID</th>
+                        <th class="px-6 py-3">Name</th>
+                        <th class="px-6 py-3">Age</th>
+                        <th class="px-6 py-3">Gender</th>
+                        <th class="px-6 py-3">Ward</th>
+                        <th class="px-6 py-3">Diagnosis</th>
+                        <th class="px-6 py-3">Date of Death</th>
+                        <th class="px-6 py-3 text-right">LOS (Days)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if deceased_patients %}
+                    {% for patient in deceased_patients %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ patient.patient_id_alt }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">{{ patient.first_name }} {{ patient.last_name }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ patient.age or 'N/A' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ patient.gender or 'N/A' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ patient.ward_name or 'N/A' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ patient.diagnosis or 'Unspecified' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {{ patient.discharge_date.strftime('%b %d, %Y') if patient.discharge_date else 'N/A' }}
+                        </td>
+                        <td class="px-6 py-4 text-sm font-bold text-right text-red-600">
+                            {{ patient.length_of_stay or 0 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="8" class="px-6 py-8 text-center text-gray-400 text-sm">No mortality records in this period.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

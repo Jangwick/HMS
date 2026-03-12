@@ -1,0 +1,168 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Census Report - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Census Report{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Patient Census Report</h3>
+            <p class="text-sm text-gray-500">
+                {% if start_date and end_date %}
+                Period: {{ start_date }} to {{ end_date }}
+                {% else %}
+                Current Census
+                {% endif %}
+            </p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{{ url_for('ct3.reports_hub') }}" class="text-sm text-gray-500 hover:text-gray-700">
+                <i class="bi bi-arrow-left mr-2"></i>Back to Reports
+            </a>
+            <button onclick="window.print()"
+                    class="px-4 py-2 rounded-lg font-bold text-white text-sm shadow transition-all hover:opacity-90"
+                    style="background: {{ accent_color }};">
+                <i class="bi bi-printer mr-2"></i>Print
+            </button>
+        </div>
+    </div>
+
+    <!-- Bed Occupancy Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-2">
+                <i class="bi bi-hospital text-3xl" style="color: {{ accent_color }}"></i>
+            </div>
+            <p class="text-sm text-gray-500 font-bold uppercase mb-1">Total Beds</p>
+            <p class="text-3xl font-bold text-gray-900">{{ total_beds }}</p>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-2">
+                <i class="bi bi-person-check text-3xl text-blue-500"></i>
+            </div>
+            <p class="text-sm text-gray-500 font-bold uppercase mb-1">Occupied Beds</p>
+            <p class="text-3xl font-bold text-blue-600">{{ occupied_beds }}</p>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-2">
+                <i class="bi bi-check-circle text-3xl text-emerald-500"></i>
+            </div>
+            <p class="text-sm text-gray-500 font-bold uppercase mb-1">Available Beds</p>
+            <p class="text-3xl font-bold text-emerald-600">{{ available_beds }}</p>
+        </div>
+    </div>
+
+    <!-- Occupancy Rate -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h4 class="font-bold text-gray-900 mb-4">Bed Occupancy Rate</h4>
+        <div class="relative pt-1">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold text-gray-700">{{ occupancy_rate }}% Occupied</span>
+                <span class="text-sm font-semibold text-gray-700">{{ occupied_beds }} / {{ total_beds }}</span>
+            </div>
+            <div class="flex h-6 overflow-hidden rounded-full bg-gray-200">
+                <div style="width: {{ occupancy_rate }}%; background: {{ accent_color }}"
+                     class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center transition-all"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Distribution -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h4 class="font-bold text-gray-900 mb-4">Patient Status Distribution</h4>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {% for status, count in status_distribution.items() %}
+            <div class="bg-gray-50 rounded-xl p-4 text-center">
+                <p class="text-2xl font-bold" style="color: {{ status_colors.get(status, '#6b7280') }}">{{ count }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">{{ status }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Active Patients by Ward -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+            <h4 class="font-bold text-gray-900">Active Patients by Ward</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Ward</th>
+                        <th class="px-6 py-3 text-right">Total Patients</th>
+                        <th class="px-6 py-3 text-right">Admitted</th>
+                        <th class="px-6 py-3 text-right">Under Treatment</th>
+                        <th class="px-6 py-3 text-right">Waiting</th>
+                        <th class="px-6 py-3 text-right">In Surgery</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if ward_breakdown %}
+                    {% for ward in ward_breakdown %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ ward.ward_name or 'Unassigned' }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-right" style="color: {{ accent_color }}">{{ ward.total }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ ward.admitted }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ ward.under_treatment }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ ward.waiting }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 text-right">{{ ward.in_surgery }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-gray-400 text-sm">No ward data available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Active Patients List -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+            <h4 class="font-bold text-gray-900">Currently Active Patients</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Patient ID</th>
+                        <th class="px-6 py-3">Name</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3">Ward</th>
+                        <th class="px-6 py-3">Bed</th>
+                        <th class="px-6 py-3">Admission Date</th>
+                        <th class="px-6 py-3 text-right">LOS (Days)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if patients %}
+                    {% for patient in patients %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ patient.patient_id_alt }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">{{ patient.first_name }} {{ patient.last_name }}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold"
+                                  style="background: {{ status_colors.get(patient.current_status, '#6b7280') }}20; color: {{ status_colors.get(patient.current_status, '#6b7280') }}">
+                                {{ patient.current_status or 'Registered' }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ patient.ward_name or 'N/A' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ patient.bed_number or 'N/A' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {{ patient.admission_date.strftime('%b %d, %Y') if patient.admission_date else 'N/A' }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 font-semibold text-right">
+                            {{ patient.length_of_stay or 0 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="7" class="px-6 py-8 text-center text-gray-400 text-sm">No active patients.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

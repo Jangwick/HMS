@@ -572,29 +572,73 @@
 
                 <!-- CT3: Admin & Finance -->
                 {% elif blueprint_name == 'ct3' %}
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Patient Management</div>
+                <a href="{{ url_for('ct3.patient_census') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.patient_census' }}">
+                    <i class="bi bi-list-check mr-3"></i>
+                    <span>Patient Census</span>
+                </a>
+                <a href="{{ url_for('ct3.status_board') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.status_board' }}">
+                    <i class="bi bi-display mr-3"></i>
+                    <span>Status Board</span>
+                </a>
+                <a href="{{ url_for('ct3.activity_feed') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.activity_feed' }}">
+                    <i class="bi bi-activity mr-3"></i>
+                    <span>Activity Feed</span>
+                </a>
+                <a href="{{ url_for('ct3.census_board') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.census_board' }}">
+                    <i class="bi bi-hospital mr-3"></i>
+                    <span>Census Board</span>
+                </a>
+                
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Operations</div>
+                <a href="{{ url_for('ct3.discharge_queue') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint.startswith('ct3.discharge') }}">
+                    <i class="bi bi-door-open mr-3"></i>
+                    <span>Discharge Queue</span>
+                </a>
+                <a href="{{ url_for('ct3.transfers') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint.startswith('ct3.transfer') }}">
+                    <i class="bi bi-arrow-left-right mr-3"></i>
+                    <span>Transfers</span>
+                </a>
+                <a href="{{ url_for('ct3.documents') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint.startswith('ct3.document') }}">
+                    <i class="bi bi-folder mr-3"></i>
+                    <span>Document Vault</span>
+                </a>
+                
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Finance & Records</div>
+                <a href="{{ url_for('ct3.billing') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint.startswith('ct3.billing') }}">
+                    <i class="bi bi-wallet2 mr-3"></i>
+                    <span>Billing System</span>
+                </a>
                 <a href="{{ url_for('ct3.patient_records') }}"
                     class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint.startswith('ct3.patient_records') or request.endpoint == 'ct3.view_record' }}">
                     <i class="bi bi-file-medical mr-3"></i>
-                    <span>Health Records (EMRS)</span>
+                    <span>Medical Records (EMRS)</span>
                 </a>
-                <a href="{{ url_for('ct3.billing') }}"
-                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.billing' }}">
-                    <i class="bi bi-wallet2 mr-3"></i>
-                    <span>Transactional Billing</span>
+                
+                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Analytics & Reports</div>
+                <a href="{{ url_for('ct3.reports_hub') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint.startswith('ct3.report') }}">
+                    <i class="bi bi-file-earmark-bar-graph mr-3"></i>
+                    <span>Reports Center</span>
                 </a>
                 {% if current_user.is_admin() %}
+                <a href="{{ url_for('ct3.analytics') }}"
+                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.analytics' }}">
+                    <i class="bi bi-bar-chart mr-3"></i>
+                    <span>Analytics Dashboard</span>
+                </a>
                 <a href="{{ url_for('ct3.security_logs') }}"
                     class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 {{ 'bg-gray-100 border-l-4 border-accent' if request.endpoint == 'ct3.security_logs' }}">
                     <i class="bi bi-shield-check mr-3"></i>
-                    <span>Security Admin</span>
-                </a>
-
-                <div class="px-6 py-2 mt-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Quick Actions
-                </div>
-                <a href="{{ url_for('ct3.patient_records', focus='search') }}"
-                    class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                    <i class="bi bi-search mr-3"></i>
-                    <span>Search Patient</span>
+                    <span>Security Logs</span>
                 </a>
                 {% endif %}
                 {% endif %}
@@ -972,8 +1016,8 @@
                     <div
                         class="text-[10px] sm:text-sm font-medium text-gray-500 text-right leading-tight whitespace-nowrap">
                         {% if now %}
-                        <div class="sm:inline">{{ now().strftime('%B') }} <span class="block sm:inline text-gray-800">{{
-                                now().strftime('%d, %Y') }}</span></div>
+                        <div class="sm:inline">{{ now.strftime('%B') }} <span class="block sm:inline text-gray-800">{{
+                                now.strftime('%d, %Y') }}</span></div>
                         {% endif %}
                     </div>
                 </div>

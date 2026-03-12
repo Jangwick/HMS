@@ -1,0 +1,86 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Transfer Detail - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Transfer Detail{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-3xl mx-auto">
+    <a href="{{ url_for('ct3.transfers') }}" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
+        <i class="bi bi-arrow-left mr-2"></i>Back to Transfers
+    </a>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">{{ patient.first_name }} {{ patient.last_name }}</h3>
+                <p class="text-sm text-gray-500">{{ patient.patient_id_alt }}</p>
+            </div>
+            <span class="px-4 py-2 rounded-full text-sm font-bold
+                {% if transfer.status == 'Completed' %}bg-emerald-100 text-emerald-700
+                {% elif transfer.status == 'In Transit' %}bg-amber-100 text-amber-700
+                {% elif transfer.status == 'Cancelled' %}bg-gray-100 text-gray-600
+                {% else %}bg-indigo-100 text-indigo-700{% endif %}">
+                {{ transfer.status }}
+            </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-gray-50 rounded-xl p-4">
+                <p class="text-xs font-bold text-gray-500 uppercase mb-1">Transfer Type</p>
+                <p class="font-semibold text-gray-900">{{ transfer.transfer_type }}</p>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-4">
+                <p class="text-xs font-bold text-gray-500 uppercase mb-1">Transport Mode</p>
+                <p class="font-semibold text-gray-900">{{ transfer.transport_mode or 'N/A' }}</p>
+            </div>
+            {% if transfer.destination_hospital %}
+            <div class="bg-gray-50 rounded-xl p-4">
+                <p class="text-xs font-bold text-gray-500 uppercase mb-1">Destination Hospital</p>
+                <p class="font-semibold text-gray-900">{{ transfer.destination_hospital }}</p>
+            </div>
+            {% endif %}
+            {% if transfer.destination_department %}
+            <div class="bg-gray-50 rounded-xl p-4">
+                <p class="text-xs font-bold text-gray-500 uppercase mb-1">Destination Department</p>
+                <p class="font-semibold text-gray-900">{{ transfer.destination_department }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="border-t border-gray-100 pt-6 space-y-4">
+            <div>
+                <p class="text-xs font-bold text-gray-500 uppercase mb-2">Reason for Transfer</p>
+                <p class="text-sm text-gray-700">{{ transfer.reason }}</p>
+            </div>
+            {% if transfer.clinical_summary %}
+            <div>
+                <p class="text-xs font-bold text-gray-500 uppercase mb-2">Clinical Summary</p>
+                <p class="text-sm text-gray-700 bg-gray-50 rounded-xl p-4">{{ transfer.clinical_summary }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="border-t border-gray-100 mt-6 pt-6 flex gap-3 flex-wrap">
+            {% if transfer.status == 'Pending' %}
+            <form method="POST" action="{{ url_for('ct3.complete_transfer', transfer_id=transfer.id) }}" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" onclick="return confirm('Mark this transfer as completed?')"
+                        class="px-5 py-2.5 rounded-xl font-bold text-white bg-emerald-600 text-sm shadow-lg hover:bg-emerald-700 transition-all">
+                    <i class="bi bi-check-circle mr-2"></i>Mark Completed
+                </button>
+            </form>
+            <form method="POST" action="{{ url_for('ct3.cancel_transfer', transfer_id=transfer.id) }}" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" onclick="return confirm('Cancel this transfer?')"
+                        class="px-5 py-2.5 rounded-xl font-bold text-gray-600 bg-gray-100 text-sm hover:bg-gray-200 transition-all">
+                    <i class="bi bi-x-circle mr-2"></i>Cancel Transfer
+                </button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('ct3.transfer_print', transfer_id=transfer.id) }}" target="_blank"
+               class="px-5 py-2.5 rounded-xl font-bold text-gray-600 bg-gray-100 text-sm hover:bg-gray-200 transition-all">
+                <i class="bi bi-printer mr-2"></i>Print Transfer Note
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

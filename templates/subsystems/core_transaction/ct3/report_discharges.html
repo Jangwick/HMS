@@ -1,0 +1,189 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Discharges Report - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Discharges Report{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Discharges Report</h3>
+            <p class="text-sm text-gray-500">
+                {% if start_date and end_date %}
+                Period: {{ start_date }} to {{ end_date }}
+                {% else %}
+                All Time
+                {% endif %}
+            </p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{{ url_for('ct3.reports_hub') }}" class="text-sm text-gray-500 hover:text-gray-700">
+                <i class="bi bi-arrow-left mr-2"></i>Back to Reports
+            </a>
+            <button onclick="window.print()"
+                    class="px-4 py-2 rounded-lg font-bold text-white text-sm shadow transition-all hover:opacity-90"
+                    style="background: {{ accent_color }};">
+                <i class="bi bi-printer mr-2"></i>Print
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl shadow-lg p-6 text-white">
+            <i class="bi bi-box-arrow-right text-3xl opacity-80 mb-2"></i>
+            <p class="text-sm uppercase tracking-wide font-bold opacity-90 mb-1">Total Discharges</p>
+            <p class="text-3xl font-bold">{{ total_discharges }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
+            <i class="bi bi-clock-history text-3xl opacity-80 mb-2"></i>
+            <p class="text-sm uppercase tracking-wide font-bold opacity-90 mb-1">Avg LOS</p>
+            <p class="text-3xl font-bold">{{ "%.1f"|format(avg_los) }}</p>
+            <p class="text-xs opacity-80 mt-1">days</p>
+        </div>
+        <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-6 text-white">
+            <i class="bi bi-hand-thumbs-up text-3xl opacity-80 mb-2"></i>
+            <p class="text-sm uppercase tracking-wide font-bold opacity-90 mb-1">Recovered</p>
+            <p class="text-3xl font-bold">{{ recovered_count }}</p>
+            <p class="text-xs opacity-80 mt-1">{{ "%.1f"|format(recovered_rate) }}%</p>
+        </div>
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
+            <i class="bi bi-calendar-check text-3xl opacity-80 mb-2"></i>
+            <p class="text-sm uppercase tracking-wide font-bold opacity-90 mb-1">Avg Per Day</p>
+            <p class="text-3xl font-bold">{{ avg_per_day }}</p>
+        </div>
+    </div>
+
+    <!-- LOS Distribution -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h4 class="font-bold text-gray-900 mb-4">Length of Stay (LOS) Distribution</h4>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="text-center p-4 bg-emerald-50 rounded-xl border-2 border-emerald-200">
+                <p class="text-2xl font-bold text-emerald-600">{{ los_0_1_days }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">0-1 Days</p>
+            </div>
+            <div class="text-center p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                <p class="text-2xl font-bold text-blue-600">{{ los_2_3_days }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">2-3 Days</p>
+            </div>
+            <div class="text-center p-4 bg-amber-50 rounded-xl border-2 border-amber-200">
+                <p class="text-2xl font-bold text-amber-600">{{ los_4_7_days }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">4-7 Days</p>
+            </div>
+            <div class="text-center p-4 bg-orange-50 rounded-xl border-2 border-orange-200">
+                <p class="text-2xl font-bold text-orange-600">{{ los_8_14_days }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">8-14 Days</p>
+            </div>
+            <div class="text-center p-4 bg-red-50 rounded-xl border-2 border-red-200">
+                <p class="text-2xl font-bold text-red-600">{{ los_15_plus_days }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">15+ Days</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Discharges by Ward -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+            <h4 class="font-bold text-gray-900">Discharges by Ward</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Ward</th>
+                        <th class="px-6 py-3 text-right">Total Discharges</th>
+                        <th class="px-6 py-3 text-right">Avg LOS (Days)</th>
+                        <th class="px-6 py-3 text-right">Recovered</th>
+                        <th class="px-6 py-3 text-right">Transferred</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if ward_stats %}
+                    {% for ward in ward_stats %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ ward.ward_name or 'Unassigned' }}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-right" style="color: {{ accent_color }}">{{ ward.total }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900 font-semibold text-right">{{ "%.1f"|format(ward.avg_los or 0) }}</td>
+                        <td class="px-6 py-4 text-sm text-emerald-600 font-semibold text-right">{{ ward.recovered }}</td>
+                        <td class="px-6 py-4 text-sm text-purple-600 font-semibold text-right">{{ ward.transferred }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="5" class="px-6 py-8 text-center text-gray-400 text-sm">No ward data available.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Discharge Plans Status -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h4 class="font-bold text-gray-900 mb-4">Discharge Plan Clearance Status</h4>
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-amber-50 rounded-xl p-4 border-2 border-amber-200">
+                <p class="text-2xl font-bold text-amber-600">{{ pending_clearance }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">Pending Clearance</p>
+            </div>
+            <div class="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+                <p class="text-2xl font-bold text-blue-600">{{ reviewing }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">Under Review</p>
+            </div>
+            <div class="bg-emerald-50 rounded-xl p-4 border-2 border-emerald-200">
+                <p class="text-2xl font-bold text-emerald-600">{{ fully_cleared }}</p>
+                <p class="text-xs text-gray-600 font-semibold uppercase mt-1">Fully Cleared</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Discharges -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-50">
+            <h4 class="font-bold text-gray-900">Recent Discharges</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3">Patient ID</th>
+                        <th class="px-6 py-3">Name</th>
+                        <th class="px-6 py-3">Ward</th>
+                        <th class="px-6 py-3">Admission Date</th>
+                        <th class="px-6 py-3">Discharge Date</th>
+                        <th class="px-6 py-3 text-right">LOS (Days)</th>
+                        <th class="px-6 py-3">Outcome</th>
+                        <th class="px-6 py-3">Diagnosis</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if discharges %}
+                    {% for dis in discharges %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-semibold text-gray-900">{{ dis.patient_id_alt }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">{{ dis.first_name }} {{ dis.last_name }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ dis.ward_name or 'N/A' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {{ dis.admission_date.strftime('%b %d, %Y') if dis.admission_date else 'N/A' }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {{ dis.discharge_date.strftime('%b %d, %Y') if dis.discharge_date else 'N/A' }}
+                        </td>
+                        <td class="px-6 py-4 text-sm font-bold text-right" style="color: {{ accent_color }}">
+                            {{ dis.length_of_stay or 0 }}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold"
+                                  style="background: {{ status_colors.get(dis.current_status, '#6b7280') }}20; color: {{ status_colors.get(dis.current_status, '#6b7280') }}">
+                                {{ dis.current_status or 'Discharged' }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ dis.diagnosis or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="8" class="px-6 py-8 text-center text-gray-400 text-sm">No discharges in this period.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

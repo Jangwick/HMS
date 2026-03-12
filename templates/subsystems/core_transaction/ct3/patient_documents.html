@@ -1,0 +1,149 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Patient Documents - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Patient Documents{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-5xl mx-auto">
+    <a href="{{ url_for('ct3.patient_status_panel', patient_id=patient.id) }}" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
+        <i class="bi bi-arrow-left mr-2"></i>Back to Patient
+    </a>
+
+    <!-- Patient Header -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between">
+        <div>
+            <h3 class="font-bold text-lg text-gray-900">{{ patient.first_name }} {{ patient.last_name }}</h3>
+            <p class="text-sm text-gray-500">{{ patient.patient_id_alt }} — Patient Documents</p>
+        </div>
+        <button onclick="toggleModal('uploadModal')"
+                class="px-4 py-2 rounded-xl font-bold text-white text-sm shadow transition-all hover:opacity-90"
+                style="background: {{ accent_color }};">
+            <i class="bi bi-plus-lg mr-1"></i>Upload
+        </button>
+    </div>
+
+    <!-- Documents List -->
+    <div class="space-y-3">
+        {% if docs %}
+        {% for doc in docs %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 text-lg flex-shrink-0">
+                    <i class="bi bi-file-earmark-text"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between gap-3 mb-1">
+                        <h4 class="font-bold text-gray-900">{{ doc.title }}</h4>
+                        {% if doc.is_confidential %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 flex-shrink-0">
+                            <i class="bi bi-lock-fill"></i> Confidential
+                        </span>
+                        {% endif %}
+                    </div>
+                    <p class="text-sm text-gray-600 mb-2">{{ doc.description or 'No description provided.' }}</p>
+                    <div class="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                        <span class="font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{{ doc.document_type }}</span>
+                        <span>Uploaded {{ (doc.uploaded_at or '')[:10] }}</span>
+                        {% if doc.file_size_kb %}<span>{{ doc.file_size_kb }} KB</span>{% endif %}
+                    </div>
+                </div>
+                <div class="flex gap-2 flex-shrink-0">
+                    {% if doc.file_url %}
+                    <a href="{{ doc.file_url }}" target="_blank"
+                       class="px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:opacity-80"
+                       style="background: {{ accent_color }};">
+                        <i class="bi bi-download mr-1"></i>View
+                    </a>
+                    {% endif %}
+                    {% if current_user.is_admin() %}
+                    <form method="POST" action="{{ url_for('ct3.delete_document', doc_id=doc.id) }}" class="inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" onclick="return confirm('Delete this document?')"
+                                class="px-3 py-2 rounded-lg text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-all">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+            <i class="bi bi-folder2-open text-4xl text-gray-200 block mb-3"></i>
+            <p class="text-gray-400">No documents uploaded for this patient yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="uploadModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" onclick="if(event.target===this) toggleModal('uploadModal')">
+    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full" onclick="event.stopPropagation()">
+        <div class="p-6 border-b border-gray-100">
+            <h4 class="font-bold text-lg text-gray-900">Upload Document for {{ patient.first_name }} {{ patient.last_name }}</h4>
+        </div>
+        <form method="POST" action="{{ url_for('ct3.upload_document') }}" class="p-6 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="patient_id" value="{{ patient.id }}">
+            <input type="hidden" name="redirect_patient_id" value="{{ patient.id }}">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Document Type *</label>
+                <select name="document_type" required
+                        class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                    {% for dt in doc_types %}
+                    <option value="{{ dt }}">{{ dt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Title *</label>
+                <input type="text" name="title" required
+                       class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                       placeholder="Document title">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                <textarea name="description" rows="2"
+                          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                          placeholder="Optional description..."></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">File URL</label>
+                <input type="url" name="file_url"
+                       class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                       placeholder="https://...">
+            </div>
+            <div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="is_confidential" value="1" class="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-300">
+                    <span class="text-sm font-semibold text-gray-700">Mark as confidential</span>
+                </label>
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button type="submit"
+                        class="px-6 py-3 rounded-xl font-bold text-white text-sm shadow-lg transition-all hover:opacity-90"
+                        style="background: {{ accent_color }};">
+                    <i class="bi bi-upload mr-2"></i>Upload
+                </button>
+                <button type="button" onclick="toggleModal('uploadModal')"
+                        class="px-5 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 text-sm hover:bg-gray-200 transition-all">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleModal(id) {
+    const modal = document.getElementById(id);
+    if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    } else {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+</script>
+{% endblock %}

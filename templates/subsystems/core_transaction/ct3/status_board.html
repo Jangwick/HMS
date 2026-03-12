@@ -1,0 +1,59 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Live Status Board - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Hospital Status Board{% endblock %}
+
+{% block content %}
+<meta http-equiv="refresh" content="60">
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Live Status Board</h3>
+            <p class="text-gray-500 text-sm">Auto-refreshes every 60 seconds · {{ now.strftime('%B %d, %Y %H:%M') }} UTC</p>
+        </div>
+        <a href="{{ url_for('ct3.patient_census') }}" class="px-4 py-2 text-sm font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all">
+            <i class="bi bi-list-ul mr-1"></i>Full Census
+        </a>
+    </div>
+
+    {% if by_status %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {% for status, patients in by_status.items() %}
+        {% if patients %}
+        {% set color = status_colors.get(status, '#6B7280') %}
+        <div class="bg-white rounded-2xl shadow-sm border overflow-hidden" style="border-color: {{ color }}30">
+            <div class="flex items-center justify-between px-5 py-4" style="background: {{ color }}15">
+                <h4 class="font-bold text-sm" style="color: {{ color }}">{{ status }}</h4>
+                <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                      style="background: {{ color }}">{{ patients | length }}</span>
+            </div>
+            <div class="divide-y divide-gray-50">
+                {% for p in patients[:8] %}
+                <div class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors">
+                    <div>
+                        <a href="{{ url_for('ct3.patient_status_panel', patient_id=p.id) }}"
+                           class="font-semibold text-sm text-gray-900 hover:underline">
+                            {{ p.first_name }} {{ p.last_name }}
+                        </a>
+                        <p class="text-xs text-gray-400">{{ p.patient_id_alt }}</p>
+                    </div>
+                    <span class="text-xs text-gray-400">{{ (p.status_updated_at or '')[:10] }}</span>
+                </div>
+                {% endfor %}
+                {% if patients | length > 8 %}
+                <div class="px-5 py-2 text-xs text-center text-gray-400">
+                    + {{ (patients | length) - 8 }} more
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+        <i class="bi bi-hospital text-4xl text-gray-200 block mb-3"></i>
+        <p class="text-gray-400">No active patients to display.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

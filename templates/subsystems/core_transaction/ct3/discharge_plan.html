@@ -1,0 +1,134 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Discharge Plan - {{ subsystem_name }}{% endblock %}
+{% block header_title %}Discharge Planning{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-4xl mx-auto">
+    <a href="{{ url_for('ct3.discharge_queue') }}" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
+        <i class="bi bi-arrow-left mr-2"></i>Back to Queue
+    </a>
+
+    <!-- Patient Info -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">{{ patient.first_name }} {{ patient.last_name }}</h3>
+                <p class="text-sm text-gray-500">{{ patient.patient_id_alt }} · Status: {{ patient.current_status or 'N/A' }}</p>
+            </div>
+            <span class="px-4 py-2 rounded-full text-sm font-bold
+                {% if plan.status == 'Cleared' %}bg-emerald-100 text-emerald-700
+                {% elif plan.status == 'Reviewing' %}bg-indigo-100 text-indigo-700
+                {% else %}bg-amber-100 text-amber-700{% endif %}">
+                {{ plan.status or 'Pending' }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Clearance Checks -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h4 class="font-bold text-gray-900 mb-4">Discharge Clearance Checklist</h4>
+        <div class="space-y-2">
+            <div class="flex items-center justify-between p-3 rounded-xl {{ 'bg-emerald-50' if billing_cleared else 'bg-amber-50' }}">
+                <span class="text-sm font-semibold {{ 'text-emerald-700' if billing_cleared else 'text-amber-700' }}">
+                    <i class="bi bi-{{ 'check-circle-fill' if billing_cleared else 'clock' }} mr-2"></i>Billing Cleared
+                </span>
+                <span class="text-xs font-bold {{ 'text-emerald-600' if billing_cleared else 'text-amber-600' }}">
+                    {{ 'CLEARED' if billing_cleared else 'PENDING' }}
+                </span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl {{ 'bg-emerald-50' if labs_cleared else 'bg-amber-50' }}">
+                <span class="text-sm font-semibold {{ 'text-emerald-700' if labs_cleared else 'text-amber-700' }}">
+                    <i class="bi bi-{{ 'check-circle-fill' if labs_cleared else 'clock' }} mr-2"></i>Lab Results Finalized
+                </span>
+                <span class="text-xs font-bold {{ 'text-emerald-600' if labs_cleared else 'text-amber-600' }}">
+                    {{ 'CLEARED' if labs_cleared else 'PENDING' }}
+                </span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl {{ 'bg-emerald-50' if plan.discharge_summary else 'bg-amber-50' }}">
+                <span class="text-sm font-semibold {{ 'text-emerald-700' if plan.discharge_summary else 'text-amber-700' }}">
+                    <i class="bi bi-{{ 'check-circle-fill' if plan.discharge_summary else 'clock' }} mr-2"></i>Discharge Summary Completed
+                </span>
+                <span class="text-xs font-bold {{ 'text-emerald-600' if plan.discharge_summary else 'text-amber-600' }}">
+                    {{ 'COMPLETED' if plan.discharge_summary else 'PENDING' }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Discharge Plan Form -->
+    <form method="POST" class="space-y-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="save">
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-5">
+            <h4 class="font-bold text-gray-900">Discharge Documentation</h4>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Discharge Summary *</label>
+                <textarea name="discharge_summary" rows="4" required
+                          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                          placeholder="Comprehensive discharge summary...">{{ plan.discharge_summary or '' }}</textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Discharge Diagnosis</label>
+                <input type="text" name="discharge_diagnosis" value="{{ plan.discharge_diagnosis or '' }}"
+                       class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                       placeholder="Final diagnosis">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Follow-up Date</label>
+                    <input type="date" name="follow_up_date" value="{{ plan.follow_up_date or '' }}"
+                           class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Follow-up Notes</label>
+                    <input type="text" name="follow_up_notes" value="{{ plan.follow_up_notes or '' }}"
+                           class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                           placeholder="Follow-up instructions">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Activity Restrictions</label>
+                <textarea name="activity_restrictions" rows="2"
+                          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                          placeholder="e.g., No heavy lifting, bed rest for 2 weeks...">{{ plan.activity_restrictions or '' }}</textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Diet Instructions</label>
+                <textarea name="diet_instructions" rows="2"
+                          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                          placeholder="Dietary recommendations...">{{ plan.diet_instructions or '' }}</textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Wound Care Notes</label>
+                <textarea name="wound_care_notes" rows="2"
+                          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                          placeholder="Wound care instructions...">{{ plan.wound_care_notes or '' }}</textarea>
+            </div>
+        </div>
+
+        <div class="flex gap-3 flex-wrap">
+            <button type="submit" onclick="this.form.action.value='save'"
+                    class="px-6 py-3 rounded-xl font-bold text-white text-sm shadow-lg transition-all hover:opacity-90"
+                    style="background: {{ accent_color }};">
+                <i class="bi bi-save mr-2"></i>Save Plan
+            </button>
+            {% if fully_cleared %}
+            <button type="submit" onclick="this.form.action.value='clear'; return confirm('Clear this patient for discharge?')"
+                    class="px-6 py-3 rounded-xl font-bold text-white bg-emerald-600 text-sm shadow-lg hover:bg-emerald-700 transition-all">
+                <i class="bi bi-check-circle mr-2"></i>Clear for Discharge
+            </button>
+            {% else %}
+            <button type="button" disabled
+                    class="px-6 py-3 rounded-xl font-bold text-gray-400 bg-gray-200 text-sm cursor-not-allowed">
+                <i class="bi bi-lock mr-2"></i>Clear for Discharge (Incomplete)
+            </button>
+            {% endif %}
+            <a href="{{ url_for('ct3.discharge_plan_print', plan_id=plan.id) }}" target="_blank"
+               class="px-6 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 text-sm hover:bg-gray-200 transition-all">
+                <i class="bi bi-printer mr-2"></i>Print Summary
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
