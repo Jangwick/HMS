@@ -41,6 +41,7 @@
                         <input type="text" name="first_name" required
                             pattern="[A-Za-z\u00C0-\u024F\s\-']+"
                             title="First name must contain letters only (spaces, hyphens, apostrophes allowed)"
+                            oninput="this.value=this.value.replace(/[0-9]/g,'')"
                             class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
                             placeholder="e.g. John">
                     </div>
@@ -49,6 +50,7 @@
                         <input type="text" name="last_name" required
                             pattern="[A-Za-z\u00C0-\u024F\s\-']+"
                             title="Last name must contain letters only (spaces, hyphens, apostrophes allowed)"
+                            oninput="this.value=this.value.replace(/[0-9]/g,'')"
                             class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
                             placeholder="e.g. Doe">
                     </div>
