@@ -163,33 +163,61 @@ def dashboard():
             approvals_resp = client.table('procurement_budget_approvals').select('*').eq('status', 'PENDING_FINANCE').order('requested_at', desc=True).limit(10).execute()
             approvals = approvals_resp.data or []
 
-            po_ids = [row.get('requisition_id') for row in approvals if row.get('requisition_id')]
-            po_map = {}
+            po_ids_from_approvals = [row.get('requisition_id') for row in approvals if row.get('requisition_id')]
+            pending_pos_resp = client.table('purchase_orders').select(
+                'id, po_number, total_amount, supplier_id, status, finance_approval_status, finance_requested_at, created_at'
+            ).eq('finance_approval_status', 'PENDING_FINANCE').order('finance_requested_at', desc=True).limit(10).execute()
+            pending_purchase_orders = pending_pos_resp.data or []
+
+            all_po_ids = list({po_id for po_id in po_ids_from_approvals if po_id} | {
+                po.get('id') for po in pending_purchase_orders if po.get('id') is not None
+            })
+
+            po_map = {po.get('id'): po for po in pending_purchase_orders if po.get('id') is not None}
             supplier_map = {}
 
-            if po_ids:
-                pos_resp = client.table('purchase_orders').select('id, po_number, total_amount, supplier_id, status, finance_approval_status, created_at').in_('id', po_ids).execute()
-                purchase_orders = pos_resp.data or []
-                po_map = {po.get('id'): po for po in purchase_orders if po.get('id') is not None}
+            missing_po_ids = [po_id for po_id in all_po_ids if po_id not in po_map]
+            if missing_po_ids:
+                pos_resp = client.table('purchase_orders').select(
+                    'id, po_number, total_amount, supplier_id, status, finance_approval_status, finance_requested_at, created_at'
+                ).in_('id', missing_po_ids).execute()
+                for po in (pos_resp.data or []):
+                    if po.get('id') is not None:
+                        po_map[po.get('id')] = po
 
-                supplier_ids = list({po.get('supplier_id') for po in purchase_orders if po.get('supplier_id')})
-                if supplier_ids:
-                    suppliers_resp = client.table('suppliers').select('id, supplier_name').in_('id', supplier_ids).execute()
-                    suppliers = suppliers_resp.data or []
-                    supplier_map = {s.get('id'): s.get('supplier_name') for s in suppliers if s.get('id') is not None}
+            supplier_ids = list({po.get('supplier_id') for po in po_map.values() if po.get('supplier_id')})
+            if supplier_ids:
+                suppliers_resp = client.table('suppliers').select('id, supplier_name').in_('id', supplier_ids).execute()
+                suppliers = suppliers_resp.data or []
+                supplier_map = {s.get('id'): s.get('supplier_name') for s in suppliers if s.get('id') is not None}
 
+            approvals_by_po = {}
             for approval in approvals:
                 po_id = approval.get('requisition_id')
+                if not po_id:
+                    continue
+                existing = approvals_by_po.get(po_id)
+                if not existing or str(approval.get('requested_at') or '') > str(existing.get('requested_at') or ''):
+                    approvals_by_po[po_id] = approval
+
+            for po_id in all_po_ids:
                 po = po_map.get(po_id, {})
+                approval = approvals_by_po.get(po_id, {})
                 supplier_name = supplier_map.get(po.get('supplier_id')) or 'N/A'
                 pending_po_approvals.append({
                     'po_id': po_id,
                     'po_number': po.get('po_number') or f"PO-{po_id}",
                     'supplier_name': supplier_name,
                     'requested_amount': float(approval.get('requested_amount') or po.get('total_amount') or 0),
-                    'requested_at': approval.get('requested_at'),
+                    'requested_at': approval.get('requested_at') or po.get('finance_requested_at') or po.get('created_at'),
                     'finance_remarks': approval.get('finance_remarks') or ''
                 })
+
+            pending_po_approvals = sorted(
+                pending_po_approvals,
+                key=lambda row: str(row.get('requested_at') or ''),
+                reverse=True
+            )[:10]
 
             stats['pending_po_approvals'] = len(pending_po_approvals)
         except Exception as po_err:

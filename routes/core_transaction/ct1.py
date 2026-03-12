@@ -1355,6 +1355,12 @@ def schedule_telehealth():
     try:
         import uuid
         scheduled_at = request.form.get('scheduled_at') or ''
+        duration_minutes_raw = request.form.get('duration_minutes', '30')
+        try:
+            duration_minutes = int(duration_minutes_raw)
+        except (TypeError, ValueError):
+            duration_minutes = 30
+        duration_minutes = max(5, min(duration_minutes, 240))
         # §4.2 Auto-generate unique Jitsi meeting link if none provided
         raw_link = (request.form.get('meeting_link') or '').strip()
         if not raw_link:
@@ -1364,11 +1370,19 @@ def schedule_telehealth():
             'patient_id': request.form.get('patient_id'),
             'doctor_id': request.form.get('doctor_id'),
             'scheduled_at': scheduled_at,
+            'duration_minutes': duration_minutes,
             'meeting_link': raw_link,
             'notes': request.form.get('notes'),
             'status': 'Scheduled'
         }
-        TelehealthSession.create(data)
+        try:
+            TelehealthSession.create(data)
+        except Exception as create_err:
+            if 'duration_minutes' in str(create_err):
+                data.pop('duration_minutes', None)
+                TelehealthSession.create(data)
+            else:
+                raise
         flash(f'Telehealth session scheduled. Meeting link: {raw_link}', 'success')
     except Exception as e:
         flash(f'Error scheduling: {str(e)}', 'danger')
@@ -1395,7 +1409,7 @@ def start_telehealth_session(session_id):
 @ct1_bp.route('/telehealth/<int:session_id>/end', methods=['POST'])
 @login_required
 def end_telehealth_session(session_id):
-    """Record session end time, compute duration, mark Completed."""
+    """Record session end time, compute duration, mark Session Ended."""
     from datetime import datetime
     client = get_supabase_client()
     try:
@@ -1477,12 +1491,14 @@ def join_telehealth_session(session_id):
         update = {}
         if current_user.id == sess.get('doctor_id'):
             update['doctor_joined_at'] = now_iso
-            # Auto-start session when doctor joins if still Scheduled
-            if sess.get('status') == 'Scheduled':
-                update['status'] = 'On-going'
-                update['started_at'] = now_iso
-        elif current_user.id == sess.get('patient_id') or True:  # patient
+        elif current_user.id == sess.get('patient_id'):
             update['patient_joined_at'] = now_iso
+
+        # Auto-start session when any participant joins if still Scheduled
+        if sess.get('status') == 'Scheduled':
+            update['status'] = 'On-going'
+            if not sess.get('started_at'):
+                update['started_at'] = now_iso
 
         if update:
             try:
