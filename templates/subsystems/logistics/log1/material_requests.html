@@ -22,6 +22,7 @@
                     <th class="px-6 py-4">Request #</th>
                     <th class="px-6 py-4">Item</th>
                     <th class="px-6 py-4">Qty</th>
+                    <th class="px-6 py-4">Recommended Batch</th>
                     <th class="px-6 py-4">Recipient</th>
                     <th class="px-6 py-4">Status</th>
                     <th class="px-6 py-4 text-right">Actions</th>
@@ -31,33 +32,55 @@
                 {% for req in requests %}
                 <tr>
                     <td class="px-6 py-4 font-bold text-gray-900">{{ req.request_no or ('MR-' ~ req.id) }}</td>
-                    <td class="px-6 py-4 text-gray-700">#{{ req.item_id }}</td>
+                    <td class="px-6 py-4 text-gray-700">{{ req.requested_item_name or ('#' ~ req.item_id) }}</td>
                     <td class="px-6 py-4 text-gray-700">{{ req.quantity }}</td>
+                    <td class="px-6 py-4 text-gray-700">
+                        {% if req.suggested_batch_number %}
+                        <div class="font-bold text-gray-900">{{ req.suggested_batch_number }}</div>
+                        <div class="text-[11px] text-gray-500">{{ req.allocation_strategy or 'FEFO' }}</div>
+                        {% elif req.dispensed_batch_number %}
+                        <div class="font-bold text-emerald-700">Dispensed: {{ req.dispensed_batch_number }}</div>
+                        {% else %}
+                        <span class="text-gray-400 text-sm">Pending validation</span>
+                        {% endif %}
+                    </td>
                     <td class="px-6 py-4 text-gray-700">{{ req.recipient_name or 'N/A' }}</td>
                     <td class="px-6 py-4">
                         <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase
                             {% if req.status == 'DELIVERED' %}bg-emerald-100 text-emerald-700
                             {% elif req.status == 'REJECTED_OUT_OF_STOCK' %}bg-red-100 text-red-700
+                            {% elif req.status == 'APPROVED' or req.status == 'FOR_DELIVERY' %}bg-blue-100 text-blue-700
                             {% elif req.status == 'FOR_DELIVERY' %}bg-blue-100 text-blue-700
                             {% else %}bg-amber-100 text-amber-700{% endif %}">
                             {{ req.status or 'PENDING' }}
                         </span>
+                        {% if req.suggestion_notes %}
+                        <p class="text-[11px] text-gray-500 mt-1">{{ req.suggestion_notes }}</p>
+                        {% endif %}
                     </td>
                     <td class="px-6 py-4 text-right">
-                        <div class="inline-flex items-center gap-2">
+                        <div class="inline-flex items-center gap-2 flex-wrap justify-end">
                             {% if current_user.is_admin() and req.status == 'PENDING' %}
-                            <form method="POST" action="{{ url_for('log1.approve_material_request', request_id=req.id) }}" class="inline">
+                            <form method="POST" action="{{ url_for('log1.validate_material_request', request_id=req.id) }}" class="inline-flex items-center gap-1">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100">Approve</button>
+                                <input type="hidden" name="allocation_strategy" value="FEFO">
+                                <button type="submit" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100">Validate FEFO</button>
+                            </form>
+                            <form method="POST" action="{{ url_for('log1.validate_material_request', request_id=req.id) }}" class="inline-flex items-center gap-1">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="allocation_strategy" value="FIFO">
+                                <button type="submit" class="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold hover:bg-indigo-100">Validate FIFO</button>
                             </form>
                             <form method="POST" action="{{ url_for('log1.reject_material_request_out_of_stock', request_id=req.id) }}" class="inline">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-bold hover:bg-red-100">Reject OOS</button>
                             </form>
                             {% endif %}
-                            {% if current_user.is_admin() and req.status == 'FOR_DELIVERY' %}
-                            <form method="POST" action="{{ url_for('log1.deliver_material_request', request_id=req.id) }}" class="inline">
+                            {% if current_user.is_admin() and (req.status == 'FOR_DELIVERY' or req.status == 'APPROVED') %}
+                            <form method="POST" action="{{ url_for('log1.deliver_material_request', request_id=req.id) }}" class="inline-flex items-center gap-1">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="number" name="override_batch_id" min="1" placeholder="Override Batch ID"
+                                    class="px-2 py-1.5 border border-gray-200 rounded text-xs w-32">
                                 <button type="submit" class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100">Mark Delivered</button>
                             </form>
                             {% endif %}
@@ -66,7 +89,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="px-6 py-10 text-center text-gray-400">No material requests found.</td>
+                    <td colspan="7" class="px-6 py-10 text-center text-gray-400">No material requests found.</td>
                 </tr>
                 {% endfor %}
             </tbody>

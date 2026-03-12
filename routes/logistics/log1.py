@@ -46,6 +46,39 @@ def _notify(subsystem, title, message, n_type='info', target_url=None, user_id=N
         pass
 
 
+def _notify_finance_users(client, title, message, target_url=None, n_type='warning'):
+    sent_count = 0
+    try:
+        users_resp = client.table('users').select('id').eq('subsystem', 'financials').execute()
+        finance_users = users_resp.data or []
+        for user in finance_users:
+            user_id = user.get('id')
+            if not user_id:
+                continue
+            _notify(
+                subsystem=None,
+                user_id=user_id,
+                title=title,
+                message=message,
+                n_type=n_type,
+                target_url=target_url
+            )
+            sent_count += 1
+    except Exception:
+        pass
+
+    if sent_count == 0:
+        _notify(
+            subsystem='financials',
+            title=title,
+            message=message,
+            n_type=n_type,
+            target_url=target_url
+        )
+
+    return sent_count
+
+
 def _insert_supplier_document_record(client, doc_type, po=None, receiving_id=None, document_no=None, file_url=None, metadata=None):
     payload = {
         'title': f"{doc_type} {document_no or ''}".strip(),
@@ -139,6 +172,62 @@ def _create_purchase_requisition_for_out_of_stock(client, item_name, quantity, n
             pass
 
     return requisition_id
+
+
+def _parse_iso_date(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+    except Exception:
+        return None
+
+
+def _get_available_batches(client, item_name):
+    try:
+        resp = client.table('inventory').select('*').eq('item_name', item_name).execute()
+        return [row for row in (resp.data or []) if _safe_float(row.get('quantity')) > 0]
+    except Exception:
+        return []
+
+
+def _recommend_batch(batches, strategy='FEFO'):
+    strategy = (strategy or 'FEFO').upper()
+    if not batches:
+        return None
+
+    if strategy == 'FIFO':
+        # First In, First Out: oldest arrival first
+        def fifo_key(row):
+            created = _parse_iso_date(row.get('created_at')) or _parse_iso_date(row.get('received_at'))
+            return (created or datetime.min, _safe_int(row.get('id')))
+        ordered = sorted(batches, key=fifo_key)
+    else:
+        # FEFO default: earliest expiration first, then oldest arrival
+        def fefo_key(row):
+            expiry = _parse_iso_date(row.get('expiry_date'))
+            created = _parse_iso_date(row.get('created_at')) or _parse_iso_date(row.get('received_at'))
+            # None expiry should go last
+            return (expiry is None, expiry or datetime.max, created or datetime.min, _safe_int(row.get('id')))
+        ordered = sorted(batches, key=fefo_key)
+
+    return ordered[0]
+
+
+def _resolve_request_item_name(client, req):
+    requested_item_name = (req.get('requested_item_name') or '').strip()
+    if requested_item_name:
+        return requested_item_name
+
+    item_id = req.get('item_id')
+    if not item_id:
+        return None
+
+    try:
+        inv_resp = client.table('inventory').select('*').eq('id', item_id).single().execute()
+        return (inv_resp.data or {}).get('item_name')
+    except Exception:
+        return None
 
 @log1_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -567,8 +656,8 @@ def dispense_item():
                 target_url=url_for('log1.procurement')
             )
             _notify(
-                subsystem='ct3',
-                title='Finance Approval Needed',
+                subsystem='financials',
+                title='Action Required: Finance Approval Needed',
                 message=f"Budget approval required for out-of-stock requisition ({item_name} x {quantity_to_dispense}).",
                 n_type='warning',
                 target_url=url_for('log1.procurement')
@@ -677,11 +766,12 @@ def create_material_request():
     quantity = _safe_float(request.form.get('quantity'))
     recipient_name = (request.form.get('recipient_name') or '').strip()
     recipient_lang = (request.form.get('recipient_lang') or '').strip()
+    requested_item_name = (request.form.get('requested_item_name') or '').strip()
     project_id = request.form.get('project_id')
     project_id = _safe_int(project_id, None) if project_id else None
 
-    if not item_id or not storage_location_id or quantity <= 0 or not recipient_name:
-        flash('Item, storage location, quantity, and recipient are required.', 'danger')
+    if (not item_id and not requested_item_name) or not storage_location_id or quantity <= 0 or not recipient_name:
+        flash('Item (ID or name), storage location, quantity, and recipient are required.', 'danger')
         return redirect(url_for('log1.list_inventory'))
 
     try:
@@ -692,11 +782,13 @@ def create_material_request():
             'requested_by': current_user.id,
             'requesting_department_id': _safe_int(request.form.get('requesting_department_id')),
             'item_id': item_id,
+            'requested_item_name': requested_item_name or None,
             'storage_location_id': storage_location_id,
             'quantity': quantity,
             'recipient_name': recipient_name,
             'recipient_lang': recipient_lang,
             'status': 'PENDING',
+            'allocation_strategy': (request.form.get('allocation_strategy') or 'FEFO').upper(),
             'created_at': datetime.utcnow().isoformat(),
             'updated_at': datetime.utcnow().isoformat()
         }).execute()
@@ -704,7 +796,7 @@ def create_material_request():
         _notify(
             subsystem=BLUEPRINT_NAME,
             title='New Material Request',
-            message=f"{recipient_name} requested item #{item_id}, qty {quantity}.",
+            message=f"{recipient_name} requested item {requested_item_name or f'#{item_id}'}, qty {quantity}.",
             n_type='info',
             target_url=url_for('log1.list_material_requests')
         )
@@ -712,6 +804,83 @@ def create_material_request():
         flash('Material request created successfully.', 'success')
     except Exception as e:
         flash(f'Error creating material request: {e}', 'danger')
+
+    return redirect(url_for('log1.list_material_requests'))
+
+
+@log1_bp.route('/requests/<int:request_id>/validate', methods=['POST'])
+@login_required
+def validate_material_request(request_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.list_material_requests'))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    strategy = (request.form.get('allocation_strategy') or 'FEFO').upper()
+    if strategy not in ['FIFO', 'FEFO']:
+        strategy = 'FEFO'
+
+    try:
+        req_resp = client.table('material_requests').select('*').eq('id', request_id).single().execute()
+        req = req_resp.data or {}
+        requested_qty = _safe_float(req.get('quantity'))
+        item_name = _resolve_request_item_name(client, req)
+
+        if not item_name:
+            flash('Cannot validate request: item name could not be resolved.', 'danger')
+            return redirect(url_for('log1.list_material_requests'))
+
+        batches = _get_available_batches(client, item_name)
+        suggested = _recommend_batch(batches, strategy=strategy)
+
+        if not suggested:
+            client.table('material_requests').update({
+                'status': 'REJECTED_OUT_OF_STOCK',
+                'rejection_reason': 'Out of Stock',
+                'allocation_strategy': strategy,
+                'validated_by': current_user.id,
+                'validated_at': datetime.utcnow().isoformat(),
+                'updated_at': datetime.utcnow().isoformat()
+            }).eq('id', request_id).execute()
+
+            requisition_id = _create_purchase_requisition_for_out_of_stock(
+                client,
+                item_name=item_name,
+                quantity=requested_qty,
+                notes=f"Auto-escalated during request validation ({strategy}).",
+                project_id=req.get('project_id')
+            )
+            _notify(
+                subsystem=BLUEPRINT_NAME,
+                user_id=req.get('requested_by'),
+                title='Request Rejected: Out of Stock',
+                message=f"No available batch found for {item_name}. Requisition {requisition_id or 'N/A'} created.",
+                n_type='warning',
+                target_url=url_for('log1.list_material_requests')
+            )
+            flash('No available batch found. Request was rejected and escalated to procurement.', 'warning')
+            return redirect(url_for('log1.list_material_requests'))
+
+        suggested_qty = _safe_float(suggested.get('quantity'))
+        notes = f"Suggested batch {suggested.get('batch_number') or 'N/A'} (stock: {suggested_qty}). Strategy: {strategy}."
+        if suggested_qty < requested_qty:
+            notes += ' Partial stock only; admin override may be needed.'
+
+        client.table('material_requests').update({
+            'status': 'FOR_DELIVERY',
+            'allocation_strategy': strategy,
+            'suggested_batch_id': suggested.get('id'),
+            'suggested_batch_number': suggested.get('batch_number'),
+            'validated_by': current_user.id,
+            'validated_at': datetime.utcnow().isoformat(),
+            'suggestion_notes': notes,
+            'updated_at': datetime.utcnow().isoformat()
+        }).eq('id', request_id).execute()
+
+        flash(f"Request validated. Recommended batch: {suggested.get('batch_number') or suggested.get('id')} ({strategy}).", 'success')
+    except Exception as e:
+        flash(f'Error validating request: {e}', 'danger')
 
     return redirect(url_for('log1.list_material_requests'))
 
@@ -797,8 +966,37 @@ def deliver_material_request(request_id):
         req_resp = client.table('material_requests').select('*').eq('id', request_id).single().execute()
         req = req_resp.data or {}
 
+        requested_qty = _safe_float(req.get('quantity'))
+        override_batch_id = _safe_int(request.form.get('override_batch_id'), None)
+        selected_batch_id = override_batch_id or req.get('suggested_batch_id')
+
+        # If no suggested/override batch, compute one on the fly
+        if not selected_batch_id:
+            item_name = _resolve_request_item_name(client, req)
+            strategy = (req.get('allocation_strategy') or 'FEFO').upper()
+            batches = _get_available_batches(client, item_name) if item_name else []
+            suggested = _recommend_batch(batches, strategy=strategy)
+            selected_batch_id = suggested.get('id') if suggested else None
+
+        if not selected_batch_id:
+            flash('Delivery failed: no batch selected or suggested.', 'danger')
+            return redirect(url_for('log1.list_material_requests'))
+
+        batch_resp = client.table('inventory').select('*').eq('id', selected_batch_id).single().execute()
+        batch = batch_resp.data or {}
+        batch_qty = _safe_float(batch.get('quantity'))
+
+        if batch_qty < requested_qty:
+            flash('Selected batch has insufficient quantity. Please validate again or choose override batch.', 'warning')
+            return redirect(url_for('log1.list_material_requests'))
+
+        new_batch_qty = batch_qty - requested_qty
+        client.table('inventory').update({'quantity': new_batch_qty}).eq('id', selected_batch_id).execute()
+
         client.table('material_requests').update({
             'status': 'DELIVERED',
+            'dispensed_batch_id': selected_batch_id,
+            'dispensed_batch_number': batch.get('batch_number'),
             'updated_at': datetime.utcnow().isoformat()
         }).eq('id', request_id).execute()
 
@@ -825,7 +1023,7 @@ def deliver_material_request(request_id):
             target_url=url_for('log1.list_material_requests')
         )
 
-        flash('Request marked as delivered and requestor notified.', 'success')
+        flash(f"Request delivered using batch {batch.get('batch_number') or selected_batch_id}.", 'success')
     except Exception as e:
         flash(f'Error delivering request: {e}', 'danger')
     return redirect(url_for('log1.list_material_requests'))
@@ -1086,9 +1284,24 @@ def submit_po_finance_approval(po_id):
         if ok:
             client.table('purchase_orders').update({'finance_approval_status': 'PENDING_FINANCE'}).eq('id', po_id).execute()
             _notify(
-                subsystem='ct3',
-                title='Procurement Budget Approval Request',
-                message=f"PO {po.get('po_number')} requires finance approval.",
+                subsystem=BLUEPRINT_NAME,
+                user_id=current_user.id,
+                title='PO Submitted to Finance',
+                message=f"PO {po.get('po_number')} was submitted for finance approval.",
+                n_type='info',
+                target_url=url_for('log1.view_po', po_id=po_id)
+            )
+            _notify_finance_users(
+                client=client,
+                title='Action Required: Procurement Budget Approval',
+                message=f"PO {po.get('po_number')} requires finance approval. Total amount: ${_safe_float(po.get('total_amount')):,.2f}.",
+                n_type='warning',
+                target_url=url_for('log1.view_po', po_id=po_id)
+            )
+            _notify(
+                subsystem='superadmin',
+                title='PO Submitted for Finance Approval',
+                message=f"LOG1 submitted PO {po.get('po_number')} for finance approval.",
                 n_type='warning',
                 target_url=url_for('log1.view_po', po_id=po_id)
             )

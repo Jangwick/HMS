@@ -115,6 +115,7 @@ def dashboard():
     # Combined stats from all modules
     stats = {}
     recent_activity = []
+    pending_po_approvals = []
     try:
         # FIN1 Stats
         total_billing = client.table('billing_records').select('total_amount').execute()
@@ -157,6 +158,43 @@ def dashboard():
                 'icon': 'bi-arrow-up-right-circle',
                 'color': 'text-red-600'
             })
+
+        try:
+            approvals_resp = client.table('procurement_budget_approvals').select('*').eq('status', 'PENDING_FINANCE').order('requested_at', desc=True).limit(10).execute()
+            approvals = approvals_resp.data or []
+
+            po_ids = [row.get('requisition_id') for row in approvals if row.get('requisition_id')]
+            po_map = {}
+            supplier_map = {}
+
+            if po_ids:
+                pos_resp = client.table('purchase_orders').select('id, po_number, total_amount, supplier_id, status, finance_approval_status, created_at').in_('id', po_ids).execute()
+                purchase_orders = pos_resp.data or []
+                po_map = {po.get('id'): po for po in purchase_orders if po.get('id') is not None}
+
+                supplier_ids = list({po.get('supplier_id') for po in purchase_orders if po.get('supplier_id')})
+                if supplier_ids:
+                    suppliers_resp = client.table('suppliers').select('id, supplier_name').in_('id', supplier_ids).execute()
+                    suppliers = suppliers_resp.data or []
+                    supplier_map = {s.get('id'): s.get('supplier_name') for s in suppliers if s.get('id') is not None}
+
+            for approval in approvals:
+                po_id = approval.get('requisition_id')
+                po = po_map.get(po_id, {})
+                supplier_name = supplier_map.get(po.get('supplier_id')) or 'N/A'
+                pending_po_approvals.append({
+                    'po_id': po_id,
+                    'po_number': po.get('po_number') or f"PO-{po_id}",
+                    'supplier_name': supplier_name,
+                    'requested_amount': float(approval.get('requested_amount') or po.get('total_amount') or 0),
+                    'requested_at': approval.get('requested_at'),
+                    'finance_remarks': approval.get('finance_remarks') or ''
+                })
+
+            stats['pending_po_approvals'] = len(pending_po_approvals)
+        except Exception as po_err:
+            print(f"Error loading pending PO approvals: {po_err}")
+            stats['pending_po_approvals'] = 0
             
         recent_activity = sorted(recent_activity, key=lambda x: x['date'], reverse=True)[:5]
         
@@ -166,6 +204,8 @@ def dashboard():
     return render_template('subsystems/financials/dashboard.html', 
                            stats=stats,
                            recent_activity=recent_activity,
+                           pending_po_approvals=pending_po_approvals,
+                           now=datetime.utcnow,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

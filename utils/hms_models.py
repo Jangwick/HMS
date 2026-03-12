@@ -512,7 +512,7 @@ class Notification:
         except Exception as e:
             err_str = str(e)
             
-            # If target_url OR created_at is the problem, try a bare-bones insert
+            # If full payload fails (schema variance), try reduced payload but keep target_url for navigation.
             try:
                 minimal_data = {
                     'target_subsystem': subsystem,
@@ -520,13 +520,27 @@ class Notification:
                     'title': title,
                     'message': message,
                     'type': n_type,
-                    'sender_subsystem': sender_subsystem or 'SYSTEM'
+                    'sender_subsystem': sender_subsystem or 'SYSTEM',
+                    'target_url': target_url
                 }
                 client.table('notifications').insert(minimal_data).execute()
                 print("Created minimal notification after original failed.")
             except Exception as e2:
-                print(f"FAILED TO CREATE ANY NOTIFICATION: {e2}")
-                print(f"Original error was: {e}")
+                # Last fallback for very old schemas with no target_url support.
+                try:
+                    minimal_no_url = {
+                        'target_subsystem': subsystem,
+                        'user_id': user_id,
+                        'title': title,
+                        'message': message,
+                        'type': n_type,
+                        'sender_subsystem': sender_subsystem or 'SYSTEM'
+                    }
+                    client.table('notifications').insert(minimal_no_url).execute()
+                    print("Created minimal notification without target_url after fallback.")
+                except Exception as e3:
+                    print(f"FAILED TO CREATE ANY NOTIFICATION: {e3}")
+                    print(f"Original error was: {e}")
             return None
 
     @staticmethod

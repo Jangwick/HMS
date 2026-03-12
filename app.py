@@ -118,7 +118,18 @@ def create_app(config_class=Config):
     @app.context_processor
     def inject_now():
         from datetime import datetime
-        return {'now': datetime.now()}
+
+        class _NowProxy:
+            def __call__(self):
+                return datetime.now()
+
+            def __getattr__(self, attr):
+                return getattr(datetime.now(), attr)
+
+            def __str__(self):
+                return str(datetime.now())
+
+        return {'now': _NowProxy()}
 
     @app.context_processor
     def inject_notifications():

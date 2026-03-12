@@ -77,6 +77,59 @@
         </div>
     </div>
 
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
+            <h4 class="text-xl font-bold text-gray-900">Pending LOG1 PO Approvals</h4>
+            <span class="text-xs font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-lg">{{ stats.pending_po_approvals|default(0) }} pending</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="bg-gray-50/50">
+                        <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">PO</th>
+                        <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Supplier</th>
+                        <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Amount</th>
+                        <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Requested</th>
+                        <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    {% if pending_po_approvals %}
+                        {% for approval in pending_po_approvals %}
+                        <tr class="hover:bg-gray-50/50 transition-colors align-top">
+                            <td class="px-6 py-5">
+                                <a href="{{ url_for('log1.view_po', po_id=approval.po_id) }}" class="font-bold text-purple-700 hover:text-purple-800">{{ approval.po_number }}</a>
+                            </td>
+                            <td class="px-6 py-5 text-gray-600 font-medium">{{ approval.supplier_name }}</td>
+                            <td class="px-6 py-5 text-gray-900 font-bold">${{ "%.2f"|format(approval.requested_amount|default(0)) }}</td>
+                            <td class="px-6 py-5 text-gray-500 font-medium">{{ approval.requested_at|datetime('%Y-%m-%d %H:%M') if approval.requested_at else '-' }}</td>
+                            <td class="px-6 py-5">
+                                <div class="flex flex-col gap-2">
+                                    <form action="{{ url_for('log1.approve_finance_budget', po_id=approval.po_id) }}" method="POST" class="flex gap-2">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="number" step="0.01" min="0" name="approved_amount" value="{{ approval.requested_amount|default(0) }}" class="w-32 px-3 py-2 rounded-lg border border-gray-200 text-sm" required>
+                                        <input type="text" name="finance_remarks" placeholder="Remarks (optional)" class="w-52 px-3 py-2 rounded-lg border border-gray-200 text-sm">
+                                        <button type="submit" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">Approve</button>
+                                    </form>
+                                    <form action="{{ url_for('log1.reject_finance_budget', po_id=approval.po_id) }}" method="POST" class="flex gap-2">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="text" name="finance_remarks" placeholder="Rejection reason" class="w-52 px-3 py-2 rounded-lg border border-gray-200 text-sm" required>
+                                        <button type="submit" class="px-3 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700">Reject</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="px-8 py-10 text-center text-gray-400 font-medium italic">No pending LOG1 PO approvals.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- System Modules -->
     <h3 class="text-xl font-bold text-gray-900 mb-4">System Modules</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
