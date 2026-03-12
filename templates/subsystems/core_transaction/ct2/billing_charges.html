@@ -1,0 +1,71 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Billing Charges - {{ subsystem_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Billing Charges</h3>
+            <p class="text-gray-500">Posted charges from clinical operations — lab, radiology, pharmacy, surgery.</p>
+        </div>
+    </div>
+
+    <!-- By Department Cards -->
+    {% if by_dept %}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {% for dept, items in by_dept.items() %}
+        <div class="glass-card rounded-2xl p-4">
+            <div class="text-xs font-bold text-gray-400 uppercase mb-1">{{ dept }}</div>
+            <div class="text-2xl font-extrabold text-gray-900">{{ items|length }}</div>
+            <div class="text-sm text-gray-500">charges</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Table -->
+    <div class="glass-card rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50/50 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4">Invoice #</th>
+                        <th class="px-6 py-4">Patient</th>
+                        <th class="px-6 py-4">Type</th>
+                        <th class="px-6 py-4">Description</th>
+                        <th class="px-6 py-4">Amount</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for c in charges %}
+                    {% set pat = c.get('patients') or {} %}
+                    <tr class="hover:bg-emerald-50/20 transition-colors">
+                        <td class="px-6 py-4"><span class="text-xs font-mono text-gray-400">#INV-{{ c.id }}</span></td>
+                        <td class="px-6 py-4">
+                            <div class="font-semibold text-gray-900 text-sm">{{ pat.get('first_name','') }} {{ pat.get('last_name','') }}</div>
+                            <div class="text-xs text-gray-400">{{ pat.get('patient_id_alt','') }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-600">{{ c.get('invoice_type','') }}</span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{{ c.get('description','—') }}</td>
+                        <td class="px-6 py-4 font-bold text-gray-900">₱ {{ '%.2f'|format(c.get('amount', 0)) }}</td>
+                        <td class="px-6 py-4">
+                            {% set st = c.get('status','') %}
+                            {% if st == 'Paid' %}<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700">Paid</span>
+                            {% elif st == 'Unpaid' %}<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-700">Unpaid</span>
+                            {% else %}<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-600">{{ st }}</span>{% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-xs text-gray-500">{{ (c.get('issued_at') or '')[:10] }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="px-6 py-16 text-center text-gray-400">No charges found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

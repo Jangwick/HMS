@@ -263,7 +263,23 @@ def dashboard():
         metrics['today_meals'] = len(res.data) if res.data else 0
 
         recent_orders = LabOrder.get_recent(5)
-        
+
+        # Encounter stats
+        try:
+            enc_data = supabase.table('encounters').select('status').execute().data or []
+            metrics['active_encounters'] = sum(1 for e in enc_data if e.get('status') == 'Active')
+            metrics['enc_awaiting'] = sum(1 for e in enc_data if e.get('status') == 'Awaiting Results')
+        except Exception:
+            metrics['active_encounters'] = 0
+            metrics['enc_awaiting'] = 0
+
+        # Inbox unread
+        try:
+            inbox_data = supabase.table('result_inbox').select('acknowledged').eq('physician_id', current_user.id).eq('acknowledged', False).execute().data or []
+            metrics['inbox_unread'] = len(inbox_data)
+        except Exception:
+            metrics['inbox_unread'] = 0
+
     except Exception as e:
         print(f"Dashboard Data Error: {e}")
     
@@ -686,7 +702,7 @@ def dispensing_history():
     client = get_supabase_client()
     try:
         # Get prescriptions with status 'Dispensed' and join patients/doctors
-        response = client.table('prescriptions').select('*, patients(*), users(*)').eq('status', 'Dispensed').order('created_at', desc=True).execute()
+        response = client.table('prescriptions').select('*, patients(*), users!prescriptions_doctor_id_fkey(*)').eq('status', 'Dispensed').order('created_at', desc=True).execute()
         history = response.data if response.data else []
     except Exception as e:
         flash(f'Error fetching history: {str(e)}', 'danger')
@@ -783,7 +799,7 @@ def dispense_meds():
     
     # Fetch pending prescriptions with patient details
     pending_prescriptions = client.table('prescriptions')\
-        .select('*, patients(first_name, last_name, patient_id_alt), users(username)')\
+        .select('*, patients(first_name, last_name, patient_id_alt), users!prescriptions_doctor_id_fkey(username)')\
         .eq('status', 'Pending')\
         .order('created_at', desc=True)\
         .execute().data or []
@@ -1150,5 +1166,979 @@ def delete_meal_log(meal_id):
     except Exception as e:
         flash(f"Failed to delete meal log: {str(e)}", "danger")
     return redirect(url_for('ct2.meal_tracking'))
+
+
+# =====================================================
+# PHASE 1 — EMR & ENCOUNTER MANAGEMENT
+# =====================================================
+
+@ct2_bp.route('/encounters')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def encounters():
+    supabase = get_supabase_client()
+    status_filter = request.args.get('status', '')
+    try:
+        q = supabase.table('encounters').select('*, patients(first_name, last_name, patient_id_alt), users!encounters_physician_id_fkey(full_name, username)')
+        if status_filter:
+            q = q.eq('status', status_filter)
+        enc_data = q.order('encounter_date', desc=True).execute().data or []
+    except Exception as e:
+        flash(f'Error loading encounters: {str(e)}', 'danger')
+        enc_data = []
+
+    patients = []
+    try:
+        patients = supabase.table('patients').select('id, first_name, last_name, patient_id_alt').order('first_name').execute().data or []
+    except Exception:
+        pass
+
+    # Always fetch global counts (unaffected by filter)
+    counts = {'Active': 0, 'Awaiting Results': 0, 'Ready for Discharge': 0, 'Discharged': 0}
+    try:
+        all_enc = supabase.table('encounters').select('status').execute().data or []
+        for e in all_enc:
+            s = e.get('status', '')
+            if s in counts:
+                counts[s] += 1
+    except Exception:
+        pass
+
+    return render_template('subsystems/core_transaction/ct2/encounters.html',
+                           encounters=enc_data,
+                           patients=patients,
+                           counts=counts,
+                           status_filter=status_filter,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct2_bp.route('/encounter/new', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def new_encounter():
+    supabase = get_supabase_client()
+    try:
+        data = {
+            'patient_id': int(request.form['patient_id']),
+            'physician_id': current_user.id,
+            'chief_complaint': request.form.get('chief_complaint', '').strip(),
+            'examination_notes': request.form.get('examination_notes', '').strip(),
+            'diagnosis': request.form.get('diagnosis', '').strip(),
+            'icd_code': request.form.get('icd_code', '').strip(),
+            'status': 'Active',
+            'encounter_date': datetime.utcnow().isoformat(),
+        }
+        res = supabase.table('encounters').insert(data).execute()
+        enc_id = res.data[0]['id'] if res.data else None
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, 'New Encounter', BLUEPRINT_NAME, {'patient_id': data['patient_id']})
+        flash('Encounter created successfully.', 'success')
+        if enc_id:
+            return redirect(url_for('ct2.encounter_detail', encounter_id=enc_id))
+    except Exception as e:
+        flash(f'Error creating encounter: {str(e)}', 'danger')
+    return redirect(url_for('ct2.encounters'))
+
+
+@ct2_bp.route('/encounter/<int:encounter_id>')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def encounter_detail(encounter_id):
+    supabase = get_supabase_client()
+    try:
+        enc = supabase.table('encounters').select('*, patients(*), users(full_name, username)').eq('id', encounter_id).single().execute().data
+        if not enc:
+            flash('Encounter not found.', 'warning')
+            return redirect(url_for('ct2.encounters'))
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+        return redirect(url_for('ct2.encounters'))
+
+    # Parallel data for order tabs
+    lab_orders, radiology_orders_list, prescriptions, diet_plans_list, surgeries_list, result_inbox_items = [], [], [], [], [], []
+    try:
+        lab_orders = supabase.table('lab_orders').select('*').eq('patient_id', enc['patient_id']).order('created_at', desc=True).execute().data or []
+    except Exception: pass
+    try:
+        radiology_orders_list = supabase.table('radiology_orders').select('*').eq('patient_id', enc['patient_id']).order('created_at', desc=True).execute().data or []
+    except Exception: pass
+    try:
+        prescriptions = supabase.table('prescriptions').select('*').eq('patient_id', enc['patient_id']).order('created_at', desc=True).execute().data or []
+    except Exception: pass
+    try:
+        diet_plans_list = supabase.table('diet_plans').select('*').eq('patient_id', enc['patient_id']).order('created_at', desc=True).execute().data or []
+    except Exception: pass
+    try:
+        surgeries_list = supabase.table('surgeries').select('*').eq('patient_id', enc['patient_id']).order('created_at', desc=True).execute().data or []
+    except Exception: pass
+    try:
+        result_inbox_items = supabase.table('result_inbox').select('*').eq('encounter_id', encounter_id).order('created_at', desc=True).execute().data or []
+    except Exception: pass
+
+    # Meds and doctors for order forms
+    meds, doctors = [], []
+    try:
+        meds = supabase.table('inventory').select('id, item_name, quantity').eq('category', 'Medical').gt('quantity', 0).execute().data or []
+    except Exception: pass
+    try:
+        doctors = supabase.table('users').select('id, username, full_name').in_('subsystem', ['ct1', 'ct2', 'ct3']).execute().data or []
+    except Exception: pass
+
+    return render_template('subsystems/core_transaction/ct2/encounter_detail.html',
+                           enc=enc,
+                           lab_orders=lab_orders,
+                           radiology_orders=radiology_orders_list,
+                           prescriptions=prescriptions,
+                           diet_plans=diet_plans_list,
+                           surgeries=surgeries_list,
+                           result_inbox=result_inbox_items,
+                           meds=meds,
+                           doctors=doctors,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct2_bp.route('/encounter/<int:encounter_id>/update', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def update_encounter(encounter_id):
+    supabase = get_supabase_client()
+    try:
+        data = {
+            'chief_complaint': request.form.get('chief_complaint', '').strip(),
+            'examination_notes': request.form.get('examination_notes', '').strip(),
+            'diagnosis': request.form.get('diagnosis', '').strip(),
+            'icd_code': request.form.get('icd_code', '').strip(),
+            'status': request.form.get('status'),
+            'updated_at': datetime.utcnow().isoformat(),
+        }
+        supabase.table('encounters').update(data).eq('id', encounter_id).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, 'Update Encounter', BLUEPRINT_NAME, {'encounter_id': encounter_id, 'status': data['status']})
+        flash('Encounter updated.', 'success')
+    except Exception as e:
+        flash(f'Update failed: {str(e)}', 'danger')
+    return redirect(url_for('ct2.encounter_detail', encounter_id=encounter_id))
+
+
+@ct2_bp.route('/encounter/<int:encounter_id>/discharge', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def discharge_encounter(encounter_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('encounters').update({
+            'status': 'Discharged',
+            'discharged_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat(),
+        }).eq('id', encounter_id).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, 'Discharge Encounter', BLUEPRINT_NAME, {'encounter_id': encounter_id})
+        flash('Patient encounter closed — discharged successfully.', 'success')
+    except Exception as e:
+        flash(f'Discharge failed: {str(e)}', 'danger')
+    return redirect(url_for('ct2.encounters'))
+
+
+# =====================================================
+# PHASE 2 — ORDER HUB  (quick-create within encounter)
+# =====================================================
+
+@ct2_bp.route('/encounter/<int:encounter_id>/order/lab', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def encounter_order_lab(encounter_id):
+    supabase = get_supabase_client()
+    try:
+        enc = supabase.table('encounters').select('patient_id').eq('id', encounter_id).single().execute().data
+        data = {
+            'patient_id': enc['patient_id'],
+            'doctor_id': current_user.id,
+            'test_name': request.form.get('test_name'),
+            'priority': request.form.get('priority', 'Routine'),
+            'status': 'Ordered',
+            'critical_alert': False,
+        }
+        supabase.table('lab_orders').insert(data).execute()
+        supabase.table('encounters').update({'status': 'Awaiting Results', 'updated_at': datetime.utcnow().isoformat()}).eq('id', encounter_id).execute()
+        flash('Lab order created.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('ct2.encounter_detail', encounter_id=encounter_id))
+
+
+@ct2_bp.route('/encounter/<int:encounter_id>/order/radiology', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def encounter_order_radiology(encounter_id):
+    supabase = get_supabase_client()
+    try:
+        enc = supabase.table('encounters').select('patient_id').eq('id', encounter_id).single().execute().data
+        data = {
+            'patient_id': enc['patient_id'],
+            'doctor_id': current_user.id,
+            'imaging_type': request.form.get('imaging_type'),
+            'priority': request.form.get('priority', 'Routine'),
+            'status': 'Ordered',
+        }
+        supabase.table('radiology_orders').insert(data).execute()
+        supabase.table('encounters').update({'status': 'Awaiting Results', 'updated_at': datetime.utcnow().isoformat()}).eq('id', encounter_id).execute()
+        flash('Radiology order created.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('ct2.encounter_detail', encounter_id=encounter_id))
+
+
+@ct2_bp.route('/encounter/<int:encounter_id>/order/pharmacy', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def encounter_order_pharmacy(encounter_id):
+    supabase = get_supabase_client()
+    try:
+        enc = supabase.table('encounters').select('patient_id').eq('id', encounter_id).single().execute().data
+        data = {
+            'patient_id': enc['patient_id'],
+            'doctor_id': current_user.id,
+            'medication_name': request.form.get('medication_name'),
+            'dosage': request.form.get('dosage'),
+            'instructions': request.form.get('instructions'),
+            'priority': request.form.get('priority', 'Routine'),
+            'status': 'Pending',
+        }
+        supabase.table('prescriptions').insert(data).execute()
+        flash('Medication order sent to pharmacy.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('ct2.encounter_detail', encounter_id=encounter_id))
+
+
+@ct2_bp.route('/encounter/<int:encounter_id>/order/diet', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def encounter_order_diet(encounter_id):
+    supabase = get_supabase_client()
+    try:
+        enc = supabase.table('encounters').select('patient_id').eq('id', encounter_id).single().execute().data
+        data = {
+            'patient_id': enc['patient_id'],
+            'prescribed_by': current_user.id,
+            'diet_type': request.form.get('diet_type'),
+            'instruction': request.form.get('instruction'),
+            'status': 'Active',
+            'start_date': datetime.utcnow().date().isoformat(),
+        }
+        supabase.table('diet_plans').insert(data).execute()
+        flash('Diet order sent to nutrition.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('ct2.encounter_detail', encounter_id=encounter_id))
+
+
+@ct2_bp.route('/encounter/<int:encounter_id>/order/surgery', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def encounter_order_surgery(encounter_id):
+    supabase = get_supabase_client()
+    try:
+        enc = supabase.table('encounters').select('patient_id').eq('id', encounter_id).single().execute().data
+        data = {
+            'patient_id': enc['patient_id'],
+            'surgeon_id': request.form.get('surgeon_id') or current_user.id,
+            'surgery_name': request.form.get('surgery_name'),
+            'surgery_date': request.form.get('surgery_date'),
+            'operating_theater': request.form.get('operating_theater'),
+            'notes': request.form.get('notes'),
+            'status': 'Requested',
+        }
+        supabase.table('surgeries').insert(data).execute()
+        flash('Surgery request submitted.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('ct2.encounter_detail', encounter_id=encounter_id))
+
+
+# =====================================================
+# PHASE 3 — LAB (LIS) FULL WORKFLOW
+# =====================================================
+
+@ct2_bp.route('/lab/order/<int:order_id>/collect-specimen', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def collect_specimen(order_id):
+    import uuid as _uuid
+    supabase = get_supabase_client()
+    try:
+        barcode = 'SPX-' + _uuid.uuid4().hex[:10].upper()
+        supabase.table('lab_orders').update({
+            'status': 'Specimen Collected',
+            'barcode': barcode,
+            'specimen_collected_at': datetime.utcnow().isoformat(),
+        }).eq('id', order_id).execute()
+        flash(f'Specimen collected. Barcode: {barcode}', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.lab_orders'))
+
+
+@ct2_bp.route('/lab/order/<int:order_id>/register-specimen', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def register_specimen(order_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('lab_orders').update({
+            'status': 'In Analysis',
+            'specimen_registered_at': datetime.utcnow().isoformat(),
+        }).eq('id', order_id).execute()
+        flash('Specimen registered and sent for analysis.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.lab_orders'))
+
+
+@ct2_bp.route('/lab/order/<int:order_id>/reject', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def reject_specimen(order_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('lab_orders').update({
+            'status': 'Rejected',
+            'rejection_reason': request.form.get('rejection_reason', '').strip(),
+        }).eq('id', order_id).execute()
+        flash('Specimen rejected.', 'warning')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.lab_orders'))
+
+
+@ct2_bp.route('/lab/order/<int:order_id>/enter-results', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def enter_lab_results(order_id):
+    supabase = get_supabase_client()
+    try:
+        result_value = request.form.get('result_value', '').strip()
+        ref_range = request.form.get('result_reference_range', '').strip()
+        is_critical = request.form.get('is_critical') == '1'
+        upd = {
+            'result_value': result_value,
+            'result_unit': request.form.get('result_unit', '').strip(),
+            'result_reference_range': ref_range,
+            'is_critical': is_critical,
+            'status': 'Awaiting Verification',
+        }
+        supabase.table('lab_orders').update(upd).eq('id', order_id).execute()
+        if is_critical:
+            # Alert the ordering physician
+            row = supabase.table('lab_orders').select('patient_id, doctor_id, test_name').eq('id', order_id).single().execute().data or {}
+            if row.get('doctor_id'):
+                from utils.hms_models import Notification
+                Notification.create(user_id=row['doctor_id'], subsystem='ct2', title='⚠ Critical Lab Result',
+                                    message=f"CRITICAL result on {row.get('test_name','lab test')}: {result_value}. Immediate review required.",
+                                    n_type='danger', sender_subsystem=BLUEPRINT_NAME)
+        flash('Results entered. Awaiting verification.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.lab_orders'))
+
+
+@ct2_bp.route('/lab/order/<int:order_id>/verify', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def verify_lab_results(order_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('lab_orders').update({
+            'status': 'Verified',
+            'verified_by': current_user.id,
+            'verified_at': datetime.utcnow().isoformat(),
+        }).eq('id', order_id).execute()
+        # Push to result_inbox
+        row = supabase.table('lab_orders').select('patient_id, doctor_id, test_name, result_value, is_critical').eq('id', order_id).single().execute().data or {}
+        try:
+            supabase.table('result_inbox').insert({
+                'patient_id': row.get('patient_id'),
+                'physician_id': row.get('doctor_id'),
+                'source_module': 'Lab',
+                'source_record_id': order_id,
+                'summary': f"{row.get('test_name','')} — {row.get('result_value','')}",
+                'is_critical': row.get('is_critical', False),
+            }).execute()
+        except Exception: pass
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, 'Verify Lab Result', BLUEPRINT_NAME, {'order_id': order_id})
+        flash('Lab result verified and sent to results inbox.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.lab_orders'))
+
+
+@ct2_bp.route('/lab/worklist')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def lab_worklist():
+    supabase = get_supabase_client()
+    try:
+        orders = supabase.table('lab_orders').select('*, patients(first_name, last_name, patient_id_alt)')\
+            .not_.in_('status', ['Verified', 'Rejected'])\
+            .order('created_at').execute().data or []
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+        orders = []
+    return render_template('subsystems/core_transaction/ct2/lab_orders.html',
+                           orders=orders, patients=[], doctors=[],
+                           worklist_mode=True,
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+# =====================================================
+# PHASE 4 — RADIOLOGY (RIS) FULL WORKFLOW
+# =====================================================
+
+@ct2_bp.route('/radiology/order/<int:order_id>/schedule', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def schedule_radiology(order_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('radiology_orders').update({
+            'status': 'Scheduled',
+            'scheduled_at': request.form.get('scheduled_at'),
+            'patient_prep_status': 'Pending',
+        }).eq('id', order_id).execute()
+        flash('Imaging appointment scheduled.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.radiology_orders'))
+
+
+@ct2_bp.route('/radiology/order/<int:order_id>/imaging-done', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def radiology_imaging_done(order_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('radiology_orders').update({
+            'status': 'Interpretation',
+            'imaging_completed_at': datetime.utcnow().isoformat(),
+            'patient_prep_status': 'Done',
+        }).eq('id', order_id).execute()
+        flash('Imaging completed. Sent to interpretation queue.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.radiology_orders'))
+
+
+@ct2_bp.route('/radiology/order/<int:order_id>/interpret', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def radiology_interpret(order_id):
+    supabase = get_supabase_client()
+    try:
+        is_critical = request.form.get('is_critical') == '1'
+        upd = {
+            'findings': request.form.get('findings', '').strip(),
+            'report_text': request.form.get('report_text', '').strip(),
+            'is_critical': is_critical,
+            'critical_findings': request.form.get('critical_findings', '').strip() if is_critical else None,
+            'interpreter_id': current_user.id,
+            'status': 'Report Validated',
+        }
+        supabase.table('radiology_orders').update(upd).eq('id', order_id).execute()
+        # Push to result_inbox
+        row = supabase.table('radiology_orders').select('patient_id, doctor_id, imaging_type').eq('id', order_id).single().execute().data or {}
+        try:
+            supabase.table('result_inbox').insert({
+                'patient_id': row.get('patient_id'),
+                'physician_id': row.get('doctor_id'),
+                'source_module': 'Radiology',
+                'source_record_id': order_id,
+                'summary': f"{row.get('imaging_type','')} — {upd['findings'][:100]}",
+                'is_critical': is_critical,
+            }).execute()
+        except Exception: pass
+        if is_critical and row.get('doctor_id'):
+            from utils.hms_models import Notification
+            Notification.create(user_id=row['doctor_id'], subsystem='ct2', title='⚠ Critical Radiology Finding',
+                                message=f"Critical finding on {row.get('imaging_type','imaging')}: {upd['critical_findings']}",
+                                n_type='danger', sender_subsystem=BLUEPRINT_NAME)
+        flash('Radiology report completed and sent to physician inbox.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.radiology_orders'))
+
+
+@ct2_bp.route('/radiology/worklist')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def radiology_worklist():
+    supabase = get_supabase_client()
+    try:
+        orders = supabase.table('radiology_orders').select('*, patients(first_name, last_name, patient_id_alt)')\
+            .not_.in_('status', ['Report Validated', 'Completed', 'Cancelled'])\
+            .order('created_at').execute().data or []
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+        orders = []
+    return render_template('subsystems/core_transaction/ct2/radiology_orders.html',
+                           orders=orders, patients=[], doctors=[],
+                           worklist_mode=True,
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+# =====================================================
+# PHASE 5 — PHARMACY (PMS) FULL WORKFLOW
+# =====================================================
+
+@ct2_bp.route('/pharmacy/order/<int:rx_id>/safety-check', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def pharmacy_safety_check(rx_id):
+    supabase = get_supabase_client()
+    try:
+        flag_reason = request.form.get('flag_reason', '').strip()
+        is_safe = not flag_reason
+        upd = {
+            'safety_check_status': 'Safe' if is_safe else 'Flagged',
+            'safety_flag_reason': flag_reason if not is_safe else None,
+            'status': 'Pending' if not is_safe else 'Verified',
+        }
+        supabase.table('prescriptions').update(upd).eq('id', rx_id).execute()
+        if not is_safe:
+            row = supabase.table('prescriptions').select('doctor_id, medication_name').eq('id', rx_id).single().execute().data or {}
+            if row.get('doctor_id'):
+                from utils.hms_models import Notification
+                Notification.create(user_id=row['doctor_id'], subsystem='ct2',
+                                    title='Medication Safety Alert',
+                                    message=f"Rx for {row.get('medication_name','')} flagged: {flag_reason}",
+                                    n_type='warning', sender_subsystem=BLUEPRINT_NAME)
+            flash(f'Medication flagged as unsafe: {flag_reason}', 'warning')
+        else:
+            flash('Safety check passed. Prescription verified.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.dispense_meds'))
+
+
+@ct2_bp.route('/pharmacy/order/<int:rx_id>/dispense-rx', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def dispense_prescription(rx_id):
+    supabase = get_supabase_client()
+    try:
+        rx = supabase.table('prescriptions').select('*').eq('id', rx_id).single().execute().data
+        if not rx:
+            flash('Prescription not found.', 'danger')
+            return redirect(url_for('ct2.dispense_meds'))
+        med_name = rx.get('medication_name', '')
+        qty = int(rx.get('quantity') or 1)
+        # Deduct inventory
+        inv = supabase.table('inventory').select('id, quantity').eq('item_name', med_name).eq('category', 'Medical').execute().data
+        if inv:
+            new_qty = max(0, inv[0]['quantity'] - qty)
+            supabase.table('inventory').update({'quantity': new_qty}).eq('id', inv[0]['id']).execute()
+        supabase.table('prescriptions').update({
+            'status': 'Dispensed',
+            'dispensed_at': datetime.utcnow().isoformat(),
+            'dispensed_by': current_user.id,
+        }).eq('id', rx_id).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, 'Dispense Prescription', BLUEPRINT_NAME, {'rx_id': rx_id, 'medication': med_name})
+        flash(f'Prescription #{rx_id} ({med_name}) dispensed.', 'success')
+    except Exception as e:
+        flash(f'Dispense error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.dispense_meds'))
+
+
+@ct2_bp.route('/pharmacy/worklist')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def pharmacy_worklist():
+    supabase = get_supabase_client()
+    try:
+        pending = supabase.table('prescriptions')\
+            .select('*, patients(first_name, last_name, patient_id_alt), users!prescriptions_doctor_id_fkey(username)')\
+            .in_('status', ['Pending', 'Verified'])\
+            .order('created_at').execute().data or []
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+        pending = []
+    return render_template('subsystems/core_transaction/ct2/dispense_meds.html',
+                           patients=[], medications=[], pending_prescriptions=pending,
+                           worklist_mode=True,
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+# =====================================================
+# PHASE 6 — DIET / NUTRITION (DNMS) FULL WORKFLOW
+# =====================================================
+
+@ct2_bp.route('/dnms/diet-plans/<int:plan_id>/approve', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def approve_diet_plan(plan_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('diet_plans').update({
+            'approved_by': current_user.id,
+            'approved_at': datetime.utcnow().isoformat(),
+            'status': 'Active',
+        }).eq('id', plan_id).execute()
+        flash('Diet plan approved.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.list_diet_plans'))
+
+
+@ct2_bp.route('/dnms/meal-tracking/<int:meal_id>/deliver', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def deliver_meal(meal_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('meal_tracking').update({
+            'delivery_status': 'Delivered',
+            'delivered_at': datetime.utcnow().isoformat(),
+            'delivery_staff_id': current_user.id,
+        }).eq('id', meal_id).execute()
+        flash('Meal marked as delivered.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.meal_tracking'))
+
+
+@ct2_bp.route('/dnms/meal-tracking/<int:meal_id>/intake', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def record_meal_intake(meal_id):
+    supabase = get_supabase_client()
+    try:
+        pct = int(request.form.get('intake_percentage', 0))
+        upd = {'intake_percentage': pct, 'delivery_status': 'Consumed'}
+        if pct < 50:
+            upd['intake_exception_reason'] = request.form.get('intake_exception_reason', 'Low intake')
+        supabase.table('meal_tracking').update(upd).eq('id', meal_id).execute()
+        flash('Intake recorded.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.meal_tracking'))
+
+
+@ct2_bp.route('/dnms/worklist')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def dnms_worklist():
+    supabase = get_supabase_client()
+    try:
+        pending_assessments = supabase.table('nutritional_assessments').select('*, patients(first_name, last_name, patient_id_alt)').order('created_at', desc=True).limit(20).execute().data or []
+        pending_meals = supabase.table('meal_tracking').select('*, patients(first_name, last_name, patient_id_alt)').eq('delivery_status', 'Pending').order('created_at').execute().data or []
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+        pending_assessments, pending_meals = [], []
+    return render_template('subsystems/core_transaction/ct2/dnms_dashboard.html',
+                           diet_plans=[], pending_meals=pending_meals,
+                           recent_assessments=pending_assessments,
+                           stats={}, worklist_mode=True,
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+# =====================================================
+# PHASE 7 — SURGERY / OR (SORS) FULL WORKFLOW
+# =====================================================
+
+@ct2_bp.route('/surgery/<int:surgery_id>/preop-assessment', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def surgery_preop(surgery_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('surgeries').update({
+            'preop_cleared': request.form.get('cleared') == '1',
+            'preop_notes': request.form.get('preop_notes', '').strip(),
+            'status': 'Pre-Op Cleared' if request.form.get('cleared') == '1' else 'Pre-Op Pending',
+        }).eq('id', surgery_id).execute()
+        flash('Pre-op assessment recorded.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.surgery_schedule'))
+
+
+@ct2_bp.route('/surgery/<int:surgery_id>/start', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def surgery_start(surgery_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('surgeries').update({
+            'status': 'In Progress',
+            'started_at': datetime.utcnow().isoformat(),
+        }).eq('id', surgery_id).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, 'Surgery Started', BLUEPRINT_NAME, {'surgery_id': surgery_id})
+        flash('Surgery marked as In Progress.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.surgery_schedule'))
+
+
+@ct2_bp.route('/surgery/<int:surgery_id>/complete', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def surgery_complete(surgery_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('surgeries').update({
+            'status': 'Completed',
+            'ended_at': datetime.utcnow().isoformat(),
+            'intraop_notes': request.form.get('intraop_notes', '').strip(),
+            'postop_status': 'Recovery',
+            'recovery_location': request.form.get('recovery_location', '').strip(),
+        }).eq('id', surgery_id).execute()
+        # Push to result_inbox
+        row = supabase.table('surgeries').select('patient_id, surgeon_id, surgery_name').eq('id', surgery_id).single().execute().data or {}
+        try:
+            supabase.table('result_inbox').insert({
+                'patient_id': row.get('patient_id'),
+                'physician_id': row.get('surgeon_id'),
+                'source_module': 'Surgery',
+                'source_record_id': surgery_id,
+                'summary': f"Surgery completed: {row.get('surgery_name','')}",
+                'is_critical': False,
+            }).execute()
+        except Exception: pass
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, 'Surgery Completed', BLUEPRINT_NAME, {'surgery_id': surgery_id})
+        flash('Surgery completed. Patient transferred to recovery.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.surgery_schedule'))
+
+
+@ct2_bp.route('/surgery/<int:surgery_id>/postop-update', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def surgery_postop(surgery_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('surgeries').update({
+            'postop_status': request.form.get('postop_status'),
+            'recovery_location': request.form.get('recovery_location', ''),
+            'notes': request.form.get('notes', ''),
+        }).eq('id', surgery_id).execute()
+        flash('Post-op status updated.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.surgery_schedule'))
+
+
+@ct2_bp.route('/surgery/or-board')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def or_board():
+    supabase = get_supabase_client()
+    try:
+        active = supabase.table('surgeries').select('*, patients(first_name, last_name), users(username, full_name)')\
+            .in_('status', ['Pre-Op Cleared', 'Scheduled', 'In Progress', 'Post-Op Pending', 'Recovery'])\
+            .order('surgery_date').execute().data or []
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+        active = []
+    doctors = []
+    try:
+        doctors = supabase.table('users').select('id, username, full_name').in_('subsystem', ['ct2', 'ct3']).execute().data or []
+    except Exception: pass
+    return render_template('subsystems/core_transaction/ct2/surgery_schedule.html',
+                           surgeries=active, patients=[], surgeons=doctors,
+                           or_board_mode=True,
+                           subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+# =====================================================
+# PHASE 8 — RESULTS & REPORTS INBOX
+# =====================================================
+
+@ct2_bp.route('/inbox')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def results_inbox():
+    supabase = get_supabase_client()
+    critical_only = request.args.get('critical') == '1'
+    module_filter = request.args.get('module', '')
+    try:
+        q = supabase.table('result_inbox')\
+            .select('*, patients(first_name, last_name, patient_id_alt), encounters(status, chief_complaint)')
+        if critical_only:
+            q = q.eq('is_critical', True)
+        if module_filter:
+            q = q.eq('source_module', module_filter)
+        items = q.order('created_at', desc=True).execute().data or []
+    except Exception as e:
+        flash(f'Error loading inbox: {str(e)}', 'danger')
+        items = []
+    unread = sum(1 for i in items if not i.get('acknowledged'))
+    modules = ['Lab', 'Radiology', 'Surgery', 'Pharmacy']
+    return render_template('subsystems/core_transaction/ct2/results_inbox.html',
+                           inbox=items,
+                           unread=unread,
+                           critical_only=critical_only,
+                           module_filter=module_filter,
+                           modules=modules,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+@ct2_bp.route('/inbox/<int:item_id>/acknowledge', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def acknowledge_result(item_id):
+    supabase = get_supabase_client()
+    try:
+        supabase.table('result_inbox').update({
+            'acknowledged': True,
+            'acknowledged_at': datetime.utcnow().isoformat(),
+        }).eq('id', item_id).execute()
+        flash('Result acknowledged.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct2.results_inbox'))
+
+
+@ct2_bp.route('/inbox/acknowledge-all', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def acknowledge_all_results():
+    supabase = get_supabase_client()
+    try:
+        supabase.table('result_inbox').update({
+            'acknowledged': True,
+            'acknowledged_at': datetime.utcnow().isoformat(),
+        }).eq('acknowledged', False).execute()
+        flash('All results marked as acknowledged.', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    return redirect(url_for('ct2.results_inbox'))
+
+
+# =====================================================
+# PHASE 9 — BILLING / CHARGE AGGREGATION
+# =====================================================
+
+@ct2_bp.route('/billing/charges')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def billing_charges():
+    supabase = get_supabase_client()
+    try:
+        charges = supabase.table('invoices').select('*, patients(first_name, last_name, patient_id_alt)')\
+            .order('issued_at', desc=True).limit(100).execute().data or []
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+        charges = []
+    by_dept = {}
+    for c in charges:
+        dept = c.get('invoice_type', 'Other')
+        by_dept.setdefault(dept, []).append(c)
+    return render_template('subsystems/core_transaction/ct2/billing_charges.html',
+                           charges=charges,
+                           by_dept=by_dept,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
+
+
+# =====================================================
+# PHASE 10 — ALERT CENTER
+# =====================================================
+
+@ct2_bp.route('/alerts')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def alert_center():
+    supabase = get_supabase_client()
+    alerts = []
+    # Critical unacknowledged lab results
+    try:
+        lab_crits = supabase.table('lab_orders').select('id, test_name, result_value, status, is_critical, patients(first_name, last_name)')\
+            .eq('is_critical', True).neq('status', 'Verified').execute().data or []
+        for r in lab_crits:
+            alerts.append({'type': 'Lab', 'level': 'danger', 'patient': r.get('patients'),
+                           'msg': f"Critical lab result: {r.get('test_name','')} — {r.get('result_value','pending')}",
+                           'id': r['id'], 'action_url': url_for('ct2.lab_orders')})
+    except Exception: pass
+    # Critical radiology
+    try:
+        rad_crits = supabase.table('radiology_orders').select('id, imaging_type, critical_findings, patients(first_name, last_name)')\
+            .eq('is_critical', True).execute().data or []
+        for r in rad_crits:
+            alerts.append({'type': 'Radiology', 'level': 'danger', 'patient': r.get('patients'),
+                           'msg': f"Critical imaging: {r.get('imaging_type','')} — {r.get('critical_findings','see report')}",
+                           'id': r['id'], 'action_url': url_for('ct2.radiology_orders')})
+    except Exception: pass
+    # Safety-flagged prescriptions
+    try:
+        rx_flags = supabase.table('prescriptions').select('id, medication_name, safety_flag_reason, patients(first_name, last_name)')\
+            .eq('safety_check_status', 'Flagged').execute().data or []
+        for r in rx_flags:
+            alerts.append({'type': 'Pharmacy', 'level': 'warning', 'patient': r.get('patients'),
+                           'msg': f"Safety flag on {r.get('medication_name','')} — {r.get('safety_flag_reason','review required')}",
+                           'id': r['id'], 'action_url': url_for('ct2.dispense_meds')})
+    except Exception: pass
+    # Unacknowledged critical inbox items
+    try:
+        inbox_crits = supabase.table('result_inbox').select('id, source_module, summary, patients(first_name, last_name)')\
+            .eq('is_critical', True).eq('acknowledged', False).execute().data or []
+        for r in inbox_crits:
+            alerts.append({'type': r.get('source_module', 'Result'), 'level': 'danger', 'patient': r.get('patients'),
+                           'msg': r.get('summary', ''), 'id': r['id'],
+                           'action_url': url_for('ct2.results_inbox', critical='1')})
+    except Exception: pass
+    # Overdue / stuck surgeries (Scheduled but past surgery_date)
+    try:
+        today_iso = datetime.utcnow().date().isoformat()
+        overdue_surg = supabase.table('surgeries').select('id, surgery_name, surgery_date, patients(first_name, last_name)')\
+            .in_('status', ['Scheduled', 'Requested']).lt('surgery_date', today_iso).execute().data or []
+        for r in overdue_surg:
+            alerts.append({'type': 'Surgery', 'level': 'warning', 'patient': r.get('patients'),
+                           'msg': f"Overdue surgery: {r.get('surgery_name','')} (scheduled {(r.get('surgery_date') or '')[:10]})",
+                           'id': r['id'], 'action_url': url_for('ct2.surgery_schedule')})
+    except Exception: pass
+    # Low stock medications (qty < 10)
+    try:
+        low_stock = supabase.table('inventory').select('id, item_name, quantity')\
+            .eq('category', 'Medical').lt('quantity', 10).gt('quantity', 0).execute().data or []
+        for r in low_stock:
+            alerts.append({'type': 'Inventory', 'level': 'warning', 'patient': None,
+                           'msg': f"Low stock: {r.get('item_name','')} — only {r.get('quantity',0)} units remaining",
+                           'id': r['id'], 'action_url': url_for('ct2.pharmacy_inventory')})
+    except Exception: pass
+    # Out-of-stock medications (qty == 0)
+    try:
+        no_stock = supabase.table('inventory').select('id, item_name, quantity')\
+            .eq('category', 'Medical').eq('quantity', 0).execute().data or []
+        for r in no_stock:
+            alerts.append({'type': 'Inventory', 'level': 'danger', 'patient': None,
+                           'msg': f"Out of stock: {r.get('item_name','')} — 0 units",
+                           'id': r['id'], 'action_url': url_for('ct2.pharmacy_inventory')})
+    except Exception: pass
+
+    # Sort: danger first, then warning
+    alerts.sort(key=lambda a: 0 if a['level'] == 'danger' else 1)
+
+    counts = {
+        'danger': sum(1 for a in alerts if a['level'] == 'danger'),
+        'warning': sum(1 for a in alerts if a['level'] == 'warning'),
+    }
+
+    return render_template('subsystems/core_transaction/ct2/alert_center.html',
+                           alerts=alerts,
+                           counts=counts,
+                           subsystem_name=SUBSYSTEM_NAME,
+                           accent_color=ACCENT_COLOR,
+                           blueprint_name=BLUEPRINT_NAME)
 
 

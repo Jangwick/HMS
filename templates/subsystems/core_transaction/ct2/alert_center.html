@@ -1,0 +1,157 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Alert Center - {{ subsystem_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Alert Center</h3>
+            <p class="text-gray-500">Critical flags, safety alerts, overdue items, and low-stock notifications.</p>
+        </div>
+        {% if alerts %}
+        <a href="{{ url_for('ct2.results_inbox', critical='1') }}"
+           class="px-4 py-2.5 text-sm font-semibold rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-red-50 hover:border-red-200 hover:text-red-700 transition-all inline-flex items-center gap-2">
+            <i class="bi bi-inbox-fill"></i>View Critical Inbox
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="glass-card rounded-2xl p-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0">
+                <i class="bi bi-exclamation-triangle-fill text-lg"></i>
+            </div>
+            <div>
+                <div class="text-2xl font-extrabold text-gray-900">{{ counts.danger }}</div>
+                <div class="text-xs text-gray-500">Critical</div>
+            </div>
+        </div>
+        <div class="glass-card rounded-2xl p-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <i class="bi bi-shield-exclamation text-lg"></i>
+            </div>
+            <div>
+                <div class="text-2xl font-extrabold text-gray-900">{{ counts.warning }}</div>
+                <div class="text-xs text-gray-500">Warnings</div>
+            </div>
+        </div>
+        <div class="glass-card rounded-2xl p-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center flex-shrink-0">
+                <i class="bi bi-bell-fill text-lg"></i>
+            </div>
+            <div>
+                <div class="text-2xl font-extrabold text-gray-900">{{ alerts|length }}</div>
+                <div class="text-xs text-gray-500">Total Active</div>
+            </div>
+        </div>
+        <div class="glass-card rounded-2xl p-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0">
+                <i class="bi bi-clipboard2-pulse text-lg"></i>
+            </div>
+            <div>
+                <div class="text-2xl font-extrabold text-gray-900">
+                    {{ alerts | selectattr('type','equalto','Lab') | list | length }}
+                </div>
+                <div class="text-xs text-gray-500">Lab Alerts</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grouped alert sections -->
+    {% if alerts %}
+    <!-- Critical block -->
+    {% set danger_alerts = alerts | selectattr('level','equalto','danger') | list %}
+    {% if danger_alerts %}
+    <div>
+        <h4 class="text-sm font-bold text-red-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <i class="bi bi-exclamation-triangle-fill"></i>Critical — Immediate Attention Required
+        </h4>
+        <div class="space-y-3">
+            {% for alert in danger_alerts %}
+            {% set pat = alert.get('patient') or {} %}
+            <div class="glass-card rounded-2xl p-5 border-l-4 border-red-400 bg-red-50/30 flex items-start gap-4">
+                <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center bg-red-100 text-red-600">
+                    <i class="bi bi-exclamation-triangle-fill text-lg"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold
+                                     {% if alert.get('type') == 'Lab' %}bg-purple-100 text-purple-700
+                                     {% elif alert.get('type') == 'Radiology' %}bg-blue-100 text-blue-700
+                                     {% elif alert.get('type') == 'Pharmacy' %}bg-teal-100 text-teal-700
+                                     {% elif alert.get('type') == 'Surgery' %}bg-orange-100 text-orange-700
+                                     {% elif alert.get('type') == 'Inventory' %}bg-gray-100 text-gray-700
+                                     {% else %}bg-gray-100 text-gray-600{% endif %}">
+                            {{ alert.get('type','') }}
+                        </span>
+                        {% if pat %}
+                        <span class="text-sm text-gray-500">
+                            <i class="bi bi-person mr-1"></i>{{ pat.get('first_name','') }} {{ pat.get('last_name','') }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <p class="text-sm font-semibold text-red-800">{{ alert.get('msg','') }}</p>
+                </div>
+                <a href="{{ alert.get('action_url','#') }}"
+                   class="flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-xl border border-red-300 text-red-700 hover:bg-red-100 transition-all whitespace-nowrap">
+                    Review <i class="bi bi-arrow-right ml-1"></i>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Warning block -->
+    {% set warning_alerts = alerts | selectattr('level','equalto','warning') | list %}
+    {% if warning_alerts %}
+    <div>
+        <h4 class="text-sm font-bold text-amber-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <i class="bi bi-shield-exclamation"></i>Warnings — Action Recommended
+        </h4>
+        <div class="space-y-3">
+            {% for alert in warning_alerts %}
+            {% set pat = alert.get('patient') or {} %}
+            <div class="glass-card rounded-2xl p-5 border-l-4 border-amber-400 bg-amber-50/30 flex items-start gap-4">
+                <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center bg-amber-100 text-amber-600">
+                    <i class="bi bi-shield-exclamation text-lg"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold
+                                     {% if alert.get('type') == 'Lab' %}bg-purple-100 text-purple-700
+                                     {% elif alert.get('type') == 'Radiology' %}bg-blue-100 text-blue-700
+                                     {% elif alert.get('type') == 'Pharmacy' %}bg-teal-100 text-teal-700
+                                     {% elif alert.get('type') == 'Surgery' %}bg-orange-100 text-orange-700
+                                     {% elif alert.get('type') == 'Inventory' %}bg-gray-200 text-gray-700
+                                     {% else %}bg-gray-100 text-gray-600{% endif %}">
+                            {{ alert.get('type','') }}
+                        </span>
+                        {% if pat %}
+                        <span class="text-sm text-gray-500">
+                            <i class="bi bi-person mr-1"></i>{{ pat.get('first_name','') }} {{ pat.get('last_name','') }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <p class="text-sm font-semibold text-amber-800">{{ alert.get('msg','') }}</p>
+                </div>
+                <a href="{{ alert.get('action_url','#') }}"
+                   class="flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-xl border border-amber-300 text-amber-700 hover:bg-amber-100 transition-all whitespace-nowrap">
+                    Review <i class="bi bi-arrow-right ml-1"></i>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="glass-card rounded-2xl py-16 text-center">
+        <i class="bi bi-shield-check text-5xl text-emerald-300"></i>
+        <p class="text-gray-500 mt-4 font-semibold">No active alerts — all systems normal.</p>
+        <p class="text-gray-400 text-sm mt-1">Check back if any critical results or safety flags are raised.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

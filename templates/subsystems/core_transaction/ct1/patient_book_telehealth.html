@@ -30,9 +30,18 @@
         <span class="ml-auto px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl border border-emerald-200">Your Account</span>
     </div>
     {% else %}
-    <div class="p-5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-700 text-sm font-bold flex items-center gap-3">
-        <i class="bi bi-exclamation-triangle-fill text-xl"></i>
-        No patient record linked to your account. Please contact the clinic desk to register your profile first.
+    <div class="p-5 bg-blue-50 border border-blue-100 rounded-2xl space-y-3">
+        <div class="flex items-center gap-2 text-blue-700 font-bold text-sm">
+            <i class="bi bi-person-badge text-lg"></i>
+            No auto-linked patient found — please select the patient record for this booking:
+        </div>
+        <select name="manual_patient_id" form="bookingForm" required
+                class="w-full px-4 py-3 bg-white border-2 border-blue-200 rounded-xl focus:border-blue-500 font-semibold text-gray-800 outline-none transition-all">
+            <option value="">— Select Patient —</option>
+            {% for p in all_patients %}
+            <option value="{{ p.id }}">{{ p.first_name }} {{ p.last_name }} ({{ p.patient_id_alt }})</option>
+            {% endfor %}
+        </select>
     </div>
     {% endif %}
 
@@ -41,7 +50,7 @@
         <div class="px-8 py-6 border-b border-gray-50 bg-gray-50/30">
             <h4 class="font-black text-gray-900">Appointment Details</h4>
         </div>
-        <form action="{{ url_for('ct1.patient_book_telehealth') }}" method="POST" class="p-8 space-y-6">
+        <form action="{{ url_for('ct1.patient_book_telehealth') }}" method="POST" id="bookingForm" class="p-8 space-y-6">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <!-- Doctor selection with availability info -->
@@ -82,8 +91,8 @@
                     class="flex-1 py-4 bg-gray-100 text-gray-600 font-bold rounded-2xl hover:bg-gray-200 transition-all text-center">
                     Cancel
                 </a>
-                <button type="submit" {% if not patient %}disabled{% endif %}
-                    class="flex-1 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all {% if not patient %}opacity-50 cursor-not-allowed{% endif %}">
+                <button type="submit"
+                    class="flex-1 py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">
                     <i class="bi bi-calendar-check mr-2"></i>Book Session
                 </button>
             </div>

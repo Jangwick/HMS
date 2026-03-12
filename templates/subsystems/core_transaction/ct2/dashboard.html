@@ -28,12 +28,50 @@
                     class="px-6 py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center border border-white/20">
                     Diet Management (DNMS)
                 </a>
+                <a href="{{ url_for('ct2.encounters') }}"
+                    class="px-6 py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center border border-white/20">
+                    <i class="bi bi-folder2-open mr-2"></i>Encounters
+                </a>
+                <a href="{{ url_for('ct2.results_inbox') }}"
+                    class="px-6 py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center border border-white/20">
+                    <i class="bi bi-inbox mr-2"></i>Results Inbox
+                </a>
+                <a href="{{ url_for('ct2.alert_center') }}"
+                    class="px-6 py-3 bg-red-500/40 text-white font-bold rounded-xl hover:bg-red-500/60 transition-colors backdrop-blur-sm text-center inline-flex items-center justify-center border border-red-400/40">
+                    <i class="bi bi-bell-fill mr-2"></i>Alert Center
+                </a>
             </div>
         </div>
     </div>
 
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <!-- Encounter Stats -->
+        <a href="{{ url_for('ct2.encounters', status='Active') }}" class="glass-card p-6 rounded-2xl hover-scale block ring-2 ring-emerald-400/30">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Active Encounters</h4>
+                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center"><i class="bi bi-person-lines-fill text-lg"></i></div>
+            </div>
+            <p class="text-2xl font-bold text-gray-900">{{ metrics.get('active_encounters', 0) }}</p>
+            <p class="text-emerald-500 text-[10px] font-medium mt-1">In progress</p>
+        </a>
+        <a href="{{ url_for('ct2.encounters', status='Awaiting Results') }}" class="glass-card p-6 rounded-2xl hover-scale block">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Awaiting Results</h4>
+                <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center"><i class="bi bi-clock-history text-lg"></i></div>
+            </div>
+            <p class="text-2xl font-bold text-gray-900">{{ metrics.get('enc_awaiting', 0) }}</p>
+            <p class="text-amber-500 text-[10px] font-medium mt-1">Pending orders</p>
+        </a>
+        <a href="{{ url_for('ct2.results_inbox') }}" class="glass-card p-6 rounded-2xl hover-scale block">
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Inbox Unread</h4>
+                <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center"><i class="bi bi-inbox-fill text-lg"></i></div>
+            </div>
+            <p class="text-2xl font-bold text-gray-900">{{ metrics.get('inbox_unread', 0) }}</p>
+            <p class="text-blue-500 text-[10px] font-medium mt-1">Results to review</p>
+        </a>
+        <!-- Existing Lab Orders card -->
         <div class="glass-card p-6 rounded-2xl hover-scale">
             <div class="flex items-center justify-between mb-4">
                 <h4 class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Lab Orders</h4>

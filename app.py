@@ -136,6 +136,47 @@ def create_app(config_class=Config):
                 pass
         return {'active_attendance': None}
 
+    @app.context_processor
+    def inject_ct2_badges():
+        from flask import request as _req
+        from flask_login import current_user
+        from utils.supabase_client import get_supabase_client
+        if not current_user.is_authenticated:
+            return {'ct2_inbox_unread': 0, 'ct2_alert_count': 0}
+        if not (_req.endpoint and _req.endpoint.startswith('ct2.')):
+            return {'ct2_inbox_unread': 0, 'ct2_alert_count': 0}
+        try:
+            client = get_supabase_client()
+            inbox_unread = 0
+            alert_count  = 0
+            try:
+                r = client.table('result_inbox').select('id', count='exact')\
+                    .eq('acknowledged', False).execute()
+                inbox_unread = r.count or 0
+            except Exception:
+                pass
+            try:
+                lab_crit = client.table('lab_orders').select('id', count='exact')\
+                    .eq('is_critical', True).neq('status', 'Verified').execute()
+                alert_count += lab_crit.count or 0
+            except Exception:
+                pass
+            try:
+                rad_crit = client.table('radiology_orders').select('id', count='exact')\
+                    .eq('is_critical', True).execute()
+                alert_count += rad_crit.count or 0
+            except Exception:
+                pass
+            try:
+                rx_flag = client.table('prescriptions').select('id', count='exact')\
+                    .eq('safety_check_status', 'Flagged').execute()
+                alert_count += rx_flag.count or 0
+            except Exception:
+                pass
+            return {'ct2_inbox_unread': inbox_unread, 'ct2_alert_count': alert_count}
+        except Exception:
+            return {'ct2_inbox_unread': 0, 'ct2_alert_count': 0}
+
     @app.after_request
     def add_header(response):
         """

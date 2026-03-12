@@ -1,0 +1,359 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Encounter #ENC-{{ enc.id }} - {{ subsystem_name }}{% endblock %}
+
+{% block content %}
+{% set pat = enc.get('patients') or {} %}
+{% set doc = enc.get('users') or {} %}
+<div class="space-y-6">
+
+    <!-- Breadcrumb + Header -->
+    <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+        <div>
+            <nav class="text-sm text-gray-400 mb-1 flex items-center gap-1">
+                <a href="{{ url_for('ct2.encounters') }}" class="hover:text-emerald-600">Encounters</a>
+                <i class="bi bi-chevron-right text-xs"></i>
+                <span class="text-gray-600 font-semibold">#ENC-{{ enc.id }}</span>
+            </nav>
+            <h3 class="text-2xl font-bold text-gray-900">{{ pat.get('first_name','') }} {{ pat.get('last_name','') }}</h3>
+            <p class="text-gray-500 text-sm">Encounter started {{ (enc.get('encounter_date') or '')[:16].replace('T',' ') }} &bull; Physician: {{ doc.get('full_name') or doc.get('username','—') }}</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+            {% if enc.get('status') != 'Discharged' %}
+            <form method="POST" action="{{ url_for('ct2.discharge_encounter', encounter_id=enc.id) }}" onsubmit="return confirm('Mark this encounter as Discharged?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="px-5 py-2.5 bg-blue-500 text-white font-bold rounded-xl shadow hover:bg-blue-600 transition-all flex items-center gap-2">
+                    <i class="bi bi-box-arrow-right"></i>Discharge
+                </button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('ct2.encounters') }}" class="px-5 py-2.5 bg-white text-gray-700 font-semibold rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-all flex items-center gap-2">
+                <i class="bi bi-arrow-left"></i>Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Banner -->
+    <div class="glass-card rounded-2xl p-4 flex flex-wrap items-center gap-4">
+        {% set s = enc.get('status','') %}
+        <div class="flex items-center gap-3">
+            <span class="text-sm font-semibold text-gray-600">Status:</span>
+            {% if s == 'Active' %}<span class="px-3 py-1 rounded-xl text-sm font-bold bg-emerald-100 text-emerald-700">● Active</span>
+            {% elif s == 'Awaiting Results' %}<span class="px-3 py-1 rounded-xl text-sm font-bold bg-amber-100 text-amber-700">⏳ Awaiting Results</span>
+            {% elif s == 'Ready for Discharge' %}<span class="px-3 py-1 rounded-xl text-sm font-bold bg-blue-100 text-blue-700">✓ Ready for Discharge</span>
+            {% elif s == 'Discharged' %}<span class="px-3 py-1 rounded-xl text-sm font-bold bg-gray-100 text-gray-600">✓ Discharged {{ (enc.get('discharged_at') or '')[:10] }}</span>
+            {% else %}<span class="px-3 py-1 rounded-xl text-sm font-bold bg-gray-100 text-gray-600">{{ s }}</span>{% endif %}
+        </div>
+        <div class="flex gap-3 flex-wrap text-sm text-gray-600">
+            <span><i class="bi bi-person mr-1"></i>{{ pat.get('patient_id_alt','') }}</span>
+            {% if enc.get('icd_code') %}<span><i class="bi bi-code-square mr-1"></i>ICD: {{ enc.icd_code }}</span>{% endif %}
+            {% if enc.get('diagnosis') %}<span class="font-semibold text-gray-800"><i class="bi bi-clipboard-pulse mr-1"></i>{{ enc.diagnosis }}</span>{% endif %}
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- LEFT: Clinical Notes + Edit -->
+        <div class="lg:col-span-1 space-y-5">
+            <div class="glass-card rounded-2xl overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-white/50 font-bold text-gray-700 flex items-center gap-2">
+                    <i class="bi bi-clipboard2-pulse text-emerald-500"></i> Clinical Notes
+                </div>
+                <form method="POST" action="{{ url_for('ct2.update_encounter', encounter_id=enc.id) }}" class="p-5 space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Chief Complaint</label>
+                        <textarea name="chief_complaint" rows="2" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">{{ enc.get('chief_complaint','') }}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Examination Notes</label>
+                        <textarea name="examination_notes" rows="3" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">{{ enc.get('examination_notes','') }}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Diagnosis</label>
+                        <input type="text" name="diagnosis" value="{{ enc.get('diagnosis','') }}" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">ICD-10 Code</label>
+                        <input type="text" name="icd_code" value="{{ enc.get('icd_code','') }}" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Status</label>
+                        <select name="status" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                            {% for st in ['Active','Awaiting Results','Ready for Discharge','Discharged'] %}
+                            <option value="{{ st }}" {% if enc.get('status') == st %}selected{% endif %}>{{ st }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-all">Save Notes</button>
+                </form>
+            </div>
+
+            <!-- Results Inbox (encounter-scoped) -->
+            <div class="glass-card rounded-2xl overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 bg-white/50 font-bold text-gray-700 flex items-center justify-between">
+                    <span class="flex items-center gap-2"><i class="bi bi-inbox text-emerald-500"></i> Results Inbox</span>
+                    {% set unread = result_inbox | selectattr('acknowledged','equalto',False) | list | length %}
+                    {% if unread %}<span class="px-2 py-0.5 bg-red-100 text-red-600 text-xs font-bold rounded-full">{{ unread }}</span>{% endif %}
+                </div>
+                <div class="divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                    {% for item in result_inbox %}
+                    <div class="px-5 py-3 {% if not item.get('acknowledged') %}bg-amber-50/50{% endif %}">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold
+                                    {% if item.get('source_module') == 'Lab' %}bg-purple-100 text-purple-700
+                                    {% elif item.get('source_module') == 'Radiology' %}bg-blue-100 text-blue-700
+                                    {% elif item.get('source_module') == 'Surgery' %}bg-orange-100 text-orange-700
+                                    {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                    {{ item.get('source_module','') }}
+                                </span>
+                                {% if item.get('is_critical') %}<span class="ml-1 px-2 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded">CRITICAL</span>{% endif %}
+                                <p class="text-sm text-gray-700 mt-1">{{ item.get('summary','') }}</p>
+                            </div>
+                            {% if not item.get('acknowledged') %}
+                            <form method="POST" action="{{ url_for('ct2.acknowledge_result', item_id=item.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-2 py-1 bg-emerald-100 text-emerald-600 text-xs font-semibold rounded-lg hover:bg-emerald-200 transition-all whitespace-nowrap">Ack</button>
+                            </form>
+                            {% else %}
+                            <span class="text-emerald-500 text-xs"><i class="bi bi-check2"></i></span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="px-6 py-6 text-center text-gray-400 text-sm">No results yet</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Order Hub Tabs -->
+        <div class="lg:col-span-2 space-y-5">
+            <!-- Tab Nav -->
+            <div class="glass-card rounded-2xl">
+                <div class="flex border-b border-gray-200 overflow-x-auto">
+                    {% set tabs = [('tab-lab','bi-eyedropper','Lab'),('tab-rad','bi-radioactive','Radiology'),('tab-rx','bi-capsule','Pharmacy'),('tab-diet','bi-egg-fried','Diet/Nutrition'),('tab-surg','bi-scissors','Surgery')] %}
+                    {% for tid, icon, label in tabs %}
+                    <button onclick="showTab('{{ tid }}')" id="btn-{{ tid }}"
+                            class="tab-btn px-5 py-4 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all whitespace-nowrap
+                                   {% if loop.first %}border-emerald-500 text-emerald-600{% else %}border-transparent text-gray-500 hover:text-emerald-600{% endif %}">
+                        <i class="bi {{ icon }}"></i>{{ label }}
+                    </button>
+                    {% endfor %}
+                </div>
+
+                <!-- LAB TAB -->
+                <div id="tab-lab" class="tab-pane p-5 space-y-4">
+                    <form method="POST" action="{{ url_for('ct2.encounter_order_lab', encounter_id=enc.id) }}" class="flex flex-wrap gap-3 items-end">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="flex-1 min-w-40">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Test Name *</label>
+                            <input type="text" name="test_name" required placeholder="e.g. CBC, Lipid Panel…" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div class="w-32">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Priority</label>
+                            <select name="priority" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                                <option>Routine</option><option>Urgent</option><option>STAT</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-all">Order</button>
+                    </form>
+                    <div class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-400 text-xs uppercase"><tr>
+                                <th class="px-4 py-3 text-left">Test</th>
+                                <th class="px-4 py-3 text-left">Priority</th>
+                                <th class="px-4 py-3 text-left">Status</th>
+                                <th class="px-4 py-3 text-left">Result</th>
+                            </tr></thead>
+                            <tbody class="divide-y divide-gray-50">
+                                {% for o in lab_orders %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 font-semibold text-gray-700">{{ o.get('test_name','') }}{% if o.get('is_critical') %} <span class="text-[10px] text-red-600 font-bold ml-1">⚠ CRIT</span>{% endif %}</td>
+                                    <td class="px-4 py-3 text-gray-500">{{ o.get('priority','') }}</td>
+                                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold {% if o.get('status')=='Verified' %}bg-emerald-100 text-emerald-700{% else %}bg-amber-100 text-amber-700{% endif %}">{{ o.get('status','') }}</span></td>
+                                    <td class="px-4 py-3 text-gray-600">{{ o.get('result_value','—') }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No lab orders</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- RADIOLOGY TAB -->
+                <div id="tab-rad" class="tab-pane hidden p-5 space-y-4">
+                    <form method="POST" action="{{ url_for('ct2.encounter_order_radiology', encounter_id=enc.id) }}" class="flex flex-wrap gap-3 items-end">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="flex-1 min-w-40">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Imaging Type *</label>
+                            <input type="text" name="imaging_type" required placeholder="e.g. Chest X-ray, CT Head…" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div class="w-32">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Priority</label>
+                            <select name="priority" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                                <option>Routine</option><option>Urgent</option><option>STAT</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-all">Order</button>
+                    </form>
+                    <div class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-400 text-xs uppercase"><tr><th class="px-4 py-3 text-left">Imaging</th><th class="px-4 py-3 text-left">Priority</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Findings</th></tr></thead>
+                            <tbody class="divide-y divide-gray-50">
+                                {% for o in radiology_orders %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 font-semibold text-gray-700">{{ o.get('imaging_type','') }}{% if o.get('is_critical') %} <span class="text-[10px] text-red-600 font-bold ml-1">⚠ CRIT</span>{% endif %}</td>
+                                    <td class="px-4 py-3 text-gray-500">{{ o.get('priority','') }}</td>
+                                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">{{ o.get('status','') }}</span></td>
+                                    <td class="px-4 py-3 text-gray-600 max-w-xs truncate">{{ o.get('findings','—') }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No radiology orders</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- PHARMACY TAB -->
+                <div id="tab-rx" class="tab-pane hidden p-5 space-y-4">
+                    <form method="POST" action="{{ url_for('ct2.encounter_order_pharmacy', encounter_id=enc.id) }}" class="flex flex-wrap gap-3 items-end">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="flex-1 min-w-40">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Medication *</label>
+                            <input type="text" name="medication_name" required list="med-list" placeholder="Search medication…" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                            <datalist id="med-list">{% for m in meds %}<option value="{{ m.item_name }}">{% endfor %}</datalist>
+                        </div>
+                        <div class="w-36">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Dosage</label>
+                            <input type="text" name="dosage" placeholder="e.g. 500mg TID" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div class="flex-1 min-w-40">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Instructions</label>
+                            <input type="text" name="instructions" placeholder="After meals, etc." class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <button type="submit" class="px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-all">Prescribe</button>
+                    </form>
+                    <div class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-400 text-xs uppercase"><tr><th class="px-4 py-3 text-left">Medication</th><th class="px-4 py-3 text-left">Dosage</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Dispensed At</th></tr></thead>
+                            <tbody class="divide-y divide-gray-50">
+                                {% for p in prescriptions %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 font-semibold text-gray-700">{{ p.get('medication_name','') }}</td>
+                                    <td class="px-4 py-3 text-gray-500">{{ p.get('dosage','') }}</td>
+                                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold {% if p.get('status')=='Dispensed' %}bg-emerald-100 text-emerald-700{% else %}bg-amber-100 text-amber-700{% endif %}">{{ p.get('status','') }}</span></td>
+                                    <td class="px-4 py-3 text-gray-500 text-xs">{{ (p.get('dispensed_at') or '—')[:16].replace('T',' ') }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No prescriptions</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- DIET TAB -->
+                <div id="tab-diet" class="tab-pane hidden p-5 space-y-4">
+                    <form method="POST" action="{{ url_for('ct2.encounter_order_diet', encounter_id=enc.id) }}" class="flex flex-wrap gap-3 items-end">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="flex-1 min-w-40">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Diet Type *</label>
+                            <select name="diet_type" required class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                                <option>Regular</option><option>Diabetic</option><option>Low Sodium</option><option>Low Fat</option><option>Renal</option><option>Liquid</option><option>NPO</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 min-w-48">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Instructions</label>
+                            <input type="text" name="instruction" placeholder="Additional dietary instructions…" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <button type="submit" class="px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-all">Order</button>
+                    </form>
+                    <div class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-400 text-xs uppercase"><tr><th class="px-4 py-3 text-left">Diet</th><th class="px-4 py-3 text-left">Instructions</th><th class="px-4 py-3 text-left">Status</th><th class="px-4 py-3 text-left">Start Date</th></tr></thead>
+                            <tbody class="divide-y divide-gray-50">
+                                {% for d in diet_plans %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 font-semibold text-gray-700">{{ d.get('diet_type','') }}</td>
+                                    <td class="px-4 py-3 text-gray-500 max-w-xs truncate">{{ d.get('instruction','—') }}</td>
+                                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold {% if d.get('status')=='Active' %}bg-emerald-100 text-emerald-700{% else %}bg-gray-100 text-gray-600{% endif %}">{{ d.get('status','') }}</span></td>
+                                    <td class="px-4 py-3 text-gray-500 text-xs">{{ d.get('start_date','—') }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No diet orders</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- SURGERY TAB -->
+                <div id="tab-surg" class="tab-pane hidden p-5 space-y-4">
+                    <form method="POST" action="{{ url_for('ct2.encounter_order_surgery', encounter_id=enc.id) }}" class="grid grid-cols-2 gap-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Procedure Name *</label>
+                            <input type="text" name="surgery_name" required placeholder="e.g. Appendectomy" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Surgeon</label>
+                            <select name="surgeon_id" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                                <option value="">Self ({{ current_user.username }})</option>
+                                {% for d in doctors %}<option value="{{ d.id }}">{{ d.get('full_name') or d.get('username','') }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Proposed Date</label>
+                            <input type="datetime-local" name="surgery_date" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Operating Theatre</label>
+                            <input type="text" name="operating_theater" placeholder="e.g. OR-1" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Notes</label>
+                            <textarea name="notes" rows="2" placeholder="Surgical indication & notes…" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"></textarea>
+                        </div>
+                        <div class="col-span-2">
+                            <button type="submit" class="px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-all">Submit Surgery Request</button>
+                        </div>
+                    </form>
+                    <div class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-400 text-xs uppercase"><tr><th class="px-4 py-3 text-left">Procedure</th><th class="px-4 py-3 text-left">Date</th><th class="px-4 py-3 text-left">Status</th></tr></thead>
+                            <tbody class="divide-y divide-gray-50">
+                                {% for s in surgeries %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 font-semibold text-gray-700">{{ s.get('surgery_name','') }}</td>
+                                    <td class="px-4 py-3 text-xs text-gray-500">{{ (s.get('surgery_date') or '—')[:16].replace('T',' ') }}</td>
+                                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold {% if s.get('status')=='Completed' %}bg-emerald-100 text-emerald-700{% elif s.get('status')=='In Progress' %}bg-orange-100 text-orange-700{% else %}bg-gray-100 text-gray-600{% endif %}">{{ s.get('status','') }}</span></td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="3" class="px-4 py-6 text-center text-gray-400">No surgeries</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showTab(id) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('border-emerald-500','text-emerald-600');
+        b.classList.add('border-transparent','text-gray-500');
+    });
+    document.getElementById(id).classList.remove('hidden');
+    const btn = document.getElementById('btn-' + id);
+    if (btn) { btn.classList.add('border-emerald-500','text-emerald-600'); btn.classList.remove('border-transparent','text-gray-500'); }
+}
+</script>
+{% endblock %}

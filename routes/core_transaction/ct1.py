@@ -1411,11 +1411,20 @@ def patient_book_telehealth():
             patient_rec = pr.data
     except Exception:
         pass
-    # Fallback: try matching by username or email
-    if not patient_rec:
+    # Fallback: match by email
+    if not patient_rec and getattr(current_user, 'email', None):
         try:
             pr = client.table('patients').select('*')\
-                .ilike('first_name', f"%{current_user.username.split()[0]}%").limit(1).execute()
+                .eq('email', current_user.email).limit(1).execute()
+            patient_rec = pr.data[0] if pr.data else None
+        except Exception:
+            pass
+    # Fallback: match by username
+    if not patient_rec:
+        try:
+            uname_part = current_user.username.replace('_', ' ').split()[0]
+            pr = client.table('patients').select('*')\
+                .ilike('first_name', f"%{uname_part}%").limit(1).execute()
             patient_rec = pr.data[0] if pr.data else None
         except Exception:
             pass
@@ -1423,14 +1432,32 @@ def patient_book_telehealth():
     doctors = client.table('users').select('id, username, full_name, subsystem')\
         .in_('subsystem', ['ct2', 'ct3']).execute().data or []
 
+    # All patients list — shown in picker when no record is auto-linked
+    all_patients = []
+    try:
+        all_patients = client.table('patients').select('id, first_name, last_name, patient_id_alt')\
+            .order('first_name').execute().data or []
+    except Exception:
+        pass
+
     if request.method == 'POST':
         doctor_id = request.form.get('doctor_id')
         scheduled_at = request.form.get('scheduled_at')
         notes = request.form.get('notes', '').strip()
 
+        # If no auto-linked patient, accept manual selection from form
         if not patient_rec:
-            flash('No patient record found for your account. Please contact the clinic.', 'danger')
-            return redirect(url_for('patient.dashboard'))
+            manual_pid = request.form.get('manual_patient_id')
+            if manual_pid:
+                try:
+                    pr = client.table('patients').select('*').eq('id', int(manual_pid)).single().execute()
+                    patient_rec = pr.data if pr and pr.data else None
+                except Exception:
+                    pass
+
+        if not patient_rec:
+            flash('Please select a patient record to continue.', 'danger')
+            return redirect(url_for('ct1.patient_book_telehealth'))
 
         room_token = uuid.uuid4().hex[:16]
         meeting_link = f'https://meet.jit.si/hms-{room_token}'
@@ -1463,6 +1490,7 @@ def patient_book_telehealth():
     return render_template('subsystems/core_transaction/ct1/patient_book_telehealth.html',
                            doctors=doctors,
                            patient=patient_rec,
+                           all_patients=all_patients,
                            subsystem_name='CT1 — Core Transactions',
                            accent_color='#10B981',
                            blueprint_name='ct1')

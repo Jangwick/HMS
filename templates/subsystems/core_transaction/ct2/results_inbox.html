@@ -1,0 +1,183 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Results Inbox - {{ subsystem_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Results Inbox</h3>
+            <p class="text-gray-500">Verified lab, radiology, pharmacy, and surgery results awaiting review.</p>
+        </div>
+        {% if unread %}
+        <form method="POST" action="{{ url_for('ct2.acknowledge_all_results') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit"
+                    class="px-5 py-2.5 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-all inline-flex items-center gap-2">
+                <i class="bi bi-check2-all"></i>Acknowledge All ({{ unread }})
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- Unread Banner -->
+    {% if unread %}
+    <div class="glass-card rounded-2xl p-4 bg-amber-50/80 border border-amber-200 flex items-center gap-3">
+        <i class="bi bi-bell-fill text-amber-500 text-xl"></i>
+        <div>
+            <p class="font-bold text-amber-800">{{ unread }} unacknowledged result{{ 's' if unread > 1 }}</p>
+            <p class="text-sm text-amber-600">Review and acknowledge pending results below.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filter bar: Critical toggle + Module tabs -->
+    <div class="glass-card rounded-2xl p-4 flex flex-wrap gap-3 items-center">
+        <!-- Critical toggle -->
+        <a href="{{ url_for('ct2.results_inbox', module=module_filter) }}"
+           class="px-4 py-2 text-sm font-semibold rounded-xl border transition-all
+                  {% if not critical_only %}bg-emerald-500 text-white border-emerald-500{% else %}bg-white text-gray-600 border-gray-200 hover:bg-emerald-50{% endif %}">
+            All
+        </a>
+        <a href="{{ url_for('ct2.results_inbox', critical='1', module=module_filter) }}"
+           class="px-4 py-2 text-sm font-semibold rounded-xl border transition-all flex items-center gap-1.5
+                  {% if critical_only %}bg-red-500 text-white border-red-500{% else %}bg-white text-gray-600 border-gray-200 hover:bg-red-50{% endif %}">
+            <i class="bi bi-exclamation-triangle-fill"></i>Critical Only
+        </a>
+        <div class="h-5 w-px bg-gray-200 mx-1"></div>
+        <!-- Module tabs -->
+        <a href="{{ url_for('ct2.results_inbox', critical='1' if critical_only else '') }}"
+           class="px-4 py-2 text-sm font-semibold rounded-xl border transition-all
+                  {% if not module_filter %}bg-gray-800 text-white border-gray-800{% else %}bg-white text-gray-600 border-gray-200 hover:bg-gray-50{% endif %}">
+            All Modules
+        </a>
+        {% for mod in modules %}
+        <a href="{{ url_for('ct2.results_inbox', module=mod, critical='1' if critical_only else '') }}"
+           class="px-4 py-2 text-sm font-semibold rounded-xl border transition-all
+                  {% if module_filter == mod %}
+                    {% if mod == 'Lab' %}bg-purple-500 text-white border-purple-500
+                    {% elif mod == 'Radiology' %}bg-blue-500 text-white border-blue-500
+                    {% elif mod == 'Surgery' %}bg-orange-500 text-white border-orange-500
+                    {% elif mod == 'Pharmacy' %}bg-teal-500 text-white border-teal-500
+                    {% else %}bg-gray-700 text-white border-gray-700{% endif %}
+                  {% else %}bg-white text-gray-600 border-gray-200 hover:bg-gray-50{% endif %}">
+            {{ mod }}
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Inbox Table -->
+    <div class="glass-card rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50/50 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4">Source</th>
+                        <th class="px-6 py-4">Patient</th>
+                        <th class="px-6 py-4">Summary</th>
+                        <th class="px-6 py-4">Encounter</th>
+                        <th class="px-6 py-4">Received</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for item in inbox %}
+                    {% set pat = item.get('patients') or {} %}
+                    {% set enc = item.get('encounters') or {} %}
+                    <tr class="hover:bg-emerald-50/20 transition-colors {% if not item.get('acknowledged') and item.get('is_critical') %}bg-red-50/40{% elif not item.get('acknowledged') %}bg-amber-50/30{% endif %}">
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold
+                                {% if item.get('source_module') == 'Lab' %}bg-purple-100 text-purple-700
+                                {% elif item.get('source_module') == 'Radiology' %}bg-blue-100 text-blue-700
+                                {% elif item.get('source_module') == 'Surgery' %}bg-orange-100 text-orange-700
+                                {% elif item.get('source_module') == 'Pharmacy' %}bg-teal-100 text-teal-700
+                                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                {% if item.get('source_module') == 'Lab' %}<i class="bi bi-eyedropper"></i>
+                                {% elif item.get('source_module') == 'Radiology' %}<i class="bi bi-radioactive"></i>
+                                {% elif item.get('source_module') == 'Surgery' %}<i class="bi bi-scissors"></i>
+                                {% elif item.get('source_module') == 'Pharmacy' %}<i class="bi bi-capsule-pill"></i>
+                                {% endif %}
+                                {{ item.get('source_module','—') }}
+                            </span>
+                            {% if item.get('is_critical') %}
+                            <div class="mt-1">
+                                <span class="px-2 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded animate-pulse">⚠ CRITICAL</span>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if pat %}
+                            <div class="font-semibold text-gray-900">{{ pat.get('first_name','') }} {{ pat.get('last_name','') }}</div>
+                            <div class="text-xs text-gray-400">{{ pat.get('patient_id_alt','') }}</div>
+                            {% else %}
+                            <span class="text-gray-400">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 max-w-xs">
+                            <p class="text-sm text-gray-700">{{ item.get('summary','') }}</p>
+                            {% if item.get('result_value') %}
+                            <p class="text-xs text-gray-500 mt-0.5">Value: <span class="font-mono font-semibold {% if item.get('is_critical') %}text-red-600{% endif %}">{{ item.result_value }}</span></p>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if item.get('encounter_id') and enc %}
+                            <a href="{{ url_for('ct2.encounter_detail', enc_id=item.encounter_id) }}"
+                               class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-800 hover:underline">
+                                <i class="bi bi-folder2-open"></i>
+                                {{ enc.get('chief_complaint','View') | truncate(22) }}
+                            </a>
+                            <div class="text-[10px] text-gray-400 mt-0.5">{{ enc.get('status','') }}</div>
+                            {% elif item.get('encounter_id') %}
+                            <a href="{{ url_for('ct2.encounter_detail', enc_id=item.encounter_id) }}"
+                               class="text-xs text-emerald-500 hover:underline"><i class="bi bi-folder2-open mr-1"></i>View Encounter</a>
+                            {% else %}
+                            <span class="text-gray-300 text-xs">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
+                            {{ (item.get('created_at') or '')[:16].replace('T',' ') }}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if item.get('acknowledged') %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold">
+                                <i class="bi bi-check2-circle"></i>Acknowledged
+                            </span>
+                            <div class="text-[10px] text-gray-400 mt-0.5">{{ (item.get('acknowledged_at') or '')[:16].replace('T',' ') }}</div>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold">
+                                <i class="bi bi-clock"></i>Pending
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            {% if not item.get('acknowledged') %}
+                            <form method="POST" action="{{ url_for('ct2.acknowledge_result', item_id=item.id) }}" class="inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit"
+                                        class="px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-all inline-flex items-center gap-1.5">
+                                    <i class="bi bi-check-lg"></i>Acknowledge
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="text-gray-300 text-lg"><i class="bi bi-check2-all"></i></span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-16 text-center">
+                            <i class="bi bi-inbox text-4xl text-gray-200"></i>
+                            <p class="text-gray-400 mt-3 font-medium">Inbox is empty
+                                {% if critical_only %} for critical items{% endif %}
+                                {% if module_filter %} in {{ module_filter }}{% endif %}.
+                            </p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

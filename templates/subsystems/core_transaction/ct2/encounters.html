@@ -1,0 +1,157 @@
+{% extends "base/subsystem_base.html" %}
+{% block title %}Encounters - {{ subsystem_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-900">Patient Encounters</h3>
+            <p class="text-gray-500">Active EMR encounters — orders, results, and discharge management.</p>
+        </div>
+        <button onclick="document.getElementById('newEncModal').classList.remove('hidden')"
+                class="px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl shadow-lg hover:bg-emerald-600 transition-all flex items-center">
+            <i class="bi bi-plus-lg mr-2"></i>New Encounter
+        </button>
+    </div>
+
+    <!-- Status Tabs -->
+    <div class="flex flex-wrap gap-2">
+        {% set tabs = [('', 'All'), ('Active', 'Active'), ('Awaiting Results', 'Awaiting Results'), ('Ready for Discharge', 'Ready for Discharge'), ('Discharged', 'Discharged')] %}
+        {% for val, label in tabs %}
+        <a href="{{ url_for('ct2.encounters', status=val) }}"
+           class="px-4 py-2 rounded-xl text-sm font-semibold transition-all
+                  {% if status_filter == val %}bg-emerald-500 text-white shadow{% else %}bg-white text-gray-600 border border-gray-200 hover:bg-emerald-50{% endif %}">
+            {{ label }}
+            {% if not status_filter and val == '' %}
+            <span class="ml-1.5 px-2 py-0.5 bg-white/30 rounded-full text-xs">{{ encounters|length }}</span>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Stats (only in "All" view) -->
+    {% if not status_filter %}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {% set stat_cfg = [('Active','emerald','bi-activity'),('Awaiting Results','amber','bi-clock-history'),('Ready for Discharge','blue','bi-box-arrow-right'),('Discharged','gray','bi-check2-circle')] %}
+        {% for s, col, icon in stat_cfg %}
+        <div class="glass-card rounded-2xl p-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-{{ col }}-100 text-{{ col }}-600 flex items-center justify-center">
+                <i class="bi {{ icon }} text-lg"></i>
+            </div>
+            <div>
+                <div class="text-2xl font-extrabold text-gray-900">{{ counts.get(s, 0) }}</div>
+                <div class="text-xs text-gray-500">{{ s }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Table -->
+    <div class="glass-card rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-gray-50/50 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4">ID</th>
+                        <th class="px-6 py-4">Patient</th>
+                        <th class="px-6 py-4">Physician</th>
+                        <th class="px-6 py-4">Chief Complaint</th>
+                        <th class="px-6 py-4">Date</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for enc in encounters %}
+                    {% set pat = enc.get('patients') or {} %}
+                    {% set doc = enc.get('users') or {} %}
+                    <tr class="hover:bg-emerald-50/30 transition-colors group">
+                        <td class="px-6 py-4">
+                            <span class="text-xs font-mono font-bold text-gray-400">#ENC-{{ enc.id }}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs mr-3">
+                                    {{ (pat.first_name or '?')[0] }}{{ (pat.last_name or '?')[0] }}
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-gray-900">{{ pat.get('first_name','') }} {{ pat.get('last_name','') }}</div>
+                                    <div class="text-xs text-gray-400">{{ pat.get('patient_id_alt','') }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">{{ doc.get('full_name') or doc.get('username','—') }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">{{ enc.get('chief_complaint','—') }}</td>
+                        <td class="px-6 py-4 text-xs text-gray-500">{{ (enc.get('encounter_date') or '')[:10] }}</td>
+                        <td class="px-6 py-4">
+                            {% set s = enc.get('status','') %}
+                            {% if s == 'Active' %}<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700">Active</span>
+                            {% elif s == 'Awaiting Results' %}<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-700">Awaiting Results</span>
+                            {% elif s == 'Ready for Discharge' %}<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-100 text-blue-700">Ready for Discharge</span>
+                            {% elif s == 'Discharged' %}<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-600">Discharged</span>
+                            {% else %}<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-600">{{ s }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <a href="{{ url_for('ct2.encounter_detail', encounter_id=enc.id) }}"
+                               class="px-4 py-2 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-all inline-flex items-center gap-1">
+                                <i class="bi bi-folder2-open"></i> Open
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="px-6 py-12 text-center text-gray-400">No encounters found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- New Encounter Modal -->
+<div id="newEncModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+        <div class="flex items-center justify-between p-6 border-b border-gray-100">
+            <h3 class="text-lg font-bold text-gray-900">New Patient Encounter</h3>
+            <button onclick="document.getElementById('newEncModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600"><i class="bi bi-x-lg text-xl"></i></button>
+        </div>
+        <form method="POST" action="{{ url_for('ct2.new_encounter') }}" class="p-6 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Patient *</label>
+                <select name="patient_id" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500">
+                    <option value="">Select patient…</option>
+                    {% for p in patients %}
+                    <option value="{{ p.id }}">{{ p.first_name }} {{ p.last_name }} ({{ p.patient_id_alt }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Chief Complaint *</label>
+                <textarea name="chief_complaint" required rows="2" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500" placeholder="Reason for visit…"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Examination Notes</label>
+                <textarea name="examination_notes" rows="3" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500" placeholder="Physical exam findings…"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Diagnosis</label>
+                    <input type="text" name="diagnosis" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500" placeholder="Working diagnosis">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">ICD-10 Code</label>
+                    <input type="text" name="icd_code" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500" placeholder="e.g. J18.9">
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('newEncModal').classList.add('hidden')" class="px-5 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all">Cancel</button>
+                <button type="submit" class="px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-all">Create Encounter</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

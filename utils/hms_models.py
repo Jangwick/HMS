@@ -249,13 +249,13 @@ class LabOrder:
     @staticmethod
     def get_all():
         client = get_supabase_client()
-        response = client.table('lab_orders').select('*, patients(*), users(*)').order('created_at', desc=True).execute()
+        response = client.table('lab_orders').select('*, patients(*), users!lab_orders_doctor_id_fkey(*)').order('created_at', desc=True).execute()
         return [LabOrder(d) for d in response.data] if response.data else []
 
     @staticmethod
     def get_recent(limit=5):
         client = get_supabase_client()
-        response = client.table('lab_orders').select('*, patients(*), users(*)').order('created_at', desc=True).limit(limit).execute()
+        response = client.table('lab_orders').select('*, patients(*), users!lab_orders_doctor_id_fkey(*)').order('created_at', desc=True).limit(limit).execute()
         return [LabOrder(d) for d in response.data] if response.data else []
 
     @staticmethod
@@ -290,7 +290,7 @@ class RadiologyOrder:
     @staticmethod
     def get_all():
         client = get_supabase_client()
-        response = client.table('radiology_orders').select('*, patients(*), users(*)').order('created_at', desc=True).execute()
+        response = client.table('radiology_orders').select('*, patients(*), users!radiology_orders_doctor_id_fkey(*)').order('created_at', desc=True).execute()
         return [RadiologyOrder(d) for d in response.data] if response.data else []
 
     @staticmethod
