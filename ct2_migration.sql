@@ -115,3 +115,16 @@ DROP POLICY IF EXISTS "Allow all on result_inbox" ON result_inbox;
 
 CREATE POLICY "Allow all on encounters"   ON encounters   FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on result_inbox" ON result_inbox FOR ALL USING (true) WITH CHECK (true);
+
+-- -------------------------------------------------------
+-- Patch medical_records: add columns introduced in the
+-- second CREATE TABLE definition (telehealth / documents)
+-- -------------------------------------------------------
+ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS appointment_id  INTEGER REFERENCES appointments(id);
+ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS session_id      INTEGER REFERENCES telehealth_sessions(id);
+ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS record_type     VARCHAR(30) DEFAULT 'Outpatient';
+ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS prescription    TEXT;
+ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS follow_up_date  DATE;
+ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS recorded_by     INTEGER REFERENCES users(id);
+-- Make diagnosis nullable so document uploads (no diagnosis) can be stored
+ALTER TABLE medical_records ALTER COLUMN diagnosis DROP NOT NULL;

@@ -1978,6 +1978,7 @@ def upload_patient_document(patient_id):
         client.table('medical_records').insert({
             'patient_id': patient_id,
             'record_type': 'Document',
+            'diagnosis': f'Document upload: {label}',
             'notes': f'Uploaded: {label}',
             'prescription': url,
             'recorded_by': current_user.id,
