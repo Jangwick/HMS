@@ -1738,6 +1738,37 @@ def cancel_appointment(appointment_id):
     return redirect(request.referrer or url_for('ct1.dashboard'))
 
 
+@ct1_bp.route('/appointment/<int:appointment_id>/delete', methods=['POST'])
+@login_required
+def delete_appointment(appointment_id):
+    """Permanently delete an appointment record. Admin only."""
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can delete appointments.', 'danger')
+        return redirect(request.referrer or url_for('ct1.dashboard'))
+    client = get_supabase_client()
+    try:
+        # Fetch first to log and verify it exists
+        appt_res = client.table('appointments').select('id, patient_id, appointment_date, status').eq('id', appointment_id).single().execute()
+        if not appt_res.data:
+            flash('Appointment not found.', 'danger')
+            return redirect(request.referrer or url_for('ct1.dashboard'))
+        appt = appt_res.data
+        # Null billing refs before deleting
+        try:
+            client.table('billing_records').update({'appointment_id': None}).eq('appointment_id', appointment_id).execute()
+        except Exception:
+            pass
+        client.table('appointments').delete().eq('id', appointment_id).execute()
+        from utils.hms_models import AuditLog
+        AuditLog.log(current_user.id, 'Delete Appointment', BLUEPRINT_NAME,
+                     {'appointment_id': appointment_id, 'patient_id': appt.get('patient_id'),
+                      'date': appt.get('appointment_date'), 'status': appt.get('status')})
+        flash('Appointment deleted permanently.', 'success')
+    except Exception as e:
+        flash(f'Delete failed: {str(e)}', 'danger')
+    return redirect(request.referrer or url_for('ct1.dashboard'))
+
+
 @ct1_bp.route('/appointment/<int:appointment_id>/flag-noshow', methods=['POST'])
 @login_required
 def flag_noshow(appointment_id):
