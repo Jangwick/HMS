@@ -26,9 +26,13 @@ class HMSFundamentalsPolicy:
 
         # Policy Rule 3: Service Reliability (Maintenance Mode)
         # Prevent access during system updates, except for SuperAdmins.
-        from utils import config_manager
-        is_maintenance = config_manager.is_subsystem_maintenance(subsystem_code)
-        is_global_maintenance = config_manager.is_global_maintenance()
+        try:
+            from utils import config_manager
+            is_maintenance = config_manager.is_subsystem_maintenance(subsystem_code)
+            is_global_maintenance = config_manager.is_global_maintenance()
+        except Exception:
+            is_maintenance = False
+            is_global_maintenance = False
         
         if (is_maintenance or is_global_maintenance) and not current_user.is_super_admin():
             return False, f"System Alert: {subsystem_code.upper()} is currently undergoing scheduled maintenance. Please try again later."
@@ -38,8 +42,11 @@ class HMSFundamentalsPolicy:
             return True, None
             
         # Department-wide Administrator Access
-        from utils.supabase_client import SUBSYSTEM_CONFIG
-        target_config = SUBSYSTEM_CONFIG.get(subsystem_code, {})
+        try:
+            from utils.supabase_client import SUBSYSTEM_CONFIG
+            target_config = SUBSYSTEM_CONFIG.get(subsystem_code, {})
+        except Exception:
+            target_config = {}
         target_dept = target_config.get('department')
         
         if current_user.department == target_dept and current_user.is_admin():
@@ -69,20 +76,36 @@ def policy_required(subsystem_code):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            authorized, message = HMSFundamentalsPolicy.check_access(subsystem_code)
-            if not authorized:
-                # Special Handle for Maintenance Mode
-                if "undergoing scheduled maintenance" in (message or ""):
-                    return redirect(url_for('superadmin.maintenance_mode_splash', subsystem=subsystem_code))
-                
-                flash(message, 'danger')
-                # Smart redirect: if user belongs to another subsystem, send them to their own dashboard
-                if current_user.is_authenticated and current_user.subsystem and current_user.subsystem != subsystem_code:
-                    try:
-                        return redirect(url_for(f'{current_user.subsystem}.dashboard'))
-                    except:
-                        pass
+            try:
+                authorized, message = HMSFundamentalsPolicy.check_access(subsystem_code)
+                if not authorized:
+                    # Special Handle for Maintenance Mode
+                    if "undergoing scheduled maintenance" in (message or ""):
+                        try:
+                            return redirect(url_for('superadmin.maintenance_mode_splash', subsystem=subsystem_code))
+                        except Exception:
+                            return redirect(url_for('portal.index'))
+
+                    flash(message or 'Access denied.', 'danger')
+                    # Smart redirect: if user belongs to another subsystem, send them to their own dashboard
+                    if current_user.is_authenticated and current_user.subsystem and current_user.subsystem != subsystem_code:
+                        try:
+                            return redirect(url_for(f'{current_user.subsystem}.dashboard'))
+                        except Exception:
+                            pass
+                    return redirect(url_for('portal.index'))
+                return f(*args, **kwargs)
+            except Exception as e:
+                try:
+                    AuditLog.log(
+                        current_user.id if getattr(current_user, 'is_authenticated', False) else None,
+                        "Policy Enforcement Error",
+                        subsystem_code,
+                        {"path": request.path, "error": str(e)}
+                    )
+                except Exception:
+                    pass
+                flash('A temporary access control issue occurred. Please try again.', 'warning')
                 return redirect(url_for('portal.index'))
-            return f(*args, **kwargs)
         return decorated_function
     return decorator

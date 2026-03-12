@@ -202,9 +202,6 @@ def change_password():
 @login_required
 @policy_required(BLUEPRINT_NAME)
 def dashboard():
-    from utils.supabase_client import get_supabase_client
-    client = get_supabase_client()
-
     vacancies_count = 0
     applicants_count = 0
     interviews_today_count = 0
@@ -212,33 +209,42 @@ def dashboard():
     recent_applicants = []
 
     try:
-        vacancies_count = client.table('vacancies').select('id', count='exact').eq('status', 'Open').execute().count or 0
-    except Exception:
-        pass
+        from utils.supabase_client import get_supabase_client
+        client = get_supabase_client()
+
+        try:
+            vacancies_count = client.table('vacancies').select('id', count='exact').eq('status', 'Open').execute().count or 0
+        except Exception:
+            pass
+
+        try:
+            applicants_count = client.table('applicants').select('id', count='exact').execute().count or 0
+        except Exception:
+            pass
+
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        try:
+            interviews_today_resp = client.table('interviews').select('*, applicants(first_name, last_name)').gte('interview_date', today).order('interview_date').limit(5).execute()
+            interviews_today_count = client.table('interviews').select('id', count='exact').gte('interview_date', today).execute().count or 0
+            recent_interviews = interviews_today_resp.data if interviews_today_resp.data else []
+        except Exception:
+            recent_interviews = []
+            interviews_today_count = 0
+
+        try:
+            recent_applicants_resp = client.table('applicants').select('*').order('created_at', desc=True).limit(5).execute()
+            recent_applicants = recent_applicants_resp.data if recent_applicants_resp.data else []
+        except Exception:
+            recent_applicants = []
+    except Exception as e:
+        print(f"HR1 dashboard data load error: {e}")
 
     try:
-        applicants_count = client.table('applicants').select('id', count='exact').execute().count or 0
+        if current_user.should_warn_password_expiry():
+            days_left = current_user.days_until_password_expiry()
+            flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
     except Exception:
         pass
-    
-    today = datetime.utcnow().strftime('%Y-%m-%d')
-    try:
-        interviews_today_resp = client.table('interviews').select('*, applicants(first_name, last_name)').gte('interview_date', today).order('interview_date').limit(5).execute()
-        interviews_today_count = client.table('interviews').select('id', count='exact').gte('interview_date', today).execute().count or 0
-        recent_interviews = interviews_today_resp.data if interviews_today_resp.data else []
-    except Exception:
-        recent_interviews = []
-        interviews_today_count = 0
-    
-    try:
-        recent_applicants_resp = client.table('applicants').select('*').order('created_at', desc=True).limit(5).execute()
-        recent_applicants = recent_applicants_resp.data if recent_applicants_resp.data else []
-    except Exception:
-        recent_applicants = []
-
-    if current_user.should_warn_password_expiry():
-        days_left = current_user.days_until_password_expiry()
-        flash(f'Your password will expire in {days_left} days. Please update it soon.', 'warning')
     
     return render_template('subsystems/hr/hr1/dashboard.html', 
                            now=datetime.utcnow,

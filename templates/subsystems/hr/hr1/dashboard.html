@@ -147,7 +147,7 @@
                         <div>
                             <p class="font-bold text-gray-900">{{ applicant.first_name or 'Unknown' }} {{
                                 applicant.last_name or 'Applicant' }}</p>
-                            <p class="text-xs text-gray-400">{{ applicant.source }} • {{ applicant.created_at[:10] }}
+                            <p class="text-xs text-gray-400">{{ applicant.source }} • {{ (applicant.created_at or '')[:10] }}
                             </p>
                         </div>
                     </div>
