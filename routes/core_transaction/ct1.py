@@ -710,17 +710,50 @@ def book_appointment():
                         return _render()
 
             # ── §4.4 Duplicate booking prevention (exclude self when editing) ───
-            if _doctor_id and appt_dt_str:
+            if appt_dt_str:
                 try:
-                    _dup_q = get_supabase_client().table('appointments').select('id').eq(
-                        'doctor_id', _doctor_id).eq('appointment_date', appt_dt_str).in_(
-                        'status', ['Scheduled', 'Arrived'])
-                    if edit_appt_id:
-                        _dup_q = _dup_q.neq('id', edit_appt_id)   # exclude current appt
-                    _dup = _dup_q.execute()
-                    if _dup.data:
-                        flash('This doctor already has an appointment scheduled at that exact time. Please choose a different slot.', 'danger')
-                        return _render()
+                    _cli_dup = get_supabase_client()
+                    # Extract the date part (YYYY-MM-DD) for same-day checks
+                    _appt_date_part = appt_dt_str[:10]  # "2026-03-15"
+
+                    # (a) Same patient already has an active appointment on the same date
+                    if patient_id_book:
+                        _pat_dup_q = (
+                            _cli_dup.table('appointments')
+                            .select('id, appointment_date')
+                            .eq('patient_id', patient_id_book)
+                            .in_('status', ['Scheduled', 'Arrived'])
+                            .gte('appointment_date', _appt_date_part + 'T00:00:00')
+                            .lt('appointment_date',  _appt_date_part + 'T23:59:59')
+                        )
+                        if edit_appt_id:
+                            _pat_dup_q = _pat_dup_q.neq('id', edit_appt_id)
+                        if _pat_dup_q.execute().data:
+                            flash(
+                                'This patient already has an appointment scheduled on that date. '
+                                'Please choose a different day or cancel the existing appointment first.',
+                                'danger'
+                            )
+                            return _render()
+
+                    # (b) Same doctor already has an appointment at the exact same time
+                    if _doctor_id:
+                        _doc_dup_q = (
+                            _cli_dup.table('appointments')
+                            .select('id')
+                            .eq('doctor_id', _doctor_id)
+                            .eq('appointment_date', appt_dt_str)
+                            .in_('status', ['Scheduled', 'Arrived'])
+                        )
+                        if edit_appt_id:
+                            _doc_dup_q = _doc_dup_q.neq('id', edit_appt_id)
+                        if _doc_dup_q.execute().data:
+                            flash(
+                                'This doctor already has an appointment scheduled at that exact time. '
+                                'Please choose a different slot.',
+                                'danger'
+                            )
+                            return _render()
                 except Exception:
                     pass
 
