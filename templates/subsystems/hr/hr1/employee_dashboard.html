@@ -423,6 +423,49 @@
         <!-- RIGHT COLUMN (1/3) -->
         <div class="space-y-6">
 
+            <!-- Notifications -->
+            {% if my_notifications %}
+            <div class="bg-white rounded-3xl shadow-sm border border-indigo-100 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                        <i class="bi bi-bell-fill text-indigo-500"></i> Notifications
+                    </h4>
+                    <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg">{{ my_notifications | selectattr('is_read', 'equalto', False) | list | length }} unread</span>
+                </div>
+                <div class="space-y-2">
+                    {% for notif in my_notifications %}
+                    <div class="flex items-start gap-3 p-3 rounded-xl border transition-colors
+                        {% if not notif.is_read %}
+                            {% if notif.type == 'info' %}bg-blue-50 border-blue-100
+                            {% elif notif.type == 'danger' %}bg-red-50 border-red-100
+                            {% elif notif.type == 'warning' %}bg-amber-50 border-amber-100
+                            {% else %}bg-indigo-50 border-indigo-100{% endif %}
+                        {% else %}bg-gray-50 border-gray-100{% endif %}">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0
+                            {% if notif.type == 'info' %}bg-blue-100 text-blue-600
+                            {% elif notif.type == 'danger' %}bg-red-100 text-red-600
+                            {% elif notif.type == 'warning' %}bg-amber-100 text-amber-600
+                            {% else %}bg-indigo-100 text-indigo-600{% endif %}">
+                            <i class="bi bi-
+                                {% if notif.type == 'info' %}info-circle
+                                {% elif notif.type == 'danger' %}exclamation-octagon
+                                {% elif notif.type == 'warning' %}exclamation-triangle
+                                {% else %}bell{% endif %} text-sm"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-bold text-gray-900 leading-snug">{{ notif.title }}</p>
+                            <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">{{ notif.message }}</p>
+                            <p class="text-[10px] text-gray-400 mt-1">{{ notif.created_at[:10] if notif.created_at else '' }}</p>
+                        </div>
+                        {% if not notif.is_read %}
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0 mt-1"></span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Announcements -->
             <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
                 <div class="flex items-center justify-between mb-5">

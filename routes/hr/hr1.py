@@ -894,6 +894,13 @@ def employee_dashboard():
     except Exception:
         my_upcoming_interviews = []
 
+    # Personal notifications (probation decisions, regularization, reassignment, etc.)
+    try:
+        from utils.hms_models import Notification
+        my_notifications = Notification.get_for_user(user, limit=10)
+    except Exception:
+        my_notifications = []
+
     return render_template('subsystems/hr/hr1/employee_dashboard.html',
                            announcements=announcements,
                            pending_tasks=pending_tasks,
@@ -907,6 +914,7 @@ def employee_dashboard():
                            my_schedule=my_schedule,
                            schedules=schedules,
                            my_upcoming_interviews=my_upcoming_interviews,
+                           my_notifications=my_notifications,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -1125,20 +1133,31 @@ def probation_list():
         'terminated': len([c for c in cycles if c['status'] == 'Terminated']),
     }
 
-    # Fetch active staff employees only — exclude patients and applicants
+    # Fetch active staff employees only — regular staff eligible for probation (no admin/supervisor roles)
     employees = []
+    supervisors = []
     if user.is_admin() or HRRoles.can_supervise(user.role):
-        emp_resp = client.table('users').select('id, username, full_name, department')\
+        # Employees on probation: Staff-level roles only (not admins, managers, or HR staff)
+        SUPERVISOR_ROLE_LIST = [HRRoles.HR_STAFF, HRRoles.MANAGER, HRRoles.ADMIN, HRRoles.ADMINISTRATOR, HRRoles.SUPER_ADMIN]
+        emp_resp = client.table('users').select('id, username, full_name, department, role')\
             .eq('status', 'Active')\
-            .not_.in_('role', ['Applicant', 'Patient'])\
+            .not_.in_('role', ['Applicant', 'Patient'] + SUPERVISOR_ROLE_LIST)\
             .neq('department', 'PATIENT_PORTAL')\
             .order('full_name').execute()
         employees = emp_resp.data or []
+
+        # Supervisors: HR, Manager, Admin roles only
+        sup_resp = client.table('users').select('id, username, full_name, department, role')\
+            .eq('status', 'Active')\
+            .in_('role', SUPERVISOR_ROLE_LIST)\
+            .order('full_name').execute()
+        supervisors = sup_resp.data or []
 
     return render_template('subsystems/hr/hr1/probation/list.html',
                            cycles=cycles,
                            stats=stats,
                            employees=employees,
+                           supervisors=supervisors,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -2034,21 +2053,49 @@ def probation_submit_decision(cycle_id):
         }
         client.table('hr_decisions').insert(data).execute()
 
-        # Update cycle status
-        status_map = {'Regularize': 'Completed', 'Extend': 'Extended', 'Terminate': 'Terminated', 'Reassign': 'Completed'}
-        new_status = status_map.get(decision, 'Completed')
-        client.table('probation_cycles').update({'status': new_status, 'updated_at': datetime.utcnow().isoformat()}).eq('id', cycle_id).execute()
+        # Get cycle info (needed for both status update and notification)
+        cycle = client.table('probation_cycles').select('employee_id, cycle_type').eq('id', cycle_id).single().execute()
+
+        # Update cycle status — Extend resets back to Active MONITORING for continued oversight
+        if decision == 'Extend':
+            from utils.probation_engine import ProbationStage
+            cycle_type_label = (cycle.data.get('cycle_type', 'Standard') if cycle.data else 'Standard')
+            if 'Extended' not in cycle_type_label:
+                cycle_type_label = cycle_type_label + ' (Extended)'
+            client.table('probation_cycles').update({
+                'status': 'Active',
+                'current_stage': ProbationStage.MONITORING,
+                'cycle_type': cycle_type_label,
+                'updated_at': datetime.utcnow().isoformat()
+            }).eq('id', cycle_id).execute()
+            # Log a performance note recording the extension
+            client.table('performance_notes').insert({
+                'cycle_id': cycle_id,
+                'author_id': current_user.id,
+                'note_type': 'General',
+                'content': f'Probation cycle extended by HR decision (effective {request.form.get("effective_date", "N/A")}). Cycle returned to On-Going Monitoring stage for continued performance oversight.',
+                'is_published': True
+            }).execute()
+        else:
+            status_map = {'Regularize': 'Completed', 'Terminate': 'Terminated', 'Reassign': 'Completed'}
+            new_status = status_map.get(decision, 'Completed')
+            client.table('probation_cycles').update({'status': new_status, 'updated_at': datetime.utcnow().isoformat()}).eq('id', cycle_id).execute()
 
         # Notify employee
-        cycle = client.table('probation_cycles').select('employee_id').eq('id', cycle_id).single().execute()
         if cycle.data:
             from utils.hms_models import Notification
+            decision_messages = {
+                'Regularize': 'Congratulations! HR has confirmed your regularization. Your employment is now permanent.',
+                'Extend': 'Your probation period has been extended. You will continue in the On-Going Monitoring stage for further performance evaluation.',
+                'Terminate': 'HR has issued a termination decision on your probation. Please coordinate with HR for further steps.',
+                'Reassign': 'HR has decided to reassign you to a different role. Please coordinate with HR for next steps.',
+            }
             Notification.create(
                 user_id=cycle.data['employee_id'],
                 subsystem='hr1',
                 title=f"Probation Decision: {decision}",
-                message=f"HR has issued a final decision on your probation: {decision}.",
-                n_type="info" if decision == 'Regularize' else "warning",
+                message=decision_messages.get(decision, f'HR has issued a final decision on your probation: {decision}.'),
+                n_type='info' if decision in ('Regularize', 'Reassign') else ('warning' if decision == 'Extend' else 'danger'),
                 sender_subsystem='hr1'
             )
 

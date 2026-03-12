@@ -159,9 +159,9 @@
                         <select name="supervisor_id" required
                             class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm">
                             <option value="{{ current_user.id }}">{{ current_user.username }} (Me)</option>
-                            {% for emp in employees %}
-                            {% if emp.id != current_user.id %}
-                            <option value="{{ emp.id }}">{{ emp.full_name or emp.username }}</option>
+                            {% for sup in supervisors %}
+                            {% if sup.id != current_user.id %}
+                            <option value="{{ sup.id }}">{{ sup.full_name or sup.username }}</option>
                             {% endif %}
                             {% endfor %}
                         </select>

@@ -2608,8 +2608,10 @@ def user_list():
     if not current_user.is_super_admin() and (not current_user.is_admin() or current_user.subsystem != 'hr2'):
         flash('Access denied.', 'danger')
         return redirect(url_for('hr2.dashboard'))
-    
-    users = User.get_all()
+
+    all_users = User.get_all()
+    # Exclude Patient accounts — those are managed exclusively by CT1 (Core Transactions)
+    users = [u for u in all_users if u.role != 'Patient' and u.department != 'PATIENT_PORTAL']
     return render_template('subsystems/hr/hr2/admin/user_list.html', 
                            users=users, 
                            subsystem_name=SUBSYSTEM_NAME, 
