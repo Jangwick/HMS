@@ -40,7 +40,7 @@ class Patient:
     def search(query: str):
         client = get_supabase_client()
         response = client.table('patients').select('*').or_(
-            f"first_name.ilike.%{query}%,last_name.ilike.%{query}%,patient_id_alt.ilike.%{query}%"
+            f"first_name.ilike.%{query}%,last_name.ilike.%{query}%,patient_id_alt.ilike.%{query}%,contact_number.ilike.%{query}%"
         ).execute()
         return [Patient(d) for d in response.data] if response.data else []
 
