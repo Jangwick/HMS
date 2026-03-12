@@ -128,3 +128,11 @@ ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS follow_up_date  DATE;
 ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS recorded_by     INTEGER REFERENCES users(id);
 -- Make diagnosis nullable so document uploads (no diagnosis) can be stored
 ALTER TABLE medical_records ALTER COLUMN diagnosis DROP NOT NULL;
+
+-- -------------------------------------------------------
+-- Fix users.patient_id FK: change to ON DELETE SET NULL
+-- so deleting a patient auto-nulls the portal account link
+-- -------------------------------------------------------
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_patient_id_fkey;
+ALTER TABLE users ADD CONSTRAINT users_patient_id_fkey
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE SET NULL;
