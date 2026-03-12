@@ -111,9 +111,9 @@ def create_app(config_class=Config):
     @app.context_processor
     def inject_notifications():
         from flask_login import current_user
-        from utils.hms_models import Notification
         if current_user.is_authenticated:
             try:
+                from utils.hms_models import Notification
                 notifications = Notification.get_for_user(current_user)
                 unread_count = Notification.get_unread_count(current_user)
                 return {
@@ -130,9 +130,9 @@ def create_app(config_class=Config):
     @app.context_processor
     def inject_attendance():
         from flask_login import current_user
-        from utils.supabase_client import get_supabase_client
         if current_user.is_authenticated:
             try:
+                from utils.supabase_client import get_supabase_client
                 client = get_supabase_client()
                 active_log = client.table('attendance_logs').select('*').eq('user_id', current_user.id).is_('clock_out', 'null').execute()
                 return {'active_attendance': active_log.data[0] if active_log.data else None}
@@ -144,12 +144,12 @@ def create_app(config_class=Config):
     def inject_ct2_badges():
         from flask import request as _req
         from flask_login import current_user
-        from utils.supabase_client import get_supabase_client
         if not current_user.is_authenticated:
             return {'ct2_inbox_unread': 0, 'ct2_alert_count': 0}
         if not (_req.endpoint and _req.endpoint.startswith('ct2.')):
             return {'ct2_inbox_unread': 0, 'ct2_alert_count': 0}
         try:
+            from utils.supabase_client import get_supabase_client
             client = get_supabase_client()
             inbox_unread = 0
             alert_count  = 0
