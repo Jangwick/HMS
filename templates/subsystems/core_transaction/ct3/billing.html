@@ -100,7 +100,7 @@
                 <select name="patient_id" required class="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500">
                     <option value="">Choose a patient...</option>
                     {% for patient in patients_list %}
-                    <option value="{{ patient.id }}">{{ patient.first_name }} {{ patient.last_name }} ({{ patient.patient_id_alt }})</option>
+                    <option value="{{ patient['id'] }}">{{ patient.get('first_name', '') }} {{ patient.get('last_name', '') }} ({{ patient.get('patient_id_alt', '') }})</option>
                     {% endfor %}
                 </select>
                 <p class="text-xs text-gray-400 mt-1 italic">* Only showing active registered patients</p>

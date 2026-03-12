@@ -80,21 +80,21 @@
             <div class="grid grid-cols-2 gap-4">
                 <div class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                     <p class="text-xs font-bold text-emerald-600 uppercase mb-1">Total Paid</p>
-                    <p class="text-2xl font-bold text-emerald-900">₱{{ "%.2f"|format(financials.Paid or 0) }}</p>
+                    <p class="text-2xl font-bold text-emerald-900">₱{{ "%.2f"|format(financials.get('Paid', 0) or 0) }}</p>
                 </div>
                 <div class="p-4 bg-amber-50 rounded-2xl border border-amber-100">
                     <p class="text-xs font-bold text-amber-600 uppercase mb-1">Outstanding</p>
-                    <p class="text-2xl font-bold text-amber-900">₱{{ "%.2f"|format(financials.Unpaid or 0) }}</p>
+                    <p class="text-2xl font-bold text-amber-900">₱{{ "%.2f"|format(financials.get('Unpaid', 0) or 0) }}</p>
                 </div>
             </div>
             <div class="mt-6">
                 <p class="text-sm text-gray-500 mb-2">Collection Rate</p>
-                {% set total = (financials.Paid or 0) + (financials.Unpaid or 0) %}
+                {% set total = (financials.get('Paid', 0) or 0) + (financials.get('Unpaid', 0) or 0) %}
                 <div class="w-full bg-gray-100 rounded-full h-4">
-                    <div class="bg-blue-600 h-4 rounded-full" style="width: {{ (financials.Paid / total * 100) if total > 0 else 0 }}%"></div>
+                    <div class="bg-blue-600 h-4 rounded-full" style="width: {{ (financials.get('Paid', 0) / total * 100) if total > 0 else 0 }}%"></div>
                 </div>
                 <p class="text-xs text-gray-400 mt-2 text-right font-medium">
-                    {{ "%.1f"|format(financials.Paid / total * 100) if total > 0 else 0 }}% of total billings collected
+                    {{ "%.1f"|format(financials.get('Paid', 0) / total * 100) if total > 0 else 0 }}% of total billings collected
                 </p>
             </div>
         </div>
@@ -109,7 +109,7 @@
                 <p class="text-sm text-gray-500 uppercase tracking-widest font-bold mt-1">Total Registrations</p>
             </div>
             <div class="text-center border-x border-gray-100">
-                 <p class="text-3xl font-bold text-gray-900">{{ financials.Paid|round|int if financials.Paid else 0 }}</p>
+                 <p class="text-3xl font-bold text-gray-900">{{ (financials.get('Paid', 0)|round|int) if financials.get('Paid') else 0 }}</p>
                 <p class="text-sm text-gray-500 uppercase tracking-widest font-bold mt-1">Processed Payments</p>
             </div>
             <div class="text-center">

@@ -476,6 +476,12 @@ def patient_records():
         
         response = query.order('last_name').execute()
         patients = response.data if response.data else []
+        print(f"Found {len(patients)} patients")
+        if patients:
+            print(f"First patient: {patients[0]}")
+            print(f"Patient keys: {patients[0].keys()}")
+            for i, p in enumerate(patients[:3]):  # Show first 3 patients
+                print(f"Patient {i+1}: {p.get('first_name')} {p.get('last_name')} - ID: {p.get('id')} - All keys: {list(p.keys())}")
     except Exception as e:
         print(f"Error fetching patients: {e}")
         patients = []
@@ -495,9 +501,31 @@ def view_record(patient_id):
     client = get_supabase_client()
     
     try:
-        # Get patient details
-        patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
-        patient = patient_resp.data if patient_resp.data else {}
+        # Get patient details with better error handling
+        print(f"DEBUG: Looking for patient ID: {patient_id} (type: {type(patient_id)})")
+        
+        # Try finding by internal ID or alternatively by patient_id_alt if passed by mistake
+        patient_resp = client.table('patients').select('*').eq('id', patient_id).execute()
+        
+        if not (patient_resp.data and len(patient_resp.data) > 0):
+             # Search by BIGINT id as well just in case
+             print(f"DEBUG: Internal id search failed. Trying alternate lookup...")
+             patient_resp = client.table('patients').select('*').eq('id', int(patient_id)).execute()
+        
+        if patient_resp.data and len(patient_resp.data) > 0:
+            patient = patient_resp.data[0]
+            print(f"DEBUG: Found patient: {patient.get('first_name', 'Unknown')} {patient.get('last_name', 'Unknown')}")
+        else:
+            # Check if this ID might be patient_id_alt (string ID)
+            print(f"DEBUG: No patient found with ID: {patient_id}. Trying alt lookup...")
+            patient_resp = client.table('patients').select('*').eq('patient_id_alt', str(patient_id)).execute()
+            
+            if patient_resp.data and len(patient_resp.data) > 0:
+                patient = patient_resp.data[0]
+                print(f"DEBUG: Found patient via ALT ID: {patient.get('first_name')}")
+            else:
+                flash('Patient not found in database.', 'error')
+                return redirect(url_for('ct3.patient_records'))
         
         # Get medical history
         history_resp = client.table('medical_records').select('*').eq('patient_id', patient_id).order('visit_date', desc=True).execute()
@@ -505,21 +533,30 @@ def view_record(patient_id):
         
         # Enrich history with doctor names (simplified)
         for record in history:
+            record['doctor_name'] = 'Unknown'
             if record.get('doctor_id'):
-                doc_resp = client.table('users').select('username').eq('id', record['doctor_id']).single().execute()
-                if doc_resp.data:
-                    record['doctor_name'] = doc_resp.data['username']
-            else:
-                record['doctor_name'] = 'Unknown'
+                try:
+                    doc_resp = client.table('users').select('username').eq('id', record['doctor_id']).limit(1).execute()
+                    if doc_resp.data and len(doc_resp.data) > 0:
+                        record['doctor_name'] = doc_resp.data[0]['username']
+                except Exception as e:
+                    print(f"Error fetching doctor name: {e}")
         
         # --- NEW: Get Nutritional Data ---
-        # Get active diet plan
-        diet_resp = client.table('diet_plans').select('*').eq('patient_id', patient_id).eq('status', 'active').order('created_at', desc=True).limit(1).execute()
-        active_diet = diet_resp.data[0] if diet_resp.data else None
-        
-        # Get latest nutritional assessment
-        assessment_resp = client.table('nutritional_assessments').select('*').eq('patient_id', patient_id).order('assessment_date', desc=True).limit(1).execute()
-        latest_assessment = assessment_resp.data[0] if assessment_resp.data else None
+        active_diet = None
+        latest_assessment = None
+        try:
+            # Get active diet plan
+            diet_resp = client.table('diet_plans').select('*').eq('patient_id', patient_id).eq('status', 'active').order('created_at', desc=True).limit(1).execute()
+            if diet_resp.data and len(diet_resp.data) > 0:
+                active_diet = diet_resp.data[0]
+            
+            # Get latest nutritional assessment
+            assessment_resp = client.table('nutritional_assessments').select('*').eq('patient_id', patient_id).order('assessment_date', desc=True).limit(1).execute()
+            if assessment_resp.data and len(assessment_resp.data) > 0:
+                latest_assessment = assessment_resp.data[0]
+        except Exception as e:
+            print(f"Error fetching nutritional data (this table may not exist yet): {e}")
                 
     except Exception as e:
         print(f"Error fetching record: {e}")
@@ -533,9 +570,47 @@ def view_record(patient_id):
                            history=history,
                            active_diet=active_diet,
                            latest_assessment=latest_assessment,
+                           now=datetime.utcnow(),
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+@ct3_bp.route('/debug_patients')
+@login_required  
+def debug_patients():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    
+    try:
+        # Get first 3 patients to debug
+        response = client.table('patients').select('*').limit(3).execute()
+        patients = response.data if response.data else []
+        
+        debug_info = []
+        for i, patient in enumerate(patients):
+            debug_info.append({
+                'index': i,
+                'patient_data': patient,
+                'id_field': patient.get('id'),
+                'id_type': type(patient.get('id')),
+                'all_fields': list(patient.keys())
+            })
+        
+        # Test specific lookup
+        if patients:
+            test_id = patients[0].get('id')
+            if test_id:
+                test_resp = client.table('patients').select('*').eq('id', test_id).execute()
+                debug_info.append({
+                    'test_lookup': f'Looking for ID: {test_id}',
+                    'test_result': test_resp.data,
+                    'test_found': len(test_resp.data) if test_resp.data else 0
+                })
+        
+        return f"<pre>{debug_info}</pre>"
+        
+    except Exception as e:
+        return f"<pre>Error: {str(e)}</pre>"
 
 @ct3_bp.route('/records/<int:patient_id>/add', methods=['POST'])
 @login_required

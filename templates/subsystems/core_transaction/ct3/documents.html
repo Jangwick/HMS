@@ -41,41 +41,41 @@
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {% if docs %}
         {% for doc in docs %}
-        {% set p = doc.patient_obj %}
+        {% set p = doc.get('patient_obj', {}) %}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all">
             <div class="flex items-start justify-between mb-3">
                 <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
                     <i class="bi bi-file-earmark-text"></i>
                 </div>
-                {% if doc.is_confidential %}
+                {% if doc.get('is_confidential') %}
                 <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
                     <i class="bi bi-lock-fill mr-1"></i>Confidential
                 </span>
                 {% endif %}
             </div>
-            <h4 class="font-bold text-sm text-gray-900 mb-1 line-clamp-2">{{ doc.title }}</h4>
-            <p class="text-xs text-gray-500 mb-3">{{ doc.description or 'No description' }}</p>
+            <h4 class="font-bold text-sm text-gray-900 mb-1 line-clamp-2">{{ doc.get('title', '') }}</h4>
+            <p class="text-xs text-gray-500 mb-3">{{ doc.get('description') or 'No description' }}</p>
             <div class="flex items-center gap-2 mb-3">
-                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{{ doc.document_type }}</span>
+                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{{ doc.get('document_type', '') }}</span>
                 {% if p %}
-                <a href="{{ url_for('ct3.patient_documents', patient_id=p.id) }}"
+                <a href="{{ url_for('ct3.patient_documents', patient_id=p['id']) }}"
                    class="text-xs text-blue-600 hover:underline truncate">{{ p.first_name }} {{ p.last_name }}</a>
                 {% endif %}
             </div>
             <div class="text-xs text-gray-400 mb-3">
-                Uploaded {{ (doc.uploaded_at or '')[:10] }}
-                {% if doc.file_size_kb %} · {{ doc.file_size_kb }} KB{% endif %}
+                Uploaded {{ (doc.get('uploaded_at', '') or '')[:10] }}
+                {% if doc.get('file_size_kb') %} · {{ doc['file_size_kb'] }} KB{% endif %}
             </div>
             <div class="flex gap-2">
-                {% if doc.file_url %}
-                <a href="{{ url_for('ct3.view_document', doc_id=doc.id) }}" target="_blank"
+                {% if doc.get('file_url') %}
+                <a href="{{ url_for('ct3.view_document', doc_id=doc['id']) }}" target="_blank"
                    class="flex-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white text-center transition-all hover:opacity-80"
                    style="background: {{ accent_color }};">
                     <i class="bi bi-download mr-1"></i>View
                 </a>
                 {% endif %}
                 {% if current_user.is_admin() %}
-                <form method="POST" action="{{ url_for('ct3.delete_document', doc_id=doc.id) }}" class="inline">
+                <form method="POST" action="{{ url_for('ct3.delete_document', doc_id=doc['id']) }}" class="inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" onclick="return confirm('Delete this document?')"
                             class="px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-all">
@@ -109,7 +109,7 @@
                         class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300">
                     <option value="">-- Select Patient --</option>
                     {% for p in patients_list %}
-                    <option value="{{ p.id }}">{{ p.first_name }} {{ p.last_name }} ({{ p.patient_id_alt }})</option>
+                    <option value="{{ p['id'] }}">{{ p.get('first_name', '') }} {{ p.get('last_name', '') }} ({{ p.get('patient_id_alt', '') }})</option>
                     {% endfor %}
                 </select>
             </div>

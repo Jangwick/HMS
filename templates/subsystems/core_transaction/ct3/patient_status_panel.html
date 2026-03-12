@@ -43,7 +43,7 @@
         {% if allowed_transitions %}
         <div class="border-t border-gray-100 pt-6">
             <h4 class="font-bold text-gray-900 mb-4">Update Patient Status</h4>
-            <form action="{{ url_for('ct3.update_patient_status', patient_id=patient.id) }}" method="POST">
+            <form action="{{ url_for('ct3.update_patient_status', patient_id=patient['id']) }}" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="space-y-4">
                     <div>
@@ -72,7 +72,7 @@
                                 style="background: {{ accent_color }};">
                             <i class="bi bi-check-lg mr-2"></i>Confirm Status Change
                         </button>
-                        <a href="{{ url_for('ct3.patient_status_history', patient_id=patient.id) }}"
+                        <a href="{{ url_for('ct3.patient_status_history', patient_id=patient['id']) }}"
                            class="px-5 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 text-sm hover:bg-gray-200 transition-all">
                             <i class="bi bi-clock-history mr-1"></i>View History
                         </a>
@@ -99,12 +99,12 @@
 
     <!-- Quick links -->
     <div class="flex flex-wrap gap-3">
-        <a href="{{ url_for('ct3.patient_timeline', patient_id=patient.id) }}"
+        <a href="{{ url_for('ct3.patient_timeline', patient_id=patient['id']) }}"
            class="px-4 py-2 rounded-lg text-sm font-bold text-white transition-all hover:opacity-80"
            style="background: {{ accent_color }}">
             <i class="bi bi-graph-up mr-1"></i>Timeline
         </a>
-        <a href="{{ url_for('ct3.patient_documents', patient_id=patient.id) }}"
+        <a href="{{ url_for('ct3.patient_documents', patient_id=patient['id']) }}"
            class="px-4 py-2 rounded-lg text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all">
             <i class="bi bi-folder mr-1"></i>Documents
         </a>

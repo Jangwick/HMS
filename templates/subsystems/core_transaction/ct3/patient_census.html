@@ -86,8 +86,8 @@
                     {% set color = status_colors.get(s, '#6B7280') %}
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-6 py-4">
-                            <div class="font-bold text-gray-900 text-sm">{{ p.first_name }} {{ p.last_name }}</div>
-                            <div class="text-xs text-gray-500">{{ p.patient_id_alt }}</div>
+                            <div class="font-bold text-gray-900 text-sm">{{ p.get('first_name', '') }} {{ p.get('last_name', '') }}</div>
+                            <div class="text-xs text-gray-500">{{ p.get('patient_id_alt', '') }}</div>
                         </td>
                         <td class="px-6 py-4">
                             <span class="px-3 py-1 rounded-full text-xs font-bold" style="background: {{ color }}20; color: {{ color }}">
