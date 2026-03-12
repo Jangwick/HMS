@@ -1015,9 +1015,10 @@
                     <div class="hidden sm:block h-8 w-px bg-gray-200 mx-2 sm:mx-0 shrink-0"></div>
                     <div
                         class="text-[10px] sm:text-sm font-medium text-gray-500 text-right leading-tight whitespace-nowrap">
-                        {% if now %}
-                        <div class="sm:inline">{{ now.strftime('%B') }} <span class="block sm:inline text-gray-800">{{
-                                now.strftime('%d, %Y') }}</span></div>
+                        {% set display_now = now() if now is callable else now %}
+                        {% if display_now %}
+                        <div class="sm:inline">{{ display_now.strftime('%B') }} <span class="block sm:inline text-gray-800">{{
+                                display_now.strftime('%d, %Y') }}</span></div>
                         {% endif %}
                     </div>
                 </div>

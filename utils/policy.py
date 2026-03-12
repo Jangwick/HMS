@@ -78,23 +78,6 @@ def policy_required(subsystem_code):
         def decorated_function(*args, **kwargs):
             try:
                 authorized, message = HMSFundamentalsPolicy.check_access(subsystem_code)
-                if not authorized:
-                    # Special Handle for Maintenance Mode
-                    if "undergoing scheduled maintenance" in (message or ""):
-                        try:
-                            return redirect(url_for('superadmin.maintenance_mode_splash', subsystem=subsystem_code))
-                        except Exception:
-                            return redirect(url_for('portal.index'))
-
-                    flash(message or 'Access denied.', 'danger')
-                    # Smart redirect: if user belongs to another subsystem, send them to their own dashboard
-                    if current_user.is_authenticated and current_user.subsystem and current_user.subsystem != subsystem_code:
-                        try:
-                            return redirect(url_for(f'{current_user.subsystem}.dashboard'))
-                        except Exception:
-                            pass
-                    return redirect(url_for('portal.index'))
-                return f(*args, **kwargs)
             except Exception as e:
                 try:
                     AuditLog.log(
@@ -105,7 +88,26 @@ def policy_required(subsystem_code):
                     )
                 except Exception:
                     pass
-                flash('A temporary access control issue occurred. Please try again.', 'warning')
+                flash('A policy validation issue occurred. Please try again.', 'warning')
                 return redirect(url_for('portal.index'))
+
+            if not authorized:
+                # Special Handle for Maintenance Mode
+                if "undergoing scheduled maintenance" in (message or ""):
+                    try:
+                        return redirect(url_for('superadmin.maintenance_mode_splash', subsystem=subsystem_code))
+                    except Exception:
+                        return redirect(url_for('portal.index'))
+
+                flash(message or 'Access denied.', 'danger')
+                # Smart redirect: if user belongs to another subsystem, send them to their own dashboard
+                if current_user.is_authenticated and current_user.subsystem and current_user.subsystem != subsystem_code:
+                    try:
+                        return redirect(url_for(f'{current_user.subsystem}.dashboard'))
+                    except Exception:
+                        pass
+                return redirect(url_for('portal.index'))
+
+            return f(*args, **kwargs)
         return decorated_function
     return decorator

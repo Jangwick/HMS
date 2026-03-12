@@ -246,16 +246,23 @@ def dashboard():
     except Exception:
         pass
     
-    return render_template('subsystems/hr/hr1/dashboard.html', 
-                           now=datetime.utcnow,
-                           vacancies_count=vacancies_count,
-                           applicants_count=applicants_count,
-                           interviews_today=interviews_today_count,
-                           recent_applicants=recent_applicants,
-                           recent_interviews=recent_interviews,
-                           subsystem_name=SUBSYSTEM_NAME,
-                           accent_color=ACCENT_COLOR,
-                           blueprint_name=BLUEPRINT_NAME)
+    try:
+        return render_template('subsystems/hr/hr1/dashboard.html', 
+                               now=datetime.utcnow,
+                               vacancies_count=vacancies_count,
+                               applicants_count=applicants_count,
+                               interviews_today=interviews_today_count,
+                               recent_applicants=recent_applicants,
+                               recent_interviews=recent_interviews,
+                               subsystem_name=SUBSYSTEM_NAME,
+                               accent_color=ACCENT_COLOR,
+                               blueprint_name=BLUEPRINT_NAME)
+    except Exception as e:
+        import traceback
+        print(f"HR1 dashboard render error: {e}")
+        traceback.print_exc()
+        flash('Dashboard is temporarily unavailable. Redirected to Applicants.', 'warning')
+        return redirect(url_for('hr1.list_applicants'))
 
 @hr1_bp.route('/vacancies')
 @login_required

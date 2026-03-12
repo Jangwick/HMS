@@ -90,6 +90,11 @@ def create_app(config_class=Config):
     def format_datetime(value, format="%Y-%m-%d %H:%M"):
         if value is None:
             return ""
+        if callable(value):
+            try:
+                value = value()
+            except Exception:
+                return ""
         if isinstance(value, str):
             try:
                 from datetime import datetime
@@ -106,7 +111,7 @@ def create_app(config_class=Config):
     @app.context_processor
     def inject_now():
         from datetime import datetime
-        return {'now': datetime.now}
+        return {'now': datetime.now()}
 
     @app.context_processor
     def inject_notifications():
