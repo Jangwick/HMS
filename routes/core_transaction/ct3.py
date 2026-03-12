@@ -2037,6 +2037,37 @@ def view_document(doc_id):
 # PHASE 8 — BILLING ENHANCEMENT
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _get_billing_line_items(client, bill_id):
+    try:
+        try:
+            resp = client.table('billing_line_items').select('*').eq('billing_id', bill_id).order('posted_at').execute()
+        except Exception:
+            try:
+                resp = client.table('billing_line_items').select('*').eq('billing_id', bill_id).order('created_at').execute()
+            except Exception:
+                resp = client.table('billing_line_items').select('*').eq('billing_id', bill_id).execute()
+        return resp.data or [], 'billing_id'
+    except Exception:
+        try:
+            resp = client.table('billing_line_items').select('*').eq('bill_id', bill_id).order('posted_at').execute()
+        except Exception:
+            try:
+                resp = client.table('billing_line_items').select('*').eq('bill_id', bill_id).order('created_at').execute()
+            except Exception:
+                resp = client.table('billing_line_items').select('*').eq('bill_id', bill_id).execute()
+        return resp.data or [], 'bill_id'
+
+
+def _sum_billing_line_items_total(client, bill_id):
+    items, _ = _get_billing_line_items(client, bill_id)
+    total = 0.0
+    for item in items:
+        try:
+            total += float(item.get('line_total') or 0)
+        except Exception:
+            pass
+    return total
+
 @ct3_bp.route('/billing/<int:bill_id>/detail')
 @login_required
 @policy_required(BLUEPRINT_NAME)
@@ -2048,8 +2079,7 @@ def billing_detail(bill_id):
         bill = b_resp.data or {}
         p_resp = client.table('patients').select('*').eq('id', bill.get('patient_id')).single().execute()
         patient = p_resp.data or {}
-        items_resp = client.table('billing_line_items').select('*').eq('billing_id', bill_id).order('posted_at').execute()
-        line_items = items_resp.data or []
+        line_items, _ = _get_billing_line_items(client, bill_id)
     except Exception as e:
         flash(f'Error: {e}', 'danger')
         return redirect(url_for('ct3.billing'))
@@ -2070,8 +2100,7 @@ def add_billing_item(bill_id):
         unit_price = float(request.form.get('unit_price', 0))
         discount   = float(request.form.get('discount', 0))
         line_total = qty * unit_price - discount
-        data = {
-            'billing_id':   bill_id,
+        base_data = {
             'description':  request.form.get('description', ''),
             'quantity':     qty,
             'unit_price':   unit_price,
@@ -2079,10 +2108,14 @@ def add_billing_item(bill_id):
             'line_total':   line_total,
             'source_module': request.form.get('source_module', 'CT3'),
         }
-        client.table('billing_line_items').insert(data).execute()
-        # Recalculate bill total
-        items = client.table('billing_line_items').select('line_total').eq('billing_id', bill_id).execute().data or []
-        new_total = sum(float(i['line_total']) for i in items)
+        try:
+            data = {**base_data, 'billing_id': bill_id}
+            client.table('billing_line_items').insert(data).execute()
+        except Exception:
+            data = {**base_data, 'bill_id': bill_id}
+            client.table('billing_line_items').insert(data).execute()
+
+        new_total = _sum_billing_line_items_total(client, bill_id)
         client.table('billing_records').update({'total_amount': new_total}).eq('id', bill_id).execute()
         flash('Line item added.', 'success')
     except Exception as e:
@@ -2098,8 +2131,7 @@ def remove_billing_item(bill_id, item_id):
     client = get_supabase_client()
     try:
         client.table('billing_line_items').delete().eq('id', item_id).execute()
-        items = client.table('billing_line_items').select('line_total').eq('billing_id', bill_id).execute().data or []
-        new_total = sum(float(i['line_total']) for i in items)
+        new_total = _sum_billing_line_items_total(client, bill_id)
         client.table('billing_records').update({'total_amount': new_total}).eq('id', bill_id).execute()
         flash('Item removed.', 'info')
     except Exception as e:
@@ -2114,25 +2146,72 @@ def apply_billing_discount(bill_id):
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
+        current_bill = client.table('billing_records').select('*').eq('id', bill_id).single().execute().data or {}
+        existing_cols = set(current_bill.keys())
+
         update_data = {}
         for field in ['insurance_provider', 'insurance_policy_no', 'payment_method']:
             val = request.form.get(field, '').strip()
-            if val:
+            if val and field in existing_cols:
                 update_data[field] = val
         for field in ['insurance_coverage', 'philhealth_coverage', 'senior_discount', 'pwd_discount']:
             try:
-                update_data[field] = float(request.form.get(field, 0) or 0)
+                if field in existing_cols:
+                    update_data[field] = float(request.form.get(field, 0) or 0)
             except ValueError:
-                update_data[field] = 0
+                if field in existing_cols:
+                    update_data[field] = 0
         # Recalculate net_amount
-        b = client.table('billing_records').select('total_amount').eq('id', bill_id).single().execute().data or {}
-        total = float(b.get('total_amount', 0))
+        total_col = 'total_amount' if 'total_amount' in existing_cols else 'amount'
+        total = float(current_bill.get(total_col, 0) or 0)
         discounts = sum(update_data.get(f, 0) for f in ['insurance_coverage', 'philhealth_coverage', 'senior_discount', 'pwd_discount'])
-        update_data['net_amount'] = max(0, total - discounts)
-        client.table('billing_records').update(update_data).eq('id', bill_id).execute()
+        if 'net_amount' in existing_cols:
+            update_data['net_amount'] = max(0, total - discounts)
+
+        if update_data:
+            client.table('billing_records').update(update_data).eq('id', bill_id).execute()
         flash('Discounts applied.', 'success')
     except Exception as e:
         flash(f'Error: {e}', 'danger')
+    return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+
+@ct3_bp.route('/billing/<int:bill_id>/update-amount', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def update_billing_amount(bill_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can edit bill amounts.', 'danger')
+        return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        new_total = float(request.form.get('total_amount', 0) or 0)
+        if new_total < 0:
+            raise ValueError('Amount cannot be negative.')
+
+        b = client.table('billing_records').select('*').eq('id', bill_id).single().execute().data or {}
+        existing_cols = set(b.keys())
+
+        discounts = (
+            float(b.get('insurance_coverage') or 0)
+            + float(b.get('philhealth_coverage') or 0)
+            + float(b.get('senior_discount') or 0)
+            + float(b.get('pwd_discount') or 0)
+        )
+
+        amount_col = 'total_amount' if 'total_amount' in existing_cols else 'amount'
+        update_data = {amount_col: new_total}
+        if 'net_amount' in existing_cols:
+            update_data['net_amount'] = max(0, new_total - discounts)
+
+        client.table('billing_records').update(update_data).eq('id', bill_id).execute()
+        flash('Billing amount updated successfully.', 'success')
+    except Exception as e:
+        flash(f'Error updating amount: {e}', 'danger')
+
     return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
 
 
@@ -2146,8 +2225,7 @@ def billing_print(bill_id):
         bill = b_resp.data or {}
         p_resp = client.table('patients').select('*').eq('id', bill.get('patient_id')).single().execute()
         patient = p_resp.data or {}
-        items_resp = client.table('billing_line_items').select('*').eq('billing_id', bill_id).execute()
-        line_items = items_resp.data or []
+        line_items, _ = _get_billing_line_items(client, bill_id)
     except Exception as e:
         flash(f'Error: {e}', 'danger')
         return redirect(url_for('ct3.billing'))
