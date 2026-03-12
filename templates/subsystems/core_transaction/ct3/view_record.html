@@ -20,23 +20,31 @@
     <!-- Patient Header -->
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
         <div class="flex items-start justify-between">
-            <div class="flex items-center">
-                <div
-                    class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-gray-800 flex items-center justify-center text-white text-3xl font-bold mr-6">
-                    {{ (patient.get('first_name', '') or 'P')[0] | upper if patient.get('first_name') else 'P' }}
+            <div class="flex items-center flex-1">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-gray-800 flex items-center justify-center text-white text-3xl font-bold mr-6">
+                    {% if patient.get('first_name') %}
+                        {{ patient.get('first_name')[0] | upper }}
+                    {% else %}
+                        P
+                    {% endif %}
                 </div>
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-900">{{ patient.get('first_name', '') }} {{ patient.get('last_name', '') }}</h2>
-                    <p class="text-gray-500">Patient ID: {{ patient.get('patient_id_alt', '') }}</p>
+                    <h2 class="text-2xl font-bold text-gray-900">{{ patient.get('first_name', 'Unknown') }} {{ patient.get('last_name', 'Unknown') }}</h2>
+                    <p class="text-gray-500">Patient ID: <span class="font-bold">{{ patient.get('patient_id_alt', 'N/A') }}</span></p>
                     <div class="flex flex-wrap gap-4 mt-2">
-                        <span class="text-sm text-gray-600"><i class="bi bi-calendar mr-1"></i> DOB: {{ patient.get('dob', '') }}</span>
-                        <span class="text-sm text-gray-600"><i class="bi bi-gender-ambiguous mr-1"></i> {{ patient.get('gender', '') }}</span>
-                        <span class="text-sm font-bold text-red-600"><i class="bi bi-exclamation-triangle mr-1"></i> Allergies: {{ patient.get('allergies') or 'None' }}</span>
+                        {% if patient.get('dob') %}
+                            <span class="text-sm text-gray-600"><i class="bi bi-calendar mr-1"></i> DOB: {{ patient.get('dob') }}</span>
+                        {% endif %}
+                        {% if patient.get('gender') %}
+                            <span class="text-sm text-gray-600"><i class="bi bi-gender-ambiguous mr-1"></i> {{ patient.get('gender') }}</span>
+                        {% endif %}
+                        {% if patient.get('allergies') %}
+                            <span class="text-sm font-bold text-red-600"><i class="bi bi-exclamation-triangle mr-1"></i> Allergies: {{ patient.get('allergies') or 'None known' }}</span>
+                        {% endif %}
                     </div>
                 </div>
             </div>
-            <a href="{{ url_for('ct3.patient_records') }}"
-                class="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
+            <a href="{{ url_for('ct3.patient_records') }}" class="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
                 <i class="bi bi-arrow-left mr-2"></i> Back
             </a>
         </div>
@@ -44,28 +52,69 @@
 
     <!-- Contact Information -->
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-        <h3 class="text-lg font-bold text-gray-900 mb-4">Contact Information</h3>
+        <h3 class="text-lg font-bold text-gray-900 mb-4"><i class="bi bi-telephone mr-2 text-emerald-600"></i>Contact Information</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
                 <p class="text-sm text-gray-500">Phone</p>
                 <p class="font-medium text-gray-900">{{ patient.get('contact_number') or 'Not provided' }}</p>
             </div>
             <div>
+                <p class="text-sm text-gray-500">Address</p>
+                <p class="font-medium text-gray-900">{{ patient.get('address') or 'Not provided' }}</p>
+            </div>
+            {% if patient.get('insurance_info') %}
                 <div>
-                    <p class="text-sm text-gray-500">Provider</p>
-                    <p class="font-medium text-gray-900">{{ patient.get('insurance_info', {}).get('provider') if patient.get('insurance_info')
-                        else
-                        'Not provided' }}</p>
+                    <p class="text-sm text-gray-500">Insurance Provider</p>
+                    <p class="font-medium text-gray-900">{{ patient.get('insurance_info', {}).get('provider') or 'Not provided' }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-500">Policy Number</p>
-                    <p class="font-medium text-gray-900">{{ patient.get('insurance_info', {}).get('policy_number') if
-                        patient.get('insurance_info')
-                        else 'Not provided' }}</p>
+                    <p class="font-medium text-gray-900">{{ patient.get('insurance_info', {}).get('policy_number') or 'Not provided' }}</p>
                 </div>
-            </div>
+            {% endif %}
         </div>
     </div>
+
+    <!-- Current Status -->
+    {% if patient.get('current_status') or patient.get('admission_date') %}
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+        <h3 class="text-lg font-bold text-gray-900 mb-4"><i class="bi bi-hospital mr-2 text-emerald-600"></i>Current Status</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% if patient.get('current_status') %}
+                <div>
+                    <p class="text-sm text-gray-500">Status</p>
+                    <p class="font-medium text-gray-900">
+                        <span class="px-3 py-1 rounded-full text-sm font-bold
+                            {% if patient.get('current_status') == 'Admitted' %}bg-red-100 text-red-700
+                            {% elif patient.get('current_status') == 'Outpatient' %}bg-blue-100 text-blue-700
+                            {% else %}bg-gray-100 text-gray-700
+                            {% endif %}">
+                            {{ patient.get('current_status') }}
+                        </span>
+                    </p>
+                </div>
+            {% endif %}
+            {% if patient.get('admission_date') %}
+                <div>
+                    <p class="text-sm text-gray-500">Admission Date</p>
+                    <p class="font-medium text-gray-900">{{ patient.get('admission_date') or 'N/A' }}</p>
+                </div>
+            {% endif %}
+            {% if patient.get('ward_id') %}
+                <div>
+                    <p class="text-sm text-gray-500">Ward/Department</p>
+                    <p class="font-medium text-gray-900">Ward {{ patient.get('ward_id') }}</p>
+                </div>
+            {% endif %}
+            {% if patient.get('bed_id') %}
+                <div>
+                    <p class="text-sm text-gray-500">Bed Number</p>
+                    <p class="font-medium text-gray-900">Bed {{ patient.get('bed_id') }}</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Nutritional Summary (Integrated from CT2 DNMS) -->
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">

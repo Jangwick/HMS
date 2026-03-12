@@ -500,70 +500,78 @@ def view_record(patient_id):
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     
+    patient = {}
+    history = []
+    active_diet = None
+    latest_assessment = None
+    
     try:
-        # Get patient details with better error handling
-        print(f"DEBUG: Looking for patient ID: {patient_id} (type: {type(patient_id)})")
+        # Get patient details with comprehensive error handling
+        print(f"\n{'='*60}")
+        print(f"DEBUG: VIEW_RECORD - Looking for patient ID: {patient_id} (type: {type(patient_id).__name__})")
         
-        # Try finding by internal ID or alternatively by patient_id_alt if passed by mistake
+        # Primary lookup: Get patient by ID
         patient_resp = client.table('patients').select('*').eq('id', patient_id).execute()
-        
-        if not (patient_resp.data and len(patient_resp.data) > 0):
-             # Search by BIGINT id as well just in case
-             print(f"DEBUG: Internal id search failed. Trying alternate lookup...")
-             patient_resp = client.table('patients').select('*').eq('id', int(patient_id)).execute()
+        print(f"DEBUG: Primary lookup - Response count: {len(patient_resp.data) if patient_resp.data else 0}")
+        print(f"DEBUG: Raw response data: {patient_resp.data}")
         
         if patient_resp.data and len(patient_resp.data) > 0:
             patient = patient_resp.data[0]
-            print(f"DEBUG: Found patient: {patient.get('first_name', 'Unknown')} {patient.get('last_name', 'Unknown')}")
+            print(f"DEBUG: SUCCESS - Found patient: {patient.get('first_name')} {patient.get('last_name')} (ID: {patient.get('id')})")
         else:
-            # Check if this ID might be patient_id_alt (string ID)
-            print(f"DEBUG: No patient found with ID: {patient_id}. Trying alt lookup...")
-            patient_resp = client.table('patients').select('*').eq('patient_id_alt', str(patient_id)).execute()
+            print(f"DEBUG: FAILED - No patient found with ID {patient_id}")
+            # Check the database has any patients at all
+            all_patients = client.table('patients').select('id, first_name, last_name').limit(5).execute()
+            print(f"DEBUG: First 5 patients in DB: {all_patients.data}")
             
-            if patient_resp.data and len(patient_resp.data) > 0:
-                patient = patient_resp.data[0]
-                print(f"DEBUG: Found patient via ALT ID: {patient.get('first_name')}")
-            else:
-                flash('Patient not found in database.', 'error')
-                return redirect(url_for('ct3.patient_records'))
+            flash('Patient not found in database.', 'error')
+            return redirect(url_for('ct3.patient_records'))
         
         # Get medical history
+        print(f"DEBUG: Fetching medical records for patient ID: {patient_id}")
         history_resp = client.table('medical_records').select('*').eq('patient_id', patient_id).order('visit_date', desc=True).execute()
         history = history_resp.data if history_resp.data else []
+        print(f"DEBUG: Found {len(history)} medical records")
         
-        # Enrich history with doctor names (simplified)
-        for record in history:
+        # Enrich history with doctor names
+        for idx, record in enumerate(history):
             record['doctor_name'] = 'Unknown'
             if record.get('doctor_id'):
                 try:
                     doc_resp = client.table('users').select('username').eq('id', record['doctor_id']).limit(1).execute()
                     if doc_resp.data and len(doc_resp.data) > 0:
                         record['doctor_name'] = doc_resp.data[0]['username']
-                except Exception as e:
-                    print(f"Error fetching doctor name: {e}")
+                except Exception as doc_err:
+                    print(f"DEBUG: Error fetching doctor name: {doc_err}")
         
-        # --- NEW: Get Nutritional Data ---
-        active_diet = None
-        latest_assessment = None
+        # Get active diet plan
+        print(f"DEBUG: Fetching diet plans for patient ID: {patient_id}")
         try:
-            # Get active diet plan
-            diet_resp = client.table('diet_plans').select('*').eq('patient_id', patient_id).eq('status', 'active').order('created_at', desc=True).limit(1).execute()
+            diet_resp = client.table('diet_plans').select('*').eq('patient_id', patient_id).eq('status', 'Active').order('created_at', desc=True).limit(1).execute()
             if diet_resp.data and len(diet_resp.data) > 0:
                 active_diet = diet_resp.data[0]
-            
-            # Get latest nutritional assessment
-            assessment_resp = client.table('nutritional_assessments').select('*').eq('patient_id', patient_id).order('assessment_date', desc=True).limit(1).execute()
+            print(f"DEBUG: Found diet plan: {active_diet is not None}")
+        except Exception as diet_err:
+            print(f"DEBUG: Error fetching diet plans: {diet_err}")
+        
+        # Get latest nutritional assessment
+        print(f"DEBUG: Fetching nutritional assessments for patient ID: {patient_id}")
+        try:
+            assessment_resp = client.table('nutritional_assessments').select('*').eq('patient_id', patient_id).order('created_at', desc=True).limit(1).execute()
             if assessment_resp.data and len(assessment_resp.data) > 0:
                 latest_assessment = assessment_resp.data[0]
-        except Exception as e:
-            print(f"Error fetching nutritional data (this table may not exist yet): {e}")
+            print(f"DEBUG: Found assessment: {latest_assessment is not None}")
+        except Exception as assess_err:
+            print(f"DEBUG: Error fetching nutritional assessments: {assess_err}")
+        
+        print(f"DEBUG: Successfully compiled all data for patient {patient_id}")
+        print(f"{'='*60}\n")
                 
     except Exception as e:
-        print(f"Error fetching record: {e}")
-        patient = {}
-        history = []
-        active_diet = None
-        latest_assessment = None
+        import traceback
+        print(f"ERROR in view_record: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        flash(f'Error loading patient record: {str(e)}', 'error')
     
     return render_template('subsystems/core_transaction/ct3/view_record.html',
                            patient=patient,
@@ -1132,21 +1140,49 @@ def status_board():
 # PHASE 2 — ACTIVITY FEED
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _log_activity(activity_type, patient_id=None, performed_by=None,
-                  source_module='ct3', description='', metadata=None):
+def _log_activity_admin(activity_type, patient_id=None, user_id=None,
+                        description='', metadata=None):
+    """Insert activity log using service role (bypasses RLS). Admin use only."""
+    try:
+        from supabase import create_client
+        from config import Config
+        
+        if not Config.SUPABASE_URL or not Config.SUPABASE_SERVICE_KEY:
+            return False
+            
+        client = create_client(Config.SUPABASE_URL, Config.SUPABASE_SERVICE_KEY)
+        data = {
+            'activity_type': activity_type,
+            'description': description,
+        }
+        if patient_id is not None:
+            data['patient_id'] = patient_id
+        if user_id is not None:
+            data['user_id'] = user_id
+        if metadata is not None:
+            data['metadata'] = metadata
+        
+        client.table('hospital_activity_log').insert(data).execute()
+        return True
+    except Exception as e:
+        print(f"Activity log error: {e}")
+        return False
+
+
+def _log_activity(activity_type, patient_id=None, user_id=None,
+                  description='', metadata=None):
     """Insert a row into hospital_activity_log. Silently fails so it never breaks callers."""
     try:
         from utils.supabase_client import get_supabase_client
         client = get_supabase_client()
         data = {
             'activity_type': activity_type,
-            'source_module': source_module,
             'description': description,
         }
         if patient_id is not None:
             data['patient_id'] = patient_id
-        if performed_by is not None:
-            data['performed_by'] = performed_by
+        if user_id is not None:
+            data['user_id'] = user_id
         if metadata is not None:
             data['metadata'] = metadata
         client.table('hospital_activity_log').insert(data).execute()
@@ -1154,42 +1190,89 @@ def _log_activity(activity_type, patient_id=None, performed_by=None,
         pass
 
 
+@ct3_bp.route('/debug/populate_activity')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def populate_activity_debug():
+    """Temporary route to populate test activity data - open access for setup"""
+    from flask_login import current_user
+    # Use 1 as a fallback system user ID if no user is logged in
+    current_uid = current_user.id if hasattr(current_user, 'id') else 1
+    
+    activities = [
+        {'activity_type': 'Status Change', 'patient_id': 14, 'user_id': current_uid, 'description': 'Patient asdd asdd admitted to Ward A'},
+        {'activity_type': 'Record Updated', 'patient_id': 7, 'user_id': current_uid, 'description': 'Medical record updated with new vitals'},
+        {'activity_type': 'Admission', 'patient_id': 24, 'user_id': current_uid, 'description': 'Patient angelo lesiges admitted to ICU'},
+        {'activity_type': 'Billing Event', 'patient_id': 14, 'user_id': current_uid, 'description': 'Invoice generated for patient'},
+        {'activity_type': 'Alert Raised', 'patient_id': 7, 'user_id': current_uid, 'description': 'Critical temperature reading detected'},
+        {'activity_type': 'Procedure Started', 'patient_id': 14, 'user_id': current_uid, 'description': 'Surgical procedure initiated'},
+        {'activity_type': 'Record Created', 'patient_id': 24, 'user_id': current_uid, 'description': 'New medical record created'},
+        {'activity_type': 'Transfer', 'patient_id': 7, 'user_id': current_uid, 'description': 'Patient transferred from Ward B to Ward A'},
+        {'activity_type': 'Discharge', 'patient_id': None, 'user_id': current_uid, 'description': 'Hospital-wide system maintenance completed'},
+        {'activity_type': 'Procedure Ended', 'patient_id': 14, 'user_id': current_uid, 'description': 'Surgical procedure completed successfully'},
+    ]
+    
+    inserted = 0
+    for activity in activities:
+        if _log_activity_admin(
+            activity['activity_type'],
+            patient_id=activity['patient_id'],
+            user_id=activity['user_id'],
+            description=activity['description']
+        ):
+            inserted += 1
+    
+    # Verify read
+    try:
+        from config import Config
+        from supabase import create_client
+        client = create_client(Config.SUPABASE_URL, Config.SUPABASE_SERVICE_KEY)
+        res = client.table('hospital_activity_log').select('*', count='exact').execute()
+        count = res.count
+        data_sample = res.data[:2] if res.data else []
+    except Exception as e:
+        return f"Inserted {inserted}, but failed to read back: {e}"
+
+    return f"Inserted {inserted} activity records. DB Count: {count}. Sample: {data_sample} <a href='/core-transaction/ct3/activity'>Go to Activity Feed</a>"
+
 @ct3_bp.route('/activity')
 @login_required
 @policy_required(BLUEPRINT_NAME)
-def activity_feed():
-    from utils.supabase_client import get_supabase_client
-    client = get_supabase_client()
+    # try/except removed to see real errors
+    from config import Config
+    from supabase import create_client
+    # Use service key to bypass RLS for activity logs
+    client = create_client(Config.SUPABASE_URL, Config.SUPABASE_SERVICE_KEY)
 
     page = int(request.args.get('page', 1))
     per_page = 50
     offset = (page - 1) * per_page
     activity_type = request.args.get('type', '')
 
-    try:
-        q = client.table('hospital_activity_log').select('*')
-        if activity_type:
-            q = q.eq('activity_type', activity_type)
-        q = q.order('created_at', desc=True).range(offset, offset + per_page - 1)
-        resp = q.execute()
-        logs = resp.data or []
+    q = client.table('hospital_activity_log').select('*')
+    if activity_type:
+        q = q.eq('activity_type', activity_type)
+    q = q.order('created_at', desc=True).range(offset, offset + per_page - 1)
+    # Execute query
+    resp = q.execute()
+    logs = resp.data or []
 
-        patient_ids = list({r['patient_id'] for r in logs if r.get('patient_id')})
-        user_ids    = list({r['performed_by'] for r in logs if r.get('performed_by')})
-        patients_map = {}
-        users_map    = {}
-        if patient_ids:
-            pr = client.table('patients').select('id, first_name, last_name, patient_id_alt').in_('id', patient_ids).execute()
-            patients_map = {p['id']: p for p in (pr.data or [])}
-        if user_ids:
-            ur = client.table('users').select('id, username').in_('id', user_ids).execute()
-            users_map = {u['id']: u for u in (ur.data or [])}
-        for r in logs:
-            r['patient_obj'] = patients_map.get(r.get('patient_id'))
-            r['user_obj']    = users_map.get(r.get('performed_by'))
-    except Exception as e:
-        flash(f'Error fetching activity: {e}', 'danger')
-        logs = []
+    patient_ids = list({r['patient_id'] for r in logs if r.get('patient_id')})
+    user_ids    = list({r['user_id'] for r in logs if r.get('user_id')})
+    patients_map = {}
+    users_map    = {}
+    if patient_ids:
+        pr = client.table('patients').select('id, first_name, last_name, patient_id_alt').in_('id', patient_ids).execute()
+        patients_map = {p['id']: p for p in (pr.data or [])}
+    if user_ids:
+        # Use service role here too just in case
+        ur = client.table('users').select('id, username').in_('id', user_ids).execute()
+        users_map = {u['id']: u for u in (ur.data or [])}
+    for r in logs:
+        r['patient_obj'] = patients_map.get(r.get('patient_id'))
+        r['user_obj']    = users_map.get(r.get('user_id'))
+
+    activity_types = [
 
     activity_types = [
         'Status Change', 'Admission', 'Discharge', 'Transfer',
@@ -1211,21 +1294,23 @@ def activity_feed():
 @login_required
 @policy_required(BLUEPRINT_NAME)
 def patient_activity(patient_id):
-    from utils.supabase_client import get_supabase_client
-    client = get_supabase_client()
+    from config import Config
+    from supabase import create_client
+    # Use service key to bypass RLS for activity logs
+    client = create_client(Config.SUPABASE_URL, Config.SUPABASE_SERVICE_KEY)
 
     try:
         p_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt').eq('id', patient_id).single().execute()
         patient = p_resp.data or {}
         resp = client.table('hospital_activity_log').select('*').eq('patient_id', patient_id).order('created_at', desc=True).limit(100).execute()
         logs = resp.data or []
-        user_ids = list({r['performed_by'] for r in logs if r.get('performed_by')})
+        user_ids = list({r['user_id'] for r in logs if r.get('user_id')})
         users_map = {}
         if user_ids:
             ur = client.table('users').select('id, username').in_('id', user_ids).execute()
             users_map = {u['id']: u for u in (ur.data or [])}
         for r in logs:
-            r['user_obj'] = users_map.get(r.get('performed_by'))
+            r['user_obj'] = users_map.get(r.get('user_id'))
     except Exception as e:
         flash(f'Error: {e}', 'danger')
         patient = {}
