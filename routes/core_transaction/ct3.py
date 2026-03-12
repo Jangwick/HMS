@@ -1238,12 +1238,20 @@ def populate_activity_debug():
 @ct3_bp.route('/activity')
 @login_required
 @policy_required(BLUEPRINT_NAME)
-    # try/except removed to see real errors
-    from config import Config
-    from supabase import create_client
-    # Use service key to bypass RLS for activity logs
-    client = create_client(Config.SUPABASE_URL, Config.SUPABASE_SERVICE_KEY)
+def activity_feed():
+    try:
+        from config import Config
+        from supabase import create_client
+        # Use service key to bypass RLS for activity logs if available, else fallback
+        s_key = Config.SUPABASE_SERVICE_KEY or Config.SUPABASE_KEY
+        client = create_client(Config.SUPABASE_URL, s_key)
+    except ImportError:
+        # Fallback for environments where supabase or config might have issues
+        from utils.supabase_client import get_supabase_client
+        client = get_supabase_client()
 
+    # Default values
+    logs = []
     page = int(request.args.get('page', 1))
     per_page = 50
     offset = (page - 1) * per_page
@@ -1252,10 +1260,15 @@ def populate_activity_debug():
     q = client.table('hospital_activity_log').select('*')
     if activity_type:
         q = q.eq('activity_type', activity_type)
-    q = q.order('created_at', desc=True).range(offset, offset + per_page - 1)
-    # Execute query
-    resp = q.execute()
-    logs = resp.data or []
+    
+    try:
+        q = q.order('created_at', desc=True).range(offset, offset + per_page - 1)
+        # Execute query
+        resp = q.execute()
+        logs = resp.data or []
+    except Exception as e:
+        print(f"Error executing activity query: {e}")
+        logs = []
 
     patient_ids = list({r['patient_id'] for r in logs if r.get('patient_id')})
     user_ids    = list({r['user_id'] for r in logs if r.get('user_id')})
@@ -1271,8 +1284,6 @@ def populate_activity_debug():
     for r in logs:
         r['patient_obj'] = patients_map.get(r.get('patient_id'))
         r['user_obj']    = users_map.get(r.get('user_id'))
-
-    activity_types = [
 
     activity_types = [
         'Status Change', 'Admission', 'Discharge', 'Transfer',
@@ -1294,10 +1305,15 @@ def populate_activity_debug():
 @login_required
 @policy_required(BLUEPRINT_NAME)
 def patient_activity(patient_id):
-    from config import Config
-    from supabase import create_client
-    # Use service key to bypass RLS for activity logs
-    client = create_client(Config.SUPABASE_URL, Config.SUPABASE_SERVICE_KEY)
+    try:
+        from config import Config
+        from supabase import create_client
+        # Use service key if available, else standard key (RLS will apply, but won't crash)
+        s_key = Config.SUPABASE_SERVICE_KEY or Config.SUPABASE_KEY
+        client = create_client(Config.SUPABASE_URL, s_key)
+    except:
+        from utils.supabase_client import get_supabase_client
+        client = get_supabase_client()
 
     try:
         p_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt').eq('id', patient_id).single().execute()
