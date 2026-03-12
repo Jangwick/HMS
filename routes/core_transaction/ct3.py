@@ -1,10 +1,13 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, send_from_directory
 from flask_login import login_user, logout_user, login_required, current_user
+from werkzeug.utils import secure_filename
 from utils.supabase_client import User, format_db_error
 from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_successful_login
 from utils.password_validator import PasswordValidationError
 from utils.policy import policy_required
 from datetime import datetime
+import os
+import uuid
 
 ct3_bp = Blueprint('ct3', __name__, template_folder='templates')
 
@@ -286,6 +289,7 @@ def billing():
     return render_template('subsystems/core_transaction/ct3/billing.html', 
                            bills=bills,
                            patients_list=patients_list,
+                           now=datetime.utcnow(),
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -1633,7 +1637,7 @@ def documents():
     search = request.args.get('search', '')
     doc_type = request.args.get('type', '')
     try:
-        q = client.table('patient_documents').select('*').is_('deleted_at', 'null')
+        q = client.table('patient_documents').select('*')
         if doc_type:
             q = q.eq('document_type', doc_type)
         if search:
@@ -1682,7 +1686,7 @@ def patient_documents(patient_id):
     try:
         p_resp = client.table('patients').select('id, first_name, last_name, patient_id_alt').eq('id', patient_id).single().execute()
         patient = p_resp.data or {}
-        resp = client.table('patient_documents').select('*').eq('patient_id', patient_id).is_('deleted_at', 'null').order('uploaded_at', desc=True).execute()
+        resp = client.table('patient_documents').select('*').eq('patient_id', patient_id).order('uploaded_at', desc=True).execute()
         docs = resp.data or []
     except Exception as e:
         flash(f'Error: {e}', 'danger')
@@ -1703,24 +1707,86 @@ def upload_document():
     from utils.supabase_client import get_supabase_client
     from utils.hms_models import AuditLog
     client = get_supabase_client()
+    
+    # File upload configuration
+    UPLOAD_FOLDER = 'static/uploads/documents'
+    ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'txt'}
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+    
+    def allowed_file(filename):
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    
     try:
+        # Check if file is present
+        if 'document_file' not in request.files:
+            flash('No file selected.', 'danger')
+            return redirect(url_for('ct3.documents'))
+        
+        file = request.files['document_file']
+        if file.filename == '':
+            flash('No file selected.', 'danger')
+            return redirect(url_for('ct3.documents'))
+        
+        # Validate file
+        if not allowed_file(file.filename):
+            flash('Invalid file type. Please upload PDF, Word documents, images, or text files.', 'danger')
+            return redirect(url_for('ct3.documents'))
+        
+        # Check file size (approximate)
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)  # Reset file pointer
+        
+        if file_size > MAX_FILE_SIZE:
+            flash('File too large. Maximum size is 10MB.', 'danger')
+            return redirect(url_for('ct3.documents'))
+        
+        # Create upload directory if it doesn't exist
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        
+        # Generate secure filename
+        original_filename = secure_filename(file.filename)
+        file_extension = original_filename.rsplit('.', 1)[1].lower()
+        unique_filename = f"{uuid.uuid4().hex}.{file_extension}"
+        file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+        
+        # Save the file
+        file.save(file_path)
+        
+        # Create database record
         data = {
             'patient_id':    int(request.form.get('patient_id')),
             'document_type': request.form.get('document_type', 'Other'),
             'title':         request.form.get('title', ''),
             'description':   request.form.get('description', '') or None,
-            'file_url':      request.form.get('file_url', '') or None,
-            'file_name':     request.form.get('file_name', '') or None,
+            'file_url':      f"/{file_path}",  # Store relative path
+            'file_size_kb':  int(round(file_size / 1024)),  # Convert to integer KB
+            'mime_type':     file.content_type,
             'is_confidential': request.form.get('is_confidential') == '1',
             'uploaded_by':   current_user.id,
         }
+        
         client.table('patient_documents').insert(data).execute()
         _log_activity('Record Created', patient_id=data['patient_id'], performed_by=current_user.id,
-                      description=f"Document uploaded: {data['title']}")
-        AuditLog.log(current_user.id, "Document Upload", BLUEPRINT_NAME, {"patient_id": data['patient_id'], "title": data['title']})
+                      description=f"Document uploaded: {data['title']} ({original_filename})")
+        AuditLog.log(current_user.id, "Document Upload", BLUEPRINT_NAME, {
+            "patient_id": data['patient_id'], 
+            "title": data['title'],
+            "filename": original_filename,
+            "file_size_kb": data['file_size_kb']
+        })
         flash('Document uploaded successfully.', 'success')
+        
     except Exception as e:
-        flash(f'Error uploading: {e}', 'danger')
+        flash(f'Error uploading file: {e}', 'danger')
+        # Try to clean up the file if it was saved
+        if 'file_path' in locals() and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except:
+                pass
+    
+    # Handle redirect
     redirect_to = request.form.get('redirect_patient_id')
     if redirect_to:
         return redirect(url_for('ct3.patient_documents', patient_id=int(redirect_to)))
@@ -1737,11 +1803,58 @@ def delete_document(doc_id):
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
-        client.table('patient_documents').update({'deleted_at': datetime.utcnow().isoformat()}).eq('id', doc_id).execute()
+        client.table('patient_documents').delete().eq('id', doc_id).execute()
         flash('Document removed.', 'info')
     except Exception as e:
         flash(f'Error: {e}', 'danger')
     return redirect(url_for('ct3.documents'))
+
+
+@ct3_bp.route('/documents/<int:doc_id>/view')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def view_document(doc_id):
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import AuditLog
+    client = get_supabase_client()
+    
+    try:
+        # Get document from database
+        resp = client.table('patient_documents').select('*').eq('id', doc_id).single().execute()
+        document = resp.data
+        
+        if not document:
+            flash('Document not found.', 'error')
+            return redirect(url_for('ct3.documents'))
+        
+        # Log document access
+        AuditLog.log(current_user.id, "Document View", BLUEPRINT_NAME, {
+            "document_id": doc_id,
+            "patient_id": document.get('patient_id'),
+            "document_type": document.get('document_type')
+        })
+        
+        # Get file path (remove leading slash if present)
+        file_path = document['file_url'].lstrip('/')
+        
+        # Check if file exists
+        if not os.path.exists(file_path):
+            flash('File not found on disk.', 'error')
+            return redirect(url_for('ct3.documents'))
+        
+        # Serve the file
+        directory = os.path.dirname(file_path)
+        filename = os.path.basename(file_path)
+        
+        return send_from_directory(
+            directory=directory,
+            path=filename,
+            as_attachment=False
+        )
+        
+    except Exception as e:
+        flash(f'Error viewing document: {str(e)}', 'error')
+        return redirect(url_for('ct3.documents'))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
