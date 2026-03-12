@@ -1395,6 +1395,75 @@ def save_telehealth_diagnosis(session_id):
     return redirect(url_for('ct1.telehealth'))
 
 
+@ct1_bp.route('/telehealth/<int:session_id>/complete', methods=['POST'])
+@login_required
+def complete_telehealth_session(session_id):
+    """Mark a 'Session Ended' telehealth session as fully Completed."""
+    client = get_supabase_client()
+    try:
+        client.table('telehealth_sessions').update({
+            'status': 'Completed'
+        }).eq('id', session_id).execute()
+        flash('Session marked as Completed.', 'success')
+    except Exception as e:
+        flash(f'Error completing session: {str(e)}', 'danger')
+    return redirect(url_for('ct1.telehealth'))
+
+
+@ct1_bp.route('/telehealth/<int:session_id>/issue-prescription', methods=['POST'])
+@login_required
+def issue_telehealth_prescription(session_id):
+    """Issue a formal e-prescription from a telehealth session and store in prescriptions table."""
+    from datetime import datetime
+    client = get_supabase_client()
+    patient_id = request.form.get('patient_id')
+    doctor_id  = request.form.get('doctor_id') or current_user.id
+    medication_name = request.form.get('medication_name', '').strip()
+    dosage          = request.form.get('dosage', '').strip()
+    duration        = request.form.get('duration', '').strip()
+    instructions    = request.form.get('instructions', '').strip()
+    extra_meds      = request.form.get('extra_medications', '').strip()
+
+    if duration:
+        instructions = f"{instructions}\nDuration: {duration}".strip()
+
+    try:
+        # Primary medication
+        if medication_name:
+            client.table('prescriptions').insert({
+                'patient_id':    patient_id,
+                'doctor_id':     doctor_id,
+                'medication_name': medication_name,
+                'dosage':         dosage or None,
+                'instructions':   instructions or None,
+                'status':         'Pending',
+                'created_at':     datetime.utcnow().isoformat(),
+            }).execute()
+
+        # Additional medications (one per line)
+        if extra_meds:
+            for line in extra_meds.splitlines():
+                line = line.strip()
+                if line:
+                    client.table('prescriptions').insert({
+                        'patient_id':    patient_id,
+                        'doctor_id':     doctor_id,
+                        'medication_name': line,
+                        'status':         'Pending',
+                        'created_at':     datetime.utcnow().isoformat(),
+                    }).execute()
+
+        # Also mark the session as having a prescription issued
+        client.table('telehealth_sessions').update({
+            'prescription_url': f'Issued by {current_user.username} — {medication_name}',
+        }).eq('id', session_id).execute()
+
+        flash(f'E-prescription for {medication_name} issued successfully and queued for pharmacy.', 'success')
+    except Exception as e:
+        flash(f'Error issuing prescription: {str(e)}', 'danger')
+    return redirect(url_for('ct1.telehealth'))
+
+
 @ct1_bp.route('/patient/book-telehealth', methods=['GET', 'POST'])
 @login_required
 def patient_book_telehealth():
