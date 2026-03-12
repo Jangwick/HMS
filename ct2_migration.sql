@@ -142,3 +142,6 @@ ALTER TABLE users ADD CONSTRAINT users_patient_id_fkey
 -- -------------------------------------------------------
 ALTER TABLE billing_records ADD COLUMN IF NOT EXISTS category VARCHAR(60) DEFAULT 'General';
 ALTER TABLE billing_records ADD COLUMN IF NOT EXISTS appointment_id INTEGER REFERENCES appointments(id) ON DELETE SET NULL;
+
+-- Add created_at to medical_records if missing (older DB instances)
+ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();

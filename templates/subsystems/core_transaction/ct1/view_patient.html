@@ -177,7 +177,7 @@
                     <div>
                         <p class="text-sm font-bold text-gray-900">{{ rec.description or 'Billing Record' }}</p>
                         <p class="text-[11px] text-gray-400">
-                            {{ (rec.billing_date or rec.created_at or '')[:10] }}
+                            {{ (rec.billing_date or '')[:10] }}
                             {% if rec.category %}&nbsp;&bull;&nbsp;{{ rec.category }}{% endif %}
                         </p>
                     </div>
@@ -466,7 +466,7 @@
                     <div>
                         <p class="text-sm font-bold text-gray-900">{{ label }}</p>
                         <p class="text-[11px] text-gray-400">
-                            {{ doc.created_at[:10] if doc.created_at else '' }}
+                            {{ doc.visit_date[:10] if doc.visit_date else '' }}
                             &nbsp;&bull;&nbsp;
                             {{ ext.upper() if ext else 'FILE' }}
                         </p>

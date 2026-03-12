@@ -530,18 +530,18 @@ def view_patient(patient_id):
 
         # Get uploaded medical documents for this patient
         docs_res = client.table('medical_records') \
-            .select('id, record_type, notes, prescription, created_at, recorded_by') \
+            .select('id, record_type, notes, prescription, visit_date, recorded_by') \
             .eq('patient_id', patient_id) \
             .eq('record_type', 'Document') \
-            .order('created_at', desc=True) \
+            .order('visit_date', desc=True) \
             .execute()
         medical_documents = docs_res.data or []
 
         # Get outstanding (Unpaid) billing records for this patient
         billing_res = client.table('billing_records') \
-            .select('id, description, total_amount, status, category, billing_date, created_at') \
+            .select('id, description, total_amount, status, category, billing_date') \
             .eq('patient_id', patient_id) \
-            .order('created_at', desc=True) \
+            .order('billing_date', desc=True) \
             .execute()
         billing_records_data = billing_res.data or []
         outstanding_balance = sum(
