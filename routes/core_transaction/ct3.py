@@ -2163,62 +2163,94 @@ def _get_hics_stage_label(stage):
     return HICS_STAGE_LABELS.get(stage, stage.replace('_', ' ').title())
 
 def _get_billing_line_items(client, bill_id):
-    try:
+    combined_items = []
+    seen_ids = set()
+
+    for fk_col in ['billing_id', 'bill_id']:
         try:
-            resp = client.table('billing_line_items').select('*').eq('billing_id', bill_id).order('posted_at').execute()
-        except Exception:
             try:
-                resp = client.table('billing_line_items').select('*').eq('billing_id', bill_id).order('created_at').execute()
+                resp = client.table('billing_line_items').select('*').eq(fk_col, bill_id).order('posted_at').execute()
             except Exception:
-                resp = client.table('billing_line_items').select('*').eq('billing_id', bill_id).execute()
-        return resp.data or [], 'billing_id'
-    except Exception:
-        try:
-            resp = client.table('billing_line_items').select('*').eq('bill_id', bill_id).order('posted_at').execute()
+                try:
+                    resp = client.table('billing_line_items').select('*').eq(fk_col, bill_id).order('created_at').execute()
+                except Exception:
+                    resp = client.table('billing_line_items').select('*').eq(fk_col, bill_id).execute()
+
+            for item in (resp.data or []):
+                item_id = item.get('id')
+                if item_id is not None:
+                    if item_id in seen_ids:
+                        continue
+                    seen_ids.add(item_id)
+                combined_items.append(item)
         except Exception:
-            try:
-                resp = client.table('billing_line_items').select('*').eq('bill_id', bill_id).order('created_at').execute()
-            except Exception:
-                resp = client.table('billing_line_items').select('*').eq('bill_id', bill_id).execute()
-        return resp.data or [], 'bill_id'
+            continue
+
+    return combined_items, 'mixed'
 
 
 def _sum_billing_line_items_total(client, bill_id):
-    items = []
-    
-    # Try to fetch items with multiple FK column name combinations
-    for fk_col in ['bill_id', 'billing_id']:  # Try both FK names
-        try:
-            resp = client.table('billing_line_items').select('*').eq(fk_col, bill_id).execute()
-            if resp.data:
-                items = resp.data
-                break
-        except Exception:
-            continue
-    
-    # Sum up line items with multiple total field name attempts
-    total = 0.0
+    gross_total, _, _ = _sum_billing_line_items_totals(client, bill_id)
+    return gross_total
+
+
+def _sum_billing_line_items_totals(client, bill_id):
+    items, _ = _get_billing_line_items(client, bill_id)
+
+    gross_total = 0.0
+    line_discount_total = 0.0
+    line_net_total = 0.0
+
     for item in items:
         try:
-            # Try line_total first, then try amount, then try quantity * unit_price
-            item_total = None
-            
-            if 'line_total' in item and item.get('line_total'):
-                item_total = float(item.get('line_total'))
-            elif 'amount' in item and item.get('amount'):
-                item_total = float(item.get('amount'))
-            elif 'quantity' in item and 'unit_price' in item:
+            qty = 0.0
+            if 'quantity' in item and item.get('quantity') is not None:
                 qty = float(item.get('quantity') or 0)
-                price = float(item.get('unit_price') or 0)
-                discount = float(item.get('discount') or 0)
-                item_total = (qty * price) - discount
-            
-            if item_total is not None and item_total > 0:
-                total += item_total
+            elif 'qty' in item and item.get('qty') is not None:
+                qty = float(item.get('qty') or 0)
+
+            unit_price = 0.0
+            if 'unit_price' in item and item.get('unit_price') is not None:
+                unit_price = float(item.get('unit_price') or 0)
+
+            line_discount = 0.0
+            if 'discount' in item and item.get('discount') is not None:
+                line_discount = float(item.get('discount') or 0)
+            line_discount = max(0.0, line_discount)
+
+            gross = max(0.0, qty * unit_price)
+
+            # Fallback when qty/unit_price are missing
+            if gross == 0.0:
+                if 'line_total' in item and item.get('line_total') is not None:
+                    net_val = float(item.get('line_total') or 0)
+                    gross = max(0.0, net_val + line_discount)
+                elif 'amount' in item and item.get('amount') is not None:
+                    net_val = float(item.get('amount') or 0)
+                    gross = max(0.0, net_val + line_discount)
+
+            # Cap discount at gross
+            line_discount = min(line_discount, gross)
+            line_net = max(0.0, gross - line_discount)
+
+            gross_total += gross
+            line_discount_total += line_discount
+            line_net_total += line_net
         except (ValueError, TypeError):
             continue
-    
-    return total
+
+    return gross_total, line_discount_total, line_net_total
+
+
+def _sum_bill_level_discounts(bill):
+    bill = bill or {}
+    total = 0.0
+    for field in ['insurance_coverage', 'philhealth_coverage', 'senior_discount', 'pwd_discount']:
+        try:
+            total += float(bill.get(field) or 0)
+        except (ValueError, TypeError):
+            continue
+    return max(0.0, total)
 
 
 @ct3_bp.route('/billing/<int:bill_id>/detail')
@@ -2233,6 +2265,14 @@ def billing_detail(bill_id):
         p_resp = client.table('patients').select('*').eq('id', bill.get('patient_id')).single().execute()
         patient = p_resp.data or {}
         line_items, _ = _get_billing_line_items(client, bill_id)
+        gross_total, line_discount_total, _ = _sum_billing_line_items_totals(client, bill_id)
+        bill_level_discount_total = _sum_bill_level_discounts(bill)
+        discount_base_amount = max(0.0, gross_total - line_discount_total)
+        computed_net_amount = max(0.0, discount_base_amount - bill_level_discount_total)
+
+        # Keep detail page display consistent with computed values
+        bill['total_amount'] = gross_total
+        bill['net_amount'] = computed_net_amount
         hics_stage = _get_hics_workflow_stage(bill)
     except Exception as e:
         flash(f'Error: {e}', 'danger')
@@ -2245,6 +2285,9 @@ def billing_detail(bill_id):
                            hics_cash_branch=HICS_CASH_BRANCH,
                            hics_insurance_branch=HICS_INSURANCE_BRANCH,
                            hics_stage_labels=HICS_STAGE_LABELS,
+                           line_discount_total=line_discount_total,
+                           bill_level_discount_total=bill_level_discount_total,
+                           discount_base_amount=discount_base_amount,
                            now=datetime.utcnow(),
                            subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
 
@@ -2456,20 +2499,36 @@ def add_billing_item(bill_id):
         if not inserted:
             raise last_error if last_error else Exception('Failed to insert billing line item.')
 
-        # Update total in billing_records - use improved sum function
-        new_total = _sum_billing_line_items_total(client, bill_id)
+        # Recompute bill totals from line items
+        gross_total, line_discount_total, _ = _sum_billing_line_items_totals(client, bill_id)
         
-        if new_total > 0:
+        try:
+            # Get current bill to fetch existing discounts
+            current_bill = client.table('billing_records').select('*').eq('id', bill_id).single().execute().data or {}
+            existing_cols = set(current_bill.keys())
+            
+            # Sum bill-level discounts
+            bill_level_discounts = 0.0
+            discount_fields = ['insurance_coverage', 'philhealth_coverage', 'senior_discount', 'pwd_discount']
+            for field in discount_fields:
+                if field in existing_cols:
+                    bill_level_discounts += float(current_bill.get(field, 0) or 0)
+            
+            # Net = gross - line-item discounts - bill-level discounts
+            net_amount = max(0, gross_total - line_discount_total - bill_level_discounts)
+            
+            # Update both total and net amount
+            update_payload = {'total_amount': gross_total}
+            if 'net_amount' in existing_cols:
+                update_payload['net_amount'] = net_amount
+            
+            client.table('billing_records').update(update_payload).eq('id', bill_id).execute()
+        except Exception:
+            # If update fails, try just updating total
             try:
-                client.table('billing_records').update({'total_amount': new_total}).eq('id', bill_id).execute()
-            except Exception as e_records:
-                # If billing_records update fails, try billing table
-                try:
-                    client.table('billing').update({'total_amount': new_total}).eq('id', bill_id).execute()
-                except Exception as e_billing:
-                    flash(f'Warning: Line item added but total not updated. (Calculated: ₱{new_total:.2f})', 'warning')
-        else:
-            flash(f'Warning: Line item added but total calculated as 0. (Check line_total field)', 'warning')
+                client.table('billing_records').update({'total_amount': gross_total}).eq('id', bill_id).execute()
+            except Exception:
+                flash(f'Warning: Line item added but total not updated. (Calculated: ₱{gross_total:.2f})', 'warning')
         
         flash('Line item added successfully.', 'success')
     except Exception as e:
@@ -2485,11 +2544,45 @@ def remove_billing_item(bill_id, item_id):
     client = get_supabase_client()
     try:
         client.table('billing_line_items').delete().eq('id', item_id).execute()
-        new_total = _sum_billing_line_items_total(client, bill_id)
-        client.table('billing_records').update({'total_amount': new_total}).eq('id', bill_id).execute()
-        flash('Item removed.', 'info')
+
+        # Recompute bill totals from remaining items
+        gross_total, line_discount_total, _ = _sum_billing_line_items_totals(client, bill_id)
+        
+        try:
+            # Get current bill to fetch existing discounts
+            current_bill = client.table('billing_records').select('*').eq('id', bill_id).single().execute().data or {}
+            existing_cols = set(current_bill.keys())
+            
+            # Sum bill-level discounts
+            bill_level_discounts = 0.0
+            discount_fields = ['insurance_coverage', 'philhealth_coverage', 'senior_discount', 'pwd_discount']
+            for field in discount_fields:
+                if field in existing_cols:
+                    bill_level_discounts += float(current_bill.get(field, 0) or 0)
+            
+            # Net = gross - line-item discounts - bill-level discounts
+            net_amount = max(0, gross_total - line_discount_total - bill_level_discounts)
+            
+            # Update both total and net amount
+            update_payload = {'total_amount': gross_total}
+            if 'net_amount' in existing_cols:
+                update_payload['net_amount'] = net_amount
+            
+            client.table('billing_records').update(update_payload).eq('id', bill_id).execute()
+            
+            removed_msg = f'Item removed. Updated total: ₱{gross_total:.2f}'
+            if (line_discount_total + bill_level_discounts) > 0:
+                removed_msg += f' (Net: ₱{net_amount:.2f})'
+            flash(removed_msg, 'success')
+        except Exception as e_update:
+            # If update fails, try just updating total
+            try:
+                client.table('billing_records').update({'total_amount': gross_total}).eq('id', bill_id).execute()
+                flash(f'Item removed. Total recalculated: ₱{gross_total:.2f}', 'success')
+            except Exception:
+                flash(f'Item removed but total update failed. (Calculated: ₱{gross_total:.2f})', 'warning')
     except Exception as e:
-        flash(f'Error: {e}', 'danger')
+        flash(f'Error removing item: {str(e)}', 'danger')
     return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
 
 
@@ -2515,25 +2608,44 @@ def apply_billing_discount(bill_id):
             if val and field in existing_cols:
                 update_data[field] = val
         
+        # Compute available base for bill-level discounts (after line-item discounts)
+        gross_total, line_discount_total, _ = _sum_billing_line_items_totals(client, bill_id)
+        discount_base_amount = max(0.0, gross_total - line_discount_total)
+
         # Update numeric discount fields - ONLY if they exist in schema
         discount_fields = ['insurance_coverage', 'philhealth_coverage', 'senior_discount', 'pwd_discount']
         total_discounts = 0.0
-        
+        requested_discounts = {}
+
         for field in discount_fields:
             try:
                 val = float(request.form.get(field, 0) or 0)
-                # Only include fields that exist in the schema
-                if field in existing_cols:
-                    update_data[field] = val
-                    total_discounts += val
+                requested_discounts[field] = max(0.0, val)
             except ValueError:
-                if field in existing_cols:
-                    update_data[field] = 0
+                requested_discounts[field] = 0.0
 
-        # Get total amount and calculate net
-        total_col = 'total_amount' if 'total_amount' in existing_cols else 'amount'
-        total = float(current_bill.get(total_col, 0) or 0)
-        net_amount = max(0, total - total_discounts)
+        # Apply caps so overall bill-level discounts never exceed available amount
+        remaining = discount_base_amount
+        capped_any = False
+        for field in discount_fields:
+            requested = requested_discounts.get(field, 0.0)
+            applied = min(requested, remaining)
+            if requested > applied:
+                capped_any = True
+            remaining = max(0.0, remaining - applied)
+
+            if field in existing_cols:
+                update_data[field] = applied
+            total_discounts += applied
+
+        # Recompute net based on gross, line-item discounts, and applied bill-level discounts
+        net_amount = max(0, gross_total - line_discount_total - total_discounts)
+
+        # Keep total_amount aligned with gross line-item subtotal
+        if 'total_amount' in existing_cols:
+            update_data['total_amount'] = gross_total
+        elif 'amount' in existing_cols:
+            update_data['amount'] = gross_total
         
         # Only update net_amount if it exists in schema
         if 'net_amount' in existing_cols:
@@ -2543,6 +2655,8 @@ def apply_billing_discount(bill_id):
         if update_data:
             response = client.table('billing_records').update(update_data).eq('id', bill_id).execute()
             if response.data:
+                if capped_any:
+                    flash('Some discount values exceeded the remaining bill amount and were capped automatically.', 'warning')
                 flash(f'Discounts applied successfully. Net Amount: ₱{net_amount:.2f}', 'success')
             else:
                 flash('Discounts saved.', 'success')
