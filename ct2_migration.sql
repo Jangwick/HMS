@@ -145,3 +145,8 @@ ALTER TABLE billing_records ADD COLUMN IF NOT EXISTS appointment_id INTEGER REFE
 
 -- Add created_at to medical_records if missing (older DB instances)
 ALTER TABLE medical_records ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+
+-- Fix billing_records.patient_id FK to allow cascade deletion
+ALTER TABLE billing_records DROP CONSTRAINT IF EXISTS billing_records_patient_id_fkey;
+ALTER TABLE billing_records ADD CONSTRAINT billing_records_patient_id_fkey
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE;

@@ -631,11 +631,17 @@ def delete_patient(patient_id):
         # ── Detach any portal user accounts linked to this patient ──────────
         client.table('users').update({'patient_id': None}).eq('patient_id', patient_id).execute()
 
-        # ── Delete appointments (and nullify billing appointment refs) ───────
+        # ── Null appointment refs in billing, then delete billing rows ───────
         try:
             client.table('billing_records').update({'appointment_id': None}).eq('patient_id', patient_id).execute()
         except Exception:
             pass
+        try:
+            client.table('billing_records').delete().eq('patient_id', patient_id).execute()
+        except Exception:
+            pass
+
+        # ── Delete appointments ───────────────────────────────────────────────
         client.table('appointments').delete().eq('patient_id', patient_id).execute()
 
         # ── Null out medical_records.recorded_by references (safety) ────────
