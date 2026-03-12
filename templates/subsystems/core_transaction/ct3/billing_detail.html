@@ -46,6 +46,79 @@
         </div>
     </div>
 
+    <!-- HICS Workflow -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+                <h4 class="font-bold text-gray-900">HICS Billing Workflow</h4>
+                <p class="text-sm text-gray-500">Current Step: <span class="font-semibold text-gray-800">{{ hics_stage_label }}</span></p>
+            </div>
+            {% if current_user.is_admin() %}
+                {% if hics_stage == 'CHECK_ELIGIBILITY_BENEFITS' %}
+                <div class="flex gap-2">
+                    <form method="POST" action="{{ url_for('ct3.set_hics_eligibility', bill_id=bill.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="has_valid_insurance" value="yes">
+                        <button type="submit" class="px-3 py-2 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700">Valid Insurance</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('ct3.set_hics_eligibility', bill_id=bill.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="has_valid_insurance" value="no">
+                        <button type="submit" class="px-3 py-2 rounded-lg text-xs font-bold text-white bg-amber-600 hover:bg-amber-700">No Insurance</button>
+                    </form>
+                </div>
+                {% elif hics_stage == 'CLAIM_DECISION' %}
+                <div class="flex gap-2">
+                    <form method="POST" action="{{ url_for('ct3.set_hics_claim_decision', bill_id=bill.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="claim_decision" value="approved">
+                        <button type="submit" class="px-3 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700">Claim Approved</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('ct3.set_hics_claim_decision', bill_id=bill.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="claim_decision" value="denied">
+                        <button type="submit" class="px-3 py-2 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-700">Claim Denied</button>
+                    </form>
+                </div>
+                {% else %}
+                <form method="POST" action="{{ url_for('ct3.advance_hics_workflow', bill_id=bill.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="px-4 py-2 rounded-lg text-xs font-bold text-white bg-gray-900 hover:bg-black" {{ 'disabled' if hics_stage == 'PATIENT_PAID' else '' }}>
+                        Advance Step
+                    </button>
+                </form>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div class="bg-gray-50 rounded-xl p-3">
+                <p class="font-bold text-gray-700 uppercase mb-2">Common Flow</p>
+                <ol class="space-y-1 list-decimal list-inside">
+                    {% for step in hics_common_path %}
+                    <li class="{{ 'font-bold text-emerald-700' if hics_stage == step else 'text-gray-600' }}">{{ hics_stage_labels.get(step, step) }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-3">
+                <p class="font-bold text-gray-700 uppercase mb-2">No Insurance Branch</p>
+                <ol class="space-y-1 list-decimal list-inside">
+                    {% for step in hics_cash_branch %}
+                    <li class="{{ 'font-bold text-emerald-700' if hics_stage == step else 'text-gray-600' }}">{{ hics_stage_labels.get(step, step) }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-3">
+                <p class="font-bold text-gray-700 uppercase mb-2">Insurance Branch</p>
+                <ol class="space-y-1 list-decimal list-inside">
+                    {% for step in hics_insurance_branch %}
+                    <li class="{{ 'font-bold text-emerald-700' if hics_stage == step else 'text-gray-600' }}">{{ hics_stage_labels.get(step, step) }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+        </div>
+    </div>
+
     <!-- Line Items -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between">

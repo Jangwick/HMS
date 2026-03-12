@@ -1,0 +1,211 @@
+{% extends "portal/_patient_layout.html" %}
+{% set active_page = 'billing' %}
+
+{% block title %}Bill #{{ bill.id }} - {{ patient.first_name }} {{ patient.last_name }}{% endblock %}
+
+{% block patient_content %}
+<div class="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    
+    <div class="mb-6 flex items-center gap-3">
+        <a href="{{ url_for('patient.ledger') }}" class="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1">
+            <i class="bi bi-arrow-left"></i> Back to Billing
+        </a>
+    </div>
+
+    <!-- Header -->
+    <div class="page-header-banner !from-slate-700 !to-slate-900">
+        <div class="relative z-10">
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2">Bill Details</h1>
+            <p class="text-slate-200/80 text-sm">Bill #{{ bill.id }} • Created {{ bill.created_at | datetime('%B %d, %Y') }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+        <!-- Main Bill Information -->
+        <div class="lg:col-span-2 space-y-6">
+            
+            <!-- Bill Summary -->
+            <div class="dash-card">
+                <h3 class="section-title mb-6">Bill Summary</h3>
+                
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Bill Amount</p>
+                        <p class="text-3xl font-black text-gray-900">${{ "%.2f" | format(bill.total_amount) }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Status</p>
+                        <div class="flex items-center gap-2">
+                            <span class="status-pill {% if bill.status == 'Paid' %}bg-emerald-50 text-emerald-700{% elif bill.status == 'Pending' %}bg-amber-50 text-amber-700{% else %}bg-gray-50 text-gray-600{% endif %}">
+                                {{ bill.status }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6 mt-6 pt-6 border-t border-gray-100">
+                    <div>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Insurance Claim Status</p>
+                        <p class="text-base font-semibold text-gray-900">{{ bill.insurance_claim_status or 'Not Billed' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Description</p>
+                        <p class="text-base font-semibold text-gray-900">{{ bill.description or 'Hospital Services' }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Line Items -->
+            <div class="dash-card">
+                <h3 class="section-title mb-4 pb-4 border-b border-gray-100">Itemized Services</h3>
+                
+                {% if line_items %}
+                <div class="space-y-3">
+                    {% for item in line_items %}
+                    <div class="flex justify-between items-start p-4 bg-gray-50 rounded-lg border border-gray-100">
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-900">{{ item.description or 'Service' }}</p>
+                            <div class="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                                {% if item.quantity %}
+                                    <span><i class="bi bi-hash mr-1"></i> Qty: {{ item.quantity }}</span>
+                                {% endif %}
+                                {% if item.unit_price %}
+                                    <span><i class="bi bi-cash-coin mr-1"></i> Unit: ${{ "%.2f" | format(item.unit_price) }}</span>
+                                {% endif %}
+                                {% if item.created_at %}
+                                    <span><i class="bi bi-calendar mr-1"></i> {{ item.created_at | datetime('%b %d, %Y') }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="text-right font-bold text-gray-900">
+                            ${{ "%.2f" | format(item.line_total or (item.quantity|float * item.unit_price|float if item.quantity and item.unit_price else 0)) }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8 text-gray-500">
+                    <i class="bi bi-inbox text-3xl text-gray-300 block mb-2"></i>
+                    <p>No itemized services found for this bill.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Bill Dates -->
+            <div class="dash-card">
+                <h3 class="section-title mb-4">Timeline</h3>
+                
+                <div class="space-y-4">
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                            <i class="bi bi-calendar-check text-blue-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">Bill Created</p>
+                            <p class="text-sm text-gray-600 mt-0.5">{{ bill.created_at | datetime('%B %d, %Y at %I:%M %p') }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if bill.updated_at %}
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
+                            <i class="bi bi-arrow-repeat text-gray-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">Last Updated</p>
+                            <p class="text-sm text-gray-600 mt-0.5">{{ bill.updated_at | datetime('%B %d, %Y at %I:%M %p') }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if bill.status == 'Paid' %}
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                            <i class="bi bi-check-circle text-emerald-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">Payment Completed</p>
+                            <p class="text-sm text-gray-600 mt-0.5">Thank you for your payment.</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="lg:col-span-1">
+            <!-- Patient Information -->
+            <div class="dash-card">
+                <h3 class="section-title mb-4">Patient Information</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Name</p>
+                        <p class="font-semibold text-gray-900">{{ patient.first_name }} {{ patient.last_name }}</p>
+                    </div>
+                    
+                    {% if patient.patient_id_alt %}
+                    <div>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Patient ID</p>
+                        <p class="font-mono text-sm text-gray-900">{{ patient.patient_id_alt }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if patient.date_of_birth %}
+                    <div>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Date of Birth</p>
+                        <p class="text-gray-900">{{ patient.date_of_birth | datetime('%B %d, %Y') }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if patient.phone %}
+                    <div>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Phone</p>
+                        <p class="text-gray-900">{{ patient.phone }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if patient.email %}
+                    <div>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Email</p>
+                        <p class="text-gray-900 break-all">{{ patient.email }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="dash-card mt-6">
+                <h3 class="section-title mb-4">Actions</h3>
+                
+                <div class="space-y-3">
+                    {% if bill.status != 'Paid' %}
+                    <button onclick="window.print()" 
+                        class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                        <i class="bi bi-printer"></i> Print Bill
+                    </button>
+                    {% else %}
+                    <button onclick="window.print()" 
+                        class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                        <i class="bi bi-printer"></i> Print Receipt
+                    </button>
+                    {% endif %}
+                    
+                    <button onclick="downloadPDF()" 
+                        class="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
+                        <i class="bi bi-download"></i> Download PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function downloadPDF() {
+    // Print to PDF using browser's print functionality
+    window.print();
+}
+</script>
+{% endblock %}

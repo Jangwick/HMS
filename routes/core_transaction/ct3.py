@@ -2037,6 +2037,118 @@ def view_document(doc_id):
 # PHASE 8 — BILLING ENHANCEMENT
 # ─────────────────────────────────────────────────────────────────────────────
 
+HICS_WORKFLOW_START = 'AUTO_CAPTURE_CHARGES'
+HICS_WORKFLOW_END = 'PATIENT_PAID'
+
+HICS_STAGE_LABELS = {
+    'AUTO_CAPTURE_CHARGES': 'Auto Capture Charges',
+    'VALIDATE_COMPLETENESS_REMOVE_DUPLICATES': 'Validate Completeness & Remove Duplicates',
+    'REVIEW_POSTED_CHARGES': 'Review Posted Charges',
+    'ASSIGN_VERIFY_CODES': 'Assign / Verify Codes',
+    'APPLY_DISCOUNTS_PACKAGES': 'Apply Discounts / Packages',
+    'GENERATE_ITEMIZED_BILL': 'Generate Itemized Bill',
+    'APPROVE_FINAL_BILL': 'Approve Final Bill',
+    'CHECK_ELIGIBILITY_BENEFITS': 'Check Eligibility & Benefits',
+    'CONTINUE_TO_PATIENT_PAYMENT': 'Continue to Patient Payment',
+    'FULL_PATIENT_PAYMENT': 'Full Patient Payment',
+    'GENERATE_RECEIPT': 'Generate Receipt',
+    'CLAIM_CREATION': 'Claim Creation',
+    'PREPARE_CLAIM_DOCUMENTS': 'Prepare Claim Documents',
+    'SUBMIT_CLAIM_TO_INSURANCE': 'Submit Claim to Insurance',
+    'CLAIM_DECISION': 'Claim Decision',
+    'REVIEW_DENIAL': 'Review Denial',
+    'CORRECT_RESUBMIT_CLAIM': 'Correct & Resubmit Claim',
+    'POST_INSURANCE_PAYMENT': 'Post Insurance Payment',
+    'COLLECT_PATIENT_SHARE': 'Collect Patient Share',
+    'POST_PAYMENT_UPDATE_BALANCE': 'Post Payment & Update Balance',
+    'PATIENT_PAID': 'Patient Paid',
+}
+
+HICS_COMMON_PATH = [
+    'AUTO_CAPTURE_CHARGES',
+    'VALIDATE_COMPLETENESS_REMOVE_DUPLICATES',
+    'REVIEW_POSTED_CHARGES',
+    'ASSIGN_VERIFY_CODES',
+    'APPLY_DISCOUNTS_PACKAGES',
+    'GENERATE_ITEMIZED_BILL',
+    'APPROVE_FINAL_BILL',
+    'CHECK_ELIGIBILITY_BENEFITS',
+]
+
+HICS_CASH_BRANCH = [
+    'CONTINUE_TO_PATIENT_PAYMENT',
+    'FULL_PATIENT_PAYMENT',
+    'GENERATE_RECEIPT',
+    'PATIENT_PAID',
+]
+
+HICS_INSURANCE_BRANCH = [
+    'CLAIM_CREATION',
+    'PREPARE_CLAIM_DOCUMENTS',
+    'SUBMIT_CLAIM_TO_INSURANCE',
+    'CLAIM_DECISION',
+    'POST_INSURANCE_PAYMENT',
+    'COLLECT_PATIENT_SHARE',
+    'POST_PAYMENT_UPDATE_BALANCE',
+    'GENERATE_RECEIPT',
+    'PATIENT_PAID',
+]
+
+HICS_DEFAULT_NEXT = {
+    'AUTO_CAPTURE_CHARGES': 'VALIDATE_COMPLETENESS_REMOVE_DUPLICATES',
+    'VALIDATE_COMPLETENESS_REMOVE_DUPLICATES': 'REVIEW_POSTED_CHARGES',
+    'REVIEW_POSTED_CHARGES': 'ASSIGN_VERIFY_CODES',
+    'ASSIGN_VERIFY_CODES': 'APPLY_DISCOUNTS_PACKAGES',
+    'APPLY_DISCOUNTS_PACKAGES': 'GENERATE_ITEMIZED_BILL',
+    'GENERATE_ITEMIZED_BILL': 'APPROVE_FINAL_BILL',
+    'APPROVE_FINAL_BILL': 'CHECK_ELIGIBILITY_BENEFITS',
+    'CONTINUE_TO_PATIENT_PAYMENT': 'FULL_PATIENT_PAYMENT',
+    'FULL_PATIENT_PAYMENT': 'GENERATE_RECEIPT',
+    'CLAIM_CREATION': 'PREPARE_CLAIM_DOCUMENTS',
+    'PREPARE_CLAIM_DOCUMENTS': 'SUBMIT_CLAIM_TO_INSURANCE',
+    'SUBMIT_CLAIM_TO_INSURANCE': 'CLAIM_DECISION',
+    'REVIEW_DENIAL': 'CORRECT_RESUBMIT_CLAIM',
+    'CORRECT_RESUBMIT_CLAIM': 'SUBMIT_CLAIM_TO_INSURANCE',
+    'POST_INSURANCE_PAYMENT': 'COLLECT_PATIENT_SHARE',
+    'COLLECT_PATIENT_SHARE': 'POST_PAYMENT_UPDATE_BALANCE',
+    'POST_PAYMENT_UPDATE_BALANCE': 'GENERATE_RECEIPT',
+    'GENERATE_RECEIPT': 'PATIENT_PAID',
+}
+
+
+def _get_hics_workflow_stage(bill):
+    raw_stage = (bill.get('workflow_stage') or bill.get('insurance_claim_status') or '').strip()
+    if raw_stage in HICS_STAGE_LABELS:
+        return raw_stage
+    if (bill.get('status') or '').strip().lower() == 'paid':
+        return 'PATIENT_PAID'
+    return HICS_WORKFLOW_START
+
+
+def _set_hics_workflow_stage(client, bill_id, stage):
+    try:
+        client.table('billing_records').update({'workflow_stage': stage}).eq('id', bill_id).execute()
+    except Exception:
+        client.table('billing_records').update({'insurance_claim_status': stage}).eq('id', bill_id).execute()
+
+
+def _set_hics_eligibility_flag(client, bill_id, has_valid_insurance):
+    try:
+        client.table('billing_records').update({'has_valid_insurance': bool(has_valid_insurance)}).eq('id', bill_id).execute()
+    except Exception:
+        pass
+
+
+def _mark_bill_paid(client, bill_id):
+    try:
+        client.table('billing_records').update({'status': 'Paid'}).eq('id', bill_id).execute()
+    except Exception:
+        pass
+
+
+def _get_hics_stage_label(stage):
+    return HICS_STAGE_LABELS.get(stage, stage.replace('_', ' ').title())
+
 def _get_billing_line_items(client, bill_id):
     try:
         try:
@@ -2080,13 +2192,120 @@ def billing_detail(bill_id):
         p_resp = client.table('patients').select('*').eq('id', bill.get('patient_id')).single().execute()
         patient = p_resp.data or {}
         line_items, _ = _get_billing_line_items(client, bill_id)
+        hics_stage = _get_hics_workflow_stage(bill)
     except Exception as e:
         flash(f'Error: {e}', 'danger')
         return redirect(url_for('ct3.billing'))
     return render_template('subsystems/core_transaction/ct3/billing_detail.html',
                            bill=bill, patient=patient, line_items=line_items,
+                           hics_stage=hics_stage,
+                           hics_stage_label=_get_hics_stage_label(hics_stage),
+                           hics_common_path=HICS_COMMON_PATH,
+                           hics_cash_branch=HICS_CASH_BRANCH,
+                           hics_insurance_branch=HICS_INSURANCE_BRANCH,
+                           hics_stage_labels=HICS_STAGE_LABELS,
                            now=datetime.utcnow(),
                            subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+
+
+@ct3_bp.route('/billing/<int:bill_id>/workflow/advance', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def advance_hics_workflow(bill_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can update workflow.', 'danger')
+        return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        bill = client.table('billing_records').select('*').eq('id', bill_id).single().execute().data or {}
+        stage = _get_hics_workflow_stage(bill)
+
+        if stage == 'CHECK_ELIGIBILITY_BENEFITS':
+            flash('Please choose whether patient has valid insurance.', 'warning')
+            return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+        if stage == 'CLAIM_DECISION':
+            flash('Please choose claim decision: Approved or Denied.', 'warning')
+            return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+        if stage == HICS_WORKFLOW_END:
+            flash('Workflow already completed.', 'info')
+            return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+        next_stage = HICS_DEFAULT_NEXT.get(stage)
+        if not next_stage:
+            flash('No next step is configured for this stage.', 'warning')
+            return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+        _set_hics_workflow_stage(client, bill_id, next_stage)
+        if next_stage == HICS_WORKFLOW_END:
+            _mark_bill_paid(client, bill_id)
+
+        flash(f'Workflow moved to: {_get_hics_stage_label(next_stage)}', 'success')
+    except Exception as e:
+        flash(f'Error updating workflow: {e}', 'danger')
+
+    return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+
+@ct3_bp.route('/billing/<int:bill_id>/workflow/eligibility', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def set_hics_eligibility(bill_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can update workflow.', 'danger')
+        return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    decision = (request.form.get('has_valid_insurance') or '').strip().lower()
+    if decision not in ['yes', 'no']:
+        flash('Invalid eligibility decision.', 'danger')
+        return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+    try:
+        if decision == 'yes':
+            _set_hics_eligibility_flag(client, bill_id, True)
+            _set_hics_workflow_stage(client, bill_id, 'CLAIM_CREATION')
+            flash('Eligibility set: valid insurance. Workflow moved to Claim Creation.', 'success')
+        else:
+            _set_hics_eligibility_flag(client, bill_id, False)
+            _set_hics_workflow_stage(client, bill_id, 'CONTINUE_TO_PATIENT_PAYMENT')
+            flash('Eligibility set: no insurance. Workflow moved to Patient Payment.', 'success')
+    except Exception as e:
+        flash(f'Error setting eligibility: {e}', 'danger')
+
+    return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+
+@ct3_bp.route('/billing/<int:bill_id>/workflow/claim-decision', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def set_hics_claim_decision(bill_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can update workflow.', 'danger')
+        return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    decision = (request.form.get('claim_decision') or '').strip().lower()
+    if decision not in ['approved', 'denied']:
+        flash('Invalid claim decision.', 'danger')
+        return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+    try:
+        next_stage = 'POST_INSURANCE_PAYMENT' if decision == 'approved' else 'REVIEW_DENIAL'
+        _set_hics_workflow_stage(client, bill_id, next_stage)
+        flash(f'Claim decision recorded: {decision.title()}.', 'success')
+    except Exception as e:
+        flash(f'Error setting claim decision: {e}', 'danger')
+
+    return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
 
 
 @ct3_bp.route('/billing/<int:bill_id>/add-item', methods=['POST'])
@@ -2101,19 +2320,33 @@ def add_billing_item(bill_id):
         discount   = float(request.form.get('discount', 0))
         line_total = qty * unit_price - discount
         base_data = {
-            'description':  request.form.get('description', ''),
-            'quantity':     qty,
-            'unit_price':   unit_price,
-            'discount':     discount,
-            'line_total':   line_total,
-            'source_module': request.form.get('source_module', 'CT3'),
+            'description': request.form.get('description', ''),
+            'quantity': qty,
+            'unit_price': unit_price,
+            'discount': discount,
+            'line_total': line_total,
         }
-        try:
-            data = {**base_data, 'billing_id': bill_id}
-            client.table('billing_line_items').insert(data).execute()
-        except Exception:
-            data = {**base_data, 'bill_id': bill_id}
-            client.table('billing_line_items').insert(data).execute()
+        source_module = request.form.get('source_module', 'CT3')
+
+        payload_candidates = [
+            {**base_data, 'source_module': source_module, 'billing_id': bill_id},
+            {**base_data, 'source_module': source_module, 'bill_id': bill_id},
+            {**base_data, 'billing_id': bill_id},
+            {**base_data, 'bill_id': bill_id},
+        ]
+
+        last_error = None
+        inserted = False
+        for payload in payload_candidates:
+            try:
+                client.table('billing_line_items').insert(payload).execute()
+                inserted = True
+                break
+            except Exception as insert_error:
+                last_error = insert_error
+
+        if not inserted:
+            raise last_error if last_error else Exception('Failed to insert billing line item.')
 
         new_total = _sum_billing_line_items_total(client, bill_id)
         client.table('billing_records').update({'total_amount': new_total}).eq('id', bill_id).execute()

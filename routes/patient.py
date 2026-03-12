@@ -930,6 +930,51 @@ def book_appointment():
                            now=datetime.utcnow)
 
 
+@patient_bp.route('/bill/<int:bill_id>')
+@login_required
+def view_bill(bill_id):
+    if current_user.role != 'Patient' or not current_user.patient_id:
+        flash('Access restricted to registered patients.', 'warning')
+        return redirect(url_for('portal.index'))
+    
+    client = get_supabase_client()
+    patient_id = current_user.patient_id
+    
+    try:
+        # Fetch bill - must belong to current patient
+        bill_resp = client.table('billing_records').select('*').eq('id', bill_id).single().execute()
+        bill = bill_resp.data
+        
+        if not bill or bill.get('patient_id') != patient_id:
+            flash('Bill not found or access denied.', 'warning')
+            return redirect(url_for('patient.ledger'))
+        
+        # Fetch patient info
+        patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
+        patient = patient_resp.data
+        
+        # Fetch line items with fallback for different column names
+        line_items = []
+        try:
+            resp = client.table('billing_line_items').select('*').eq('billing_id', bill_id).execute()
+            line_items = resp.data or []
+        except Exception:
+            try:
+                resp = client.table('billing_line_items').select('*').eq('bill_id', bill_id).execute()
+                line_items = resp.data or []
+            except Exception:
+                pass
+        
+        return render_template('portal/patient_bill_detail.html',
+                               patient=patient,
+                               bill=bill,
+                               line_items=line_items,
+                               now=datetime.utcnow())
+    except Exception as e:
+        flash(f'Error loading bill: {str(e)}', 'danger')
+        return redirect(url_for('patient.ledger'))
+
+
 @patient_bp.route('/logout')
 @login_required
 def logout():
