@@ -28,6 +28,42 @@
         </div>
     </div>
 
+    <!-- Monthly Payroll Summary (visible once payroll is processed for this month) -->
+    {% if is_processed and monthly_summary.employee_count > 0 %}
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-8 py-5 border-b border-gray-100 bg-green-50/50 flex items-center justify-between">
+            <div>
+                <h4 class="font-bold text-gray-900 flex items-center gap-2">
+                    <i class="bi bi-check2-circle text-green-500 text-xl"></i>
+                    {{ monthly_summary.period_label }} Payroll Summary
+                </h4>
+                <p class="text-xs text-gray-400 mt-0.5">Processed for {{ monthly_summary.employee_count }} employee{{ 's' if monthly_summary.employee_count != 1 else '' }}</p>
+            </div>
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">
+                <i class="bi bi-check-circle-fill mr-1"></i> Completed
+            </span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-gray-100">
+            <div class="px-6 py-5 text-center">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Base Salaries</p>
+                <p class="text-xl font-bold text-gray-900">₱{{ "{:,.0f}".format(monthly_summary.total_base) }}</p>
+            </div>
+            <div class="px-6 py-5 text-center">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Bonuses</p>
+                <p class="text-xl font-bold text-amber-600">₱{{ "{:,.0f}".format(monthly_summary.total_bonuses) }}</p>
+            </div>
+            <div class="px-6 py-5 text-center">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Deductions</p>
+                <p class="text-xl font-bold text-rose-600">-₱{{ "{:,.0f}".format(monthly_summary.total_deductions) }}</p>
+            </div>
+            <div class="px-6 py-5 text-center bg-indigo-50/60">
+                <p class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Total Net Pay</p>
+                <p class="text-2xl font-bold text-indigo-700">₱{{ "{:,.0f}".format(monthly_summary.total_net_pay) }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Pending Payroll Reimbursements -->
     {% if pending_reimbursements %}
     <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-5">
@@ -91,28 +127,28 @@
                         <td class="px-8 py-4">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
-                                    {{ p.users.username[0]|upper }}
+                                    {{ (p.users.username or '?')[0]|upper if p.users else '?' }}
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="text-sm font-bold text-gray-900">{{ p.users.username }}</span>
-                                    <span class="text-[10px] text-gray-400 uppercase font-bold">{{ p.users.department }}</span>
+                                    <span class="text-sm font-bold text-gray-900">{{ p.users.username if p.users else '—' }}</span>
+                                    <span class="text-[10px] text-gray-400 uppercase font-bold">{{ p.users.department if p.users else '' }}</span>
                                 </div>
                             </div>
                         </td>
                         <td class="px-8 py-4">
                             <div class="text-xs text-gray-600 font-medium">
-                                {{ p.pay_period_start }} <span class="mx-1 text-gray-300">→</span> {{ p.pay_period_end }}
+                                {{ p.pay_period_start[:10] if p.pay_period_start else '—' }} <span class="mx-1 text-gray-300">→</span> {{ p.pay_period_end[:10] if p.pay_period_end else '—' }}
                             </div>
                         </td>
-                        <td class="px-8 py-4 text-sm text-gray-600 text-right font-medium">₱{{ "{:,.2f}".format(p.base_salary) }}</td>
+                        <td class="px-8 py-4 text-sm text-gray-600 text-right font-medium">₱{{ "{:,.2f}".format(p.base_salary|float) }}</td>
                         <td class="px-8 py-4 text-sm text-right">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700">+₱{{ "{:,.2f}".format(p.bonuses or 0) }}</span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700">+₱{{ "{:,.2f}".format((p.bonuses or 0)|float) }}</span>
                         </td>
                         <td class="px-8 py-4 text-sm text-right">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-rose-50 text-rose-700">-₱{{ "{:,.2f}".format(p.deductions or 0) }}</span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-rose-50 text-rose-700">-₱{{ "{:,.2f}".format((p.deductions or 0)|float) }}</span>
                         </td>
                         <td class="px-8 py-4 text-right">
-                            <span class="text-sm font-bold text-gray-900">₱{{ "{:,.2f}".format(p.net_pay) }}</span>
+                            <span class="text-sm font-bold text-gray-900">₱{{ "{:,.2f}".format(p.net_pay|float) }}</span>
                         </td>
                         <td class="px-8 py-4">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider

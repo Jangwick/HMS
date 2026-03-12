@@ -209,17 +209,36 @@ def dashboard():
 def compensation():
     client = get_supabase_client()
     try:
-        response = client.table('compensation_records').select('*, users(username, email, department)').order('effective_date', desc=True).execute()
+        response = client.table('compensation_records').select('*, users(username, email, department, full_name, role, subsystem)').order('effective_date', desc=True).execute()
         comp_records = response.data if response.data else []
-        all_users = User.get_all()
+        # Fetch only staff users — exclude patient portal accounts
+        users_resp = client.table('users').select('id, username, full_name, department, role, subsystem') \
+            .neq('subsystem', 'portal') \
+            .neq('role', 'Patient') \
+            .order('department') \
+            .order('username') \
+            .execute()
+        all_users = users_resp.data if users_resp.data else []
+        # Group users by department for sorted optgroups
+        users_by_dept = {}
+        for u in all_users:
+            dept = (u.get('department') or 'Other').upper()
+            users_by_dept.setdefault(dept, []).append(u)
+        # Fetch salary grades as reference for the form
+        grades_resp = client.table('salary_grades').select('*').order('min_salary').execute()
+        salary_grades = grades_resp.data if grades_resp.data else []
     except Exception as e:
         print(f"Error fetching compensation: {e}")
         comp_records = []
         all_users = []
+        users_by_dept = {}
+        salary_grades = []
 
     return render_template('subsystems/hr/hr4/compensation.html',
                            comp_records=comp_records,
                            all_users=all_users,
+                           users_by_dept=users_by_dept,
+                           salary_grades=salary_grades,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -290,14 +309,33 @@ def delete_compensation(record_id):
 def salary_grades():
     client = get_supabase_client()
     try:
-        response = client.table('salary_grades').select('*').order('grade_name').execute()
+        response = client.table('salary_grades').select('*').order('min_salary').execute()
         grades = response.data if response.data else []
+        # Fetch compensation records to map employees to grades
+        comp_resp = client.table('compensation_records').select('user_id, base_salary, users(username, full_name, department, subsystem)').eq('status', 'Active').execute()
+        comp_records = comp_resp.data if comp_resp.data else []
+        # Build mapping: grade_id -> list of employees whose base_salary falls in range
+        grade_employees = {g['id']: [] for g in grades}
+        for rec in comp_records:
+            base = float(rec.get('base_salary') or 0)
+            user_info = rec.get('users') or {}
+            for g in grades:
+                if float(g['min_salary']) <= base <= float(g['max_salary']):
+                    grade_employees[g['id']].append({
+                        'username': user_info.get('username', '—'),
+                        'full_name': user_info.get('full_name') or user_info.get('username', '—'),
+                        'department': (user_info.get('department') or 'N/A').upper(),
+                        'subsystem': (user_info.get('subsystem') or '').upper(),
+                        'base_salary': base
+                    })
     except Exception as e:
         print(f"Error fetching grades: {e}")
         grades = []
+        grade_employees = {}
         
     return render_template('subsystems/hr/hr4/salary_grades.html',
                            grades=grades,
+                           grade_employees=grade_employees,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -375,36 +413,71 @@ def delete_salary_grade(grade_id):
 @login_required
 def payroll():
     client = get_supabase_client()
-    try:
-        # Get payroll records for the current month
-        now = datetime.utcnow()
-        first_day = now.replace(day=1).strftime('%Y-%m-%d')
-        last_day = now.strftime('%Y-%m-%d') # Simplified for current state
-        
-        response = client.table('payroll_records').select('*, users(username, department)').order('processed_date', desc=True).limit(50).execute()
-        payroll_history = response.data if response.data else []
-        
-        # Check if current month is already processed
-        # For simplicity, we'll just check if any record exists for this month
-        month_str = now.strftime('%m-%Y')
-        is_processed = any(datetime.strptime(r['pay_period_end'], '%Y-%m-%d').strftime('%m-%Y') == month_str for r in payroll_history)
+    now = datetime.utcnow()
+    month_str = now.strftime('%m-%Y')
 
-        # Pending reimbursements queued for payroll
+    def get_month_str(date_val):
+        try:
+            if not date_val:
+                return ''
+            return datetime.strptime(str(date_val)[:10], '%Y-%m-%d').strftime('%m-%Y')
+        except Exception:
+            return ''
+
+    # ── 1. Fetch payroll records (no join, order by id) ──────────────────
+    payroll_history = []
+    try:
+        raw = client.table('payroll_records').select('*').order('id', desc=True).limit(100).execute()
+        payroll_rows = raw.data or []
+    except Exception as e:
+        print(f"[HR4] payroll_records fetch error: {e}")
+        payroll_rows = []
+
+    # ── 2. Enrich with user info ──────────────────────────────────────────
+    if payroll_rows:
+        user_ids = list({r['user_id'] for r in payroll_rows if r.get('user_id') is not None})
+        users_map = {}
+        if user_ids:
+            try:
+                ur = client.table('users').select('id, username, department').in_('id', user_ids).execute()
+                users_map = {u['id']: u for u in (ur.data or [])}
+            except Exception as e:
+                print(f"[HR4] users fetch error: {e}")
+        for r in payroll_rows:
+            r['users'] = users_map.get(r.get('user_id'))
+            payroll_history.append(r)
+
+    # ── 3. Derived values ────────────────────────────────────────────────
+    is_processed = any(get_month_str(r.get('pay_period_end')) == month_str for r in payroll_history)
+
+    current_month_records = [
+        r for r in payroll_history
+        if get_month_str(r.get('pay_period_start')) == month_str
+    ]
+    monthly_summary = {
+        'employee_count': len(current_month_records),
+        'total_base':       sum(float(r.get('base_salary') or 0) for r in current_month_records),
+        'total_bonuses':    sum(float(r.get('bonuses') or 0) for r in current_month_records),
+        'total_deductions': sum(float(r.get('deductions') or 0) for r in current_month_records),
+        'total_net_pay':    sum(float(r.get('net_pay') or 0) for r in current_month_records),
+        'period_label':     now.strftime('%B %Y'),
+    }
+
+    # ── 4. Pending reimbursements ────────────────────────────────────────
+    pending_reimbursements = []
+    try:
         reimb_res = client.table('reimbursement_claims') \
             .select('id, user_id, claim_type, amount, users(username)') \
             .eq('payment_method', 'Payroll').eq('payroll_included', False) \
             .eq('workflow_step', 'Completed').execute()
         pending_reimbursements = reimb_res.data or []
-        
     except Exception as e:
-        print(f"Error fetching payroll: {e}")
-        payroll_history = []
-        is_processed = False
-        pending_reimbursements = []
-        
+        print(f"[HR4] reimbursements fetch error: {e}")
+
     return render_template('subsystems/hr/hr4/payroll.html',
                            payroll_history=payroll_history,
                            is_processed=is_processed,
+                           monthly_summary=monthly_summary,
                            pending_reimbursements=pending_reimbursements,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
@@ -464,6 +537,7 @@ def process_payroll():
                 'bonuses': float(rec['bonuses']) + reimbursement_bonus,
                 'deductions': rec['deductions'],
                 'net_pay': net_pay,
+                'processed_date': now.strftime('%Y-%m-%d'),
                 'status': 'Processed'
             }
             client.table('payroll_records').insert(payroll_data).execute()

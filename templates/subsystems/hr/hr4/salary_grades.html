@@ -27,20 +27,34 @@
                         <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Grade Name</th>
                         <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Minimum Salary</th>
                         <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Maximum Salary</th>
+                        <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Members</th>
                         <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Created At</th>
                         <th class="px-8 py-5 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
                     {% for grade in grades %}
-                    <tr class="hover:bg-gray-50/50 transition-colors">
+                    {% set members = grade_employees.get(grade.id, []) %}
+                    <tr class="hover:bg-gray-50/50 transition-colors cursor-pointer" onclick="toggleGradeMembers('grade-{{ grade.id }}')">
                         <td class="px-8 py-5">
-                            <span class="text-sm font-bold text-gray-900">{{ grade.grade_name }}</span>
+                            <div class="flex items-center gap-2">
+                                <i class="bi bi-chevron-right text-gray-300 text-xs transition-transform" id="chevron-grade-{{ grade.id }}"></i>
+                                <span class="text-sm font-bold text-gray-900">{{ grade.grade_name }}</span>
+                            </div>
                         </td>
-                        <td class="px-8 py-5 text-sm text-gray-900 font-medium">${{ "%.2f"|format(grade.min_salary) }}</td>
-                        <td class="px-8 py-5 text-sm text-gray-900 font-medium">${{ "%.2f"|format(grade.max_salary) }}</td>
-                        <td class="px-8 py-5 text-sm text-gray-500">{{ grade.created_at[:10] if grade.created_at else 'N/A' }}</td>
+                        <td class="px-8 py-5 text-sm text-gray-900 font-medium">₱{{ "{:,.2f}".format(grade.min_salary) }}</td>
+                        <td class="px-8 py-5 text-sm text-gray-900 font-medium">₱{{ "{:,.2f}".format(grade.max_salary) }}</td>
                         <td class="px-8 py-5">
+                            {% if members %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                {{ members|length }} employee{{ 's' if members|length != 1 else '' }}
+                            </span>
+                            {% else %}
+                            <span class="text-xs text-gray-300">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-8 py-5 text-sm text-gray-500">{{ grade.created_at[:10] if grade.created_at else 'N/A' }}</td>
+                        <td class="px-8 py-5" onclick="event.stopPropagation()">
                             <div class="flex items-center space-x-2">
                                 <button onclick="openEditModal('{{ grade.id }}', '{{ grade.grade_name }}', '{{ grade.min_salary }}', '{{ grade.max_salary }}')" 
                                     class="p-2 text-gray-400 hover:text-indigo-600 transition-colors">
@@ -50,6 +64,29 @@
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </div>
+                        </td>
+                    </tr>
+                    <!-- Expandable employee list row -->
+                    <tr id="grade-{{ grade.id }}" class="hidden bg-indigo-50/40">
+                        <td colspan="6" class="px-8 py-4">
+                            {% if members %}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 py-1">
+                                {% for emp in members %}
+                                <div class="flex items-center gap-3 bg-white rounded-xl px-4 py-2.5 border border-indigo-100 shadow-sm">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                                        {{ (emp.full_name or emp.username)[0]|upper }}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-bold text-gray-900 truncate">{{ emp.full_name or emp.username }}</p>
+                                        <p class="text-xs text-gray-400 uppercase font-medium">{{ emp.department }} · {{ emp.subsystem }}</p>
+                                    </div>
+                                    <span class="ml-auto text-xs font-bold text-emerald-600 flex-shrink-0">₱{{ "{:,.0f}".format(emp.base_salary) }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="text-sm text-gray-400 italic py-2">No employees are currently assigned to this grade.</p>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -162,6 +199,15 @@
     function toggleModal(id) {
         const modal = document.getElementById(id);
         modal.classList.toggle('hidden');
+    }
+
+    function toggleGradeMembers(rowId) {
+        const row = document.getElementById(rowId);
+        const chevron = document.getElementById('chevron-' + rowId);
+        row.classList.toggle('hidden');
+        if (chevron) {
+            chevron.classList.toggle('rotate-90');
+        }
     }
 
     function openEditModal(id, name, min, max) {
