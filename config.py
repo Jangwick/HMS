@@ -19,10 +19,20 @@ class Config:
     BCRYPT_LOG_ROUNDS = 12
     WTF_CSRF_ENABLED = True
     WTF_CSRF_CHECK_DEFAULT = True
+    WTF_CSRF_TIME_LIMIT = 3600
+
+    # Hosting environment detection
+    IS_SERVERLESS = bool(
+        os.environ.get('VERCEL')
+        or os.environ.get('VERCEL_ENV')
+        or os.environ.get('AWS_LAMBDA_FUNCTION_NAME')
+    )
     
     # Session Configuration
     SESSION_TYPE = 'filesystem'
-    if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+    if IS_SERVERLESS:
+        # In serverless, prefer Flask's signed cookie session (no shared filesystem dependency).
+        SESSION_TYPE = 'null'
         SESSION_FILE_DIR = '/tmp/flask_session'
     else:
         SESSION_FILE_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'flask_session')
@@ -30,6 +40,9 @@ class Config:
         SESSION_FILE_DIR = os.path.join(tempfile.gettempdir(), 'flask_session')
     SESSION_PERMANENT = False
     PERMANENT_SESSION_LIFETIME = 1800  # 30 minutes
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE = bool(os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'))
 
     # Mail Configuration
     MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')

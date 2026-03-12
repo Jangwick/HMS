@@ -1,6 +1,7 @@
 from flask import Flask
+from flask import flash, redirect, request, url_for
 from flask_login import LoginManager
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFError, CSRFProtect
 from flask_session import Session
 from config import Config
 import os
@@ -34,8 +35,14 @@ def create_app(config_class=Config):
 
     # Initialize extensions
     csrf.init_app(app)
-    Session(app)
+    if app.config.get('SESSION_TYPE') == 'filesystem':
+        Session(app)
     login_manager.init_app(app)
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        flash('Your session security token is missing or expired. Please try again.', 'danger')
+        return redirect(request.referrer or url_for('portal.index'))
 
     # Portal and Admin
     from routes.portal import portal_bp
