@@ -302,6 +302,7 @@
                             <span class="text-[9px] font-black text-gray-500 ml-2 uppercase">BP (mmHg)</span>
                             <input type="text" name="bp" placeholder="120/80" 
                                 pattern="\d{2,3}/\d{2,3}" title="Format: Sys/Dia (e.g., 120/80)"
+                                oninput="this.value = this.value.replace(/[^0-9\/]/g, '').replace(/(\/.*)\//g, '$1')" inputmode="numeric"
                                 class="w-full px-4 py-3 bg-white border-2 border-transparent rounded-xl focus:border-red-500 font-bold text-sm outline-none">
                         </div>
                         <div class="space-y-2">
