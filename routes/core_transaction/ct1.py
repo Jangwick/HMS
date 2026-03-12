@@ -416,10 +416,30 @@ def register_patient():
     if request.method == 'POST':
         from utils.hms_models import Patient
         try:
+            first_name = (request.form.get('first_name') or '').strip()
+            last_name  = (request.form.get('last_name')  or '').strip()
+            dob        = (request.form.get('dob')        or '').strip()
+
+            # Duplicate detection: same name + DOB already registered
+            client = get_supabase_client()
+            dup_check = client.table('patients').select('id, patient_id_alt, first_name, last_name, dob').ilike(
+                'first_name', first_name
+            ).ilike('last_name', last_name).eq('dob', dob).execute()
+            if dup_check.data:
+                existing = dup_check.data[0]
+                flash(
+                    f'A patient with this name and date of birth already exists: '
+                    f'{existing["first_name"]} {existing["last_name"]} '
+                    f'(ID: {existing["patient_id_alt"]}). '
+                    f'Please search the Patient Directory before registering.',
+                    'warning'
+                )
+                return redirect(url_for('ct1.register_patient'))
+
             patient_data = {
-                'first_name': request.form.get('first_name'),
-                'last_name': request.form.get('last_name'),
-                'dob': request.form.get('dob'),
+                'first_name': first_name,
+                'last_name': last_name,
+                'dob': dob,
                 'gender': request.form.get('gender'),
                 'contact_number': request.form.get('contact_number'),
                 'address': request.form.get('address'),
