@@ -2095,6 +2095,7 @@ HICS_INSURANCE_BRANCH = [
 ]
 
 HICS_DEFAULT_NEXT = {
+    # COMMON PATH (1-8)
     'AUTO_CAPTURE_CHARGES': 'VALIDATE_COMPLETENESS_REMOVE_DUPLICATES',
     'VALIDATE_COMPLETENESS_REMOVE_DUPLICATES': 'REVIEW_POSTED_CHARGES',
     'REVIEW_POSTED_CHARGES': 'ASSIGN_VERIFY_CODES',
@@ -2102,16 +2103,28 @@ HICS_DEFAULT_NEXT = {
     'APPLY_DISCOUNTS_PACKAGES': 'GENERATE_ITEMIZED_BILL',
     'GENERATE_ITEMIZED_BILL': 'APPROVE_FINAL_BILL',
     'APPROVE_FINAL_BILL': 'CHECK_ELIGIBILITY_BENEFITS',
+    # DECISION GATE: CHECK_ELIGIBILITY_BENEFITS (requires manual decision)
+    
+    # NO INSURANCE BRANCH (patient pays full amount)
     'CONTINUE_TO_PATIENT_PAYMENT': 'FULL_PATIENT_PAYMENT',
     'FULL_PATIENT_PAYMENT': 'GENERATE_RECEIPT',
+    
+    # INSURANCE BRANCH (submit claim)
     'CLAIM_CREATION': 'PREPARE_CLAIM_DOCUMENTS',
     'PREPARE_CLAIM_DOCUMENTS': 'SUBMIT_CLAIM_TO_INSURANCE',
     'SUBMIT_CLAIM_TO_INSURANCE': 'CLAIM_DECISION',
-    'REVIEW_DENIAL': 'CORRECT_RESUBMIT_CLAIM',
-    'CORRECT_RESUBMIT_CLAIM': 'SUBMIT_CLAIM_TO_INSURANCE',
+    # DECISION GATE: CLAIM_DECISION (requires manual decision)
+    
+    # CLAIM DECISION BRANCH: APPROVED
     'POST_INSURANCE_PAYMENT': 'COLLECT_PATIENT_SHARE',
     'COLLECT_PATIENT_SHARE': 'POST_PAYMENT_UPDATE_BALANCE',
     'POST_PAYMENT_UPDATE_BALANCE': 'GENERATE_RECEIPT',
+    
+    # CLAIM DECISION BRANCH: DENIED
+    'REVIEW_DENIAL': 'CORRECT_RESUBMIT_CLAIM',
+    'CORRECT_RESUBMIT_CLAIM': 'SUBMIT_CLAIM_TO_INSURANCE',  # Loop back
+    
+    # CONVERGENCE: Both branches go to GENERATE_RECEIPT then PATIENT_PAID
     'GENERATE_RECEIPT': 'PATIENT_PAID',
 }
 
@@ -2171,14 +2184,42 @@ def _get_billing_line_items(client, bill_id):
 
 
 def _sum_billing_line_items_total(client, bill_id):
-    items, _ = _get_billing_line_items(client, bill_id)
+    items = []
+    
+    # Try to fetch items with multiple FK column name combinations
+    for fk_col in ['bill_id', 'billing_id']:  # Try both FK names
+        try:
+            resp = client.table('billing_line_items').select('*').eq(fk_col, bill_id).execute()
+            if resp.data:
+                items = resp.data
+                break
+        except Exception:
+            continue
+    
+    # Sum up line items with multiple total field name attempts
     total = 0.0
     for item in items:
         try:
-            total += float(item.get('line_total') or 0)
-        except Exception:
-            pass
+            # Try line_total first, then try amount, then try quantity * unit_price
+            item_total = None
+            
+            if 'line_total' in item and item.get('line_total'):
+                item_total = float(item.get('line_total'))
+            elif 'amount' in item and item.get('amount'):
+                item_total = float(item.get('amount'))
+            elif 'quantity' in item and 'unit_price' in item:
+                qty = float(item.get('quantity') or 0)
+                price = float(item.get('unit_price') or 0)
+                discount = float(item.get('discount') or 0)
+                item_total = (qty * price) - discount
+            
+            if item_total is not None and item_total > 0:
+                total += item_total
+        except (ValueError, TypeError):
+            continue
+    
     return total
+
 
 @ct3_bp.route('/billing/<int:bill_id>/detail')
 @login_required
@@ -2269,12 +2310,30 @@ def set_hics_eligibility(bill_id):
 
     try:
         if decision == 'yes':
-            _set_hics_eligibility_flag(client, bill_id, True)
-            _set_hics_workflow_stage(client, bill_id, 'CLAIM_CREATION')
+            # Update both eligibility flag and workflow stage
+            try:
+                client.table('billing_records').update({
+                    'has_valid_insurance': True,
+                    'workflow_stage': 'CLAIM_CREATION'
+                }).eq('id', bill_id).execute()
+            except Exception:
+                # Fallback: Update each separately
+                _set_hics_eligibility_flag(client, bill_id, True)
+                _set_hics_workflow_stage(client, bill_id, 'CLAIM_CREATION')
+            
             flash('Eligibility set: valid insurance. Workflow moved to Claim Creation.', 'success')
         else:
-            _set_hics_eligibility_flag(client, bill_id, False)
-            _set_hics_workflow_stage(client, bill_id, 'CONTINUE_TO_PATIENT_PAYMENT')
+            # Update both eligibility flag and workflow stage
+            try:
+                client.table('billing_records').update({
+                    'has_valid_insurance': False,
+                    'workflow_stage': 'CONTINUE_TO_PATIENT_PAYMENT'
+                }).eq('id', bill_id).execute()
+            except Exception:
+                # Fallback: Update each separately
+                _set_hics_eligibility_flag(client, bill_id, False)
+                _set_hics_workflow_stage(client, bill_id, 'CONTINUE_TO_PATIENT_PAYMENT')
+            
             flash('Eligibility set: no insurance. Workflow moved to Patient Payment.', 'success')
     except Exception as e:
         flash(f'Error setting eligibility: {e}', 'danger')
@@ -2300,8 +2359,19 @@ def set_hics_claim_decision(bill_id):
 
     try:
         next_stage = 'POST_INSURANCE_PAYMENT' if decision == 'approved' else 'REVIEW_DENIAL'
-        _set_hics_workflow_stage(client, bill_id, next_stage)
-        flash(f'Claim decision recorded: {decision.title()}.', 'success')
+        
+        # Update both claim decision and workflow stage
+        try:
+            client.table('billing_records').update({
+                'claim_decision': decision,
+                'claim_last_updated_at': datetime.utcnow().isoformat(),
+                'workflow_stage': next_stage
+            }).eq('id', bill_id).execute()
+        except Exception:
+            # Fallback: Just update workflow stage if columns don't exist
+            _set_hics_workflow_stage(client, bill_id, next_stage)
+        
+        flash(f'Claim decision recorded: {decision.title()}. Workflow moved to {_get_hics_stage_label(next_stage)}', 'success')
     except Exception as e:
         flash(f'Error setting claim decision: {e}', 'danger')
 
@@ -2315,10 +2385,48 @@ def add_billing_item(bill_id):
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
+        # First, verify the bill exists in any of the possible tables
+        bill_exists = False
+        bill_record = None
+        
+        # Try billing_records first
+        try:
+            response = client.table('billing_records').select('id').eq('id', bill_id).single().execute()
+            bill_record = response.data
+            bill_exists = True
+        except Exception:
+            pass
+        
+        # If not found, try "billing" table (for FK constraint)
+        if not bill_exists:
+            try:
+                response = client.table('billing').select('id').eq('id', bill_id).single().execute()
+                bill_record = response.data
+                bill_exists = True
+            except Exception:
+                pass
+        
+        if not bill_exists:
+            flash(f'Error: Bill #{bill_id} not found in billing records.', 'danger')
+            return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+
+        # Now proceed with adding the line item
         qty = int(request.form.get('quantity', 1))
         unit_price = float(request.form.get('unit_price', 0))
-        discount   = float(request.form.get('discount', 0))
-        line_total = qty * unit_price - discount
+        discount = float(request.form.get('discount', 0))
+        
+        # Validate and cap discount
+        subtotal = qty * unit_price
+        if discount > subtotal:
+            flash(f'Warning: Discount (₱{discount:.2f}) exceeds subtotal (₱{subtotal:.2f}). Capping discount to subtotal.', 'warning')
+            discount = subtotal
+        
+        if discount < 0:
+            discount = 0
+        
+        # Ensure line_total is never negative
+        line_total = max(0, subtotal - discount)
+        
         base_data = {
             'description': request.form.get('description', ''),
             'quantity': qty,
@@ -2348,11 +2456,24 @@ def add_billing_item(bill_id):
         if not inserted:
             raise last_error if last_error else Exception('Failed to insert billing line item.')
 
+        # Update total in billing_records - use improved sum function
         new_total = _sum_billing_line_items_total(client, bill_id)
-        client.table('billing_records').update({'total_amount': new_total}).eq('id', bill_id).execute()
-        flash('Line item added.', 'success')
+        
+        if new_total > 0:
+            try:
+                client.table('billing_records').update({'total_amount': new_total}).eq('id', bill_id).execute()
+            except Exception as e_records:
+                # If billing_records update fails, try billing table
+                try:
+                    client.table('billing').update({'total_amount': new_total}).eq('id', bill_id).execute()
+                except Exception as e_billing:
+                    flash(f'Warning: Line item added but total not updated. (Calculated: ₱{new_total:.2f})', 'warning')
+        else:
+            flash(f'Warning: Line item added but total calculated as 0. (Check line_total field)', 'warning')
+        
+        flash('Line item added successfully.', 'success')
     except Exception as e:
-        flash(f'Error: {e}', 'danger')
+        flash(f'Error adding line item: {str(e)}', 'danger')
     return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
 
 
@@ -2376,6 +2497,10 @@ def remove_billing_item(bill_id, item_id):
 @login_required
 @policy_required(BLUEPRINT_NAME)
 def apply_billing_discount(bill_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can apply discounts.', 'danger')
+        return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
+    
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
     try:
@@ -2383,29 +2508,49 @@ def apply_billing_discount(bill_id):
         existing_cols = set(current_bill.keys())
 
         update_data = {}
+        
+        # Update text fields (insurance provider, policy, payment method)
         for field in ['insurance_provider', 'insurance_policy_no', 'payment_method']:
             val = request.form.get(field, '').strip()
             if val and field in existing_cols:
                 update_data[field] = val
-        for field in ['insurance_coverage', 'philhealth_coverage', 'senior_discount', 'pwd_discount']:
+        
+        # Update numeric discount fields - ONLY if they exist in schema
+        discount_fields = ['insurance_coverage', 'philhealth_coverage', 'senior_discount', 'pwd_discount']
+        total_discounts = 0.0
+        
+        for field in discount_fields:
             try:
+                val = float(request.form.get(field, 0) or 0)
+                # Only include fields that exist in the schema
                 if field in existing_cols:
-                    update_data[field] = float(request.form.get(field, 0) or 0)
+                    update_data[field] = val
+                    total_discounts += val
             except ValueError:
                 if field in existing_cols:
                     update_data[field] = 0
-        # Recalculate net_amount
+
+        # Get total amount and calculate net
         total_col = 'total_amount' if 'total_amount' in existing_cols else 'amount'
         total = float(current_bill.get(total_col, 0) or 0)
-        discounts = sum(update_data.get(f, 0) for f in ['insurance_coverage', 'philhealth_coverage', 'senior_discount', 'pwd_discount'])
+        net_amount = max(0, total - total_discounts)
+        
+        # Only update net_amount if it exists in schema
         if 'net_amount' in existing_cols:
-            update_data['net_amount'] = max(0, total - discounts)
+            update_data['net_amount'] = net_amount
 
+        # Execute update
         if update_data:
-            client.table('billing_records').update(update_data).eq('id', bill_id).execute()
-        flash('Discounts applied.', 'success')
+            response = client.table('billing_records').update(update_data).eq('id', bill_id).execute()
+            if response.data:
+                flash(f'Discounts applied successfully. Net Amount: ₱{net_amount:.2f}', 'success')
+            else:
+                flash('Discounts saved.', 'success')
+        else:
+            flash('No compatible discount fields found in schema. Please ensure insurance_coverage, philhealth_coverage, senior_discount, or pwd_discount columns exist.', 'warning')
     except Exception as e:
-        flash(f'Error: {e}', 'danger')
+        flash(f'Error applying discounts: {str(e)}', 'danger')
+    
     return redirect(url_for('ct3.billing_detail', bill_id=bill_id))
 
 
