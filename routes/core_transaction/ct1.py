@@ -1628,6 +1628,7 @@ def patient_book_telehealth():
         doctor_id = request.form.get('doctor_id')
         scheduled_at = request.form.get('scheduled_at')
         notes = request.form.get('notes', '').strip()
+        custom_link = request.form.get('meeting_link', '').strip()
 
         # If no auto-linked patient, accept manual selection from form
         if not patient_rec:
@@ -1643,8 +1644,11 @@ def patient_book_telehealth():
             flash('Please select a patient record to continue.', 'danger')
             return redirect(url_for('ct1.patient_book_telehealth'))
 
-        room_token = uuid.uuid4().hex[:16]
-        meeting_link = f'https://meet.jit.si/hms-{room_token}'
+        if custom_link and (custom_link.startswith('http://') or custom_link.startswith('https://')):
+            meeting_link = custom_link
+        else:
+            room_token = uuid.uuid4().hex[:16]
+            meeting_link = f'https://meet.jit.si/hms-{room_token}'
 
         try:
             data = {
