@@ -20,16 +20,19 @@
             <div class="relative z-10">
                 <div class="flex items-center space-x-4 mb-2">
                     <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-                        <i class="bi bi-calendar-plus text-2xl"></i>
+                        <i class="bi bi-{{ 'pencil-square' if edit_appointment else 'calendar-plus' }} text-2xl"></i>
                     </div>
-                    <h3 class="text-3xl font-bold">Schedule Appointment</h3>
+                    <h3 class="text-3xl font-bold">{{ 'Edit Appointment' if edit_appointment else 'Schedule Appointment' }}</h3>
                 </div>
-                <p class="text-emerald-50 opacity-90">Book a new medical consultation or follow-up session.</p>
+                <p class="text-emerald-50 opacity-90">{{ 'Update the details for this appointment.' if edit_appointment else 'Book a new medical consultation or follow-up session.' }}</p>
             </div>
         </div>
 
         <form method="POST" class="p-8 space-y-8 bg-white/50 backdrop-blur-md">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if edit_appointment %}
+            <input type="hidden" name="appointment_id" value="{{ edit_appointment.id }}">
+            {% endif %}
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <!-- Patient Selection -->
@@ -39,9 +42,12 @@
                         <i class="bi bi-person absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors"></i>
                         <select name="patient_id" required
                             class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none appearance-none">
-                            <option value="" disabled selected>Choose a patient...</option>
+                            <option value="" disabled {% if not edit_appointment and not selected_patient_id %}selected{% endif %}>Choose a patient...</option>
                             {% for patient in patients %}
-                            <option value="{{ patient.id }}" {% if selected_patient_id|string == patient.id|string %}selected{% endif %}>
+                            <option value="{{ patient.id }}"
+                                {% if edit_appointment and edit_appointment.patient_id|string == patient.id|string %}selected
+                                {% elif not edit_appointment and selected_patient_id|string == patient.id|string %}selected
+                                {% endif %}>
                                 {{ patient.first_name }} {{ patient.last_name }} ({{ patient.patient_id_alt }})
                             </option>
                             {% endfor %}
@@ -64,6 +70,10 @@
                                 Dr. {{ doctor.username }} ({{ doctor.subsystem|upper }})
                             </option>
                             {% endfor %}
+                            {% elif edit_appointment %}
+                            {% for doctor in doctors %}
+                            <option value="{{ doctor.id }}" {% if edit_appointment.doctor_id|string == doctor.id|string %}selected{% endif %}>Dr. {{ doctor.username }} ({{ doctor.subsystem|upper }})</option>
+                            {% endfor %}
                             {% else %}
                             {% for doctor in doctors %}
                             <option value="{{ doctor.id }}">Dr. {{ doctor.username }} ({{ doctor.subsystem|upper }})</option>
@@ -80,6 +90,7 @@
                     <div class="relative group">
                         <i class="bi bi-clock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors"></i>
                         <input type="datetime-local" name="appointment_date" id="appt_datetime" required
+                            value="{{ edit_appointment.appointment_date_local if edit_appointment else '' }}"
                             class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none">
                     </div>
                     <p class="text-[10px] text-amber-600 font-bold ml-1"><i class="bi bi-clock-history mr-1"></i>Slots available Monday–Saturday, 7:00 AM – 3:00 PM only.</p>
@@ -98,12 +109,13 @@
                         <i class="bi bi-tag absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors"></i>
                         <select name="type" required
                             class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none appearance-none">
-                            <option value="Consultation" {% if prefill_session is defined and prefill_session %}selected{% endif %}>Consultation</option>
-                            <option value="Follow-up" {% if prefill_session is not defined or not prefill_session %}{% else %}{% endif %}>Follow-up</option>
-                            <option value="Emergency">Emergency</option>
-                            <option value="Routine Checkup">Routine Checkup</option>
-                            <option value="Specialist Visit">Specialist Visit</option>
-                            <option value="Outpatient">Outpatient (F2F)</option>
+                            {% set cur_type = edit_appointment.type if edit_appointment else ('' if not (prefill_session is defined and prefill_session) else 'Consultation') %}
+                            <option value="Consultation" {% if cur_type == 'Consultation' or (prefill_session is defined and prefill_session and not edit_appointment) %}selected{% endif %}>Consultation</option>
+                            <option value="Follow-up" {% if cur_type == 'Follow-up' %}selected{% endif %}>Follow-up</option>
+                            <option value="Emergency" {% if cur_type == 'Emergency' %}selected{% endif %}>Emergency</option>
+                            <option value="Routine Checkup" {% if cur_type == 'Routine Checkup' %}selected{% endif %}>Routine Checkup</option>
+                            <option value="Specialist Visit" {% if cur_type == 'Specialist Visit' %}selected{% endif %}>Specialist Visit</option>
+                            <option value="Outpatient" {% if cur_type == 'Outpatient' %}selected{% endif %}>Outpatient (F2F)</option>
                         </select>
                         <i class="bi bi-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
                     </div>
@@ -128,7 +140,7 @@
                 <label class="block text-sm font-bold text-gray-700 ml-1">Clinical Notes / Reason for Visit</label>
                 <textarea name="notes" rows="4"
                     class="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
-                    placeholder="Briefly describe the symptoms or reason for the appointment..."></textarea>
+                    placeholder="Briefly describe the symptoms or reason for the appointment...">{{ edit_appointment.notes if edit_appointment else '' }}</textarea>
             </div>
 
             <div class="pt-8 flex items-center justify-between border-t border-gray-100 mt-6">
@@ -138,7 +150,7 @@
                 </a>
                 <button type="submit" id="appt_submit_btn"
                     class="px-12 py-4 bg-emerald-500 text-white font-bold rounded-2xl shadow-xl shadow-emerald-200 hover:bg-emerald-600 hover:scale-[1.02] transform transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    Confirm Appointment
+                    {{ 'Save Changes' if edit_appointment else 'Confirm Appointment' }}
                 </button>
             </div>
         </form>

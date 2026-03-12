@@ -623,10 +623,25 @@ def delete_patient(patient_id):
 def book_appointment():
     from datetime import datetime
     from utils.hms_models import Patient, Appointment
+
+    def _render(extra=None):
+        """Helper: render form with common context."""
+        _patients = Patient.get_all()
+        _doctors  = get_supabase_client().table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
+        ctx = dict(now=datetime.utcnow, doctors=_doctors, patients=_patients,
+                   selected_patient_id=None, edit_appointment=None,
+                   subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR,
+                   blueprint_name=BLUEPRINT_NAME)
+        if extra:
+            ctx.update(extra)
+        return render_template('subsystems/core_transaction/ct1/book_appointment.html', **ctx)
+
     if request.method == 'POST':
         try:
-            appt_dt_str = request.form.get('appointment_date', '')
-            patient_id_book = request.form.get('patient_id')
+            appt_dt_str      = request.form.get('appointment_date', '')
+            patient_id_book  = request.form.get('patient_id')
+            edit_appt_id     = request.form.get('appointment_id') or None  # present when editing
+            _doctor_id       = request.form.get('doctor_id')
 
             # ── Validate appointment time window (7AM–3PM) ─────────────────────
             if appt_dt_str:
@@ -634,28 +649,22 @@ def book_appointment():
                     appt_dt = datetime.fromisoformat(appt_dt_str.replace('T', ' '))
                     if appt_dt < datetime.now():
                         flash('Appointment cannot be scheduled in the past.', 'danger')
-                        patients = Patient.get_all()
-                        doctors = get_supabase_client().table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
-                        return render_template('subsystems/core_transaction/ct1/book_appointment.html', now=datetime.utcnow, doctors=doctors, patients=patients, selected_patient_id=None, subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+                        return _render()
                     if not (7 <= appt_dt.hour < 15):
                         flash('Appointments must be scheduled between 7:00 AM and 3:00 PM.', 'danger')
-                        patients = Patient.get_all()
-                        doctors = get_supabase_client().table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
-                        return render_template('subsystems/core_transaction/ct1/book_appointment.html', now=datetime.utcnow, doctors=doctors, patients=patients, selected_patient_id=None, subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+                        return _render()
                 except ValueError:
                     flash('Invalid appointment date/time format.', 'danger')
-                    patients = Patient.get_all()
-                    doctors = get_supabase_client().table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
-                    return render_template('subsystems/core_transaction/ct1/book_appointment.html', now=datetime.utcnow, doctors=doctors, patients=patients, selected_patient_id=None, subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+                    return _render()
 
-            # ── No-show / ban check (§3.4) ──────────────────────────────────
-            if patient_id_book:
+            # ── No-show / ban check – only for NEW bookings, not edits ──────────
+            if not edit_appt_id and patient_id_book:
                 _cli = get_supabase_client()
                 _p = _cli.table('patients').select('is_banned, ban_reason, no_show_count, insurance_info').eq('id', patient_id_book).single().execute()
                 if _p.data:
-                    _banned  = _p.data.get('is_banned') or False
-                    _ns_col  = int(_p.data.get('no_show_count') or 0)
-                    _ns_jsonb = int((_p.data.get('insurance_info') or {}).get('no_show_count', 0))
+                    _banned       = _p.data.get('is_banned') or False
+                    _ns_col       = int(_p.data.get('no_show_count') or 0)
+                    _ns_jsonb     = int((_p.data.get('insurance_info') or {}).get('no_show_count', 0))
                     _no_show_count = max(_ns_col, _ns_jsonb)
                     if _banned or _no_show_count >= 3:
                         flash(
@@ -663,88 +672,120 @@ def book_appointment():
                             f'Please resolve outstanding fees first.',
                             'warning'
                         )
-                        patients = Patient.get_all()
-                        doctors = _cli.table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
-                        return render_template('subsystems/core_transaction/ct1/book_appointment.html', now=datetime.utcnow, doctors=doctors, patients=patients, selected_patient_id=None, subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+                        return _render()
 
-            # ── §4.4 Duplicate booking prevention ─────────────────────────────
-            _doctor_id = request.form.get('doctor_id')
+            # ── §4.4 Duplicate booking prevention (exclude self when editing) ───
             if _doctor_id and appt_dt_str:
                 try:
-                    _dup = get_supabase_client().table('appointments').select('id').eq(
+                    _dup_q = get_supabase_client().table('appointments').select('id').eq(
                         'doctor_id', _doctor_id).eq('appointment_date', appt_dt_str).in_(
-                        'status', ['Scheduled', 'Arrived']).execute()
+                        'status', ['Scheduled', 'Arrived'])
+                    if edit_appt_id:
+                        _dup_q = _dup_q.neq('id', edit_appt_id)   # exclude current appt
+                    _dup = _dup_q.execute()
                     if _dup.data:
                         flash('This doctor already has an appointment scheduled at that exact time. Please choose a different slot.', 'danger')
-                        patients = Patient.get_all()
-                        doctors = get_supabase_client().table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
-                        return render_template('subsystems/core_transaction/ct1/book_appointment.html', now=datetime.utcnow, doctors=doctors, patients=patients, selected_patient_id=None, subsystem_name=SUBSYSTEM_NAME, accent_color=ACCENT_COLOR, blueprint_name=BLUEPRINT_NAME)
+                        return _render()
                 except Exception:
                     pass
 
             appointment_data = {
-                'patient_id': patient_id_book,
-                'doctor_id': _doctor_id,
+                'patient_id':       patient_id_book,
+                'doctor_id':        _doctor_id,
                 'appointment_date': appt_dt_str,
-                'type': request.form.get('type'),
-                'visit_type': request.form.get('visit_type', 'General Consultation'),
-                'status': 'Scheduled',
-                'notes': request.form.get('notes'),
-                'terms_agreed': True,
+                'type':             request.form.get('type'),
+                'visit_type':       request.form.get('visit_type', 'General Consultation'),
+                'notes':            request.form.get('notes'),
             }
-            appointment = Appointment.create(appointment_data)
-            if appointment:
-                from utils.hms_models import AuditLog, Notification
-                AuditLog.log(current_user.id, "Book Appointment", BLUEPRINT_NAME, {"appointment_id": appointment.id, "patient_id": appointment.patient_id})
-                
-                # Notify the doctor/Clinical Ops (CT2)
+            from utils.hms_models import AuditLog, Notification
+            client = get_supabase_client()
+
+            if edit_appt_id:
+                # ── EDIT MODE: update the existing appointment ─────────────────
+                client.table('appointments').update(appointment_data).eq('id', edit_appt_id).execute()
+                AuditLog.log(current_user.id, "Edit Appointment", BLUEPRINT_NAME,
+                             {"appointment_id": edit_appt_id, "patient_id": patient_id_book})
+                # Notify doctor of the change
                 Notification.create(
-                    user_id=appointment_data['doctor_id'], 
+                    user_id=_doctor_id,
                     subsystem='ct2',
-                    title="New Appointment Scheduled",
-                    message=f"A new appointment has been scheduled for {appointment_data['appointment_date']}.",
+                    title="Appointment Updated",
+                    message=f"An appointment has been updated to {appt_dt_str}.",
                     n_type="info",
                     sender_subsystem=BLUEPRINT_NAME,
                     target_url=url_for('ct2.dashboard')
                 )
-                
-                # Notify the Patient
-                client = get_supabase_client()
-                portal_user_res = client.table('users').select('id').eq('patient_id', appointment.patient_id).execute()
-                if portal_user_res.data:
-                    portal_user_id = portal_user_res.data[0]['id']
-                    date_obj = datetime.fromisoformat(appointment_data['appointment_date'].replace('Z', '+00:00')) if 'T' in appointment_data['appointment_date'] else datetime.strptime(appointment_data['appointment_date'], '%Y-%m-%d')
-                    date_str = date_obj.strftime('%b %d, %Y')
-                    t = appointment_data.get('type') or 'Consultation'
-                    Notification.create(
-                        user_id=portal_user_id,
-                        subsystem='patient',
-                        title="Appointment Confirmed",
-                        message=f"Your appointment ({t}) has been scheduled for {date_str}.",
-                        n_type="info",
-                        sender_subsystem=BLUEPRINT_NAME,
-                        target_url=url_for('ct1.dashboard')
-                    )
-                
-                flash('Appointment booked successfully!', 'success')
+                flash('Appointment updated successfully!', 'success')
                 return redirect(url_for('ct1.dashboard'))
             else:
-                flash('Failed to book appointment.', 'danger')
+                # ── CREATE MODE: insert new appointment ────────────────────────
+                appointment_data['status']      = 'Scheduled'
+                appointment_data['terms_agreed'] = True
+                appointment = Appointment.create(appointment_data)
+                if appointment:
+                    AuditLog.log(current_user.id, "Book Appointment", BLUEPRINT_NAME,
+                                 {"appointment_id": appointment.id, "patient_id": appointment.patient_id})
+                    Notification.create(
+                        user_id=appointment_data['doctor_id'],
+                        subsystem='ct2',
+                        title="New Appointment Scheduled",
+                        message=f"A new appointment has been scheduled for {appointment_data['appointment_date']}.",
+                        n_type="info",
+                        sender_subsystem=BLUEPRINT_NAME,
+                        target_url=url_for('ct2.dashboard')
+                    )
+                    portal_user_res = client.table('users').select('id').eq('patient_id', appointment.patient_id).execute()
+                    if portal_user_res.data:
+                        portal_user_id = portal_user_res.data[0]['id']
+                        date_obj = datetime.fromisoformat(appointment_data['appointment_date'].replace('Z', '+00:00')) \
+                                   if 'T' in appointment_data['appointment_date'] \
+                                   else datetime.strptime(appointment_data['appointment_date'], '%Y-%m-%d')
+                        date_str = date_obj.strftime('%b %d, %Y')
+                        t = appointment_data.get('type') or 'Consultation'
+                        Notification.create(
+                            user_id=portal_user_id,
+                            subsystem='patient',
+                            title="Appointment Confirmed",
+                            message=f"Your appointment ({t}) has been scheduled for {date_str}.",
+                            n_type="info",
+                            sender_subsystem=BLUEPRINT_NAME,
+                            target_url=url_for('ct1.dashboard')
+                        )
+                    flash('Appointment booked successfully!', 'success')
+                    return redirect(url_for('ct1.dashboard'))
+                else:
+                    flash('Failed to book appointment.', 'danger')
         except Exception as e:
             flash(f'Error: {str(e)}', 'danger')
-            
+
+    # ── GET ──────────────────────────────────────────────────────────────────
     patients = Patient.get_all()
-    # Get doctors (users in CT2 or CT3)
-    client = get_supabase_client()
-    doctors = client.table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
-    
+    client   = get_supabase_client()
+    doctors  = client.table('users').select('*').in_('subsystem', ['ct2', 'ct3']).execute().data or []
     selected_patient_id = request.args.get('patient_id')
-    
-    return render_template('subsystems/core_transaction/ct1/book_appointment.html', 
+
+    # Edit mode: load existing appointment for pre-fill
+    edit_appointment = None
+    edit_appt_id_get = request.args.get('appointment_id')
+    if edit_appt_id_get:
+        try:
+            _ea = client.table('appointments').select('*').eq('id', edit_appt_id_get).single().execute()
+            edit_appointment = _ea.data  # plain dict – used in template
+            # Normalise datetime to HTML datetime-local format (strip timezone suffix)
+            if edit_appointment and edit_appointment.get('appointment_date'):
+                _dt_raw = edit_appointment['appointment_date']
+                # Supabase returns ISO strings like "2026-03-15T09:00:00+00:00"
+                _dt_clean = _dt_raw[:16].replace(' ', 'T')  # keep YYYY-MM-DDTHH:MM
+                edit_appointment['appointment_date_local'] = _dt_clean
+        except Exception:
+            edit_appointment = None
+
+    return render_template('subsystems/core_transaction/ct1/book_appointment.html',
                            now=datetime.utcnow,
                            doctors=doctors,
                            patients=patients,
                            selected_patient_id=selected_patient_id,
+                           edit_appointment=edit_appointment,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)

@@ -214,6 +214,10 @@
                                         class="mt-2 px-3 py-1 bg-blue-50 border border-blue-200 text-blue-600 text-[10px] font-black rounded-lg hover:bg-blue-100 transition-all">
                                     <i class="bi bi-calendar-event mr-1"></i>Reschedule
                                 </button>
+                                <a href="{{ url_for('ct1.book_appointment', appointment_id=appt.id) }}"
+                                   class="mt-2 ml-1 px-3 py-1 bg-violet-50 border border-violet-200 text-violet-600 text-[10px] font-black rounded-lg hover:bg-violet-100 transition-all inline-block">
+                                    <i class="bi bi-pencil mr-1"></i>Edit
+                                </a>
                                 {% endif %}
                             </div>
                         </div>
@@ -371,7 +375,7 @@
         }
         function openViewReschedule(apptId, currentDate) {
             var form = document.getElementById('viewRescheduleForm');
-            form.action = '/ct1/appointment/' + apptId + '/reschedule';
+            form.action = "{{ url_for('ct1.reschedule_appointment', appointment_id=0) }}".replace('/0', '/' + apptId);
             var dtInput = document.getElementById('view_resched_dt');
             if (dtInput) {
                 var now = new Date();
