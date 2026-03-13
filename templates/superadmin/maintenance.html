@@ -58,15 +58,14 @@
                         <select name="target_id"
                             class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
                             <optgroup label="Subsystems">
-                                {% for code in subsystem_config.keys() %}
+                                {% for code in backup_subsystems %}
                                 <option value="{{ code }}">{{ code|upper }}</option>
                                 {% endfor %}
                             </optgroup>
                             <optgroup label="Departments">
-                                <option value="HR">HR Department</option>
-                                <option value="CORE_TRANSACTION">Core Transaction</option>
-                                <option value="LOGISTICS">Logistics</option>
-                                <option value="FINANCIALS">Financials</option>
+                                {% for dept in backup_departments %}
+                                <option value="{{ dept }}">{{ dept|replace('_', ' ')|title }}</option>
+                                {% endfor %}
                             </optgroup>
                         </select>
                     </div>
@@ -114,15 +113,14 @@
                             <select name="target_id" required
                                 class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all cursor-pointer">
                                 <optgroup label="Subsystems">
-                                    {% for code in subsystem_config.keys() %}
+                                    {% for code in backup_subsystems %}
                                     <option value="{{ code }}">{{ code|upper }}</option>
                                     {% endfor %}
                                 </optgroup>
                                 <optgroup label="Departments">
-                                    <option value="HR">HR Department</option>
-                                    <option value="CORE_TRANSACTION">Core Transaction</option>
-                                    <option value="LOGISTICS">Logistics</option>
-                                    <option value="FINANCIALS">Financials</option>
+                                    {% for dept in backup_departments %}
+                                    <option value="{{ dept }}">{{ dept|replace('_', ' ')|title }}</option>
+                                    {% endfor %}
                                 </optgroup>
                             </select>
                         </div>
@@ -180,9 +178,10 @@
                     <input type="hidden" name="scope" value="subsystem">
 
                     <select name="target_id" required
+                        id="resetTargetSelect"
                         class="w-full px-4 py-3 bg-gray-50 border border-red-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all">
                         <option value="">-- Select Subsystem --</option>
-                        {% for code in subsystem_config.keys() %}
+                        {% for code in backup_subsystems %}
                         <option value="{{ code }}">WIPE {{ code|upper }}</option>
                         {% endfor %}
                     </select>
@@ -191,8 +190,9 @@
                         <label
                             class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Confirmation
                             Required</label>
-                        <input type="text" name="confirm_text" placeholder="Type: RESET-TARGET-ID" required
+                        <input type="text" name="confirm_text" id="resetConfirmInput" placeholder="Type: RESET-HR1" required
                             class="w-full px-4 py-3 bg-red-50/30 border border-red-100 rounded-xl text-sm font-black focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all placeholder:text-red-200">
+                        <p class="mt-1 text-[10px] font-bold text-red-500/70">Exact code: <span id="resetCodeHint">RESET-HR1</span></p>
                     </div>
 
                     <button type="submit"
@@ -357,6 +357,20 @@
 </div>
 
 <script>
+    const resetSelect = document.getElementById('resetTargetSelect');
+    const resetHint = document.getElementById('resetCodeHint');
+    const resetInput = document.getElementById('resetConfirmInput');
+    if (resetSelect && resetHint && resetInput) {
+        const updateResetHint = () => {
+            const target = (resetSelect.value || 'HR1').toUpperCase();
+            const code = `RESET-${target}`;
+            resetHint.textContent = code;
+            resetInput.placeholder = `Type: ${code}`;
+        };
+        resetSelect.addEventListener('change', updateResetHint);
+        updateResetHint();
+    }
+
     async function toggleMaintenance(subCode, btn) {
         const formData = new FormData();
         formData.append('subsystem_code', subCode);

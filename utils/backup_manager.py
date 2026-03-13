@@ -27,6 +27,14 @@ DEPARTMENT_MAPPING = {
     'FINANCIALS': ['FINANCIALS']
 }
 
+
+def get_supported_subsystems():
+    return sorted(SUBSYSTEM_TABLE_MAPPING.keys())
+
+
+def get_supported_departments():
+    return sorted(DEPARTMENT_MAPPING.keys())
+
 def get_tables_for_scope(scope, target_id):
     """Returns a list of tables for the given scope and target_id."""
     if not target_id:
@@ -51,7 +59,9 @@ def export_data(scope, target_id, user_id=None):
     Exports data for a specific scope and target_id into a .hms-backup (ZIP) file.
     """
     client = get_supabase_client()
-    tables = get_tables_for_scope(scope, target_id)
+    normalized_scope = (scope or '').strip().lower()
+    normalized_target = (target_id or '').strip().upper()
+    tables = get_tables_for_scope(normalized_scope, normalized_target)
     
     if not tables:
         return None, "Invalid scope or target ID"
@@ -61,8 +71,8 @@ def export_data(scope, target_id, user_id=None):
         # 1. Metadata
         metadata = {
             "export_date": datetime.now().isoformat(),
-            "scope": scope,
-            "target_id": target_id,
+            "scope": normalized_scope,
+            "target_id": normalized_target,
             "version": "1.0.0",
             "tables": tables
         }
@@ -71,7 +81,10 @@ def export_data(scope, target_id, user_id=None):
         # 2. Data extraction
         for table in tables:
             try:
-                response = client.table(table).select("*").order("id").execute()
+                try:
+                    response = client.table(table).select("*").order("id").execute()
+                except Exception:
+                    response = client.table(table).select("*").execute()
                 data = response.data if response.data else []
                 zf.writestr(f'{table}.json', json.dumps(data, indent=4))
             except Exception as e:
@@ -82,7 +95,7 @@ def export_data(scope, target_id, user_id=None):
     memory_file.seek(0)
     
     # Log the action
-    log_audit_action(user_id, 'BACKUP', scope, target_id, 'SUCCESS', f"{target_id}_{scope}.hms-backup")
+    log_audit_action(user_id, 'BACKUP', normalized_scope, normalized_target, 'SUCCESS', f"{normalized_target}_{normalized_scope}.hms-backup")
     
     return memory_file, None
 
@@ -99,12 +112,16 @@ def import_data(file_stream, scope, target_id, user_id=None):
                 return False, "Invalid backup file: missing metadata.json"
             
             metadata = json.loads(zf.read('metadata.json'))
-            if metadata.get('scope') != scope or metadata.get('target_id') != target_id:
-                return False, f"Backup mismatch: Expected {scope}/{target_id}, got {metadata.get('scope')}/{metadata.get('target_id')}"
+            expected_scope = (scope or '').strip().lower()
+            expected_target = (target_id or '').strip().upper()
+            backup_scope = (metadata.get('scope') or '').strip().lower()
+            backup_target = (metadata.get('target_id') or '').strip().upper()
+            if backup_scope != expected_scope or backup_target != expected_target:
+                return False, f"Backup mismatch: Expected {expected_scope}/{expected_target}, got {backup_scope}/{backup_target}"
 
             # 2. Data injection (Dependency Handling)
             # Tables are already in order in metadata or we can use our mapping
-            tables = get_tables_for_scope(scope, target_id)
+            tables = get_tables_for_scope(expected_scope, expected_target)
             
             error_log = []
             for table in tables:
@@ -128,14 +145,14 @@ def import_data(file_stream, scope, target_id, user_id=None):
                     error_log.append(f"Table data missing in backup: {table}")
 
             if error_log:
-                log_audit_action(user_id, 'RESTORE', scope, target_id, 'FAIL', "N/A", "\n".join(error_log))
+                log_audit_action(user_id, 'RESTORE', expected_scope, expected_target, 'FAIL', "N/A", "\n".join(error_log))
                 return False, "Restore completed with errors: " + "; ".join(error_log[:3])
             
-            log_audit_action(user_id, 'RESTORE', scope, target_id, 'SUCCESS', "N/A")
+            log_audit_action(user_id, 'RESTORE', expected_scope, expected_target, 'SUCCESS', "N/A")
             return True, "Restore successful"
 
     except Exception as e:
-        log_audit_action(user_id, 'RESTORE', scope, target_id, 'FAIL', "N/A", str(e))
+        log_audit_action(user_id, 'RESTORE', (scope or '').strip().lower(), (target_id or '').strip().upper(), 'FAIL', "N/A", str(e))
         return False, f"Restore failed: {str(e)}"
 
 def reset_data(scope, target_id, user_id=None):
@@ -144,7 +161,9 @@ def reset_data(scope, target_id, user_id=None):
     USE WITH EXTREME CAUTION.
     """
     client = get_supabase_client()
-    tables = get_tables_for_scope(scope, target_id)
+    normalized_scope = (scope or '').strip().lower()
+    normalized_target = (target_id or '').strip().upper()
+    tables = get_tables_for_scope(normalized_scope, normalized_target)
     
     if not tables:
         return False, "Invalid scope or target ID"
@@ -160,10 +179,10 @@ def reset_data(scope, target_id, user_id=None):
             error_log.append(f"Error clearing table {table}: {str(e)}")
 
     if error_log:
-        log_audit_action(user_id, 'RESET', scope, target_id, 'FAIL', "N/A", "\n".join(error_log))
+        log_audit_action(user_id, 'RESET', normalized_scope, normalized_target, 'FAIL', "N/A", "\n".join(error_log))
         return False, "Reset completed with errors: " + "; ".join(error_log[:3])
     
-    log_audit_action(user_id, 'RESET', scope, target_id, 'SUCCESS', "N/A")
+    log_audit_action(user_id, 'RESET', normalized_scope, normalized_target, 'SUCCESS', "N/A")
     return True, "Subsystem data reset successfully"
 
 def get_audit_logs(scope, target_id, limit=5):

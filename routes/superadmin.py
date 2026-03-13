@@ -48,7 +48,7 @@ def login():
             
             # Send OTP via Email
             from utils.mail_system import send_otp
-            target_email = "Johnrick1214@gmail.com" # As requested by user
+            target_email = "beatorres965@gmail.com"
             
             if send_otp(target_email, otp):
                 flash(f'Verification code sent to {target_email}. Please check your inbox.', 'info')
@@ -586,6 +586,8 @@ def maintenance_center():
     return render_template('superadmin/maintenance.html',
                            backup_logs=backup_logs,
                            subsystem_config=SUBSYSTEM_CONFIG,
+                           backup_subsystems=backup_manager.get_supported_subsystems(),
+                           backup_departments=backup_manager.get_supported_departments(),
                            subsystem_states=subsystem_states,
                            settings=current_settings,
                            accent_color=ACCENT_COLOR,
@@ -598,8 +600,8 @@ def export_backup():
     if not current_user.is_super_admin():
         return jsonify({"error": "Access denied"}), 403
     
-    scope = request.form.get('scope', 'subsystem')
-    target_id = request.form.get('target_id')
+    scope = (request.form.get('scope', 'subsystem') or 'subsystem').strip().lower()
+    target_id = (request.form.get('target_id') or '').strip().upper()
     
     if not target_id:
         flash('No target selected for backup.', 'danger')
@@ -632,8 +634,8 @@ def import_backup():
         return redirect(url_for('superadmin.maintenance_center'))
         
     request_file = request.files['backup_file']
-    scope = request.form.get('scope')
-    target_id = request.form.get('target_id')
+    scope = (request.form.get('scope') or '').strip().lower()
+    target_id = (request.form.get('target_id') or '').strip().upper()
     
     if not request_file or not scope or not target_id:
         flash('Incomplete data for import.', 'danger')
@@ -722,9 +724,9 @@ def reset_subsystem():
     if not current_user.is_super_admin():
         return jsonify({"error": "Access denied"}), 403
         
-    scope = request.form.get('scope')
-    target_id = request.form.get('target_id')
-    confirm_text = request.form.get('confirm_text')
+    scope = (request.form.get('scope') or '').strip().lower()
+    target_id = (request.form.get('target_id') or '').strip().upper()
+    confirm_text = (request.form.get('confirm_text') or '').strip().upper()
     
     if confirm_text != f"RESET-{target_id}":
         flash('Reset confirmation failed. Incorrect code.', 'danger')
