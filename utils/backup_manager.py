@@ -35,6 +35,18 @@ def get_supported_subsystems():
 def get_supported_departments():
     return sorted(DEPARTMENT_MAPPING.keys())
 
+
+def _table_exists(client, table_name):
+    try:
+        client.table(table_name).select("*").limit(1).execute()
+        return True
+    except Exception:
+        return False
+
+
+def _resolve_existing_tables(client, tables):
+    return [table for table in tables if _table_exists(client, table)]
+
 def get_tables_for_scope(scope, target_id):
     """Returns a list of tables for the given scope and target_id."""
     if not target_id:
@@ -62,6 +74,7 @@ def export_data(scope, target_id, user_id=None):
     normalized_scope = (scope or '').strip().lower()
     normalized_target = (target_id or '').strip().upper()
     tables = get_tables_for_scope(normalized_scope, normalized_target)
+    tables = _resolve_existing_tables(client, tables)
     
     if not tables:
         return None, "Invalid scope or target ID"
@@ -121,7 +134,9 @@ def import_data(file_stream, scope, target_id, user_id=None):
 
             # 2. Data injection (Dependency Handling)
             # Tables are already in order in metadata or we can use our mapping
-            tables = get_tables_for_scope(expected_scope, expected_target)
+            metadata_tables = metadata.get('tables') or []
+            tables = metadata_tables if isinstance(metadata_tables, list) and metadata_tables else get_tables_for_scope(expected_scope, expected_target)
+            tables = _resolve_existing_tables(client, tables)
             
             error_log = []
             for table in tables:
@@ -142,7 +157,7 @@ def import_data(file_stream, scope, target_id, user_id=None):
                         except Exception as e:
                             error_log.append(f"Error in table {table}: {str(e)}")
                 else:
-                    error_log.append(f"Table data missing in backup: {table}")
+                    continue
 
             if error_log:
                 log_audit_action(user_id, 'RESTORE', expected_scope, expected_target, 'FAIL', "N/A", "\n".join(error_log))
@@ -164,6 +179,7 @@ def reset_data(scope, target_id, user_id=None):
     normalized_scope = (scope or '').strip().lower()
     normalized_target = (target_id or '').strip().upper()
     tables = get_tables_for_scope(normalized_scope, normalized_target)
+    tables = _resolve_existing_tables(client, tables)
     
     if not tables:
         return False, "Invalid scope or target ID"
