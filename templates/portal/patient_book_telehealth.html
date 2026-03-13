@@ -1,0 +1,152 @@
+{% extends "portal/_patient_layout.html" %}
+{% set active_page = 'book' %}
+
+{% block title %}Book a Telehealth Session{% endblock %}
+
+{% block patient_content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+
+    <!-- Header -->
+    <div class="mb-8">
+        <a href="{{ url_for('patient.dashboard') }}"
+           class="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-700 mb-4 transition-colors">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Book a Telehealth Session</h1>
+        <p class="text-gray-400 mt-1 text-sm">Schedule a virtual consultation with a doctor. A meeting link will be generated automatically.</p>
+    </div>
+
+    <!-- Patient info strip -->
+    {% if patient_linked %}
+    <div class="flex items-center gap-4 bg-teal-50 border border-teal-100 rounded-2xl px-5 py-4 mb-8">
+        <div class="w-10 h-10 rounded-xl bg-teal-500 text-white flex items-center justify-center font-extrabold text-lg flex-shrink-0">
+            {{ (patient.first_name or 'P')[0] | upper }}
+        </div>
+        <div class="min-w-0">
+            <p class="font-extrabold text-gray-900 text-sm leading-tight">{{ patient.first_name }} {{ patient.last_name }}</p>
+            <p class="text-[11px] text-gray-400">{{ patient.patient_id_alt or '' }} &middot; DOB: {{ patient.dob or '—' }}</p>
+        </div>
+        <span class="ml-auto px-2.5 py-1 rounded-full text-[10px] font-black bg-teal-100 text-teal-700 flex-shrink-0">
+            Verified Patient
+        </span>
+    </div>
+    {% endif %}
+
+    <!-- Booking Form -->
+    <form id="bookingForm" method="POST" action="{{ url_for('ct1.patient_book_telehealth') }}"
+          class="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="px-8 py-6 border-b border-gray-50 bg-gray-50/50">
+            <h2 class="font-extrabold text-gray-800 text-sm uppercase tracking-widest">Session Details</h2>
+        </div>
+
+        <div class="px-8 py-7 space-y-6">
+
+            <!-- Doctor -->
+            <div>
+                <label class="block text-xs font-black text-gray-700 mb-2 uppercase tracking-wide">
+                    Select Doctor <span class="text-red-500">*</span>
+                </label>
+                <select name="doctor_id" required
+                        class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white">
+                    <option value="">— Choose a Doctor —</option>
+                    {% for d in doctors %}
+                    <option value="{{ d.id }}">
+                        Dr. {{ d.full_name or d.username }}
+                        ({{ 'CT2 – Clinical' if d.subsystem == 'ct2' else 'CT3 – Records' }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Preferred date & time -->
+            <div>
+                <label class="block text-xs font-black text-gray-700 mb-2 uppercase tracking-wide">
+                    Preferred Date & Time <span class="text-red-500">*</span>
+                </label>
+                <input type="datetime-local" name="scheduled_at" required
+                       class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
+                <p class="text-[11px] text-gray-400 mt-1.5">
+                    <i class="bi bi-clock mr-1"></i>Available slots: Mon–Fri, 8:00 AM – 5:00 PM.
+                </p>
+            </div>
+
+            <!-- Reason / Notes -->
+            <div>
+                <label class="block text-xs font-black text-gray-700 mb-2 uppercase tracking-wide">
+                    Reason for Consultation <span class="text-gray-400 font-medium normal-case">(optional)</span>
+                </label>
+                <textarea name="notes" rows="3"
+                          placeholder="Describe your symptoms or reason for the virtual visit…"
+                          class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none"></textarea>
+            </div>
+
+            <!-- Meeting Link (optional override) -->
+            <div>
+                <label class="block text-xs font-black text-gray-700 mb-2 uppercase tracking-wide">
+                    Custom Meeting Link <span class="text-gray-400 font-medium normal-case">(optional — leave blank to auto-generate)</span>
+                </label>
+                <input type="url" name="meeting_link" id="meetingLinkInput"
+                       placeholder="https://meet.jit.si/your-room  or  https://zoom.us/j/…"
+                       class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                       oninput="previewLink(this.value)">
+                <div id="linkPreview" class="hidden mt-3 p-3 bg-teal-50 border border-teal-100 rounded-xl flex items-center gap-2">
+                    <i class="bi bi-box-arrow-up-right text-teal-500"></i>
+                    <a id="linkPreviewAnchor" href="#" target="_blank" rel="noopener"
+                       class="text-sm text-teal-600 font-semibold truncate hover:underline"></a>
+                    <span class="ml-auto text-[10px] text-green-600 font-black bg-green-50 border border-green-100 px-2 py-0.5 rounded-full flex-shrink-0">Opens in new tab</span>
+                </div>
+                <div id="autoLinkNotice" class="mt-2 text-[11px] text-gray-400">
+                    <i class="bi bi-link-45deg mr-1"></i>A unique Jitsi room will be auto-generated if no link is provided.
+                </div>
+            </div>
+
+            <!-- Info banner -->
+            <div class="bg-teal-50 border border-teal-100 rounded-2xl p-4 flex items-start gap-3">
+                <i class="bi bi-camera-video-fill text-teal-500 mt-0.5 flex-shrink-0"></i>
+                <div class="text-xs text-teal-700 leading-relaxed">
+                    <p class="font-black mb-0.5">How it works</p>
+                    Once booked, your doctor will receive a notification. You'll get your meeting link after confirmation.
+                    Join at the scheduled time from any device.
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="px-8 py-5 border-t border-gray-100 bg-gray-50/50 flex items-center gap-3">
+            <button type="submit"
+                    class="flex-1 py-3.5 rounded-2xl text-sm font-extrabold text-white shadow-lg shadow-teal-200 transition-all hover:opacity-90"
+                    style="background: linear-gradient(135deg, #0d9488, #0f766e);">
+                <i class="bi bi-camera-video mr-2"></i>Book Telehealth Session
+            </button>
+            <a href="{{ url_for('patient.dashboard') }}"
+               class="px-6 py-3.5 rounded-2xl text-sm font-extrabold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-all">
+                Cancel
+            </a>
+        </div>
+    </form>
+
+</div>
+
+<script>
+function previewLink(val) {
+    const preview = document.getElementById('linkPreview');
+    const anchor  = document.getElementById('linkPreviewAnchor');
+    const notice  = document.getElementById('autoLinkNotice');
+    const trimmed = val.trim();
+    if (trimmed && (trimmed.startsWith('http://') || trimmed.startsWith('https://'))) {
+        anchor.href = trimmed;
+        anchor.textContent = trimmed;
+        preview.classList.remove('hidden');
+        preview.classList.add('flex');
+        notice.classList.add('hidden');
+    } else {
+        preview.classList.add('hidden');
+        preview.classList.remove('flex');
+        notice.classList.remove('hidden');
+    }
+}
+</script>
+{% endblock %}

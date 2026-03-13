@@ -274,6 +274,15 @@ else %}Patient{% endif %}{% endblock %}
                             <p class="text-xs text-gray-400">Schedule a consultation</p>
                         </div>
                     </a>
+                    <a href="{{ url_for('ct1.patient_book_telehealth') }}" class="quick-action">
+                        <div class="qa-icon bg-teal-50 text-teal-600">
+                            <i class="bi bi-camera-video"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-900">Book Telehealth</p>
+                            <p class="text-xs text-gray-400">Schedule a virtual visit</p>
+                        </div>
+                    </a>
                 </div>
             </div>
 

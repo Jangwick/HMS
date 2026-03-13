@@ -61,6 +61,7 @@
                 {% elif event.type == 'medical_record' %}bg-indigo-50/50
                 {% elif event.type == 'prescription' %}bg-orange-50/50
                 {% elif event.type == 'billing' %}bg-slate-50/50
+                {% elif event.type == 'telehealth' %}bg-teal-50/50
                 {% else %}bg-amber-50/50{% endif %}">
 
                 <div class="flex items-center gap-2">
@@ -70,6 +71,7 @@
                         {% elif event.type == 'medical_record' %}text-indigo-600
                         {% elif event.type == 'prescription' %}text-orange-600
                         {% elif event.type == 'billing' %}text-slate-600
+                        {% elif event.type == 'telehealth' %}text-teal-600
                         {% else %}text-amber-600{% endif %}">
                         <i class="bi {{ event.icon }}"></i>
                     </span>
@@ -102,6 +104,14 @@
                     {% endif %}
                 </div>
 
+                {% if event.meeting_link %}
+                <div class="mt-4">
+                    <a href="{{ event.meeting_link }}" target="_blank" rel="noopener"
+                       class="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-bold rounded-xl hover:bg-teal-700 transition-all">
+                        <i class="bi bi-camera-video-fill"></i> Join Virtual Room
+                    </a>
+                </div>
+                {% endif %}
                 {% if event.details %}
                 <div class="bg-gray-50 rounded-xl p-4 border border-gray-100 mt-4">
                     {% if event.details is string %}

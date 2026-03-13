@@ -1620,26 +1620,27 @@ def patient_book_telehealth():
 
     # Find the patient record linked to the logged-in user
     patient_rec = None
-    try:
-        pr = client.table('patients').select('*').eq('user_id', current_user.id).maybe_single().execute()
-        if pr and pr.data:
-            patient_rec = pr.data
-    except Exception:
-        pass
+    # Primary: use patient_id already stored on the user object (most reliable)
+    if getattr(current_user, 'patient_id', None):
+        try:
+            pr = client.table('patients').select('*').eq('id', current_user.patient_id).maybe_single().execute()
+            if pr and pr.data:
+                patient_rec = pr.data
+        except Exception:
+            pass
+    # Fallback: match by user_id foreign key
+    if not patient_rec:
+        try:
+            pr = client.table('patients').select('*').eq('user_id', current_user.id).maybe_single().execute()
+            if pr and pr.data:
+                patient_rec = pr.data
+        except Exception:
+            pass
     # Fallback: match by email
     if not patient_rec and getattr(current_user, 'email', None):
         try:
             pr = client.table('patients').select('*')\
                 .eq('email', current_user.email).limit(1).execute()
-            patient_rec = pr.data[0] if pr.data else None
-        except Exception:
-            pass
-    # Fallback: match by username
-    if not patient_rec:
-        try:
-            uname_part = current_user.username.replace('_', ' ').split()[0]
-            pr = client.table('patients').select('*')\
-                .ilike('first_name', f"%{uname_part}%").limit(1).execute()
             patient_rec = pr.data[0] if pr.data else None
         except Exception:
             pass
@@ -1661,7 +1662,7 @@ def patient_book_telehealth():
         notes = request.form.get('notes', '').strip()
         custom_link = request.form.get('meeting_link', '').strip()
 
-        # If no auto-linked patient, accept manual selection from form
+        # If no auto-linked patient, try manual picker (staff use) or patient_id on user
         if not patient_rec:
             manual_pid = request.form.get('manual_patient_id')
             if manual_pid:
@@ -1670,6 +1671,9 @@ def patient_book_telehealth():
                     patient_rec = pr.data if pr and pr.data else None
                 except Exception:
                     pass
+        # Last resort for patient role: use patient_id from the user object directly
+        if not patient_rec and getattr(current_user, 'patient_id', None):
+            patient_rec = {'id': current_user.patient_id, 'first_name': current_user.username, 'last_name': ''}
 
         if not patient_rec:
             flash('Please select a patient record to continue.', 'danger')
@@ -1708,6 +1712,21 @@ def patient_book_telehealth():
             return redirect(url_for('ct1.telehealth'))
         except Exception as e:
             flash(f'Booking error: {str(e)}', 'danger')
+
+    # Use the patient portal layout when accessed by a patient
+    if getattr(current_user, 'role', None) == 'Patient':
+        # _patient_layout.html always needs a patient dict with at least first_name/last_name
+        portal_patient = patient_rec or {
+            'first_name': getattr(current_user, 'full_name', None) or getattr(current_user, 'username', 'Patient'),
+            'last_name': '',
+            'patient_id_alt': '',
+            'dob': None,
+        }
+        return render_template('portal/patient_book_telehealth.html',
+                               doctors=doctors,
+                               patient=portal_patient,
+                               patient_linked=patient_rec is not None,
+                               all_patients=all_patients)
 
     return render_template('subsystems/core_transaction/ct1/patient_book_telehealth.html',
                            doctors=doctors,

@@ -441,38 +441,69 @@ def journey():
         'radiology': [],
         'medical_records': [],
         'appointments': [],
+        'telehealth_sessions': [],
         'prescriptions': [],
         'bills': [],
         'timeline': []
     }
     
     try:
-        # Fetch Patient Info
         patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
         data['patient'] = patient_resp.data
-        
-        # Fetch detailed clinical data
+    except Exception as e:
+        print(f'Patient fetch error: {e}')
+
+    try:
         labs_resp = client.table('lab_orders').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
-        data['labs'] = labs_resp.data
-        
+        data['labs'] = labs_resp.data or []
+    except Exception as e:
+        print(f'Labs fetch error: {e}')
+
+    try:
         radio_resp = client.table('radiology_orders').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
-        data['radiology'] = radio_resp.data
-        
+        data['radiology'] = radio_resp.data or []
+    except Exception as e:
+        print(f'Radiology fetch error: {e}')
+
+    try:
         records_resp = client.table('medical_records').select('*, users(full_name)').eq('patient_id', patient_id).order('visit_date', desc=True).execute()
-        data['medical_records'] = records_resp.data
-        
+        data['medical_records'] = records_resp.data or []
+    except Exception as e:
+        print(f'Medical records fetch error: {e}')
+
+    try:
         appt_resp = client.table('appointments').select('*, users(full_name)').eq('patient_id', patient_id).order('appointment_date', desc=True).execute()
-        data['appointments'] = appt_resp.data
+        data['appointments'] = appt_resp.data or []
+    except Exception as e:
+        print(f'Appointments fetch error: {e}')
 
+    try:
+        tele_resp = client.table('telehealth_sessions').select('*, users!telehealth_sessions_doctor_id_fkey(full_name)').eq('patient_id', patient_id).order('scheduled_at', desc=True).execute()
+        data['telehealth_sessions'] = tele_resp.data or []
+    except Exception as e:
+        print(f'Telehealth sessions fetch error: {e}')
+        try:
+            tele_resp = client.table('telehealth_sessions').select('*').eq('patient_id', patient_id).order('scheduled_at', desc=True).execute()
+            data['telehealth_sessions'] = tele_resp.data or []
+        except Exception as e2:
+            print(f'Telehealth fallback fetch error: {e2}')
+
+    try:
         prescriptions_resp = client.table('prescriptions').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
-        data['prescriptions'] = prescriptions_resp.data
+        data['prescriptions'] = prescriptions_resp.data or []
+    except Exception as e:
+        print(f'Prescriptions fetch error: {e}')
 
+    try:
         billing_resp = client.table('billing_records').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
-        data['bills'] = billing_resp.data
+        data['bills'] = billing_resp.data or []
+    except Exception as e:
+        print(f'Billing fetch error: {e}')
 
-        # Construct Unified Timeline for Journey (More detailed)
-        timeline = []
-        for lab in data['labs']:
+    # Construct Unified Timeline
+    timeline = []
+    for lab in data['labs']:
+        try:
             timeline.append({
                 'type': 'lab',
                 'title': lab['test_name'],
@@ -482,7 +513,9 @@ def journey():
                 'icon': 'bi-microscope',
                 'category': 'Diagnostics'
             })
-        for rad in data['radiology']:
+        except Exception: pass
+    for rad in data['radiology']:
+        try:
             timeline.append({
                 'type': 'radiology',
                 'title': rad['imaging_type'],
@@ -492,7 +525,9 @@ def journey():
                 'icon': 'bi-camera',
                 'category': 'Imaging'
             })
-        for record in data['medical_records']:
+        except Exception: pass
+    for record in data['medical_records']:
+        try:
             timeline.append({
                 'type': 'medical_record',
                 'title': f"Clinic Visit: {record['diagnosis']}",
@@ -503,7 +538,9 @@ def journey():
                 'icon': 'bi-file-earmark-medical',
                 'category': 'Clinical Visit'
             })
-        for appt in data['appointments']:
+        except Exception: pass
+    for appt in data['appointments']:
+        try:
             timeline.append({
                 'type': 'appointment',
                 'title': f"Consultation: {appt['type']}",
@@ -513,7 +550,26 @@ def journey():
                 'icon': 'bi-calendar2-check',
                 'category': 'Schedule'
             })
-        for rx in data['prescriptions']:
+        except Exception: pass
+    for sess in data['telehealth_sessions']:
+        try:
+            doctor_name = 'Doctor'
+            if sess.get('users'):
+                doctor_name = sess['users'].get('full_name', 'Doctor')
+            timeline.append({
+                'type': 'telehealth',
+                'title': 'Telehealth Session',
+                'date': sess.get('scheduled_at') or sess.get('created_at'),
+                'status': sess.get('status', 'Scheduled'),
+                'details': sess.get('notes') or None,
+                'doctor': doctor_name,
+                'meeting_link': sess.get('meeting_link'),
+                'icon': 'bi-camera-video',
+                'category': 'Virtual Care'
+            })
+        except Exception: pass
+    for rx in data['prescriptions']:
+        try:
             timeline.append({
                 'type': 'prescription',
                 'title': f"Prescription: {rx['medication_name']}",
@@ -523,7 +579,9 @@ def journey():
                 'icon': 'bi-capsule',
                 'category': 'Medication'
             })
-        for bill in data['bills']:
+        except Exception: pass
+    for bill in data['bills']:
+        try:
             timeline.append({
                 'type': 'billing',
                 'title': f"Billing: {bill['description'] or 'Service Charge'}",
@@ -533,12 +591,9 @@ def journey():
                 'icon': 'bi-wallet2',
                 'category': 'Financial'
             })
-        
-        data['timeline'] = sorted(timeline, key=lambda x: x['date'], reverse=True)
+        except Exception: pass
 
-    except Exception as e:
-        print(f"Error fetching journey data: {e}")
-        flash('Some journey details could not be synchronized.', 'warning')
+    data['timeline'] = sorted(timeline, key=lambda x: x.get('date') or '', reverse=True)
 
     return render_template('portal/patient_journey.html', **data)
 
