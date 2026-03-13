@@ -170,6 +170,22 @@
                     <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Sourced From</p>
                     <p class="text-sm font-bold text-gray-900" id="detail_source"></p>
                 </div>
+                <div>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Employee Username</p>
+                    <p class="text-sm font-bold text-gray-900" id="detail_username"></p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Temporary Password</p>
+                    <p class="text-sm font-bold text-gray-900" id="detail_password"></p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Assigned Role</p>
+                    <p class="text-sm font-bold text-gray-900" id="detail_role"></p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Portal Subsystem</p>
+                    <p class="text-sm font-bold text-gray-900" id="detail_subsystem"></p>
+                </div>
             </div>
         </div>
         <div class="p-8 bg-gray-50 flex justify-end">
@@ -188,6 +204,10 @@
         document.getElementById('detail_email').textContent = item.applicants.email || 'Not specified';
         document.getElementById('detail_phone').textContent = item.applicants.phone || 'Not specified';
         document.getElementById('detail_source').textContent = item.applicants.source || 'Direct';
+        document.getElementById('detail_username').textContent = item.employee_username || 'Not generated yet';
+        document.getElementById('detail_password').textContent = item.temporary_password || 'Not generated yet';
+        document.getElementById('detail_role').textContent = item.employee_role || 'Pending role mapping';
+        document.getElementById('detail_subsystem').textContent = item.employee_subsystem || 'Pending subsystem mapping';
         document.getElementById('detailModal').classList.remove('hidden');
     }
 

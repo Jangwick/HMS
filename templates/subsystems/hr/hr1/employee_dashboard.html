@@ -52,11 +52,6 @@
                     <i class="bi bi-slash-circle mr-1"></i> No Schedule
                 </button>
                 {% endif %}
-                <a href="{{ url_for('hr1.dashboard') }}"
-                    class="px-5 py-2.5 bg-white font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors text-sm"
-                    style="color: {{ accent_color or '#3B82F6' }};">
-                    <i class="bi bi-grid mr-1"></i> HR1 Dashboard
-                </a>
                 <a href="{{ url_for('hr1.recognition_wall') }}"
                     class="px-5 py-2.5 bg-white/15 text-white font-bold rounded-xl hover:bg-white/25 transition-colors backdrop-blur-sm text-sm">
                     <i class="bi bi-trophy mr-1"></i> Wall of Fame
@@ -66,7 +61,7 @@
     </div>
 
     <!-- Quick Actions Bar -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <button onclick="document.getElementById('leaveModal').classList.remove('hidden')"
             class="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-200 transition-all group text-left">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-blue-50 text-blue-600 group-hover:bg-blue-100">
@@ -77,16 +72,6 @@
                 <p class="text-[11px] text-gray-400">Submit a request</p>
             </div>
         </button>
-        <a href="{{ url_for('hr1.schedule_interview') }}"
-            class="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100">
-                <i class="bi bi-camera-video"></i>
-            </div>
-            <div>
-                <p class="text-sm font-bold text-gray-800">Schedule Interview</p>
-                <p class="text-[11px] text-gray-400">Set up an interview</p>
-            </div>
-        </a>
         <a href="{{ url_for('hr1.recognition_wall') }}"
             class="flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:border-amber-200 transition-all group">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-amber-50 text-amber-600 group-hover:bg-amber-100">
@@ -110,7 +95,7 @@
     </div>
 
     <!-- Quick Stats Row -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
             <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mx-auto mb-2"><i class="bi bi-list-task"></i></div>
             <p class="text-2xl font-bold text-gray-900">{{ pending_tasks|length }}</p>
@@ -130,11 +115,6 @@
             <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 mx-auto mb-2"><i class="bi bi-megaphone"></i></div>
             <p class="text-2xl font-bold text-gray-900">{{ announcements|length }}</p>
             <p class="text-xs text-gray-400 font-medium mt-0.5">Announcements</p>
-        </div>
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 text-center">
-            <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 mx-auto mb-2"><i class="bi bi-camera-video"></i></div>
-            <p class="text-2xl font-bold text-gray-900">{{ my_upcoming_interviews|length }}</p>
-            <p class="text-xs text-gray-400 font-medium mt-0.5">Upcoming Interviews</p>
         </div>
     </div>
 
@@ -278,40 +258,6 @@
                 {% endif %}
             </div>
 
-            <!-- Upcoming Interviews (as interviewer) -->
-            {% if my_upcoming_interviews %}
-            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-                <div class="flex items-center justify-between mb-5">
-                    <h4 class="text-base font-bold text-gray-900 flex items-center gap-2">
-                        <i class="bi bi-camera-video" style="color: {{ accent_color }}"></i> My Upcoming Interviews
-                    </h4>
-                    <a href="{{ url_for('hr1.schedule_interview') }}" class="text-xs font-bold hover:underline" style="color: {{ accent_color }};">Schedule New</a>
-                </div>
-                <div class="space-y-2">
-                    {% for iv in my_upcoming_interviews %}
-                    {% set app = iv.applicants %}
-                    <div class="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
-                        <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm shrink-0">
-                                {{ (app.first_name[0] if app else 'A')|upper }}
-                            </div>
-                            <div>
-                                <p class="text-sm font-bold text-gray-800">{{ app.first_name ~ ' ' ~ app.last_name if app else 'Applicant' }}</p>
-                                <p class="text-[11px] text-gray-400"><i class="bi bi-calendar3 mr-1"></i>{{ iv.interview_date[:16].replace('T', ' ') if iv.interview_date else '—' }}</p>
-                            </div>
-                        </div>
-                        <div class="text-right shrink-0 ml-3">
-                            {% if iv.location %}
-                            <p class="text-[11px] text-gray-500"><i class="bi bi-geo-alt mr-1"></i>{{ iv.location }}</p>
-                            {% endif %}
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">{{ iv.status }}</span>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
             <!-- Pending Tasks -->
             <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
                 <div class="flex items-center justify-between mb-5">
@@ -383,37 +329,6 @@
                         <div class="h-2.5 rounded-full transition-all duration-700"
                             style="width: {{ stage_map.get(my_probation.current_stage, 10) }}%; background: {{ accent_color }};"></div>
                     </div>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Team Overview (Managers/Admins only) -->
-            {% if team_data is not none %}
-            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-                <div class="flex items-center justify-between mb-5">
-                    <h4 class="text-base font-bold text-gray-900 flex items-center gap-2">
-                        <i class="bi bi-people" style="color: {{ accent_color }}"></i> My Team
-                    </h4>
-                    <span class="text-xs text-gray-400 font-medium">{{ team_data|length }} members</span>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {% for member in team_data[:10] %}
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                        <div class="flex items-center gap-3 min-w-0">
-                            <div class="w-9 h-9 rounded-lg bg-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0"
-                                style="color: {{ accent_color }};">{{ (member.full_name or member.username)[0]|upper }}</div>
-                            <div class="min-w-0">
-                                <p class="font-bold text-gray-900 text-sm truncate">{{ member.full_name or member.username }}</p>
-                                <p class="text-xs text-gray-400">{{ member.role }}</p>
-                            </div>
-                        </div>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ml-2
-                            {% if member.status == 'Active' %}bg-green-100 text-green-700
-                            {% else %}bg-gray-100 text-gray-500{% endif %}">
-                            {{ member.status }}
-                        </span>
-                    </div>
-                    {% endfor %}
                 </div>
             </div>
             {% endif %}

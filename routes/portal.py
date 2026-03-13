@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
-from flask_login import login_required, current_user
+from flask_login import login_required, current_user, login_user, logout_user
 import os
 
 portal_bp = Blueprint('portal', __name__)
@@ -20,6 +20,63 @@ def index():
 @portal_bp.route('/erp')
 def erp():
     return render_template('portal/index.html', subsystem_color='blue')
+
+
+@portal_bp.route('/dashboard')
+@login_required
+def dashboard():
+    role_name = (current_user.role or '').strip().lower()
+    employee_roles = {
+        'doctor',
+        'nurse',
+        'pharmacist',
+        'staff',
+        'administrative assistant',
+        'warehouse staff',
+        'logistics manager',
+        'human resources manager'
+    }
+    if role_name in employee_roles:
+        return redirect(url_for('portal.careers_employee_dashboard'))
+    return redirect(url_for('portal.index'))
+
+
+@portal_bp.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        if email:
+            try:
+                current_user.update(email=email)
+                flash('Settings updated successfully.', 'success')
+            except Exception as e:
+                flash(f'Update failed: {str(e)}', 'danger')
+        return redirect(url_for('portal.settings'))
+
+    return render_template('shared/settings.html',
+                           subsystem_name='Employee Portal',
+                           accent_color='#3B82F6',
+                           blueprint_name='portal')
+
+
+@portal_bp.route('/logout')
+@login_required
+def logout():
+    role_name = (current_user.role or '').strip().lower()
+    logout_user()
+    if role_name in {
+        'doctor',
+        'nurse',
+        'pharmacist',
+        'staff',
+        'administrative assistant',
+        'warehouse staff',
+        'logistics manager',
+        'human resources manager'
+    }:
+        return redirect(url_for('portal.careers_employee_login'))
+    return redirect(url_for('portal.index'))
 
 @portal_bp.route('/profile')
 @login_required
@@ -281,6 +338,176 @@ def careers():
         pass
 
     return render_template('portal/careers.html', vacancies=vacancies)
+
+
+@portal_bp.route('/careers/employee-login', methods=['GET', 'POST'])
+def careers_employee_login():
+    """Employee login entry inside Careers portal."""
+    from utils.supabase_client import User
+
+    if current_user.is_authenticated:
+        return redirect(url_for('portal.careers_employee_dashboard'))
+
+    allowed_roles = {
+        'doctor',
+        'nurse',
+        'pharmacist',
+        'staff',
+        'administrative assistant',
+        'warehouse staff',
+        'logistics manager',
+        'human resources manager'
+    }
+
+    if request.method == 'POST':
+        username = (request.form.get('username') or '').strip()
+        password = request.form.get('password') or ''
+
+        if not username or not password:
+            flash('Please enter your username and password.', 'danger')
+            return redirect(url_for('portal.careers_employee_login'))
+
+        user = User.get_by_username(username)
+        if not user or not user.check_password(password):
+            flash('Invalid username or password.', 'danger')
+            return redirect(url_for('portal.careers_employee_login'))
+
+        if user.status != 'Active' or not user.is_active:
+            flash('Your account is not active yet. Please contact HR.', 'warning')
+            return redirect(url_for('portal.careers_employee_login'))
+
+        role_name = (user.role or '').strip().lower()
+        if role_name not in allowed_roles:
+            flash('Access denied. This portal is for employee roles only.', 'danger')
+            return redirect(url_for('portal.careers_employee_login'))
+
+        login_user(user)
+        return redirect(url_for('portal.careers_employee_dashboard'))
+
+    return render_template('portal/careers_employee_login.html')
+
+
+@portal_bp.route('/careers/employee-dashboard')
+@login_required
+def careers_employee_dashboard():
+    """Employee portal dashboard with the same layout as HR1 My Dashboard."""
+    from datetime import datetime
+    from utils.supabase_client import get_supabase_client
+    from utils.hms_models import Notification
+
+    role_name = (current_user.role or '').strip().lower()
+    allowed_roles = {
+        'doctor',
+        'nurse',
+        'pharmacist',
+        'staff',
+        'administrative assistant',
+        'warehouse staff',
+        'logistics manager',
+        'human resources manager'
+    }
+    if role_name not in allowed_roles:
+        flash('Access denied. This portal is for employee roles only.', 'danger')
+        return redirect(url_for('portal.careers_employee_login'))
+
+    client = get_supabase_client()
+    user = current_user
+
+    try:
+        ann_resp = client.table('announcements').select('*').eq('is_active', True).order('created_at', desc=True).limit(5).execute()
+        announcements = ann_resp.data or []
+    except Exception:
+        announcements = []
+
+    try:
+        tasks_resp = client.table('employee_tasks').select('*').eq('user_id', user.id).eq('status', 'Pending').order('due_date').limit(10).execute()
+        pending_tasks = tasks_resp.data or []
+    except Exception:
+        pending_tasks = []
+
+    team_data = None
+    if user.role in ['Manager', 'Admin', 'Administrator', 'SuperAdmin', 'HR_Staff']:
+        try:
+            team_resp = client.table('users').select('id, full_name, username, role, status, last_login').eq('department', user.department).neq('id', user.id).eq('status', 'Active').execute()
+            team_data = team_resp.data or []
+        except Exception:
+            team_data = []
+
+    try:
+        prob_resp = client.table('probation_cycles').select('*').eq('employee_id', user.id).eq('status', 'Active').execute()
+        my_probation = prob_resp.data[0] if prob_resp.data else None
+    except Exception:
+        my_probation = None
+
+    try:
+        rec_resp = client.table('recognition_nominations').select('*, recognition_types(name, icon)').eq('nominee_id', user.id).eq('status', 'Approved').order('created_at', desc=True).limit(5).execute()
+        my_recognitions = rec_resp.data or []
+    except Exception:
+        my_recognitions = []
+
+    try:
+        leave_resp = client.table('leave_requests').select('id', count='exact').eq('user_id', user.id).eq('status', 'Approved').execute()
+        leaves_used = leave_resp.count or 0
+    except Exception:
+        leaves_used = 0
+
+    try:
+        my_leaves_resp = client.table('leave_requests').select('*').eq('user_id', user.id).order('created_at', desc=True).limit(5).execute()
+        my_leaves = my_leaves_resp.data or []
+    except Exception:
+        my_leaves = []
+
+    try:
+        today_str = datetime.now().strftime('%Y-%m-%d')
+        today_att_resp = client.table('attendance_logs').select('*').eq('user_id', user.id).gte('clock_in', today_str).order('clock_in', desc=True).limit(1).execute()
+        today_attendance = today_att_resp.data[0] if today_att_resp.data else None
+        is_clocked_in = today_attendance is not None and today_attendance.get('clock_out') is None
+    except Exception:
+        today_attendance = None
+        is_clocked_in = False
+
+    try:
+        day_name = datetime.now().strftime('%A')
+        sched_resp = client.table('staff_schedules').select('*').eq('user_id', user.id).eq('is_active', True).or_(f"day_of_week.eq.{day_name},day_of_week.eq.Daily").execute()
+        my_schedule = sched_resp.data[0] if sched_resp.data else None
+    except Exception:
+        my_schedule = None
+
+    try:
+        all_sched_resp = client.table('staff_schedules').select('*').eq('user_id', user.id).execute()
+        schedules = all_sched_resp.data or []
+    except Exception:
+        schedules = []
+
+    try:
+        my_notifications = Notification.get_for_user(user, limit=10)
+    except Exception:
+        my_notifications = []
+
+    return render_template('subsystems/hr/hr1/employee_dashboard.html',
+                           announcements=announcements,
+                           pending_tasks=pending_tasks,
+                           team_data=team_data,
+                           my_probation=my_probation,
+                           my_recognitions=my_recognitions,
+                           leaves_used=leaves_used,
+                           my_leaves=my_leaves,
+                           today_attendance=today_attendance,
+                           is_clocked_in=is_clocked_in,
+                           my_schedule=my_schedule,
+                           schedules=schedules,
+                           my_notifications=my_notifications,
+                           subsystem_name='Employee Portal',
+                           accent_color='#3B82F6',
+                           blueprint_name='portal')
+
+
+@portal_bp.route('/careers/employee-logout', methods=['POST'])
+@login_required
+def careers_employee_logout():
+    logout_user()
+    flash('You have been logged out.', 'success')
+    return redirect(url_for('portal.careers_employee_login'))
 
 
 @portal_bp.route('/apply', methods=['POST'])

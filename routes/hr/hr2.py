@@ -16,6 +16,74 @@ def _gen_cert_number():
     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
     return f'HMS-TRN-{yr}-{code}'
 
+
+def _normalize_role_from_position(position_name: str) -> str:
+    text = (position_name or '').strip().lower()
+    if 'doctor' in text or 'physician' in text:
+        return 'Doctor'
+    if 'nurse' in text:
+        return 'Nurse'
+    if 'pharmacist' in text or 'pharmacy' in text:
+        return 'Pharmacist'
+    if 'warehouse' in text:
+        return 'Warehouse Staff'
+    if 'logistics manager' in text or ('logistics' in text and 'manager' in text):
+        return 'Logistics Manager'
+    if 'human resources manager' in text or ('hr' in text and 'manager' in text):
+        return 'Human Resources Manager'
+    if 'administrative assistant' in text:
+        return 'Administrative Assistant'
+    return 'Staff'
+
+
+def _subsystem_for_employee_role(role: str, department: str = '') -> str:
+    role_key = (role or '').strip().lower()
+    dept_key = (department or '').strip().lower()
+
+    role_map = {
+        'doctor': 'ct2',
+        'nurse': 'ct3',
+        'pharmacist': 'log1',
+        'warehouse staff': 'log1',
+        'logistics manager': 'log2',
+        'human resources manager': 'hr1',
+        'administrative assistant': 'hr1',
+        'staff': 'hr1'
+    }
+    if role_key in role_map:
+        return role_map[role_key]
+
+    if 'logistics' in dept_key:
+        return 'log1'
+    if 'core' in dept_key or 'clinical' in dept_key or 'medical' in dept_key:
+        return 'ct1'
+    if 'financial' in dept_key:
+        return 'fin1'
+    if 'human' in dept_key or dept_key == 'hr':
+        return 'hr1'
+    return 'hr1'
+
+
+def _generate_unique_username(first_name: str, last_name: str) -> str:
+    base = f"{(first_name or '').strip()}.{(last_name or '').strip()}".strip('.').lower().replace(' ', '')
+    if not base:
+        base = 'employee'
+    candidate = base
+    counter = 1
+    while User.get_by_username(candidate):
+        counter += 1
+        candidate = f"{base}{counter}"
+    return candidate
+
+
+def _generate_temp_password() -> str:
+    upper = random.choice(string.ascii_uppercase)
+    lower = random.choice(string.ascii_lowercase)
+    digit = random.choice(string.digits)
+    special = random.choice('@#$!')
+    tail = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+    return f"{upper}{lower}{digit}{special}{tail}"
+
 # Subsystem configuration
 SUBSYSTEM_NAME = 'HR2 - Talent Development'
 ACCENT_COLOR = '#0891B2'
@@ -226,6 +294,17 @@ def onboarding_pipeline():
     # Fetch records from onboarding joined with applicants
     response = client.table('onboarding').select('*, applicants(*)').execute()
     onboarding_list = response.data if response.data else []
+
+    # Merge credential previews from session for modal display
+    session_creds = session.get('onboarding_credentials_preview', {}) or {}
+    for item in onboarding_list:
+        oid = str(item.get('id'))
+        cred = session_creds.get(oid)
+        if cred:
+            item.setdefault('employee_username', cred.get('employee_username'))
+            item.setdefault('temporary_password', cred.get('temporary_password'))
+            item.setdefault('employee_role', cred.get('employee_role'))
+            item.setdefault('employee_subsystem', cred.get('employee_subsystem'))
     
     return render_template('subsystems/hr/hr2/onboarding.html',
                            onboarding_list=onboarding_list,
@@ -270,11 +349,95 @@ def complete_onboarding():
         }).eq('id', onboarding_id).execute()
         
         # Also update the applicant status to reflect successful hire
-        response = client.table('onboarding').select('applicant_id').eq('id', onboarding_id).single().execute()
+        response = client.table('onboarding').select('applicant_id, position_id').eq('id', onboarding_id).single().execute()
+        created_username = None
+        created_password = None
+        account_role = None
+        account_subsystem = None
+
         if response.data:
-            client.table('applicants').update({'status': 'Hired'}).eq('id', response.data['applicant_id']).execute()
-            
-        flash('Onboarding completed! Candidate is now marked as Hired.', 'success')
+            applicant_id = response.data.get('applicant_id')
+            position_id = response.data.get('position_id')
+
+            client.table('applicants').update({'status': 'Hired'}).eq('id', applicant_id).execute()
+
+            # Fetch applicant details + vacancy role/department basis
+            app_row = client.table('applicants').select(
+                'id, first_name, last_name, email, phone, vacancy_id'
+            ).eq('id', applicant_id).single().execute().data
+
+            vacancy_ref = position_id or (app_row or {}).get('vacancy_id')
+            vacancy_row = None
+            if vacancy_ref:
+                vacancy_row = client.table('vacancies').select(
+                    'id, position_name, department'
+                ).eq('id', vacancy_ref).maybe_single().execute().data
+
+            # Create user account if not existing yet
+            if app_row:
+                existing_user = None
+                if app_row.get('email'):
+                    existing_user = User.get_by_email(app_row.get('email'))
+
+                if not existing_user:
+                    role_name = _normalize_role_from_position((vacancy_row or {}).get('position_name'))
+                    target_subsystem = _subsystem_for_employee_role(role_name, (vacancy_row or {}).get('department', ''))
+                    username = _generate_unique_username(app_row.get('first_name'), app_row.get('last_name'))
+                    temp_password = _generate_temp_password()
+
+                    config = SUBSYSTEM_CONFIG.get(target_subsystem, {})
+                    department_name = (vacancy_row or {}).get('department') or config.get('department') or 'HUMAN_RESOURCES'
+
+                    new_user = User.create(
+                        username=username,
+                        email=app_row.get('email') or f"{username}@hms.local",
+                        password=temp_password,
+                        subsystem=target_subsystem,
+                        department=department_name,
+                        role=role_name,
+                        status='Active',
+                        full_name=f"{app_row.get('first_name', '').strip()} {app_row.get('last_name', '').strip()}".strip()
+                    )
+                    if new_user:
+                        created_username = username
+                        created_password = temp_password
+                        account_role = role_name
+                        account_subsystem = target_subsystem
+                else:
+                    created_username = existing_user.username
+                    created_password = 'Already Set'
+                    account_role = existing_user.role
+                    account_subsystem = existing_user.subsystem
+
+                # Persist account preview on onboarding row if columns exist (non-fatal fallback)
+                try:
+                    client.table('onboarding').update({
+                        'employee_username': created_username,
+                        'temporary_password': created_password,
+                        'employee_role': account_role,
+                        'employee_subsystem': account_subsystem
+                    }).eq('id', onboarding_id).execute()
+                except Exception:
+                    pass
+
+                # Always keep a session-level preview so modal can display even without DB columns
+                try:
+                    creds_map = session.get('onboarding_credentials_preview', {}) or {}
+                    creds_map[str(onboarding_id)] = {
+                        'employee_username': created_username,
+                        'temporary_password': created_password,
+                        'employee_role': account_role,
+                        'employee_subsystem': account_subsystem
+                    }
+                    session['onboarding_credentials_preview'] = creds_map
+                except Exception:
+                    pass
+
+        success_msg = 'Onboarding completed! Candidate is now marked as Hired.'
+        if created_username:
+            success_msg += ' Employee portal credentials are available in Candidate Profile.'
+
+        flash(success_msg, 'success')
     except Exception as e:
         flash(f'Error finishing onboarding: {str(e)}', 'danger')
         
