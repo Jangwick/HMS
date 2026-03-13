@@ -691,6 +691,9 @@ def book_appointment():
                     if appt_dt < datetime.now():
                         flash('Appointment cannot be scheduled in the past.', 'danger')
                         return _render()
+                    if appt_dt.weekday() == 6:
+                        flash('Appointments are not available on Sundays. Please choose Monday to Saturday.', 'danger')
+                        return _render()
                     if not (7 <= appt_dt.hour < 15):
                         flash('Appointments must be scheduled between 7:00 AM and 3:00 PM.', 'danger')
                         return _render()
@@ -1999,6 +2002,9 @@ def reschedule_appointment(appointment_id):
             if new_dt < datetime.now():
                 flash('New appointment date cannot be in the past.', 'danger')
                 return redirect(request.referrer or url_for('ct1.dashboard'))
+            if new_dt.weekday() == 6:
+                flash('Appointments are not available on Sundays. Please choose Monday to Saturday.', 'danger')
+                return redirect(request.referrer or url_for('ct1.dashboard'))
             if not (7 <= new_dt.hour < 15):
                 flash('New appointment must be between 7:00 AM and 3:00 PM.', 'danger')
                 return redirect(request.referrer or url_for('ct1.dashboard'))
@@ -2296,6 +2302,8 @@ def telehealth_follow_up(session_id):
             appt_dt = datetime.fromisoformat(appt_dt_str.replace('T', ' '))
             if appt_dt < datetime.now():
                 flash('Follow-up date cannot be in the past.', 'danger')
+            elif appt_dt.weekday() == 6:
+                flash('Follow-up appointments are not available on Sundays. Please choose Monday to Saturday.', 'danger')
             elif not (7 <= appt_dt.hour < 15):
                 flash('Appointments must be between 7:00 AM and 3:00 PM.', 'danger')
             else:

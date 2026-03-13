@@ -966,6 +966,10 @@ def book_appointment():
                 flash('Appointment cannot be scheduled in the past.', 'danger')
                 return render_template('portal/patient_book_appointment.html',
                                        patient=patient_rec, doctors=doctors, now=datetime.utcnow)
+            if appt_dt.weekday() == 6:
+                flash('Appointments are not available on Sundays. Please choose Monday to Saturday.', 'danger')
+                return render_template('portal/patient_book_appointment.html',
+                                       patient=patient_rec, doctors=doctors, now=datetime.utcnow)
             if not (7 <= appt_dt.hour < 15):
                 flash('Appointments are only available between 7:00 AM and 3:00 PM.', 'danger')
                 return render_template('portal/patient_book_appointment.html',
