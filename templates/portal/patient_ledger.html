@@ -89,7 +89,7 @@
                                     {{ bill.status }}
                                 </span>
                             </div>
-                            {% if bill._virtual %}
+                            {% if bill.virtual_entry %}
                             <div class="px-4 py-2 bg-gray-100 text-gray-400 rounded-lg text-xs font-bold flex items-center gap-2 cursor-default">
                                 <i class="bi bi-calendar-event"></i>
                                 {{ bill.category or 'Service' }}

@@ -730,7 +730,7 @@ def ledger():
                 'status': 'Pending' if appt.get('status') in ('Scheduled', 'Arrived') else appt.get('status', 'Pending'),
                 'insurance_claim_status': None,
                 'category': 'Consultation',
-                '_virtual': True
+                'virtual_entry': True
             })
     except Exception as e:
         print(f'Appointments billing fetch error: {e}')
@@ -751,7 +751,7 @@ def ledger():
                 'status': 'Pending' if sess.get('status') in ('Scheduled', 'On-going') else sess.get('status', 'Pending'),
                 'insurance_claim_status': None,
                 'category': 'Virtual Care',
-                '_virtual': True
+                'virtual_entry': True
             })
     except Exception as e:
         print(f'Telehealth billing fetch error: {e}')
