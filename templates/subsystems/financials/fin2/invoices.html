@@ -75,16 +75,33 @@
                             <div class="flex justify-end space-x-2">
                                 {% if inv.status != 'Paid' %}
                                     {% if current_user.is_admin() %}
-                                    <button onclick="openPaymentModal({{ inv.id }}, '{{ inv.vendor_name }}', {{ inv.amount }})"
-                                        class="px-4 py-2 bg-gray-900 text-white font-bold text-sm rounded-lg hover:bg-gray-800 transition-all">
+                                    <button
+                                        class="open-payment-btn px-4 py-2 bg-gray-900 text-white font-bold text-sm rounded-lg hover:bg-gray-800 transition-all"
+                                        data-id="{{ inv.id }}"
+                                        data-vendor="{{ inv.vendor_name }}"
+                                        data-amount="{{ inv.amount }}">
                                         Pay Now
                                     </button>
+                                    <form action="{{ url_for('financials.mark_invoice_paid', invoice_id=inv.id) }}" method="POST" class="inline-block">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="px-3 py-2 bg-emerald-600 text-white font-bold text-xs rounded-lg hover:bg-emerald-700 transition-all">
+                                            Mark Paid
+                                        </button>
+                                    </form>
                                     {% else %}
                                     <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">Awaiting Pmt</span>
                                     {% endif %}
                                 {% endif %}
-                                <button onclick="openViewModal({{ inv.id }}, '{{ inv.invoice_number or inv.id }}', '{{ inv.vendor_name }}', '{{ inv.due_date }}', {{ inv.amount }}, '{{ inv.status }}', '{{ inv.invoice_date }}', '{{ (inv.description or "") | replace("\r\n", " ") | replace("\n", " ") }}')"
-                                    class="p-2 text-gray-400 hover:text-[#EF4444] hover:bg-white rounded-lg transition-all">
+                                <button
+                                    class="open-view-btn p-2 text-gray-400 hover:text-[#EF4444] hover:bg-white rounded-lg transition-all"
+                                    data-id="{{ inv.id }}"
+                                    data-number="{{ inv.invoice_number or inv.id }}"
+                                    data-vendor="{{ inv.vendor_name }}"
+                                    data-due-date="{{ inv.due_date }}"
+                                    data-amount="{{ inv.amount }}"
+                                    data-status="{{ inv.status }}"
+                                    data-invoice-date="{{ inv.invoice_date }}"
+                                    data-description="{{ (inv.description or '') | replace('\r\n', ' ') | replace('\n', ' ') }}">
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </div>
@@ -157,6 +174,7 @@
                         <option value="Check">Check</option>
                         <option value="Cash">Cash</option>
                     </select>
+                    <p class="text-xs text-gray-500">Bank/Check auto-marks invoice as Paid. Cash requires manual Mark Paid confirmation.</p>
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-bold text-gray-700 ml-1">Reference #</label>
@@ -273,6 +291,29 @@ function closePaymentModal() {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.open-payment-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            openPaymentModal(btn.dataset.id, btn.dataset.vendor, btn.dataset.amount);
+        });
+    });
+
+    document.querySelectorAll('.open-view-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            openViewModal(
+                btn.dataset.id,
+                btn.dataset.number,
+                btn.dataset.vendor,
+                btn.dataset.dueDate,
+                btn.dataset.amount,
+                btn.dataset.status,
+                btn.dataset.invoiceDate,
+                btn.dataset.description
+            );
+        });
+    });
+});
 </script>
 {% endblock %}
 

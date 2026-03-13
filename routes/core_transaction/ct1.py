@@ -1324,6 +1324,39 @@ def telehealth():
     patients = []
     doctors = []
     load_error = None
+    # Auto-end sessions whose scheduled duration has elapsed
+    now_utc = datetime.utcnow()
+    try:
+        active_rows = client.table('telehealth_sessions').select(
+            'id, scheduled_at, duration_minutes, status'
+        ).in_('status', ['Scheduled', 'On-going']).execute().data or []
+        for row in active_rows:
+            try:
+                scheduled_raw = row.get('scheduled_at')
+                if not scheduled_raw:
+                    continue
+                scheduled_dt = datetime.fromisoformat(
+                    str(scheduled_raw).replace('Z', '+00:00').replace(' ', 'T')
+                ).replace(tzinfo=None)
+                duration_val = row.get('duration_minutes')
+                try:
+                    duration_minutes = int(duration_val) if duration_val is not None else 30
+                except (TypeError, ValueError):
+                    duration_minutes = 30
+                duration_minutes = max(5, min(duration_minutes, 240))
+                elapsed_minutes = int((now_utc - scheduled_dt).total_seconds() / 60)
+                if elapsed_minutes >= duration_minutes:
+                    update_data = {
+                        'status': 'Session Ended',
+                        'ended_at': now_utc.isoformat(),
+                        'duration_minutes': max(duration_minutes, elapsed_minutes)
+                    }
+                    client.table('telehealth_sessions').update(update_data).eq('id', row.get('id')).execute()
+            except Exception:
+                continue
+    except Exception:
+        pass
+
     try:
         sessions = TelehealthSession.get_all() or []
     except Exception as e:
@@ -1485,6 +1518,31 @@ def join_telehealth_session(session_id):
 
         sess = sess_res.data
         meeting_link = sess.get('meeting_link', '')
+
+        # Auto-end if scheduled duration has already elapsed
+        try:
+            scheduled_raw = sess.get('scheduled_at')
+            if scheduled_raw and sess.get('status') in ['Scheduled', 'On-going']:
+                scheduled_dt = datetime.fromisoformat(
+                    str(scheduled_raw).replace('Z', '+00:00').replace(' ', 'T')
+                ).replace(tzinfo=None)
+                duration_val = sess.get('duration_minutes')
+                try:
+                    planned_duration = int(duration_val) if duration_val is not None else 30
+                except (TypeError, ValueError):
+                    planned_duration = 30
+                planned_duration = max(5, min(planned_duration, 240))
+                elapsed_minutes = int((datetime.utcnow() - scheduled_dt).total_seconds() / 60)
+                if elapsed_minutes >= planned_duration:
+                    client.table('telehealth_sessions').update({
+                        'status': 'Session Ended',
+                        'ended_at': datetime.utcnow().isoformat(),
+                        'duration_minutes': max(planned_duration, elapsed_minutes)
+                    }).eq('id', session_id).execute()
+                    flash('This telehealth session already reached its duration and was automatically ended.', 'warning')
+                    return redirect(url_for('ct1.telehealth'))
+        except Exception:
+            pass
 
         # Record who joined and when
         now_iso = datetime.utcnow().isoformat()

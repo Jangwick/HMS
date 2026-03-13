@@ -64,8 +64,19 @@
                                     {% if current_user.is_admin() %}
                                     <form action="{{ url_for('financials.pay_bill', bill_id=record.id) }}" method="POST" class="inline">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <select name="payment_method" class="px-2 py-2 text-xs border border-gray-200 rounded-lg" title="Payment Method">
+                                            <option value="Bank Transfer">Bank</option>
+                                            <option value="Card">Card</option>
+                                            <option value="Cash">Cash</option>
+                                        </select>
                                         <button type="submit"
-                                            class="px-4 py-2 bg-gray-50 text-green-600 font-bold text-sm rounded-lg hover:bg-green-600 hover:text-white transition-all">
+                                            class="px-3 py-2 bg-gray-50 text-green-600 font-bold text-xs rounded-lg hover:bg-green-600 hover:text-white transition-all">
+                                            Pay
+                                        </button>
+                                    </form>
+                                    <form action="{{ url_for('financials.mark_bill_paid', bill_id=record.id) }}" method="POST" class="inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="px-3 py-2 bg-emerald-600 text-white font-bold text-xs rounded-lg hover:bg-emerald-700 transition-all">
                                             Mark Paid
                                         </button>
                                     </form>

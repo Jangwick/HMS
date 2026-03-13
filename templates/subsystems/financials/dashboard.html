@@ -195,6 +195,20 @@
                 <span class="text-sm font-bold text-[#7C3AED] flex items-center">Open Module <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i></span>
             </div>
         </a>
+
+        <a href="{{ url_for('financials.disbursements') }}" class="group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div class="h-2 bg-[#5B21B6]"></div>
+            <div class="p-8">
+                <div class="flex justify-between items-start mb-6">
+                    <h4 class="text-xl font-bold text-gray-900 group-hover:text-[#5B21B6] transition-colors">Disbursement</h4>
+                    <div class="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-[#5B21B6] group-hover:scale-110 transition-transform">
+                        <i class="bi bi-cash-coin text-2xl"></i>
+                    </div>
+                </div>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">Process and monitor outgoing hospital expenses.</p>
+                <span class="text-sm font-bold text-[#5B21B6] flex items-center">Open Module <i class="bi bi-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i></span>
+            </div>
+        </a>
         {% endif %}
 
         <!-- Financial Intel -->

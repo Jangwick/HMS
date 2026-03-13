@@ -14,6 +14,22 @@ SUBSYSTEM_NAME = 'Financial Management System'
 ACCENT_COLOR = '#8B5CF6'
 BLUEPRINT_NAME = 'financials'
 
+
+def _normalize_payment_method(method):
+    return (method or '').strip().lower()
+
+
+def _is_bank_payment(method):
+    normalized = _normalize_payment_method(method)
+    return normalized in {
+        'bank transfer', 'bank', 'wire', 'wire transfer',
+        'card', 'credit card', 'debit card', 'check', 'cheque'
+    }
+
+
+def _is_cash_payment(method):
+    return _normalize_payment_method(method) == 'cash'
+
 @financials_bp.route('/login', methods=['GET', 'POST'])
 def login():
     locked, remaining_seconds, unlock_time_str = is_ip_locked(subsystem=BLUEPRINT_NAME)
@@ -303,25 +319,33 @@ def pay_bill(bill_id):
         flash('Unauthorized: Only administrators can process billing payments.', 'danger')
         return redirect(url_for('financials.list_billing'))
     client = get_supabase_client()
-    # 1. Update billing record status
-    client.table('billing_records').update({'status': 'Paid'}).eq('id', bill_id).execute()
+    payment_method = request.form.get('payment_method', 'Cash')
+    auto_mark_paid = _is_bank_payment(payment_method)
+
+    if auto_mark_paid:
+        client.table('billing_records').update({'status': 'Paid'}).eq('id', bill_id).execute()
     
     # 2. Update receivable if exists
     rec_resp = client.table('receivables').select('id, amount_due').eq('billing_id', bill_id).execute()
     if rec_resp.data:
         rec_id = rec_resp.data[0]['id']
         amount = rec_resp.data[0]['amount_due']
-        client.table('receivables').update({'status': 'Paid'}).eq('id', rec_id).execute()
+        if auto_mark_paid:
+            client.table('receivables').update({'status': 'Paid'}).eq('id', rec_id).execute()
         
         # 3. Record collection
         collection_data = {
             'receivable_id': rec_id,
             'amount': amount,
-            'payment_method': request.form.get('payment_method', 'Cash'),
+            'payment_method': payment_method,
             'collection_date': datetime.now().isoformat(),
             'collected_by': current_user.id
         }
-        client.table('collections').insert(collection_data).execute()
+        try:
+            collection_data['status'] = 'Paid' if auto_mark_paid else 'Pending Manual Confirmation'
+            client.table('collections').insert(collection_data).execute()
+        except Exception:
+            client.table('collections').insert({k: v for k, v in collection_data.items() if k != 'status'}).execute()
     else:
         # If no receivable, maybe it was already paid or direct payment
         # Still record a collection if we want, but usually it goes through receivables
@@ -330,7 +354,28 @@ def pay_bill(bill_id):
     from utils.hms_models import AuditLog
     AuditLog.log(current_user.id, "Process Bill Payment", BLUEPRINT_NAME, {"bill_id": bill_id})
 
-    flash(f'Payment processed for Invoice #INV-{bill_id}', 'success')
+    if auto_mark_paid:
+        flash(f'Bank payment processed for Invoice #INV-{bill_id}.', 'success')
+    else:
+        flash(f'Cash payment recorded for Invoice #INV-{bill_id}. Manual Mark Paid is required.', 'warning')
+    return redirect(url_for('financials.list_billing'))
+
+
+@financials_bp.route('/billing/mark-paid/<int:bill_id>', methods=['POST'])
+@login_required
+def mark_bill_paid(bill_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can confirm cash billing payments.', 'danger')
+        return redirect(url_for('financials.list_billing'))
+
+    client = get_supabase_client()
+    try:
+        client.table('billing_records').update({'status': 'Paid'}).eq('id', bill_id).execute()
+        client.table('receivables').update({'status': 'Paid'}).eq('billing_id', bill_id).execute()
+        flash(f'Invoice #INV-{bill_id} manually marked as Paid.', 'success')
+    except Exception as e:
+        flash(f'Failed to mark invoice paid: {e}', 'danger')
+
     return redirect(url_for('financials.list_billing'))
 
 @financials_bp.route('/billing/void/<int:bill_id>', methods=['POST'])
@@ -415,27 +460,31 @@ def pay_invoice(invoice_id):
         flash('Invoice not found.', 'danger')
         return redirect(url_for('financials.vendor_invoices'))
     
-    # 1. Update invoice status
-    client.table('vendor_invoices').update({'status': 'Paid'}).eq('id', invoice_id).execute()
-    
-    # AUDIT LOG
-    from utils.hms_models import AuditLog
-    AuditLog.log(current_user.id, "Pay Vendor Invoice", BLUEPRINT_NAME, 
-                 {"invoice_id": invoice_id, "amount": invoice.get('amount')})
-    
-    # 2. Record payment
+    payment_method = request.form.get('payment_method', 'Bank Transfer')
+    auto_mark_paid = _is_bank_payment(payment_method)
+
+    if auto_mark_paid:
+        client.table('vendor_invoices').update({'status': 'Paid'}).eq('id', invoice_id).execute()
+
+    # 2. Record payment attempt
     payment_data = {
         'invoice_id': invoice_id,
         'payment_date': datetime.now().date().isoformat(),
         'amount': invoice['amount'],
-        'payment_method': request.form.get('payment_method', 'Bank Transfer'),
+        'payment_method': payment_method,
         'reference_number': request.form.get('reference_number', '')
     }
-    client.table('vendor_payments').insert(payment_data).execute()
+    try:
+        payment_data['status'] = 'Paid' if auto_mark_paid else 'Pending Manual Confirmation'
+        client.table('vendor_payments').insert(payment_data).execute()
+    except Exception:
+        if not auto_mark_paid:
+            payment_data['reference_number'] = (payment_data.get('reference_number') or '').strip() or f"CASH-PENDING-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        client.table('vendor_payments').insert(payment_data).execute()
     
     # 3. Update bank account if selected
     account_id = request.form.get('account_id')
-    if account_id:
+    if account_id and auto_mark_paid:
         acc = client.table('bank_accounts').select('balance').eq('id', account_id).single().execute().data
         if acc:
             new_balance = float(acc['balance']) - float(invoice['amount'])
@@ -450,7 +499,42 @@ def pay_invoice(invoice_id):
                 'performed_by': current_user.id
             }).execute()
 
-    flash(f'Payment recorded for Invoice #{invoice.get("invoice_number", invoice_id)}', 'success')
+    from utils.hms_models import AuditLog
+    AuditLog.log(current_user.id, "Pay Vendor Invoice", BLUEPRINT_NAME,
+                 {"invoice_id": invoice_id, "amount": invoice.get('amount'), "payment_method": payment_method, "auto_mark_paid": auto_mark_paid})
+
+    if auto_mark_paid:
+        flash(f'Bank payment recorded and Invoice #{invoice.get("invoice_number", invoice_id)} marked as Paid.', 'success')
+    else:
+        flash('Cash payment recorded as pending. Use Mark Paid after cashier verification.', 'warning')
+    return redirect(url_for('financials.vendor_invoices'))
+
+
+@financials_bp.route('/payables/mark-paid/<int:invoice_id>', methods=['POST'])
+@login_required
+def mark_invoice_paid(invoice_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can confirm cash payments.', 'danger')
+        return redirect(url_for('financials.vendor_invoices'))
+
+    client = get_supabase_client()
+    try:
+        invoice = client.table('vendor_invoices').select('*').eq('id', invoice_id).single().execute().data
+        if not invoice:
+            flash('Invoice not found.', 'danger')
+            return redirect(url_for('financials.vendor_invoices'))
+
+        client.table('vendor_invoices').update({'status': 'Paid'}).eq('id', invoice_id).execute()
+
+        try:
+            client.table('vendor_payments').update({'status': 'Paid'}).eq('invoice_id', invoice_id).eq('payment_method', 'Cash').execute()
+        except Exception:
+            pass
+
+        flash(f'Invoice #{invoice.get("invoice_number", invoice_id)} manually marked as Paid.', 'success')
+    except Exception as e:
+        flash(f'Failed to mark invoice paid: {e}', 'danger')
+
     return redirect(url_for('financials.vendor_invoices'))
 
 @financials_bp.route('/vendors')
@@ -619,28 +703,35 @@ def collect_receivable(receivable_id):
     
     amount = float(request.form.get('amount', rec['amount_due']))
     
-    # 1. Update receivable status
-    client.table('receivables').update({'status': 'Paid'}).eq('id', receivable_id).execute()
-    
-    # 2. Update linked billing if exists
-    if rec.get('billing_id'):
-        client.table('billing_records').update({'status': 'Paid'}).eq('id', rec['billing_id']).execute()
+    payment_method = request.form.get('payment_method', 'Cash')
+    auto_mark_paid = _is_bank_payment(payment_method)
+
+    if auto_mark_paid:
+        client.table('receivables').update({'status': 'Paid'}).eq('id', receivable_id).execute()
+        if rec.get('billing_id'):
+            client.table('billing_records').update({'status': 'Paid'}).eq('id', rec['billing_id']).execute()
     
     # 3. Record collection
     collection_data = {
         'receivable_id': receivable_id,
         'amount': amount,
         'collection_date': datetime.now().isoformat(),
-        'payment_method': request.form.get('payment_method', 'Cash'),
+        'payment_method': payment_method,
         'collected_by': current_user.id,
         'account_id': request.form.get('account_id'),
         'reference': f"Patient: {rec.get('patient_name', 'N/A')}"
     }
-    client.table('collections').insert(collection_data).execute()
+    try:
+        collection_data['status'] = 'Paid' if auto_mark_paid else 'Pending Manual Confirmation'
+        client.table('collections').insert(collection_data).execute()
+    except Exception:
+        if not auto_mark_paid:
+            collection_data['reference'] = f"CASH-PENDING-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        client.table('collections').insert(collection_data).execute()
     
     # 4. Update bank balance if selected
     account_id = request.form.get('account_id')
-    if account_id:
+    if account_id and auto_mark_paid:
         acc = client.table('bank_accounts').select('balance').eq('id', account_id).single().execute().data
         if acc:
             new_balance = float(acc['balance']) + amount
@@ -655,7 +746,102 @@ def collect_receivable(receivable_id):
                 'performed_by': current_user.id
             }).execute()
 
-    flash(f'Collection of ${amount:.2f} recorded successfully.', 'success')
+    if auto_mark_paid:
+        flash(f'Bank payment collected and posted: ${amount:.2f}.', 'success')
+    else:
+        flash('Cash collection recorded as pending. Use Mark Paid after cashier verification.', 'warning')
+    return redirect(url_for('financials.receivables_list'))
+
+
+@financials_bp.route('/receivables/mark-paid/<int:receivable_id>', methods=['POST'])
+@login_required
+def mark_receivable_paid(receivable_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can confirm cash collections.', 'danger')
+        return redirect(url_for('financials.receivables_list'))
+
+    client = get_supabase_client()
+    try:
+        rec = client.table('receivables').select('*').eq('id', receivable_id).single().execute().data
+        if not rec:
+            flash('Receivable not found.', 'danger')
+            return redirect(url_for('financials.receivables_list'))
+
+        client.table('receivables').update({'status': 'Paid'}).eq('id', receivable_id).execute()
+        if rec.get('billing_id'):
+            client.table('billing_records').update({'status': 'Paid'}).eq('id', rec['billing_id']).execute()
+
+        try:
+            client.table('collections').update({'status': 'Paid'}).eq('receivable_id', receivable_id).eq('payment_method', 'Cash').execute()
+        except Exception:
+            pass
+
+        flash(f'Receivable #{receivable_id} manually marked as Paid.', 'success')
+    except Exception as e:
+        flash(f'Failed to mark receivable paid: {e}', 'danger')
+
+    return redirect(url_for('financials.receivables_list'))
+
+
+@financials_bp.route('/collections/refund/<int:receivable_id>', methods=['POST'])
+@login_required
+def refund_collection(receivable_id):
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can process refunds.', 'danger')
+        return redirect(url_for('financials.receivables_list'))
+
+    client = get_supabase_client()
+    try:
+        rec = client.table('receivables').select('*').eq('id', receivable_id).single().execute().data
+        if not rec:
+            flash('Receivable not found.', 'danger')
+            return redirect(url_for('financials.receivables_list'))
+
+        refund_amount = float(request.form.get('refund_amount', 0) or 0)
+        if refund_amount <= 0:
+            flash('Invalid refund amount.', 'danger')
+            return redirect(url_for('financials.receivables_list'))
+
+        account_id = request.form.get('account_id')
+        reason = request.form.get('reason', '').strip()
+
+        if account_id:
+            acc = client.table('bank_accounts').select('balance').eq('id', account_id).single().execute().data
+            if acc:
+                new_balance = float(acc.get('balance', 0) or 0) - refund_amount
+                client.table('bank_accounts').update({'balance': new_balance}).eq('id', account_id).execute()
+
+                client.table('cash_transactions').insert({
+                    'account_id': account_id,
+                    'transaction_type': 'WITHDRAWAL',
+                    'amount': refund_amount,
+                    'description': f"Patient refund for receivable #{receivable_id}" + (f" | {reason}" if reason else ''),
+                    'performed_by': current_user.id
+                }).execute()
+
+        refund_data = {
+            'receivable_id': receivable_id,
+            'amount': -abs(refund_amount),
+            'collection_date': datetime.now().isoformat(),
+            'payment_method': 'Refund',
+            'collected_by': current_user.id,
+            'account_id': account_id,
+            'reference': f"REFUND: {reason}" if reason else 'REFUND'
+        }
+        try:
+            refund_data['status'] = 'Refunded'
+            client.table('collections').insert(refund_data).execute()
+        except Exception:
+            client.table('collections').insert({k: v for k, v in refund_data.items() if k != 'status'}).execute()
+
+        client.table('receivables').update({'status': 'Unpaid'}).eq('id', receivable_id).execute()
+        if rec.get('billing_id'):
+            client.table('billing_records').update({'status': 'Unpaid'}).eq('id', rec['billing_id']).execute()
+
+        flash(f'Refund of ${refund_amount:.2f} processed successfully.', 'success')
+    except Exception as e:
+        flash(f'Failed to process refund: {e}', 'danger')
+
     return redirect(url_for('financials.receivables_list'))
 
 @financials_bp.route('/receivables/collections')
@@ -693,6 +879,70 @@ def transactions():
                            subsystem_name="Cash Management", 
                            accent_color="#7C3AED", 
                            blueprint_name=BLUEPRINT_NAME)
+
+
+@financials_bp.route('/disbursements')
+@login_required
+def disbursements():
+    if not current_user.is_admin():
+        flash('Unauthorized: Disbursement is restricted to administrators.', 'danger')
+        return redirect(url_for('financials.dashboard'))
+
+    client = get_supabase_client()
+    try:
+        disbursements = client.table('cash_transactions').select(
+            '*, bank_accounts:bank_accounts!cash_transactions_account_id_fkey(bank_name, account_number)'
+        ).eq('transaction_type', 'WITHDRAWAL').order('transaction_date', desc=True).execute().data or []
+    except Exception:
+        disbursements = []
+
+    bank_accounts = client.table('bank_accounts').select('*').execute().data or []
+
+    return render_template(
+        'subsystems/financials/fin4/disbursements.html',
+        disbursements=disbursements,
+        bank_accounts=bank_accounts,
+        subsystem_name="Disbursement",
+        accent_color="#7C3AED",
+        blueprint_name=BLUEPRINT_NAME
+    )
+
+
+@financials_bp.route('/disbursements/add', methods=['POST'])
+@login_required
+def add_disbursement():
+    if not current_user.is_admin():
+        flash('Unauthorized: Only administrators can record disbursements.', 'danger')
+        return redirect(url_for('financials.dashboard'))
+
+    client = get_supabase_client()
+    account_id = request.form.get('account_id')
+    amount = float(request.form.get('amount', 0) or 0)
+    expense_type = request.form.get('expense_type', 'General Expense')
+    description = request.form.get('description', '')
+
+    if not account_id or amount <= 0:
+        flash('Invalid disbursement data.', 'danger')
+        return redirect(url_for('financials.disbursements'))
+
+    acc = client.table('bank_accounts').select('balance').eq('id', account_id).single().execute().data
+    if not acc:
+        flash('Bank account not found.', 'danger')
+        return redirect(url_for('financials.disbursements'))
+
+    new_balance = float(acc.get('balance', 0) or 0) - amount
+    client.table('bank_accounts').update({'balance': new_balance}).eq('id', account_id).execute()
+
+    client.table('cash_transactions').insert({
+        'account_id': account_id,
+        'transaction_type': 'WITHDRAWAL',
+        'amount': amount,
+        'description': f"{expense_type}: {description}" if description else expense_type,
+        'performed_by': current_user.id
+    }).execute()
+
+    flash('Disbursement recorded successfully.', 'success')
+    return redirect(url_for('financials.disbursements'))
 
 @financials_bp.route('/cash/transaction', methods=['POST'])
 @login_required

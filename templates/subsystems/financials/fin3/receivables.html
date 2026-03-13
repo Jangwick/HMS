@@ -78,9 +78,20 @@
                                         class="px-4 py-2 bg-gray-900 text-white font-bold text-sm rounded-lg hover:bg-gray-800 transition-all">
                                         Collect
                                     </button>
+                                    <form action="{{ url_for('financials.mark_receivable_paid', receivable_id=rec.id) }}" method="POST" class="inline-block">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="px-3 py-2 bg-emerald-600 text-white font-bold text-xs rounded-lg hover:bg-emerald-700 transition-all">
+                                            Mark Paid
+                                        </button>
+                                    </form>
                                     {% else %}
                                     <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">Awaiting Coll.</span>
                                     {% endif %}
+                                {% elif rec.status == 'Paid' and current_user.is_admin() %}
+                                    <button onclick="openRefundModal({{ rec.id }}, '{{ rec.patient_name }}', {{ rec.amount_due }})"
+                                        class="px-3 py-2 bg-red-600 text-white font-bold text-xs rounded-lg hover:bg-red-700 transition-all">
+                                        Refund
+                                    </button>
                                 {% endif %}
                                 <a href="{{ url_for('financials.view_bill', bill_id=rec.billing_id or 0) }}"
                                     class="p-2 text-gray-400 hover:text-[#EF4444] hover:bg-white rounded-lg transition-all">
@@ -152,6 +163,7 @@
                     <option value="Bank Transfer">Bank Transfer</option>
                     <option value="Insurance">Insurance Claim</option>
                 </select>
+                <p class="text-xs text-gray-500 ml-1">Bank/Card/Transfer/Insurance → auto-posts as Paid. Cash → pending until manual confirmation.</p>
             </div>
 
             <div class="pt-6">
@@ -160,6 +172,41 @@
                     Confirm Collection
                 </button>
             </div>
+        </form>
+    </div>
+</div>
+
+<!-- Refund Modal -->
+<div id="refundModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden">
+        <div class="bg-red-600 p-8 text-white flex justify-between items-center">
+            <div>
+                <h3 class="text-2xl font-black">Process Refund</h3>
+                <p class="text-red-100 text-sm mt-1" id="refundModalSubtitle"></p>
+            </div>
+            <button onclick="closeRefundModal()" class="text-red-100 hover:text-white transition-colors">
+                <i class="bi bi-x-lg text-xl"></i>
+            </button>
+        </div>
+        <form id="refundForm" method="POST" class="p-8 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label class="text-sm font-bold text-gray-700">Refund Amount</label>
+                <input type="number" step="0.01" name="refund_amount" id="refundAmount" required class="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl">
+            </div>
+            <div>
+                <label class="text-sm font-bold text-gray-700">Source Account</label>
+                <select name="account_id" required class="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl">
+                    {% for acc in bank_accounts %}
+                    <option value="{{ acc.id }}">{{ acc.bank_name }} ({{ acc.account_number }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-sm font-bold text-gray-700">Reason</label>
+                <textarea name="reason" rows="3" class="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl"></textarea>
+            </div>
+            <button type="submit" class="w-full py-3 bg-red-600 text-white font-black rounded-xl hover:bg-red-700">Confirm Refund</button>
         </form>
     </div>
 </div>
@@ -181,6 +228,22 @@ function openCollectionModal(id, patient, amount) {
 
 function closeCollectionModal() {
     const modal = document.getElementById('collectionModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function openRefundModal(id, patient, amount) {
+    const modal = document.getElementById('refundModal');
+    const form = document.getElementById('refundForm');
+    document.getElementById('refundModalSubtitle').innerText = `Refund to ${patient}`;
+    document.getElementById('refundAmount').value = amount;
+    form.action = `/financials/collections/refund/${id}`;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeRefundModal() {
+    const modal = document.getElementById('refundModal');
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 }
