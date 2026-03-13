@@ -89,10 +89,17 @@
                                     {{ bill.status }}
                                 </span>
                             </div>
+                            {% if bill._virtual %}
+                            <div class="px-4 py-2 bg-gray-100 text-gray-400 rounded-lg text-xs font-bold flex items-center gap-2 cursor-default">
+                                <i class="bi bi-calendar-event"></i>
+                                {{ bill.category or 'Service' }}
+                            </div>
+                            {% else %}
                             <a href="{{ url_for('patient.view_bill', bill_id=bill.id) }}"
                                 class="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
                                 <i class="bi bi-eye"></i> View
                             </a>
+                            {% endif %}
                         </div>
                     </div>
                     {% else %}

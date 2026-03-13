@@ -702,19 +702,75 @@ def ledger():
     try:
         patient_resp = client.table('patients').select('*').eq('id', patient_id).single().execute()
         data['patient'] = patient_resp.data
-        
-        # Fetch Billing Records
-        billing_resp = client.table('billing_records').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
-        data['bills'] = billing_resp.data
-        
-        if billing_resp.data:
-            data['total_due'] = sum(float(b['total_amount']) for b in billing_resp.data if b.get('status') != 'Paid')
-            # Assuming 'Paid' records act as recent payments for this view
-            data['recent_payments'] = [b for b in billing_resp.data if b.get('status') == 'Paid']
-
     except Exception as e:
-        print(f"Error fetching ledger data: {e}")
-        flash('Some financial details could not be synchronized.', 'warning')
+        print(f'Patient fetch error: {e}')
+
+    # Fetch billing records
+    billing_rows = []
+    try:
+        billing_resp = client.table('billing_records').select('*').eq('patient_id', patient_id).order('created_at', desc=True).execute()
+        billing_rows = billing_resp.data or []
+    except Exception as e:
+        print(f'Billing fetch error: {e}')
+
+    # Fetch appointments not yet covered by a billing record
+    appt_bills = []
+    try:
+        appt_resp = client.table('appointments').select('*').eq('patient_id', patient_id).order('appointment_date', desc=True).execute()
+        # Build set of appointment_ids already in billing_records
+        billed_appt_ids = {b.get('appointment_id') for b in billing_rows if b.get('appointment_id')}
+        for appt in (appt_resp.data or []):
+            if appt['id'] in billed_appt_ids:
+                continue
+            appt_bills.append({
+                'id': f"appt-{appt['id']}",
+                'description': f"Appointment: {appt.get('type') or appt.get('visit_type') or 'Consultation'} – {(appt.get('appointment_date') or '')[:10]}",
+                'created_at': appt.get('appointment_date') or appt.get('created_at'),
+                'total_amount': float(appt.get('consultation_fee') or 0),
+                'status': 'Pending' if appt.get('status') in ('Scheduled', 'Arrived') else appt.get('status', 'Pending'),
+                'insurance_claim_status': None,
+                'category': 'Consultation',
+                '_virtual': True
+            })
+    except Exception as e:
+        print(f'Appointments billing fetch error: {e}')
+
+    # Fetch telehealth sessions not yet covered by a billing record
+    tele_bills = []
+    try:
+        tele_resp = client.table('telehealth_sessions').select('*').eq('patient_id', patient_id).order('scheduled_at', desc=True).execute()
+        billed_tele_ids = {b.get('telehealth_session_id') for b in billing_rows if b.get('telehealth_session_id')}
+        for sess in (tele_resp.data or []):
+            if sess['id'] in billed_tele_ids:
+                continue
+            tele_bills.append({
+                'id': f"tele-{sess['id']}",
+                'description': f"Telehealth Session – {(sess.get('scheduled_at') or '')[:10]}",
+                'created_at': sess.get('scheduled_at') or sess.get('created_at'),
+                'total_amount': float(sess.get('session_fee') or 0),
+                'status': 'Pending' if sess.get('status') in ('Scheduled', 'On-going') else sess.get('status', 'Pending'),
+                'insurance_claim_status': None,
+                'category': 'Virtual Care',
+                '_virtual': True
+            })
+    except Exception as e:
+        print(f'Telehealth billing fetch error: {e}')
+
+    # Merge all bill sources
+    all_bills = billing_rows + appt_bills + tele_bills
+    all_bills.sort(key=lambda b: b.get('created_at') or '', reverse=True)
+    data['bills'] = all_bills
+
+    # Total due = sum of all non-paid, non-zero amounts
+    data['total_due'] = sum(
+        float(b.get('total_amount') or 0)
+        for b in all_bills
+        if b.get('status') not in ('Paid', 'Cancelled', 'Session Ended', 'Completed')
+        and float(b.get('total_amount') or 0) > 0
+    )
+
+    # Recent payments = paid billing records
+    data['recent_payments'] = [b for b in billing_rows if b.get('status') == 'Paid']
 
     return render_template('portal/patient_ledger.html', **data)
 
