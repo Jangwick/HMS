@@ -119,3 +119,11 @@ ALTER TABLE purchase_orders
 
 ALTER TABLE purchase_orders
     ADD COLUMN IF NOT EXISTS finance_requested_at TIMESTAMPTZ;
+
+ALTER TABLE purchase_orders
+    ADD COLUMN IF NOT EXISTS inventory_restocked_at TIMESTAMPTZ;
+
+-- po_items extended fields for inventory-backed line items
+ALTER TABLE po_items ADD COLUMN IF NOT EXISTS category TEXT;
+ALTER TABLE po_items ADD COLUMN IF NOT EXISTS unit TEXT;
+ALTER TABLE po_items ADD COLUMN IF NOT EXISTS location TEXT;

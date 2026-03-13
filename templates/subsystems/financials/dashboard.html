@@ -107,12 +107,14 @@
                                 <div class="flex flex-col gap-2">
                                     <form action="{{ url_for('log1.approve_finance_budget', po_id=approval.po_id) }}" method="POST" class="flex gap-2">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="next" value="{{ url_for('financials.dashboard') }}">
                                         <input type="number" step="0.01" min="0" name="approved_amount" value="{{ approval.requested_amount|default(0) }}" class="w-32 px-3 py-2 rounded-lg border border-gray-200 text-sm" required>
                                         <input type="text" name="finance_remarks" placeholder="Remarks (optional)" class="w-52 px-3 py-2 rounded-lg border border-gray-200 text-sm">
                                         <button type="submit" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">Approve</button>
                                     </form>
                                     <form action="{{ url_for('log1.reject_finance_budget', po_id=approval.po_id) }}" method="POST" class="flex gap-2">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="next" value="{{ url_for('financials.dashboard') }}">
                                         <input type="text" name="finance_remarks" placeholder="Rejection reason" class="w-52 px-3 py-2 rounded-lg border border-gray-200 text-sm" required>
                                         <button type="submit" class="px-3 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700">Reject</button>
                                     </form>

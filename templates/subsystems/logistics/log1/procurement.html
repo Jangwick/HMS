@@ -217,8 +217,21 @@
     </div>
 </div>
 
+<script id="inventory-items-data" type="application/json">{{ inventory_items|tojson }}</script>
+
 <script>
 let itemsCount = 0;
+const inventoryOptions = JSON.parse(document.getElementById('inventory-items-data').textContent || '[]');
+
+function buildInventoryOptions() {
+    if (!inventoryOptions.length) {
+        return '<option value="">No inventory items found</option>';
+    }
+    return ['<option value="" disabled selected>Select existing item</option>']
+        .concat(inventoryOptions.map(item =>
+            `<option value="${item.item_name}" data-category="${item.category}" data-unit="${item.unit}" data-location="${item.location}">${item.item_name} (Current: ${Number(item.current_stock || 0).toLocaleString()})</option>`
+        )).join('');
+}
 
 function addPOItemRow() {
     itemsCount++;
@@ -228,8 +241,10 @@ function addPOItemRow() {
     row.id = `item-row-${itemsCount}`;
     row.innerHTML = `
         <div class="col-span-6">
-            <input type="text" name="item_name" placeholder="Item Name" required 
+            <select name="item_name" required 
                    class="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-[#F59E0B] text-sm">
+                ${buildInventoryOptions()}
+            </select>
         </div>
         <div class="col-span-2">
             <input type="number" name="quantity" placeholder="Qty" value="1" min="1" required onchange="calculateRow(this)"
@@ -287,11 +302,15 @@ function preparePOData(e) {
     for(let i=0; i<itemNames.length; i++) {
         const q = parseInt(qtys[i].value);
         const p = parseFloat(prices[i].value);
+        const selectedOption = itemNames[i].options[itemNames[i].selectedIndex];
         items.push({
             item_name: itemNames[i].value,
             quantity: q,
             unit_price: p,
-            total_price: q * p
+            total_price: q * p,
+            category: selectedOption ? selectedOption.dataset.category : 'General',
+            unit: selectedOption ? selectedOption.dataset.unit : 'units',
+            location: selectedOption ? selectedOption.dataset.location : 'Warehouse'
         });
     }
     

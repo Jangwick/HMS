@@ -108,6 +108,63 @@ def _insert_supplier_document_record(client, doc_type, po=None, receiving_id=Non
             pass
 
 
+def _restock_inventory_for_po(client, po_id, po=None, document_type='DR'):
+    po_data = po or {}
+    try:
+        if not po_data:
+            po_resp = client.table('purchase_orders').select('*').eq('id', po_id).single().execute()
+            po_data = po_resp.data or {}
+
+        if po_data.get('inventory_restocked_at'):
+            return False, 'already_restocked'
+
+        items_resp = client.table('po_items').select('*').eq('po_id', po_id).execute()
+        items = items_resp.data or []
+        if not items:
+            return False, 'no_items'
+
+        for item in items:
+            item_name = (item.get('item_name') or '').strip()
+            quantity = _safe_float(item.get('quantity'))
+            if not item_name or quantity <= 0:
+                continue
+
+            # Case-insensitive lookup so "Paracetamol 500mg" matches "paracetamol 500mg"
+            inv_resp = client.table('inventory').select('*').ilike('item_name', item_name).execute()
+            if inv_resp.data:
+                # Update the first matching row; add the restocked qty to its current quantity
+                inv_row = inv_resp.data[0]
+                new_qty = int(_safe_float(inv_row.get('quantity')) + quantity)
+                client.table('inventory').update({'quantity': new_qty}).eq('id', inv_row['id']).execute()
+            else:
+                # No existing row — insert a new inventory entry
+                client.table('inventory').insert({
+                    'item_name': item_name,
+                    'quantity': int(quantity),
+                    'category': item.get('category') or 'General',
+                    'unit': item.get('unit') or 'units',
+                    'location': item.get('location') or 'Warehouse'
+                }).execute()
+
+        client.table('purchase_orders').update({
+            'inventory_restocked_at': datetime.utcnow().isoformat()
+        }).eq('id', po_id).execute()
+
+        if document_type:
+            _insert_supplier_document_record(
+                client,
+                doc_type=document_type,
+                po=po_data,
+                receiving_id=po_id,
+                document_no=f"{document_type}-{po_data.get('po_number')}",
+                metadata={'source': 'inventory_restock', 'po_id': po_id}
+            )
+
+        return True, 'restocked'
+    except Exception as e:
+        return False, str(e)
+
+
 def _create_finance_approval_for_po(client, po_id, requested_amount, requested_by):
     approval_payload = {
         'requisition_id': po_id,
@@ -1057,10 +1114,33 @@ def procurement():
             pos_data = []
             
     suppliers = client.table('suppliers').select('*').execute()
+    inventory_items = []
+    try:
+        inventory_resp = client.table('inventory').select('item_name, category, unit, location').order('item_name').execute()
+        inventory_rows = inventory_resp.data or []
+        grouped_items = {}
+        for row in inventory_rows:
+            item_name = (row.get('item_name') or '').strip()
+            if not item_name:
+                continue
+            key = item_name.lower()
+            if key not in grouped_items:
+                grouped_items[key] = {
+                    'item_name': item_name,
+                    'category': row.get('category') or 'General',
+                    'unit': row.get('unit') or 'units',
+                    'location': row.get('location') or 'Warehouse',
+                    'current_stock': 0.0
+                }
+            grouped_items[key]['current_stock'] += _safe_float(row.get('quantity'))
+        inventory_items = sorted(grouped_items.values(), key=lambda item: item['item_name'].lower())
+    except Exception:
+        inventory_items = []
     
     return render_template('subsystems/logistics/log1/procurement.html',
                            purchase_orders=pos_data,
                            suppliers=suppliers.data if suppliers.data else [],
+                           inventory_items=inventory_items,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -1227,35 +1307,11 @@ def update_po_status(po_id):
 
         # If transitioning to "Received", automatically update inventory
         if new_status == 'Received' and old_status != 'Received':
-            items_resp = client.table('po_items').select('*').eq('po_id', po_id).execute()
-            if items_resp.data:
-                for item in items_resp.data:
-                    # Check if item exists in inventory (by name)
-                    inv_resp = client.table('inventory').select('*').eq('item_name', item['item_name']).execute()
-                    if inv_resp.data:
-                        # Update existing
-                        inv_id = inv_resp.data[0]['id']
-                        new_qty = inv_resp.data[0]['quantity'] + item['quantity']
-                        client.table('inventory').update({'quantity': new_qty}).eq('id', inv_id).execute()
-                    else:
-                        # Insert new
-                        client.table('inventory').insert({
-                            'item_name': item['item_name'],
-                            'quantity': item['quantity'],
-                            'category': 'General',
-                            'unit': 'units',
-                            'location': 'Warehouse'
-                        }).execute()
-
-                _insert_supplier_document_record(
-                    client,
-                    doc_type='DR',
-                    po=po_resp.data,
-                    receiving_id=po_id,
-                    document_no=f"DR-{po_resp.data.get('po_number')}",
-                    metadata={'source': 'receiving', 'po_id': po_id}
-                )
+            restocked, restock_state = _restock_inventory_for_po(client, po_id, po=po_resp.data)
+            if restocked:
                 flash('PO status updated to Received. Inventory has been automatically updated.', 'success')
+            elif restock_state == 'already_restocked':
+                flash('PO status updated to Received. Inventory was already restocked for this PO.', 'success')
             else:
                 flash(f'PO status updated to {new_status}.', 'success')
         else:
@@ -1323,6 +1379,7 @@ def approve_finance_budget(po_id):
 
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
+    next_url = request.form.get('next') or request.referrer or url_for('log1.view_po', po_id=po_id)
 
     try:
         approved_amount = _safe_float(request.form.get('approved_amount'))
@@ -1340,7 +1397,13 @@ def approve_finance_budget(po_id):
         except Exception:
             pass
 
-        client.table('purchase_orders').update({'finance_approval_status': 'APPROVED'}).eq('id', po_id).execute()
+        client.table('purchase_orders').update({
+            'finance_approval_status': 'APPROVED',
+            'status': 'Received'
+        }).eq('id', po_id).execute()
+        po_resp = client.table('purchase_orders').select('*').eq('id', po_id).single().execute()
+        po = po_resp.data or {}
+        restocked, restock_state = _restock_inventory_for_po(client, po_id, po=po)
         _notify(
             subsystem='log2',
             title='Budget Approved',
@@ -1348,10 +1411,29 @@ def approve_finance_budget(po_id):
             n_type='success',
             target_url=url_for('log1.view_po', po_id=po_id)
         )
-        flash('Finance budget approved.', 'success')
+        _notify(
+            subsystem='log1',
+            title='PO Approved by Finance',
+            message=f"PO {po.get('po_number') or po_id} has been approved by Finance and marked as Received.",
+            n_type='success',
+            target_url=url_for('log1.view_po', po_id=po_id)
+        )
+        _notify_finance_users(
+            client=client,
+            title='PO Approval Completed',
+            message=f"PO {po.get('po_number') or po_id} was approved and inventory restock has been recorded.",
+            n_type='success',
+            target_url=url_for('financials.dashboard')
+        )
+        if restocked:
+            flash('Finance budget approved. PO marked as Received and inventory has been restocked.', 'success')
+        elif restock_state == 'already_restocked':
+            flash('Finance budget approved. PO marked as Received. Inventory was already restocked for this PO.', 'success')
+        else:
+            flash('Finance budget approved. PO marked as Received.', 'success')
     except Exception as e:
         flash(f'Error approving finance budget: {e}', 'danger')
-    return redirect(url_for('log1.view_po', po_id=po_id))
+    return redirect(next_url)
 
 
 @log1_bp.route('/finance/approvals/<int:po_id>/reject', methods=['POST'])
@@ -1363,6 +1445,7 @@ def reject_finance_budget(po_id):
 
     from utils.supabase_client import get_supabase_client
     client = get_supabase_client()
+    next_url = request.form.get('next') or request.referrer or url_for('log1.view_po', po_id=po_id)
 
     try:
         remarks = request.form.get('finance_remarks', '').strip()
@@ -1386,6 +1469,32 @@ def reject_finance_budget(po_id):
         flash('Finance budget rejected.', 'warning')
     except Exception as e:
         flash(f'Error rejecting finance budget: {e}', 'danger')
+    return redirect(next_url)
+
+
+@log1_bp.route('/procurement/po/<int:po_id>/force-restock', methods=['POST'])
+@login_required
+def force_restock_po(po_id):
+    """Admin-only: clear the restock guard and re-run inventory restocking for a PO."""
+    if not current_user.is_admin():
+        flash('Unauthorized: Admin access required.', 'danger')
+        return redirect(url_for('log1.view_po', po_id=po_id))
+
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        # Clear the guard so _restock_inventory_for_po will run again
+        client.table('purchase_orders').update({
+            'inventory_restocked_at': None
+        }).eq('id', po_id).execute()
+
+        restocked, state = _restock_inventory_for_po(client, po_id)
+        if restocked:
+            flash('Inventory restocked successfully from this PO.', 'success')
+        else:
+            flash(f'Restock did not complete: {state}', 'warning')
+    except Exception as e:
+        flash(f'Error during force restock: {e}', 'danger')
     return redirect(url_for('log1.view_po', po_id=po_id))
 
 
