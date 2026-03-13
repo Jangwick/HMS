@@ -1,0 +1,82 @@
+{% extends "base/subsystem_base.html" %}
+{% block header_title %}Vehicle Maintenance{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">{{ vehicle.vehicle_type }} - {{ vehicle.model_name }}</h3>
+                <p class="text-sm text-gray-500">{{ vehicle.plate_number }} · Status: {{ vehicle.maintenance_status or 'OK' }}</p>
+            </div>
+            <a href="{{ url_for('log2.list_vehicles') }}" class="text-sm font-semibold text-gray-500 hover:text-gray-700">Back to Vehicles</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h4 class="font-bold text-gray-900 mb-4">Add Schedule</h4>
+            <form action="{{ url_for('log2.add_maintenance_schedule', vehicle_id=vehicle.id) }}" method="POST" class="space-y-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="maintenance_type" required placeholder="Oil Change" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <input type="date" name="scheduled_date" required class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <input type="number" step="0.01" name="interval_km" placeholder="Interval KM" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <input type="number" name="interval_days" placeholder="Interval Days" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <textarea name="notes" rows="3" placeholder="Notes" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"></textarea>
+                <button type="submit" class="w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700">Save Schedule</button>
+            </form>
+        </div>
+
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h4 class="font-bold text-gray-900">Maintenance Timeline</h4>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                        <tr>
+                            <th class="px-6 py-3">Type</th>
+                            <th class="px-6 py-3">Scheduled</th>
+                            <th class="px-6 py-3">Status</th>
+                            <th class="px-6 py-3">Notes</th>
+                            <th class="px-6 py-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for s in schedules %}
+                        <tr>
+                            <td class="px-6 py-3 font-semibold text-gray-800">{{ s.maintenance_type }}</td>
+                            <td class="px-6 py-3 text-gray-600">{{ s.scheduled_date }}</td>
+                            <td class="px-6 py-3">
+                                <span class="px-2 py-1 rounded-full text-[10px] font-bold
+                                    {% if s.status == 'OVERDUE' %}bg-red-100 text-red-700
+                                    {% elif s.status == 'DUE' %}bg-amber-100 text-amber-700
+                                    {% elif s.status == 'COMPLETED' %}bg-emerald-100 text-emerald-700
+                                    {% else %}bg-gray-100 text-gray-700{% endif %}">
+                                    {{ s.status }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-3 text-gray-500">{{ s.notes or '—' }}</td>
+                            <td class="px-6 py-3">
+                                {% if s.status != 'COMPLETED' %}
+                                <form action="{{ url_for('log2.complete_maintenance_schedule', schedule_id=s.id) }}" method="POST" class="flex items-center gap-2">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="date" name="completed_date" class="px-2 py-1 border border-gray-200 rounded text-xs">
+                                    <input type="number" step="0.01" name="completed_cost" placeholder="Cost" class="w-20 px-2 py-1 border border-gray-200 rounded text-xs">
+                                    <button type="submit" class="px-2 py-1 bg-emerald-600 text-white rounded text-xs font-bold">Complete</button>
+                                </form>
+                                {% else %}
+                                <span class="text-xs text-gray-400">Done</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">No maintenance schedules yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

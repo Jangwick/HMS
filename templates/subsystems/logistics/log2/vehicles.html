@@ -47,6 +47,14 @@
                         <p class="text-sm font-semibold text-gray-700">{{ vehicle.last_service_date or 'N/A' }}</p>
                     </div>
                 </div>
+
+                <div class="mt-4">
+                    <a href="{{ url_for('log2.vehicle_maintenance', vehicle_id=vehicle.id) }}"
+                       class="inline-flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-indigo-700">
+                        <i class="bi bi-wrench-adjustable-circle"></i>
+                        Maintenance Schedule
+                    </a>
+                </div>
             </div>
             
             <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">

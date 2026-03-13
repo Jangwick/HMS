@@ -1,0 +1,48 @@
+{% extends "base/subsystem_base.html" %}
+{% block header_title %}Driver Performance{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h3 class="text-xl font-bold text-gray-900">{{ driver.full_name }}</h3>
+        <p class="text-sm text-gray-500">License: {{ driver.license_number }}</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div class="p-4 bg-gray-50 rounded-xl"><p class="text-xs text-gray-500 uppercase">Trips</p><p class="text-2xl font-black">{{ stats.trip_count }}</p></div>
+            <div class="p-4 bg-gray-50 rounded-xl"><p class="text-xs text-gray-500 uppercase">Avg Score</p><p class="text-2xl font-black">{{ stats.avg_score }}</p></div>
+            <div class="p-4 bg-gray-50 rounded-xl"><p class="text-xs text-gray-500 uppercase">On-Time Rate</p><p class="text-2xl font-black">{{ stats.on_time_rate }}%</p></div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100"><h4 class="font-bold">Trip Performance History</h4></div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                    <tr>
+                        <th class="px-6 py-3">Trip</th>
+                        <th class="px-6 py-3">Distance</th>
+                        <th class="px-6 py-3">Fuel</th>
+                        <th class="px-6 py-3">Idle</th>
+                        <th class="px-6 py-3">Score</th>
+                        <th class="px-6 py-3">Created</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for r in performance_rows %}
+                    <tr>
+                        <td class="px-6 py-3 font-semibold">#{{ r.trip_id }}</td>
+                        <td class="px-6 py-3">{{ r.distance_km or 0 }}</td>
+                        <td class="px-6 py-3">{{ r.fuel_used_liters or 0 }}</td>
+                        <td class="px-6 py-3">{{ r.idle_time_minutes or 0 }} min</td>
+                        <td class="px-6 py-3"><span class="font-bold">{{ r.performance_score or 0 }}</span></td>
+                        <td class="px-6 py-3 text-gray-500">{{ r.created_at }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">No trip performance data yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

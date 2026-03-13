@@ -214,6 +214,35 @@
             <form action="{{ url_for('log2.complete_dispatch') }}" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="dispatch_id" id="modal_dispatch_id">
+                <div class="grid grid-cols-2 gap-2 text-left mb-4">
+                    <div class="col-span-1">
+                        <label class="text-[10px] font-bold uppercase text-gray-500">Odometer Start</label>
+                        <input type="number" step="0.01" name="odometer_start" class="w-full mt-1 px-2 py-2 border border-gray-200 rounded-lg text-xs" placeholder="1000.00">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="text-[10px] font-bold uppercase text-gray-500">Odometer End</label>
+                        <input type="number" step="0.01" name="odometer_end" class="w-full mt-1 px-2 py-2 border border-gray-200 rounded-lg text-xs" placeholder="1080.00">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="text-[10px] font-bold uppercase text-gray-500">Fuel Used (L)</label>
+                        <input type="number" step="0.01" name="fuel_used_liters" class="w-full mt-1 px-2 py-2 border border-gray-200 rounded-lg text-xs" placeholder="12.5">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="text-[10px] font-bold uppercase text-gray-500">Fuel Cost</label>
+                        <input type="number" step="0.01" name="fuel_cost" class="w-full mt-1 px-2 py-2 border border-gray-200 rounded-lg text-xs" placeholder="1500">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="text-[10px] font-bold uppercase text-gray-500">Idle Mins</label>
+                        <input type="number" name="idle_time_minutes" class="w-full mt-1 px-2 py-2 border border-gray-200 rounded-lg text-xs" placeholder="0">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="text-[10px] font-bold uppercase text-gray-500">Harsh Events</label>
+                        <div class="grid grid-cols-2 gap-1 mt-1">
+                            <input type="number" name="harsh_braking_count" class="w-full px-2 py-2 border border-gray-200 rounded-lg text-xs" placeholder="Brake">
+                            <input type="number" name="harsh_acceleration_count" class="w-full px-2 py-2 border border-gray-200 rounded-lg text-xs" placeholder="Accel">
+                        </div>
+                    </div>
+                </div>
                 <div class="grid grid-cols-2 gap-4">
                     <button type="button" onclick="document.getElementById('completeTripModal').classList.add('hidden')"
                         class="px-4 py-2 border border-gray-200 font-bold text-gray-500 rounded-xl hover:bg-gray-50">

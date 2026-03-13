@@ -5,7 +5,7 @@ from utils.ip_lockout import is_ip_locked, register_failed_attempt, register_suc
 from utils.password_validator import PasswordValidationError
 from utils.policy import policy_required
 from utils.hms_models import Notification
-from datetime import datetime
+from datetime import datetime, timedelta
 
 log2_bp = Blueprint('log2', __name__, template_folder='templates')
 
@@ -13,6 +13,288 @@ log2_bp = Blueprint('log2', __name__, template_folder='templates')
 SUBSYSTEM_NAME = 'LOG2 - Fleet Operations'
 ACCENT_COLOR = '#F97316'
 BLUEPRINT_NAME = 'log2'
+
+
+def _safe_float(value, default=0.0):
+    try:
+        if value is None or value == '':
+            return default
+        return float(value)
+    except Exception:
+        return default
+
+
+def _safe_int(value, default=0):
+    try:
+        if value is None or value == '':
+            return default
+        return int(float(value))
+    except Exception:
+        return default
+
+
+def _notify_by_severity(severity, title, message, target_url=None, driver_user_id=None):
+    sev = (severity or 'LOW').upper()
+    n_type = 'info'
+    if sev in ('HIGH', 'CRITICAL'):
+        n_type = 'danger'
+    elif sev == 'MEDIUM':
+        n_type = 'warning'
+
+    Notification.create(
+        subsystem='log2',
+        title=title,
+        message=message,
+        n_type=n_type,
+        sender_subsystem='log2',
+        target_url=target_url
+    )
+
+    if driver_user_id and sev in ('MEDIUM', 'HIGH', 'CRITICAL'):
+        Notification.create(
+            user_id=driver_user_id,
+            subsystem='log2',
+            title=title,
+            message=message,
+            n_type=n_type,
+            sender_subsystem='log2',
+            target_url=target_url
+        )
+
+
+def _fleet_avg_efficiency(client):
+    try:
+        resp = client.table('vehicle_mileage_logs').select('fuel_efficiency_kmpl').not_.is_('fuel_efficiency_kmpl', 'null').execute()
+        rows = resp.data or []
+        vals = [
+            _safe_float(r.get('fuel_efficiency_kmpl'))
+            for r in rows
+            if _safe_float(r.get('fuel_efficiency_kmpl')) > 0
+        ]
+        if not vals:
+            return 0.0
+        return sum(vals) / len(vals)
+    except Exception:
+        return 0.0
+
+
+def _refresh_vehicle_maintenance_statuses(client, vehicle_id=None):
+    try:
+        query = client.table('vehicle_maintenance_schedules').select('*')
+        if vehicle_id:
+            query = query.eq('vehicle_id', vehicle_id)
+        schedules = query.execute().data or []
+
+        today = datetime.utcnow().date()
+        for sched in schedules:
+            sched_id = sched.get('id')
+            status = sched.get('status') or 'UPCOMING'
+            sched_date = sched.get('scheduled_date')
+
+            new_status = status
+            if status != 'COMPLETED':
+                if sched_date:
+                    try:
+                        due_date = datetime.fromisoformat(str(sched_date)).date()
+                    except Exception:
+                        due_date = today
+
+                    if due_date < today:
+                        new_status = 'OVERDUE'
+                    elif due_date == today:
+                        new_status = 'DUE'
+                    else:
+                        new_status = 'UPCOMING'
+
+            if new_status != status and sched_id:
+                client.table('vehicle_maintenance_schedules').update({
+                    'status': new_status,
+                    'updated_at': datetime.utcnow().isoformat()
+                }).eq('id', sched_id).execute()
+
+                if new_status in ('DUE', 'OVERDUE'):
+                    _notify_by_severity(
+                        'HIGH' if new_status == 'OVERDUE' else 'MEDIUM',
+                        title='Vehicle Maintenance Alert',
+                        message=f"Vehicle #{sched.get('vehicle_id')} maintenance {new_status.lower()}: {sched.get('maintenance_type')}",
+                        target_url=url_for('log2.vehicle_maintenance', vehicle_id=sched.get('vehicle_id'))
+                    )
+    except Exception as e:
+        print(f"Maintenance status refresh error: {e}")
+
+
+def _detect_trip_anomalies(client, trip, perf_payload):
+    anomalies = []
+    trip_id = trip.get('id')
+    vehicle_id = trip.get('vehicle_id')
+    driver_id = trip.get('driver_id')
+
+    distance_km = _safe_float(perf_payload.get('distance_km'))
+    fuel_used = _safe_float(perf_payload.get('fuel_used_liters'))
+    fuel_cost = _safe_float(perf_payload.get('fuel_cost'))
+    idle_minutes = _safe_int(perf_payload.get('idle_time_minutes'))
+    harsh_total = _safe_int(perf_payload.get('harsh_braking_count')) + _safe_int(perf_payload.get('harsh_acceleration_count'))
+
+    efficiency = (distance_km / fuel_used) if fuel_used > 0 else 0.0
+    fleet_avg = _fleet_avg_efficiency(client)
+
+    if fleet_avg > 0 and efficiency > 0 and efficiency < (fleet_avg * 0.75):
+        anomalies.append(('EXCESSIVE_FUEL', 'MEDIUM', f'Fuel efficiency {efficiency:.2f} km/L is below 75% of fleet avg {fleet_avg:.2f} km/L.'))
+
+    if idle_minutes > 60:
+        anomalies.append(('IDLE_OVERRUN', 'LOW', f'Idle time exceeded threshold: {idle_minutes} minutes.'))
+
+    if harsh_total > 5:
+        anomalies.append(('HARSH_DRIVING', 'MEDIUM', f'Harsh driving events exceeded threshold: {harsh_total}.'))
+
+    try:
+        if fuel_cost > 0:
+            avg_cost_resp = client.table('fleet_costs').select('amount').eq('cost_type', 'Fuel').execute()
+            cost_vals = [_safe_float(r.get('amount')) for r in (avg_cost_resp.data or []) if _safe_float(r.get('amount')) > 0]
+            if cost_vals:
+                avg_fuel_cost = sum(cost_vals) / len(cost_vals)
+                if avg_fuel_cost > 0 and fuel_cost > avg_fuel_cost * 1.5:
+                    anomalies.append(('COST_SPIKE', 'MEDIUM', f'Fuel cost {fuel_cost:.2f} exceeds 150% of average {avg_fuel_cost:.2f}.'))
+    except Exception:
+        pass
+
+    created = []
+    for anomaly_type, severity, description in anomalies:
+        try:
+            inserted = client.table('fleet_anomalies').insert({
+                'vehicle_id': vehicle_id,
+                'driver_id': driver_id,
+                'trip_id': trip_id,
+                'anomaly_type': anomaly_type,
+                'severity': severity,
+                'description': description,
+                'detected_at': datetime.utcnow().isoformat(),
+                'auto_notified': True
+            }).execute()
+            created.append(inserted.data[0] if inserted.data else {
+                'anomaly_type': anomaly_type,
+                'severity': severity,
+                'description': description
+            })
+        except Exception:
+            created.append({'anomaly_type': anomaly_type, 'severity': severity, 'description': description})
+
+        _notify_by_severity(
+            severity,
+            title=f"Fleet Anomaly: {anomaly_type}",
+            message=description,
+            target_url=url_for('log2.list_anomalies'),
+            driver_user_id=None
+        )
+
+    return created
+
+
+def _run_post_trip_analysis(client, trip, form_data):
+    trip_id = trip.get('id')
+    vehicle_id = trip.get('vehicle_id')
+    driver_id = trip.get('driver_id')
+
+    odometer_start = _safe_float(form_data.get('odometer_start'))
+    odometer_end = _safe_float(form_data.get('odometer_end'))
+    distance_km = max(0.0, odometer_end - odometer_start) if odometer_end and odometer_start else _safe_float(form_data.get('distance_km'))
+    fuel_used = _safe_float(form_data.get('fuel_used_liters'))
+    fuel_cost = _safe_float(form_data.get('fuel_cost'))
+    idle_minutes = _safe_int(form_data.get('idle_time_minutes'))
+    harsh_brake = _safe_int(form_data.get('harsh_braking_count'))
+    harsh_accel = _safe_int(form_data.get('harsh_acceleration_count'))
+
+    efficiency = (distance_km / fuel_used) if fuel_used > 0 else 0.0
+    departure_time = trip.get('departure_time')
+    now_iso = datetime.utcnow().isoformat()
+
+    if vehicle_id:
+        try:
+            client.table('fleet_vehicles').update({
+                'current_odometer': odometer_end if odometer_end > 0 else None
+            }).eq('id', vehicle_id).execute()
+        except Exception:
+            pass
+
+    try:
+        client.table('vehicle_mileage_logs').insert({
+            'vehicle_id': vehicle_id,
+            'trip_id': trip_id,
+            'odometer_start': odometer_start if odometer_start > 0 else None,
+            'odometer_end': odometer_end if odometer_end > 0 else None,
+            'mileage_km': distance_km,
+            'fuel_used_liters': fuel_used,
+            'fuel_cost': fuel_cost,
+            'fuel_efficiency_kmpl': efficiency if efficiency > 0 else None,
+            'logged_by': current_user.id,
+            'logged_at': now_iso
+        }).execute()
+    except Exception as e:
+        print(f"Mileage log insert warning: {e}")
+
+    perf_payload = {
+        'distance_km': distance_km,
+        'fuel_used_liters': fuel_used,
+        'fuel_cost': fuel_cost,
+        'idle_time_minutes': idle_minutes,
+        'harsh_braking_count': harsh_brake,
+        'harsh_acceleration_count': harsh_accel
+    }
+    anomalies = _detect_trip_anomalies(client, trip, perf_payload)
+
+    perf_score = max(0.0, min(100.0,
+        (30.0 if trip.get('status') == 'Completed' else 20.0)
+        + (25.0 if efficiency >= 8 else max(0.0, efficiency * 2.5))
+        + max(0.0, 25.0 - (harsh_brake + harsh_accel) * 2.0)
+        + max(0.0, 20.0 - (idle_minutes / 3.0))
+    ))
+
+    try:
+        client.table('driver_trip_performance').insert({
+            'driver_id': driver_id,
+            'trip_id': trip_id,
+            'vehicle_id': vehicle_id,
+            'start_time': departure_time,
+            'end_time': now_iso,
+            'distance_km': distance_km,
+            'fuel_used_liters': fuel_used,
+            'idle_time_minutes': idle_minutes,
+            'harsh_braking_count': harsh_brake,
+            'harsh_acceleration_count': harsh_accel,
+            'on_time_delivery': True,
+            'performance_score': round(perf_score, 2),
+            'anomalies': anomalies or []
+        }).execute()
+    except Exception as e:
+        print(f"Trip performance insert warning: {e}")
+
+    if fuel_cost > 0:
+        try:
+            client.table('fleet_costs').insert({
+                'vehicle_id': vehicle_id,
+                'dispatch_id': trip_id,
+                'cost_type': 'Fuel',
+                'amount': fuel_cost,
+                'description': f'Auto-logged from trip #{trip_id}',
+                'logged_by': current_user.id,
+                'log_date': datetime.utcnow().date().isoformat()
+            }).execute()
+        except Exception as e:
+            print(f"Auto fuel cost insert warning: {e}")
+
+    _refresh_vehicle_maintenance_statuses(client, vehicle_id=vehicle_id)
+
+    return {
+        'distance_km': distance_km,
+        'fuel_used_liters': fuel_used,
+        'fuel_cost': fuel_cost,
+        'odometer_start': odometer_start if odometer_start > 0 else None,
+        'odometer_end': odometer_end if odometer_end > 0 else None,
+        'idle_time_minutes': idle_minutes,
+        'harsh_braking_count': harsh_brake,
+        'harsh_acceleration_count': harsh_accel,
+        'post_trip_analysis_done': True
+    }
 
 @log2_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -163,17 +445,33 @@ def dashboard():
         
         dr_resp = client.table('drivers').select('id').execute()
         total_drivers = len(dr_resp.data) if dr_resp.data else 0
+
+        _refresh_vehicle_maintenance_statuses(client)
+        m_resp = client.table('vehicle_maintenance_schedules').select('status').in_('status', ['DUE', 'OVERDUE']).execute()
+        maintenance_due = len(m_resp.data) if m_resp.data else 0
+
+        since_7d = (datetime.utcnow() - timedelta(days=7)).isoformat()
+        a_resp = client.table('fleet_anomalies').select('id').gte('detected_at', since_7d).execute()
+        anomalies_week = len(a_resp.data) if a_resp.data else 0
+
+        fleet_avg_eff = _fleet_avg_efficiency(client)
         
     except Exception as e:
         print(f"Dashboard Stats Error: {e}")
         available_vehicles = 0
         active_trips = 0
         total_drivers = 0
+        maintenance_due = 0
+        anomalies_week = 0
+        fleet_avg_eff = 0.0
         
     return render_template('subsystems/logistics/log2/dashboard.html',
                            available_vehicles=available_vehicles,
                            active_trips=active_trips,
                            total_drivers=total_drivers,
+                           maintenance_due=maintenance_due,
+                           anomalies_week=anomalies_week,
+                           fleet_avg_eff=fleet_avg_eff,
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
@@ -375,11 +673,18 @@ def complete_dispatch():
     try:
         dispatch_id = request.form.get('dispatch_id')
         # Get trip details to release resources
-        trip = client.table('fleet_dispatch').select('vehicle_id, driver_id').eq('id', dispatch_id).single().execute()
+        trip = client.table('fleet_dispatch').select('*').eq('id', dispatch_id).single().execute()
         if trip.data:
-            client.table('fleet_dispatch').update({
+            analysis_updates = _run_post_trip_analysis(client, trip.data, request.form)
+
+            dispatch_update = {
                 'status': 'Completed',
                 'return_time': datetime.utcnow().isoformat()
+            }
+            dispatch_update.update(analysis_updates)
+
+            client.table('fleet_dispatch').update({
+                **dispatch_update
             }).eq('id', dispatch_id).execute()
             
             client.table('fleet_vehicles').update({'status': 'Available'}).eq('id', trip.data['vehicle_id']).execute()
@@ -388,7 +693,7 @@ def complete_dispatch():
             from utils.hms_models import AuditLog
             AuditLog.log(current_user.id, "Complete Trip", BLUEPRINT_NAME, {"dispatch_id": dispatch_id})
             
-            flash('Trip marked as completed.', 'success')
+            flash('Trip marked as completed with post-trip analytics.', 'success')
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
     return redirect(url_for('log2.dispatch_board'))
@@ -731,6 +1036,320 @@ def resource_map():
                            subsystem_name=SUBSYSTEM_NAME,
                            accent_color=ACCENT_COLOR,
                            blueprint_name=BLUEPRINT_NAME)
+
+
+@log2_bp.route('/vehicles/<int:vehicle_id>/maintenance')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def vehicle_maintenance(vehicle_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+
+    try:
+        _refresh_vehicle_maintenance_statuses(client, vehicle_id=vehicle_id)
+        vehicle_resp = client.table('fleet_vehicles').select('*').eq('id', vehicle_id).single().execute()
+        schedules_resp = client.table('vehicle_maintenance_schedules').select('*').eq('vehicle_id', vehicle_id).order('scheduled_date', desc=False).execute()
+
+        vehicle = vehicle_resp.data or {}
+        schedules = schedules_resp.data or []
+    except Exception as e:
+        flash(f'Unable to load maintenance records: {e}', 'danger')
+        return redirect(url_for('log2.list_vehicles'))
+
+    return render_template(
+        'subsystems/logistics/log2/vehicle_maintenance.html',
+        vehicle=vehicle,
+        schedules=schedules,
+        subsystem_name=SUBSYSTEM_NAME,
+        accent_color=ACCENT_COLOR,
+        blueprint_name=BLUEPRINT_NAME
+    )
+
+
+@log2_bp.route('/vehicles/<int:vehicle_id>/maintenance/add', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def add_maintenance_schedule(vehicle_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        payload = {
+            'vehicle_id': vehicle_id,
+            'maintenance_type': request.form.get('maintenance_type'),
+            'scheduled_date': request.form.get('scheduled_date'),
+            'interval_km': _safe_float(request.form.get('interval_km')) or None,
+            'interval_days': _safe_int(request.form.get('interval_days')) or None,
+            'assigned_to': _safe_int(request.form.get('assigned_to')) or None,
+            'notes': request.form.get('notes'),
+            'status': 'UPCOMING',
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat()
+        }
+        client.table('vehicle_maintenance_schedules').insert(payload).execute()
+        flash('Maintenance schedule added.', 'success')
+    except Exception as e:
+        flash(f'Failed to add maintenance schedule: {e}', 'danger')
+    return redirect(url_for('log2.vehicle_maintenance', vehicle_id=vehicle_id))
+
+
+@log2_bp.route('/maintenance/<int:schedule_id>/complete', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def complete_maintenance_schedule(schedule_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        sched_resp = client.table('vehicle_maintenance_schedules').select('*').eq('id', schedule_id).single().execute()
+        sched = sched_resp.data or {}
+        vehicle_id = sched.get('vehicle_id')
+        completed_date = request.form.get('completed_date') or datetime.utcnow().date().isoformat()
+        completed_cost = _safe_float(request.form.get('completed_cost'))
+
+        client.table('vehicle_maintenance_schedules').update({
+            'status': 'COMPLETED',
+            'last_done_date': completed_date,
+            'completed_cost': completed_cost if completed_cost > 0 else None,
+            'completed_by': current_user.id,
+            'completed_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat()
+        }).eq('id', schedule_id).execute()
+
+        if vehicle_id:
+            client.table('fleet_vehicles').update({
+                'last_maintenance_date': completed_date,
+                'maintenance_status': 'OK'
+            }).eq('id', vehicle_id).execute()
+
+        if vehicle_id and completed_cost > 0:
+            client.table('fleet_costs').insert({
+                'vehicle_id': vehicle_id,
+                'cost_type': 'Maintenance',
+                'amount': completed_cost,
+                'description': f"Maintenance: {sched.get('maintenance_type')}",
+                'logged_by': current_user.id,
+                'log_date': datetime.utcnow().date().isoformat()
+            }).execute()
+
+        flash('Maintenance marked as completed.', 'success')
+        if vehicle_id:
+            return redirect(url_for('log2.vehicle_maintenance', vehicle_id=vehicle_id))
+    except Exception as e:
+        flash(f'Failed to complete maintenance schedule: {e}', 'danger')
+    return redirect(url_for('log2.list_vehicles'))
+
+
+@log2_bp.route('/anomalies')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def list_anomalies():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        anomalies_resp = client.table('fleet_anomalies').select('*').order('detected_at', desc=True).limit(300).execute()
+        anomalies = anomalies_resp.data or []
+    except Exception as e:
+        print(f'Anomalies fetch error: {e}')
+        anomalies = []
+
+    return render_template(
+        'subsystems/logistics/log2/anomalies.html',
+        anomalies=anomalies,
+        subsystem_name=SUBSYSTEM_NAME,
+        accent_color=ACCENT_COLOR,
+        blueprint_name=BLUEPRINT_NAME
+    )
+
+
+@log2_bp.route('/anomalies/<int:anomaly_id>/ack', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def acknowledge_anomaly(anomaly_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        client.table('fleet_anomalies').update({
+            'acknowledged': True,
+            'acknowledged_by': current_user.id,
+            'acknowledged_at': datetime.utcnow().isoformat()
+        }).eq('id', anomaly_id).execute()
+        flash('Anomaly acknowledged.', 'success')
+    except Exception as e:
+        flash(f'Failed to acknowledge anomaly: {e}', 'danger')
+    return redirect(url_for('log2.list_anomalies'))
+
+
+@log2_bp.route('/drivers/<int:driver_id>/performance')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def driver_performance(driver_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        driver_resp = client.table('drivers').select('*').eq('id', driver_id).single().execute()
+        perf_resp = client.table('driver_trip_performance').select('*').eq('driver_id', driver_id).order('created_at', desc=True).limit(100).execute()
+        perf_rows = perf_resp.data or []
+
+        avg_score = round(sum(_safe_float(r.get('performance_score')) for r in perf_rows) / len(perf_rows), 2) if perf_rows else 0.0
+        on_time_count = sum(1 for r in perf_rows if r.get('on_time_delivery'))
+
+        stats = {
+            'trip_count': len(perf_rows),
+            'avg_score': avg_score,
+            'on_time_rate': round((on_time_count / len(perf_rows) * 100), 1) if perf_rows else 0.0
+        }
+    except Exception as e:
+        flash(f'Failed to load driver performance: {e}', 'danger')
+        return redirect(url_for('log2.list_drivers'))
+
+    return render_template(
+        'subsystems/logistics/log2/driver_performance.html',
+        driver=driver_resp.data or {},
+        performance_rows=perf_rows,
+        stats=stats,
+        subsystem_name=SUBSYSTEM_NAME,
+        accent_color=ACCENT_COLOR,
+        blueprint_name=BLUEPRINT_NAME
+    )
+
+
+@log2_bp.route('/cost-analysis')
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def cost_analysis_hub():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        reports = client.table('cost_analysis_reports').select('*').order('created_at', desc=True).limit(50).execute().data or []
+    except Exception:
+        reports = []
+
+    budget_allocated = 0.0
+    try:
+        # Preferred budget source if available
+        b_rows = client.table('department_budgets').select('*').eq('subsystem', 'log2').execute().data or []
+        budget_allocated = sum(_safe_float(r.get('allocated_amount')) for r in b_rows)
+    except Exception:
+        try:
+            # Fallback source from finance approvals
+            b_rows = client.table('procurement_budget_approvals').select('*').eq('status', 'APPROVED').execute().data or []
+            budget_allocated = sum(_safe_float(r.get('approved_amount')) for r in b_rows)
+        except Exception:
+            budget_allocated = 0.0
+
+    return render_template(
+        'subsystems/logistics/log2/cost_analysis_hub.html',
+        reports=reports,
+        budget_allocated=budget_allocated,
+        subsystem_name=SUBSYSTEM_NAME,
+        accent_color=ACCENT_COLOR,
+        blueprint_name=BLUEPRINT_NAME
+    )
+
+
+@log2_bp.route('/cost-analysis/generate', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def generate_cost_analysis_report():
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        period_start = request.form.get('period_start')
+        period_end = request.form.get('period_end')
+        if not period_start or not period_end:
+            flash('Please provide period start and end.', 'warning')
+            return redirect(url_for('log2.cost_analysis_hub'))
+
+        fuel_rows = client.table('fleet_costs').select('*').eq('cost_type', 'Fuel').gte('log_date', period_start).lte('log_date', period_end).execute().data or []
+        maint_rows = client.table('fleet_costs').select('*').in_('cost_type', ['Maintenance', 'Repair']).gte('log_date', period_start).lte('log_date', period_end).execute().data or []
+
+        total_fuel = sum(_safe_float(r.get('amount')) for r in fuel_rows)
+        total_maint = sum(_safe_float(r.get('amount')) for r in maint_rows)
+        total_driver = 0.0
+        total_cost = total_fuel + total_maint + total_driver
+
+        budget_allocated = 0.0
+        try:
+            b_rows = client.table('department_budgets').select('*').eq('subsystem', 'log2').execute().data or []
+            budget_allocated = sum(_safe_float(r.get('allocated_amount')) for r in b_rows)
+        except Exception:
+            pass
+
+        suggestions = []
+        if budget_allocated and total_cost > budget_allocated:
+            suggestions.append({
+                'type': 'BUDGET',
+                'action': 'Review high-cost routes and re-balance schedules to off-peak windows.',
+                'impact': 'Expected 8-12% monthly savings'
+            })
+        if total_fuel > (total_cost * 0.6 if total_cost > 0 else 0):
+            suggestions.append({
+                'type': 'FUEL',
+                'action': 'Investigate high fuel-share vehicles and optimize idle time.',
+                'impact': 'Expected 5-10% fuel cost reduction'
+            })
+        if not suggestions:
+            suggestions.append({
+                'type': 'STABILITY',
+                'action': 'Current costs are within expected range. Continue monitoring.',
+                'impact': 'Maintain baseline performance'
+            })
+
+        report_no = f"CAR-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        client.table('cost_analysis_reports').insert({
+            'report_no': report_no,
+            'period_start': period_start,
+            'period_end': period_end,
+            'total_fuel_cost': total_fuel,
+            'total_maintenance_cost': total_maint,
+            'total_driver_cost': total_driver,
+            'total_cost': total_cost,
+            'budget_allocated': budget_allocated,
+            'budget_variance': total_cost - budget_allocated,
+            'optimization_suggestions': suggestions,
+            'created_by': current_user.id,
+            'created_at': datetime.utcnow().isoformat()
+        }).execute()
+
+        flash('Cost analysis report generated.', 'success')
+    except Exception as e:
+        flash(f'Failed to generate report: {e}', 'danger')
+    return redirect(url_for('log2.cost_analysis_hub'))
+
+
+@log2_bp.route('/cost-analysis/<int:report_id>/send-to-finance', methods=['POST'])
+@login_required
+@policy_required(BLUEPRINT_NAME)
+def send_cost_report_to_finance(report_id):
+    from utils.supabase_client import get_supabase_client
+    client = get_supabase_client()
+    try:
+        report_resp = client.table('cost_analysis_reports').select('*').eq('id', report_id).single().execute()
+        report = report_resp.data or {}
+        if not report:
+            flash('Report not found.', 'danger')
+            return redirect(url_for('log2.cost_analysis_hub'))
+
+        client.table('cost_analysis_reports').update({
+            'sent_to_finance': True,
+            'sent_at': datetime.utcnow().isoformat()
+        }).eq('id', report_id).execute()
+
+        Notification.create(
+            subsystem='financials',
+            title='LOG2 Cost Optimization Report',
+            message=(
+                f"Report {report.get('report_no')} submitted. Total cost: {report.get('total_cost')} "
+                f"| Budget variance: {report.get('budget_variance')}"
+            ),
+            n_type='info',
+            sender_subsystem='log2',
+            target_url=url_for('log2.cost_analysis_hub')
+        )
+
+        flash('Report sent to Finance.', 'success')
+    except Exception as e:
+        flash(f'Failed to send report: {e}', 'danger')
+    return redirect(url_for('log2.cost_analysis_hub'))
 
 @log2_bp.route('/logout')
 @login_required

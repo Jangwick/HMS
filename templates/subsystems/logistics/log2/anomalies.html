@@ -1,0 +1,53 @@
+{% extends "base/subsystem_base.html" %}
+{% block header_title %}Fleet Anomalies{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h3 class="font-bold text-gray-900">Anomaly Log</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                    <th class="px-6 py-3">Detected</th>
+                    <th class="px-6 py-3">Type</th>
+                    <th class="px-6 py-3">Severity</th>
+                    <th class="px-6 py-3">Description</th>
+                    <th class="px-6 py-3">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for a in anomalies %}
+                <tr>
+                    <td class="px-6 py-3 text-gray-500">{{ a.detected_at }}</td>
+                    <td class="px-6 py-3 font-semibold text-gray-800">{{ a.anomaly_type }}</td>
+                    <td class="px-6 py-3">
+                        <span class="px-2 py-1 rounded-full text-[10px] font-bold
+                            {% if a.severity == 'CRITICAL' %}bg-red-100 text-red-700
+                            {% elif a.severity == 'HIGH' %}bg-orange-100 text-orange-700
+                            {% elif a.severity == 'MEDIUM' %}bg-amber-100 text-amber-700
+                            {% else %}bg-blue-100 text-blue-700{% endif %}">
+                            {{ a.severity }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-3 text-gray-600">{{ a.description or '—' }}</td>
+                    <td class="px-6 py-3">
+                        {% if not a.acknowledged %}
+                        <form action="{{ url_for('log2.acknowledge_anomaly', anomaly_id=a.id) }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="px-3 py-1 bg-indigo-600 text-white rounded text-xs font-bold">Acknowledge</button>
+                        </form>
+                        {% else %}
+                        <span class="text-xs text-emerald-600 font-bold">Acknowledged</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">No anomalies detected.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

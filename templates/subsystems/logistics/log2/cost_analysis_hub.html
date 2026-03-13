@@ -1,0 +1,75 @@
+{% extends "base/subsystem_base.html" %}
+{% block header_title %}Cost Optimization Hub{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h3 class="font-bold text-gray-900 mb-1">Generate Post-Operation Report</h3>
+            <p class="text-sm text-gray-500 mb-4">Analyze fuel, maintenance, and route costs by period.</p>
+            <form action="{{ url_for('log2.generate_cost_analysis_report') }}" method="POST" class="space-y-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="date" name="period_start" required class="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                    <input type="date" name="period_end" required class="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                </div>
+                <button type="submit" class="w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700">Generate Report</button>
+            </form>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <p class="text-xs uppercase font-bold text-gray-400">Budget Data (Finance)</p>
+            <p class="text-3xl font-black text-gray-900 mt-2">${{ "%.2f" | format(budget_allocated or 0) }}</p>
+            <p class="text-sm text-gray-500 mt-2">Pulled from finance budget sources for subsystem LOG2.</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100">
+            <h4 class="font-bold text-gray-900">Generated Reports</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                    <tr>
+                        <th class="px-6 py-3">Report No</th>
+                        <th class="px-6 py-3">Period</th>
+                        <th class="px-6 py-3">Total Cost</th>
+                        <th class="px-6 py-3">Budget Variance</th>
+                        <th class="px-6 py-3">Sent to Finance</th>
+                        <th class="px-6 py-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for r in reports %}
+                    <tr>
+                        <td class="px-6 py-3 font-semibold">{{ r.report_no }}</td>
+                        <td class="px-6 py-3">{{ r.period_start }} → {{ r.period_end }}</td>
+                        <td class="px-6 py-3">${{ "%.2f" | format(r.total_cost or 0) }}</td>
+                        <td class="px-6 py-3">${{ "%.2f" | format(r.budget_variance or 0) }}</td>
+                        <td class="px-6 py-3">
+                            {% if r.sent_to_finance %}
+                            <span class="text-xs font-bold text-emerald-600">Sent</span>
+                            {% else %}
+                            <span class="text-xs font-bold text-amber-600">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-3">
+                            {% if not r.sent_to_finance %}
+                            <form action="{{ url_for('log2.send_cost_report_to_finance', report_id=r.id) }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-3 py-1 bg-emerald-600 text-white rounded text-xs font-bold">Send to Finance</button>
+                            </form>
+                            {% else %}
+                            <span class="text-xs text-gray-400">Completed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">No cost analysis reports yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
